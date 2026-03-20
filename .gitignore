@@ -1,0 +1,14 @@
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Docker data
+.dspace-cookies
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
