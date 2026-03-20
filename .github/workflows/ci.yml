@@ -1,0 +1,58 @@
+name: CI — Frontend Angular
+
+# Se ejecuta en cada push a main/dev y en PRs
+on:
+  push:
+    branches: [main, dev]
+    # paths:
+    #   - 'frontend/**'
+    #   - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main, dev]
+    # paths:
+    #   - 'frontend/**'
+    #   - '.github/workflows/ci.yml'
+
+jobs:
+  lint-build-test:
+    name: Lint → Build → Test
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      # Paso 1: bajar el código
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # Paso 2: instalar Node.js 22 (Angular 20 lo necesita)
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # Paso 3: instalar dependencias
+      # npm ci lee package-lock.json y no lo modifica
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Paso 4: ejecutar ESLint
+      # Esto es el script "lint" del package.json
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      # Paso 5: compilar para producción
+      # Ejecuta el script "build" del package.json con configuración de producción
+      - name: Build producción
+        run: npm run build -- --configuration production
+
+      # Paso 6: correr tests
+      # Ejecuta el script "test" del package.json
+      # El flag --run hace que Vitest corra una vez y salga (no se queda en watch mode)
+      - name: Tests unitarios (Vitest)
+        run: npm run test -- --run
+

@@ -1,0 +1,86 @@
+<div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6">
+  <div class="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100">
+    <i class="pi pi-filter text-lg" style="color: var(--gob-azul-gobierno)"></i>
+    <h3
+      class="text-lg font-semibold m-0"
+      style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+    >
+      Filtrar por
+    </h3>
+  </div>
+
+  <div class="mb-4">
+    <label
+      for="searchQuery"
+      class="block text-sm font-medium mb-2"
+      style="color: var(--color-text-primary); font-family: var(--font-body)"
+    >
+      Buscar
+    </label>
+    <span class="p-input-icon-left w-full">
+      <i class="pi pi-search"></i>
+      <input
+        type="text"
+        pInputText
+        id="searchQuery"
+        [(ngModel)]="searchQuery"
+        placeholder="Buscar por título o descripción..."
+        (input)="onFilterChange()"
+        class="w-full"
+      />
+    </span>
+  </div>
+
+  <div class="mb-4">
+    <label
+      for="program"
+      class="block text-sm font-medium mb-2"
+      style="color: var(--color-text-primary); font-family: var(--font-body)"
+    >
+      Programa
+    </label>
+    <p-select
+      id="program"
+      [options]="programOptions"
+      [(ngModel)]="selectedProgram"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="Todos los programas"
+      [showClear]="true"
+      (onChange)="onFilterChange()"
+      class="w-full"
+    />
+  </div>
+
+  <div class="mb-4">
+    <label
+      for="eventType"
+      class="block text-sm font-medium mb-2"
+      style="color: var(--color-text-primary); font-family: var(--font-body)"
+    >
+      Tipo de Evento
+    </label>
+    <p-select
+      id="eventType"
+      [options]="eventTypeOptions"
+      [(ngModel)]="selectedEventType"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="Todos los tipos"
+      [showClear]="true"
+      (onChange)="onFilterChange()"
+      class="w-full"
+    />
+  </div>
+
+  <div class="pt-4 border-t border-gray-100">
+    <p-button
+      label="Limpiar Filtros"
+      icon="pi pi-times"
+      [outlined]="true"
+      severity="secondary"
+      class="w-full"
+      (onClick)="clearFilters()"
+    />
+  </div>
+</div>

@@ -1,0 +1,462 @@
+@import "tailwindcss";
+@import "tailwindcss-primeui";
+@import "primeicons/primeicons.css";
+
+/* ============================================
+   TIPOGRAFÍAS OFICIALES — Gobierno de Guatemala
+   Fuente: Estrategia Visual 2026
+   ============================================ */
+
+/* JT Remillo — Para títulos principales y hero */
+@font-face {
+  font-family: 'JT Remillo';
+  src: url('assets/fonts/JTRemillo-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JT Remillo';
+  src: url('assets/fonts/JTRemillo-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JT Remillo';
+  src: url('assets/fonts/JTRemillo-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Altivo — Para todo el texto general, subtítulos y cuerpo */
+@font-face {
+  font-family: 'Altivo';
+  src: url('assets/fonts/Altivo-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Altivo';
+  src: url('assets/fonts/Altivo-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Altivo';
+  src: url('assets/fonts/Altivo-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================
+   CONFIGURACIÓN TAILWIND V4 — Colores DIGEEX
+   ============================================ */
+
+@theme {
+  /* Colores primarios del Gobierno */
+  --color-gob-primary: #1E3159;
+  --color-gob-primary-light: #233E72;
+  --color-gob-sky: #CCF0FF;
+
+  /* Colores de acento (Ocre) */
+  --color-gob-accent: #F2A119;
+  --color-gob-accent-dark: #A8723A;
+  --color-gob-accent-light: #FFD392;
+
+  /* Macrotemas */
+  --color-seguridad: #026961;
+  --color-seguridad-dark: #235558;
+  --color-seguridad-light: #8DD8D3;
+
+  --color-modernidad: #888EA5;
+  --color-modernidad-dark: #474665;
+  --color-modernidad-light: #E4E5FF;
+
+  --color-competitividad: #9F0B30;
+  --color-competitividad-dark: #7B162F;
+  --color-competitividad-light: #FFE1E5;
+
+  --color-oportunidad: #FE8B5A;
+  --color-oportunidad-dark: #C96033;
+  --color-oportunidad-light: #FFC6AD;
+
+  /* Superficie */
+  --color-background: #F5F2EE;
+  --color-surface: #FFFFFF;
+}
+
+/* ============================================
+   NOTA SOBRE CLASES TAILWIND
+
+   Tailwind v4 genera automáticamente clases de utilidad
+   desde @theme. Por ejemplo:
+     --color-gob-primary: #1E3159;
+   genera: bg-gob-primary, text-gob-primary, border-gob-primary, etc.
+
+   NO es necesario definir @utility manuales para colores
+   que ya están en @theme. Todas las clases bg-*, text-*,
+   border-* están disponibles automáticamente.
+
+   Uso en HTML:
+     <div class="bg-gob-primary text-white">           → Azul Gobierno
+     <button class="bg-gob-accent text-white">         → Ocre Amanecer
+     <span class="bg-seguridad-light text-seguridad">  → Macrotema
+     <section class="bg-background">                   → Fondo cálido
+     <div class="bg-surface">                           → Blanco card
+
+   Uso en CSS/SCSS (variables semánticas de :root):
+     color: var(--color-text-primary);
+     background: var(--color-primary);
+     font-family: var(--font-body);
+   ============================================ */
+
+/* =============================================================================
+   VARIABLES CSS GLOBALES — Portal DIGEEX
+   Gobierno de Guatemala — Estrategia Visual 2026
+   ============================================================================= */
+
+:root {
+  /* ---------------------------------------------------------------------------
+     VARIABLES SEMÁNTICAS — Portal DIGEEX
+     Gobierno de Guatemala — Estrategia Visual 2026
+
+     FUENTE ÚNICA DE VERDAD:
+     Los valores HEX de la paleta institucional están en @theme {}
+     (arriba). Aquí solo creamos alias semánticos que apuntan
+     a esas mismas variables de @theme para uso en CSS/SCSS.
+
+     Uso: var(--color-primary), var(--color-text-secondary), etc.
+     --------------------------------------------------------------------------- */
+
+  /* ---------------------------------------------------------------------------
+     ALIASES --gob-* → @theme
+     Nombres cortos usados en templates HTML (style="color: var(--gob-*)").
+     Apuntan a las variables de @theme para mantener una sola fuente de verdad.
+     --------------------------------------------------------------------------- */
+  --gob-azul-gobierno: var(--color-gob-primary);
+  --gob-azul-acento: var(--color-gob-primary-light);
+  --gob-celeste-cielo: var(--color-gob-sky);
+  --gob-ocre-amanecer: var(--color-gob-accent);
+  --gob-ocre-oscuro: var(--color-gob-accent-dark);
+  --gob-ocre-claro: var(--color-gob-accent-light);
+  --gob-seguridad: var(--color-seguridad);
+  --gob-seguridad-dark: var(--color-seguridad-dark);
+  --gob-seguridad-light: var(--color-seguridad-light);
+  --gob-modernidad: var(--color-modernidad);
+  --gob-modernidad-dark: var(--color-modernidad-dark);
+  --gob-modernidad-light: var(--color-modernidad-light);
+  --gob-competitividad: var(--color-competitividad);
+  --gob-competitividad-dark: var(--color-competitividad-dark);
+  --gob-competitividad-light: var(--color-competitividad-light);
+  --gob-oportunidad: var(--color-oportunidad);
+  --gob-oportunidad-dark: var(--color-oportunidad-dark);
+  --gob-oportunidad-light: var(--color-oportunidad-light);
+
+  /* Superficies y fondos */
+  --color-surface-alt: var(--color-gob-sky);
+
+  /* Texto (valores calculados para cumplir WCAG 2.1 Level AA) */
+  --color-text-primary: #1E3159;      /* Contraste: 12.5:1 sobre blanco */
+  --color-text-secondary: #4A5568;    /* Contraste: 7.4:1 sobre blanco */
+  --color-text-tertiary: #6B7280;     /* Contraste: 5.0:1 sobre blanco */
+  --color-text-muted: #9CA3AF;
+  --color-text-on-dark: #FFFFFF;
+  --color-text-on-accent: #FFFFFF;
+
+  /* Elementos interactivos (apuntan a @theme) */
+  --color-primary: var(--color-gob-primary);
+  --color-primary-hover: var(--color-gob-primary-light);
+  --color-accent: var(--color-gob-accent);
+  --color-accent-hover: var(--color-gob-accent-dark);
+
+  /* Estados de sistema (apuntan a @theme) */
+  --color-success: var(--color-seguridad);
+  --color-warning: var(--color-gob-accent);
+  --color-error: var(--color-competitividad);
+  --color-info: var(--color-modernidad);
+
+  /* Bordes y divisores */
+  --color-border: #D9D5D0;
+  --color-border-focus: var(--color-gob-accent);
+  --color-divider: #E8E4DF;
+
+  /* Sombras (base en Azul Gobierno con opacidad) */
+  --shadow-sm: 0 1px 3px rgba(30, 49, 89, 0.08);
+  --shadow-md: 0 4px 12px rgba(30, 49, 89, 0.12);
+  --shadow-lg: 0 8px 24px rgba(30, 49, 89, 0.16);
+
+  /* ---------------------------------------------------------------------------
+     TIPOGRAFÍA
+     Fuentes oficiales: JT Remillo (display), Altivo (heading/body).
+     Escala modular: ~1.25 (ratio perfecto cuarto).
+     --------------------------------------------------------------------------- */
+
+  /* Familias tipográficas */
+  --font-display: 'JT Remillo', 'Montserrat', 'Arial Black', sans-serif;
+  --font-heading: 'Altivo', 'Inter', 'Segoe UI', sans-serif;
+  --font-body: 'Altivo', 'Inter', 'Segoe UI', sans-serif;
+
+  /* Tamaños de texto */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+
+  /* Line heights */
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* Letter spacing */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+
+  /* ---------------------------------------------------------------------------
+     ALIAS DIGEEX — Compatibilidad con admin-layout SCSS
+     Estos alias permiten que los SCSS del layout admin (topbar, sidebar,
+     etc.) usen variables --digeex-* que resuelven a @theme.
+     --------------------------------------------------------------------------- */
+
+  --digeex-primary: var(--color-gob-primary);
+  --digeex-primary-hover: var(--color-gob-primary-light);
+  --digeex-secondary: var(--color-gob-accent);
+  --digeex-surface: var(--color-surface);
+  --digeex-surface-alt: var(--color-background);
+  --digeex-text: var(--color-text-primary);
+  --digeex-text-secondary: var(--color-text-secondary);
+  --digeex-success: var(--color-success);
+  --digeex-warning: var(--color-warning);
+  --digeex-error: var(--color-error);
+  --digeex-border: var(--color-border);
+}
+
+.mf-dataview.p-dataview,
+.mf-dataview .p-dataview-content,
+.mf-dataview .p-dataview-header,
+.mf-dataview .p-dataview-footer {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.mf-dataview .p-paginator,
+.mf-dataview .p-paginator .p-paginator-pages,
+.mf-dataview .p-paginator .p-paginator-current {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.dark {
+  /* Modo oscuro - Mantiene colores institucionales pero ajusta fondos */
+
+  /* Superficie / Layout */
+  --color-background: #0F1419;
+  --color-surface: #1A1F26;
+  --color-surface-alt: rgba(30, 49, 89, 0.2);
+
+  /* Texto */
+  --color-text-primary: #E8EDF5;
+  --color-text-secondary: #9DB1D4;
+  --color-text-on-dark: #FFFFFF;
+
+  /* Bordes */
+  --color-border: #2A3340;
+  --color-divider: #232930;
+
+  /* Sombras más sutiles en modo oscuro */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  /* Compatibilidad */
+  --digeex-surface: var(--color-surface);
+  --digeex-surface-alt: var(--color-background);
+  --digeex-text: var(--color-text-primary);
+  --digeex-text-secondary: var(--color-text-secondary);
+  --digeex-border: var(--color-border);
+}
+
+/* ============================================
+   APLICACIÓN DE ESTILOS BASE
+   ============================================ */
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+/* ============================================
+   ENCABEZADOS — Jerarquía según DESIGN_SYSTEM_DIGEEX v3
+
+   h1 → JT Remillo Bold (hero de página)
+   h2 → Altivo Bold (títulos de sección)
+   h3 → Altivo Medium (subtítulos)
+   h4 → Altivo Medium (títulos de cards)
+   Descripciones → Altivo Regular 16px
+   ============================================ */
+
+h1 {
+  margin: 0;
+  font-family: var(--font-display);  /* JT Remillo */
+  font-weight: 700;                   /* Bold — Hero de página */
+  font-size: 2.25rem;                 /* 36px */
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+h2 {
+  margin: 0;
+  font-family: var(--font-heading);  /* Altivo */
+  font-weight: 700;                   /* Bold — Títulos de sección */
+  font-size: 1.5rem;                  /* 24px */
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+h3 {
+  margin: 0;
+  font-family: var(--font-heading);  /* Altivo */
+  font-weight: 500;                   /* Medium — Subtítulos */
+  font-size: 1.25rem;                 /* 20px */
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+h4 {
+  margin: 0;
+  font-family: var(--font-heading);  /* Altivo */
+  font-weight: 500;                   /* Medium — Títulos de cards */
+  font-size: 1.125rem;                /* 18px */
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+h5 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 500;                   /* Medium */
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+h6 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 400;                   /* Regular */
+  font-size: 0.875rem;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+/* Antetítulos — Estilo según Estrategia Visual 2026 */
+.antetitulo {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wider);
+  color: var(--gob-ocre-amanecer);
+}
+
+/* ============================================
+   PRIMENG OVERRIDES — Aplicar fuentes oficiales
+   ============================================ */
+
+/* Cards */
+.p-card {
+  font-family: var(--font-heading);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(30, 49, 89, 0.08);
+}
+
+.p-card .p-card-title {
+  font-family: var(--font-heading);  /* Altivo */
+  font-weight: 400;                   /* Regular, NO Bold */
+  font-size: 1.125rem;                /* 18px */
+  color: var(--color-text-primary);
+}
+
+.p-card .p-card-subtitle {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);  /* #4A5568 gris oscuro legible */
+}
+
+/* Botones */
+.p-button {
+  font-family: var(--font-heading) !important;  /* Altivo, NO JT Remillo */
+  font-weight: 500 !important;  /* Medium — estandarizado según DIGEEX Design System */
+  font-size: 0.875rem;
+  border-radius: 8px;
+}
+
+/* Asegurar que labels de botones también usen Medium */
+.p-button .p-button-label {
+  font-weight: 500 !important;
+}
+
+/* Sobrescribir cualquier variante de botones */
+.p-button-text,
+.p-button-outlined,
+.p-button-raised,
+.p-button-rounded,
+.p-button-text:not(:disabled):hover,
+.p-button-outlined:not(:disabled):hover,
+.p-button-sm,
+.p-button-lg {
+  font-weight: 500 !important;
+}
+
+/* Inputs */
+.p-inputtext,
+.p-dropdown,
+.p-multiselect {
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+/* DataTable */
+.p-datatable .p-datatable-thead > tr > th {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.p-datatable .p-datatable-tbody > tr > td {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+}
+
+/* Paginador transparente */
+.p-paginator {
+  background: transparent !important;
+  border: none !important;
+  padding: 1rem 0 !important;
+}
+
+.p-paginator .p-paginator-pages,
+.p-paginator .p-paginator-current {
+  background: transparent !important;
+}

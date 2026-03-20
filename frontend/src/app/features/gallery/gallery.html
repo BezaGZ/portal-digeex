@@ -1,0 +1,112 @@
+<div class="min-h-screen" style="background-color: var(--color-background)">
+  <section class="container mx-auto max-w-7xl px-6 py-12">
+    <div class="mb-4">
+      <p-button
+        label=" Regresar"
+        icon="pi pi-arrow-left"
+        severity="primary"
+        [rounded]="true"
+        styleClass="!text-white !font-medium !px-4 !py-2 transition-all duration-200"
+        (onClick)="goBack()"
+      ></p-button>
+    </div>
+
+    <div class="mb-8">
+      <h1
+        class="text-4xl mb-4"
+        style="color: var(--gob-azul-gobierno); font-family: var(--font-heading); font-weight: 700"
+      >
+        Galería Institucional
+      </h1>
+      <p
+        class="text-lg leading-relaxed"
+        style="color: var(--color-text-primary); font-family: var(--font-body); font-weight: 400"
+      >
+        Momentos destacados de las actividades, eventos y logros de la Dirección General de
+        Educación Extraescolar
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <aside class="md:col-span-1">
+        <app-gallery-filters
+          [programOptions]="programOptions()"
+          [eventTypeOptions]="eventTypeOptions()"
+          (filtersChange)="onFiltersChange($event)"
+          (clear)="onClearFilters()"
+        ></app-gallery-filters>
+      </aside>
+
+      <main class="md:col-span-3">
+        @if (isLoading()) {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+            @for (skeleton of [1, 2, 3, 4, 5, 6]; track skeleton) {
+              <p-card styleClass="album-card">
+                <div class="cover-container">
+                  <p-skeleton width="100%" height="240px" />
+                </div>
+                <div class="p-4">
+                  <p-skeleton width="40%" height="1rem" styleClass="mb-3" />
+                  <p-skeleton width="80%" height="1.5rem" styleClass="mb-3" />
+                  <p-skeleton width="100%" height="3rem" styleClass="mb-4" />
+                  <p-skeleton width="120px" height="2.5rem" />
+                </div>
+              </p-card>
+            }
+          </div>
+        } @else if (albums().length === 0) {
+          <div class="text-center py-16">
+            <i class="pi pi-images text-6xl mb-4" style="color: var(--color-text-tertiary)"></i>
+            <h3 class="text-2xl font-semibold mb-2" style="color: var(--color-text-primary)">
+              No hay álbumes disponibles
+            </h3>
+            <p style="color: var(--color-text-secondary)">
+              Los álbumes fotográficos se mostrarán aquí cuando estén disponibles.
+            </p>
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+            @for (album of albums(); track album.id) {
+              <p-card styleClass="album-card" (click)="openAlbum(album)">
+                <div class="cover-container">
+                  <img [src]="album.coverPhoto" [alt]="album.title" class="album-cover" />
+                </div>
+
+                <div class="p-4">
+                  <div class="album-date">
+                    <i class="pi pi-calendar text-sm"></i>
+                    <span>{{ formatDate(album.date) }}</span>
+                  </div>
+
+                  <h3
+                    class="album-title"
+                    style="font-family: var(--font-heading); font-weight: 500"
+                  >
+                    {{ album.title }}
+                  </h3>
+
+                  <p
+                    class="album-description"
+                    style="font-family: var(--font-body); font-weight: 400; font-size: 1rem"
+                  >
+                    {{ album.description }}
+                  </p>
+
+                  <p-button
+                    label="Ver Álbum"
+                    icon="pi pi-arrow-right"
+                    iconPos="right"
+                    severity="primary"
+                    [rounded]="true"
+                    styleClass="w-full !font-medium"
+                    (onClick)="openAlbum(album); $event.stopPropagation()"
+                  />
+                </div>
+              </p-card>
+            }
+          </div>
+        }
+      </main>
+    </div>
+  </section>
+</div>

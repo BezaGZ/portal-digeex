@@ -1,0 +1,15 @@
+<div class="p-6">
+  <p-toast position="top-right" />
+
+  <app-user-table
+    [users]="visibleUsers()"
+    (createUserRequested)="onCreateUserRequested()"
+    (refreshRequested)="onRefreshRequested()"
+  />
+
+  <app-user-dialog
+    [visible]="showCreateDialog()"
+    (visibleChange)="onDialogClosed()"
+    (userCreated)="onUserCreated()"
+  />
+</div>

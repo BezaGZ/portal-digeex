@@ -1,0 +1,10 @@
+<div class="layout-sidebar">
+    <a class="layout-sidebar-logo" routerLink="/administrador/estadisticas">
+        <img
+            [src]="layoutService.isDarkTheme() ? '/logo-dark.png' : '/logo-side.png'"
+            alt="Logo DIGEEX"
+            class="w-full"
+        />
+    </a>
+    <app-menu></app-menu>
+</div>

@@ -1,0 +1,22 @@
+# Build outputs
+dist/
+build/
+.angular/
+
+# Dependencies
+node_modules/
+
+# Coverage
+coverage/
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Generated files
+*.d.ts
+
+# Environment files
+.env
+.env.local

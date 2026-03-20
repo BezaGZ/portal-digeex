@@ -1,0 +1,111 @@
+<header
+  class="text-white shadow-lg sticky top-0 z-50"
+  style="background-color: var(--gob-azul-gobierno)"
+>
+  <p-menu #resourcesMenu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
+
+  <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+    <a routerLink="/" class="flex items-center hover:opacity-90 transition-opacity">
+      <img src="/logo-dark.png" alt="Logo DIGEEX" class="h-12" />
+    </a>
+
+    <div class="flex items-center gap-3">
+      <button
+        class="hidden md:flex items-center gap-2 px-5 py-2 rounded-full hover:bg-white/10 transition-all duration-200 font-medium text-sm cursor-pointer"
+        (click)="resourcesMenu.toggle($event)"
+      >
+        <i class="pi pi-th-large text-base"></i>
+        <span>Recursos</span>
+        <i class="pi pi-chevron-down text-xs"></i>
+      </button>
+
+      <div class="hidden md:block">
+        <p-button
+          label="Búsqueda Avanzada"
+          icon="pi pi-search"
+          [outlined]="true"
+          severity="secondary"
+          [rounded]="true"
+          styleClass="!bg-transparent !text-white !border-white/40 hover:!bg-white/10
+                      !font-medium !px-5 !py-2
+                      hover:!border-white transition-all duration-200"
+          (onClick)="goToSearch()"
+        ></p-button>
+      </div>
+
+      <div class="hidden md:block">
+        <p-button
+          label="Acceso Administrativo"
+          icon="pi pi-lock"
+          severity="primary"
+          [outlined]="true"
+          [rounded]="true"
+          styleClass="!bg-white !border-white hover:!bg-gray-100
+                      !font-medium !px-6 !py-2 !shadow-md
+                      hover:!scale-105 transition-all duration-200"
+          (onClick)="goToLogin()"
+        ></p-button>
+      </div>
+
+      <button
+        class="md:hidden flex flex-col justify-center items-center w-10 h-10 rounded-xl hover:bg-white/10 transition-colors duration-200 gap-1.5"
+        (click)="toggleMobileMenu()"
+        aria-label="Abrir menú"
+      >
+        <span
+          class="block w-6 h-0.5 bg-white transition-all duration-300"
+          [class.rotate-45]="mobileOpen()"
+          [class.translate-y-2]="mobileOpen()"
+        ></span>
+        <span
+          class="block w-6 h-0.5 bg-white transition-all duration-300"
+          [class.opacity-0]="mobileOpen()"
+        ></span>
+        <span
+          class="block w-6 h-0.5 bg-white transition-all duration-300"
+          [class.-rotate-45]="mobileOpen()"
+          [class.-translate-y-2]="mobileOpen()"
+        ></span>
+      </button>
+    </div>
+  </div>
+
+  @if (mobileOpen()) {
+    <div
+      class="md:hidden border-t border-white/20 animate-slide-down"
+      style="background-color: var(--gob-azul-acento)"
+    >
+      <div class="container mx-auto px-4 py-3 flex flex-col gap-1">
+        @for (item of menuItems; track item.label) {
+          <a
+            [routerLink]="item.routerLink"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium"
+            (click)="closeMobileMenu()"
+          >
+            <i [class]="item.icon" class="text-base w-5 text-center"></i>
+            {{ item.label }}
+          </a>
+        }
+
+        <div class="border-t border-white/20 my-2"></div>
+
+        <a
+          routerLink="/busqueda-avanzada"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium"
+          (click)="closeMobileMenu()"
+        >
+          <i class="pi pi-search text-base w-5 text-center"></i>
+          Búsqueda Avanzada
+        </a>
+
+        <a
+          (click)="goToLogin(); closeMobileMenu()"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-white text-sm font-semibold cursor-pointer"
+        >
+          <i class="pi pi-lock text-base w-5 text-center"></i>
+          Acceso Administrativo
+        </a>
+      </div>
+    </div>
+  }
+</header>

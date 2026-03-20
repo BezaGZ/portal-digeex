@@ -1,0 +1,11 @@
+@if (displayItems().length > 0) {
+  <div class="bg-white border-b border-gray-100">
+    <div class="container mx-auto px-8 py-4">
+      <p-breadcrumb
+        [model]="displayItems()"
+        [home]="home"
+        styleClass="!bg-transparent !border-none !p-0 !text-lg"
+      />
+    </div>
+  </div>
+}

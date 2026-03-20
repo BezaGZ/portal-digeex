@@ -1,0 +1,131 @@
+<p-dialog
+  [header]="'Crear Usuario'"
+  [visible]="visible()"
+  [modal]="true"
+  [closable]="true"
+  (onHide)="onHide()"
+  [draggable]="false"
+  [resizable]="false"
+>
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    @if (errorMessage()) {
+      <p-message severity="error" [text]="errorMessage()!" styleClass="w-full mb-4" />
+    }
+
+    <div class="form-field">
+      <p-floatLabel>
+        <input
+          pInputText
+          id="email"
+          formControlName="email"
+          type="email"
+          class="w-full"
+          [class.ng-invalid]="hasError('email')"
+          [class.ng-dirty]="hasError('email')"
+        />
+        <label for="email">Correo electrónico *</label>
+      </p-floatLabel>
+      @if (hasError('email')) {
+        <small style="color: var(--color-error)">{{ getErrorMessage('email') }}</small>
+      }
+      @if (!hasError('email')) {
+        <small style="color: var(--color-text-tertiary)">Debe terminar en @mineduc.gob.gt</small>
+      }
+    </div>
+
+    <div class="form-field">
+      <p-floatLabel>
+        <input
+          pInputText
+          id="firstName"
+          formControlName="firstName"
+          class="w-full"
+          [class.ng-invalid]="hasError('firstName')"
+          [class.ng-dirty]="hasError('firstName')"
+        />
+        <label for="firstName">Nombre *</label>
+      </p-floatLabel>
+      @if (hasError('firstName')) {
+        <small style="color: var(--color-error)">{{ getErrorMessage('firstName') }}</small>
+      }
+    </div>
+
+    <div class="form-field">
+      <p-floatLabel>
+        <input
+          pInputText
+          id="lastName"
+          formControlName="lastName"
+          class="w-full"
+          [class.ng-invalid]="hasError('lastName')"
+          [class.ng-dirty]="hasError('lastName')"
+        />
+        <label for="lastName">Apellido *</label>
+      </p-floatLabel>
+      @if (hasError('lastName')) {
+        <small style="color: var(--color-error)">{{ getErrorMessage('lastName') }}</small>
+      }
+    </div>
+
+    <div class="form-field">
+      <p-floatLabel>
+        <p-select
+          id="role"
+          formControlName="role"
+          [options]="allowedRoles()"
+          optionLabel="label"
+          optionValue="value"
+          [optionDisabled]="'disabled'"
+          class="w-full"
+          [class.ng-invalid]="hasError('role')"
+          [class.ng-dirty]="hasError('role')"
+        />
+        <label for="role">Rol *</label>
+      </p-floatLabel>
+      @if (hasError('role')) {
+        <small style="color: var(--color-error)">{{ getErrorMessage('role') }}</small>
+      }
+    </div>
+
+    @if (showSubdivisionField()) {
+      <div class="form-field">
+        <p-floatLabel>
+          <p-select
+            id="subdivision"
+            formControlName="subdivision"
+            [options]="subdivisions"
+            optionLabel="label"
+            optionValue="value"
+            [disabled]="subdivisionFieldDisabled()"
+            class="w-full"
+            [class.ng-invalid]="hasError('subdivision')"
+            [class.ng-dirty]="hasError('subdivision')"
+          />
+          <label for="subdivision">Subdirección *</label>
+        </p-floatLabel>
+        @if (hasError('subdivision')) {
+          <small style="color: var(--color-error)">{{ getErrorMessage('subdivision') }}</small>
+        }
+      </div>
+    }
+  </form>
+
+  <ng-template #footer>
+    <p-button
+      label="Cancelar"
+      severity="secondary"
+      styleClass="!font-medium"
+      (onClick)="onHide()"
+      [text]="true"
+      [rounded]="true"
+    />
+    <p-button
+      label="Crear Usuario"
+      severity="primary"
+      styleClass="!text-white !font-medium"
+      (onClick)="onSubmit()"
+      [disabled]="form.invalid"
+      [rounded]="true"
+    />
+  </ng-template>
+</p-dialog>
