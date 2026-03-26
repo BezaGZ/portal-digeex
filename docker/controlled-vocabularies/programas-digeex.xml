@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<node id="programas-digeex" label="Programas DIGEEX">
+  <isComposedBy>
+    <node id="peac" label="PEAC"/>
+    <node id="pronea" label="PRONEA"/>
+    <node id="modalidades-flexibles" label="Modalidades Flexibles"/>
+    <node id="eva" label="EVA"/>
+    <node id="cemucaf" label="CEMUCAF"/>
+    <node id="scc" label="SCC"/>
+    <node id="etcae" label="ETCAE"/>
+    <node id="probefi" label="PROBEFI"/>
+    <node id="digeex-general" label="DIGEEX General"/>
+  </isComposedBy>
+</node>

@@ -6,6 +6,9 @@
 # Docker data
 .dspace-cookies
 
+# Scripts - archivos SAF temporales (solo para desarrollo)
+scripts/saf-peac/
+
 # Sistema
 .DS_Store
 Thumbs.db

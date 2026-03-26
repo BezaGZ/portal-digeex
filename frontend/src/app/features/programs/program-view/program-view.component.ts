@@ -15,8 +15,8 @@ import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionView, ItemView, PaginatorEvent } from '../../../core/api/models';
-import { forkJoin, Subject } from 'rxjs';
-import { map, takeUntil } from 'rxjs/operators';
+import { forkJoin, Subject, Observable } from 'rxjs';
+import { map, takeUntil, switchMap } from 'rxjs/operators';
 import { SkeletonCardComponent, EmptyStateComponent } from '../../../shared';
 
 @Component({
@@ -111,26 +111,71 @@ export class ProgramViewComponent implements OnInit, OnDestroy {
         }
 
         const itemsWithThumbnails$ = items.map((item) =>
-          this.dspaceApi.getBitstreams(item.uuid, 0, 20).pipe(
-            map((bitstreamsResponse) => {
-              const bitstreams = bitstreamsResponse._embedded?.['bitstreams'] || [];
-              const thumbnail = bitstreams.find(
-                (b) =>
-                  b.name?.toLowerCase().endsWith('.jpeg') ||
-                  b.name?.toLowerCase().endsWith('.jpg') ||
-                  b.name?.toLowerCase().endsWith('.png'),
-              );
+          this.dspaceApi.getBundles(item.uuid).pipe(
+            switchMap((bundlesResponse) => {
+              const bundles = bundlesResponse._embedded?.['bundles'] || [];
 
-              return {
-                id: item.uuid,
-                name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
-                description: item.metadata?.['dc.description']?.[0]?.value || '',
-                dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-                handle: item.handle,
-                coverImage: thumbnail
-                  ? `/server/api/core/bitstreams/${thumbnail.uuid}/content`
-                  : null,
-              } as ItemView;
+              const thumbnailBundle = bundles.find((b) => b.name === 'THUMBNAIL');
+
+              if (thumbnailBundle) {
+                return this.dspaceApi.getBitstreamsFromBundle(thumbnailBundle.uuid).pipe(
+                  map((bitstreamsResponse) => {
+                    const bitstreams = bitstreamsResponse._embedded?.['bitstreams'] || [];
+                    const thumbnail = bitstreams[0];
+
+                    return {
+                      id: item.uuid,
+                      name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
+                      description: item.metadata?.['dc.description']?.[0]?.value || '',
+                      dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
+                      handle: item.handle,
+                      coverImage: thumbnail
+                        ? `/server/api/core/bitstreams/${thumbnail.uuid}/content`
+                        : null,
+                    } as ItemView;
+                  }),
+                );
+              }
+
+              const originalBundle = bundles.find((b) => b.name === 'ORIGINAL');
+              if (originalBundle) {
+                return this.dspaceApi.getBitstreamsFromBundle(originalBundle.uuid).pipe(
+                  map((bitstreamsResponse) => {
+                    const bitstreams = bitstreamsResponse._embedded?.['bitstreams'] || [];
+                    const thumbnail = bitstreams.find((b) => {
+                      const fileName = b.name?.toLowerCase() || '';
+                      return (
+                        fileName.endsWith('.jpeg') ||
+                        fileName.endsWith('.jpg') ||
+                        fileName.endsWith('.png')
+                      );
+                    });
+
+                    return {
+                      id: item.uuid,
+                      name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
+                      description: item.metadata?.['dc.description']?.[0]?.value || '',
+                      dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
+                      handle: item.handle,
+                      coverImage: thumbnail
+                        ? `/server/api/core/bitstreams/${thumbnail.uuid}/content`
+                        : null,
+                    } as ItemView;
+                  }),
+                );
+              }
+
+              return new Observable<ItemView>((observer) => {
+                observer.next({
+                  id: item.uuid,
+                  name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
+                  description: item.metadata?.['dc.description']?.[0]?.value || '',
+                  dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
+                  handle: item.handle,
+                  coverImage: null,
+                });
+                observer.complete();
+              });
             }),
           ),
         );
@@ -146,17 +191,14 @@ export class ProgramViewComponent implements OnInit, OnDestroy {
           },
           error: (error) => {
             console.error('Error al cargar bitstreams:', error);
-            this.items = items.map(
-              (item) =>
-                ({
-                  id: item.uuid,
-                  name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
-                  description: item.metadata?.['dc.description']?.[0]?.value || '',
-                  dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-                  handle: item.handle,
-                  coverImage: null,
-                }) as ItemView,
-            );
+            this.items = items.map((item) => ({
+              id: item.uuid,
+              name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
+              description: item.metadata?.['dc.description']?.[0]?.value || '',
+              dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
+              handle: item.handle,
+              coverImage: null,
+            }));
             this.currentPage = 0;
             this.updatePaginatedItems();
             this.isLoading = false;

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<node id="tipos-evento" label="Tipos de evento">
+  <isComposedBy>
+    <node id="graduaciones" label="Graduaciones"/>
+    <node id="entrega-materiales" label="Entrega de materiales"/>
+    <node id="tutores" label="Tutores"/>
+    <node id="estudiantes-jovenes" label="Estudiantes jóvenes"/>
+    <node id="estudiantes-adultos" label="Estudiantes adultos"/>
+    <node id="capacitaciones" label="Capacitaciones"/>
+    <node id="ceremonias" label="Ceremonias"/>
+  </isComposedBy>
+</node>

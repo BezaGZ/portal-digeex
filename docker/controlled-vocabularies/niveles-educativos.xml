@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<node id="niveles-educativos" label="Niveles educativos">
+  <isComposedBy>
+    <node id="alfabetizacion" label="Alfabetización"/>
+    <node id="primaria-adultos" label="Primaria adultos"/>
+    <node id="basico" label="Básico"/>
+    <node id="medio" label="Medio"/>
+    <node id="formacion-laboral" label="Formación laboral"/>
+    <node id="todos" label="Todos"/>
+  </isComposedBy>
+</node>

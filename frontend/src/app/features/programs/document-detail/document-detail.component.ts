@@ -13,7 +13,7 @@ import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { BitstreamView, MetadataFieldView, Item, MetadataMap } from '../../../core/api/models';
 import { forkJoin, Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { takeUntil, switchMap } from 'rxjs/operators';
 import { SkeletonDetailComponent } from '../../../shared';
 import { FileSizePipe } from '../../../shared/pipes';
 
@@ -58,45 +58,80 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private loadDocument(itemUuid: string) {
     this.isLoading = true;
 
-    forkJoin({
-      item: this.dspaceApi.getItem(itemUuid),
-      bitstreams: this.dspaceApi.getBitstreams(itemUuid, 0, 20),
-    }).subscribe({
-      next: (response) => {
-        const item: Item = response.item;
-        const bitstreamsResponse = response.bitstreams;
-
+    this.dspaceApi.getItem(itemUuid).pipe(
+      switchMap((item: Item) => {
         this.documentTitle = item.metadata?.['dc.title']?.[0]?.value || 'Sin título';
         this.documentDescription = item.metadata?.['dc.description']?.[0]?.value || '';
         this.buildMetadataFields(item.metadata, null);
 
-        const bitstreams = bitstreamsResponse._embedded?.['bitstreams'] || [];
-        this.documentBitstreams = bitstreams.map((bitstream) => {
-          const fileName = bitstream.name?.toLowerCase() || '';
-          let format = 'application/octet-stream';
-          if (fileName.endsWith('.pdf')) {
-            format = 'application/pdf';
-          } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
-            format = 'image/jpeg';
-          } else if (fileName.endsWith('.png')) {
-            format = 'image/png';
-          }
+        // Obtener bundles para acceder a THUMBNAIL y ORIGINAL
+        return this.dspaceApi.getBundles(itemUuid).pipe(
+          switchMap((bundlesResponse) => {
+            const bundles = bundlesResponse._embedded?.['bundles'] || [];
 
-          return {
-            name: bitstream.name || '',
-            url: `/server/api/core/bitstreams/${bitstream.uuid}/content`,
-            size: bitstream.sizeBytes || 0,
-            format: format,
-            uuid: bitstream.uuid,
-          } as BitstreamView;
-        });
+            // Buscar bundle THUMBNAIL para la imagen de portada
+            const thumbnailBundle = bundles.find((b) => b.name === 'THUMBNAIL');
+            // Buscar bundle ORIGINAL para los archivos descargables
+            const originalBundle = bundles.find((b) => b.name === 'ORIGINAL');
 
-        const thumbnailBitstream = this.documentBitstreams.find((b) =>
-          b.format.startsWith('image/'),
+            // Crear objeto con solo Observables para forkJoin
+            const requests: any = {};
+
+            if (thumbnailBundle) {
+              requests.thumbnail = this.dspaceApi.getBitstreamsFromBundle(thumbnailBundle.uuid);
+            }
+            if (originalBundle) {
+              requests.original = this.dspaceApi.getBitstreamsFromBundle(originalBundle.uuid);
+            }
+
+            if (Object.keys(requests).length === 0) {
+              return forkJoin({ empty: Promise.resolve(null) });
+            }
+
+            return forkJoin(requests);
+          })
         );
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (response: any) => {
+        // Procesar bitstreams del bundle ORIGINAL (archivos descargables)
+        if (response.original) {
+          const originalBitstreams = response.original._embedded?.['bitstreams'] || [];
+          this.documentBitstreams = originalBitstreams.map((bitstream: any) => {
+            const fileName = bitstream.name?.toLowerCase() || '';
+            let format = 'application/octet-stream';
+            if (fileName.endsWith('.pdf')) {
+              format = 'application/pdf';
+            } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
+              format = 'image/jpeg';
+            } else if (fileName.endsWith('.png')) {
+              format = 'image/png';
+            }
 
-        if (thumbnailBitstream) {
-          this.documentCoverImage = thumbnailBitstream.url;
+            return {
+              name: bitstream.name || '',
+              url: `/server/api/core/bitstreams/${bitstream.uuid}/content`,
+              size: bitstream.sizeBytes || 0,
+              format: format,
+              uuid: bitstream.uuid,
+            } as BitstreamView;
+          });
+        }
+
+        if (response.thumbnail) {
+          const thumbnailBitstreams = response.thumbnail._embedded?.['bitstreams'] || [];
+          if (thumbnailBitstreams.length > 0) {
+            const thumbnail = thumbnailBitstreams[0];
+            this.documentCoverImage = `/server/api/core/bitstreams/${thumbnail.uuid}/content`;
+          }
+        } else {
+          const imageBitstream = this.documentBitstreams.find((b) =>
+            b.format.startsWith('image/'),
+          );
+          if (imageBitstream) {
+            this.documentCoverImage = imageBitstream.url;
+          }
         }
 
         this.isLoading = false;
@@ -141,22 +176,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private buildMetadataFields(metadata: MetadataMap, collectionName: string | null) {
     this.metadataFields = [];
 
+    // TODO: Consumir labels desde DSpace submission-forms.xml vía REST API
+    // Ver: GET /server/api/submission/vocabularies
     const fieldLabels: Record<string, string> = {
       'dc.contributor.author': 'Autor / Área responsable',
       'dc.date.issued': 'Fecha de publicación',
       'dc.type': 'Tipo de documento',
-      'dcterms.audience': 'Nivel educativo',
+      'local.nivel.educativo': 'Nivel educativo',
       'dc.subject': 'Palabras clave',
       'dc.language.iso': 'Idioma',
       'dc.publisher': 'Publicado por',
-    };
-
-    const languageNames: Record<string, string> = {
-      es: 'Español',
-      quc: "K'iche'",
-      kaq: 'Kaqchikel',
-      mam: 'Mam',
-      qeq: "Q'eqchi'",
     };
 
     if (collectionName) {
@@ -180,7 +209,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           });
         } else if (fieldKey === 'dc.language.iso') {
           const langCode = fieldValues[0].value;
-          const langName = languageNames[langCode] || langCode;
+          // TODO: Consumir desde GET /server/api/submission/vocabularies
+          // Los 25 idiomas oficiales están en docker/submission-forms.xml
+          // Mapeo temporal de los 5 más comunes
+          const commonLanguages: Record<string, string> = {
+            es: 'Español',
+            quc: "K'iche'",
+            cak: 'Kaqchikel',
+            mam: 'Mam',
+            kek: "Q'eqchi'",
+          };
+          const langName = commonLanguages[langCode] || langCode.toUpperCase();
           this.metadataFields.push({
             label: fieldLabel,
             value: langName,

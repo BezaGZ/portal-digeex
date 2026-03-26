@@ -7,7 +7,7 @@
 #   DIGEEX (Top Community)
 #     +-- Subdireccion de Educacion Basica
 #     |     PEAC, PRONEA, Modalidades Flexibles, EVA
-#     +-- Subdireccion de Educacion para el Trabajo y la Cultura
+#     +-- Subdireccion para el Trabajo y la Cultura
 #     |     CEMUCAF, PROBEFI, ETCAE, SCC
 #     +-- Subdireccion de Formacion, Investigacion y Proyectos Educativos
 #           Investigaciones, Experiencias Significativas, Datos Estadisticos,
@@ -185,8 +185,8 @@ ED_TRABAJO_RESPONSE=$(curl -s -X POST \
   -d '{
     "name": "Educación para el Trabajo y la Cultura",
     "metadata": {
-      "dc.title": [{"value": "Subdirección de Educación para el Trabajo y la Cultura"}],
-      "dc.description": [{"value": "Programas de formación técnica, capacitación laboral y promoción cultural. Incluye CEMUCAF, PROBEFI, ETCAE y SCSS, orientados al desarrollo de competencias para el trabajo y el fortalecimiento cultural."}]
+      "dc.title": [{"value": "Subdirección para el Trabajo y la Cultura"}],
+      "dc.description": [{"value": "Programas de formación técnica, capacitación laboral y promoción cultural. Incluye CEMUCAF, PROBEFI, ETCAE y SCC, orientados al desarrollo de competencias para el trabajo y el fortalecimiento cultural."}]
     }
   }' \
   "$BASE_URL/api/core/communities?parent=$DIGEEX_UUID")
@@ -229,7 +229,7 @@ log_success "  PEAC"
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Modalidades Flexibles","metadata":{"dc.title":[{"value":"Modalidades Flexibles de Educación Básica"}],"dc.description":[{"value":"Programas de educación con metodologías adaptadas a las necesidades de tiempo, edad y contexto de los estudiantes. Incluye recursos educativos, lineamientos metodológicos y materiales de apoyo para modalidades semipresenciales y a distancia."}],"dc.subject":[{"value":"Modalidades Flexibles"}],"dc.type":[{"value":"menu-principal"}],"dc.identifier.other":[{"value":"2"}]}}' \
+  -d '{"name":"Modalidades Flexibles","metadata":{"dc.title":[{"value":"Programa Modalidades Flexibles para la Educación Media"}],"dc.description":[{"value":"Programa de educación media con metodologías flexibles dirigido a jóvenes y adultos de 15 años en adelante. Atiende ciclo básico y diversificado mediante modalidades semipresenciales y a distancia. Incluye recursos educativos, lineamientos metodológicos y materiales de apoyo adaptados a las necesidades de los estudiantes."}],"dc.subject":[{"value":"Modalidades Flexibles"}],"dc.type":[{"value":"menu-principal"}],"dc.identifier.other":[{"value":"2"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_BASICA_UUID" > /dev/null
 log_success "  Modalidades Flexibles"
 
@@ -243,7 +243,7 @@ log_success "  PRONEA"
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"EVA","metadata":{"dc.title":[{"value":"Educación Virtual para Adultos"}],"dc.description":[{"value":"Programa de educación básica en línea para jóvenes y adultos mediante plataformas digitales. Contiene recursos multimedia, cursos en línea, evaluaciones virtuales y materiales de apoyo tecnológico del programa EVA."}],"dc.subject":[{"value":"EVA"}],"dc.type":[{"value":"menu-principal"}],"dc.identifier.other":[{"value":"7"}]}}' \
+  -d '{"name":"EVA","metadata":{"dc.title":[{"value":"Entornos Virtuales de Aprendizaje"}],"dc.description":[{"value":"Plataforma de entornos virtuales que ofrece recursos educativos digitales, cursos en línea y herramientas tecnológicas para el subsistema de educación extraescolar. Contiene recursos multimedia, evaluaciones virtuales y materiales de apoyo para la formación a distancia del programa EVA."}],"dc.subject":[{"value":"EVA"}],"dc.type":[{"value":"menu-principal"}],"dc.identifier.other":[{"value":"7"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_BASICA_UUID" > /dev/null
 log_success "  EVA"
 
@@ -269,14 +269,14 @@ log_success "  SCC"
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"ETCAE","metadata":{"dc.title":[{"value":"Escuelas Técnicas de Capacitación Artesanal y Empresarial"}],"dc.description":[{"value":"Formación en oficios artesanales, emprendimiento y microempresas. Contiene manuales técnicos, planes de estudio, guías de emprendimiento y materiales del programa ETCAE."}],"dc.subject":[{"value":"ETCAE"}],"dc.type":[{"value":"menu-principal"}],"dc.identifier.other":[{"value":"6"}]}}' \
+  -d '{"name":"ETCAE","metadata":{"dc.title":[{"value":"Escuelas Técnicas de Campo para la Alimentación Escolar"}],"dc.description":[{"value":"Centros de formación y capacitación del Subsistema de Educación Extraescolar, asociadas al área agropecuaria. Contiene manuales técnicos, planes de estudio y materiales del programa ETCAE."}],"dc.subject":[{"value":"ETCAE"}],"dc.type":[{"value":"menu-principal"}],"dc.identifier.other":[{"value":"6"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_TRABAJO_UUID" > /dev/null
 log_success "  ETCAE"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"PROBEFI","metadata":{"dc.title":[{"value":"Programa de Becas de Formación e Inserción Laboral"}],"dc.description":[{"value":"Programa de becas para formación técnica y empleabilidad de jóvenes. Incluye lineamientos, convocatorias, materiales de capacitación y documentación del programa PROBEFI."}],"dc.subject":[{"value":"PROBEFI"}],"dc.type":[{"value":"menu-principal"}],"dc.identifier.other":[{"value":"8"}]}}' \
+  -d '{"name":"PROBEFI","metadata":{"dc.title":[{"value":"Programa de Becas para Formación Técnica Laboral en Inglés"}],"dc.description":[{"value":"Programa de becas para fortalecer las competencias laborales de jóvenes y adultos mediante el aprendizaje técnico del idioma inglés. Incluye lineamientos, convocatorias, materiales de capacitación y documentación del programa PROBEFI."}],"dc.subject":[{"value":"PROBEFI"}],"dc.type":[{"value":"menu-principal"}],"dc.identifier.other":[{"value":"8"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_TRABAJO_UUID" > /dev/null
 log_success "  PROBEFI"
 
