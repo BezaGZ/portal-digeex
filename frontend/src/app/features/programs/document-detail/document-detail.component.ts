@@ -61,7 +61,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.dspaceApi.getItem(itemUuid).pipe(
       switchMap((item: Item) => {
         this.documentTitle = item.metadata?.['dc.title']?.[0]?.value || 'Sin título';
-        this.documentDescription = item.metadata?.['dc.description']?.[0]?.value || '';
+        this.documentDescription = item.metadata?.['dc.description.abstract']?.[0]?.value || '';
         this.buildMetadataFields(item.metadata, null);
 
         return this.dspaceApi.getBundles(itemUuid).pipe(
@@ -177,7 +177,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       'dc.contributor.author': 'Autor / Área responsable',
       'dc.date.issued': 'Fecha de publicación',
       'dc.type': 'Tipo de documento',
-      'local.nivel.educativo': 'Nivel educativo',
+      'dc.audience': 'Nivel educativo',
       'dc.subject': 'Palabras clave',
       'dc.language.iso': 'Idioma',
       'dc.publisher': 'Publicado por',
