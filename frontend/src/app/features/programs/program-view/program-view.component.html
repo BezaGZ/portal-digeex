@@ -91,14 +91,26 @@
                   </div>
                 </ng-template>
                 <ng-template pTemplate="subtitle">
-                  @if (item.dateIssued) {
-                    <div
-                      class="text-xs mt-2"
-                      style="color: var(--color-text-tertiary); font-family: var(--font-body)"
-                    >
-                      {{ item.dateIssued | date: 'shortDate' }}
-                    </div>
-                  }
+                  <div class="flex items-center justify-between mt-2">
+                    @if (item.dateIssued) {
+                      <span
+                        class="text-xs"
+                        style="color: var(--color-text-tertiary); font-family: var(--font-body)"
+                      >
+                        {{ item.dateIssued | date: 'shortDate' }}
+                      </span>
+                    }
+                    @if (item.bitstreams.length > 0) {
+                      <p-button
+                        label="Descargar"
+                        icon="pi pi-download"
+                        severity="primary"
+                        [rounded]="true"
+                        styleClass="!font-medium !px-6 !py-2 transition-all duration-200"
+                        (onClick)="downloadBitstream(item.bitstreams[0]); $event.stopPropagation()"
+                      ></p-button>
+                    }
+                  </div>
                 </ng-template>
               </p-card>
             </div>

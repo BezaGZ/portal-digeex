@@ -14,8 +14,8 @@ import { PaginatorModule } from 'primeng/paginator';
 import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
-import { CollectionView, ItemView, PaginatorEvent } from '../../../core/api/models';
-import { forkJoin, Subject, Observable } from 'rxjs';
+import { CollectionView, ItemView, BitstreamView, PaginatorEvent } from '../../../core/api/models';
+import { forkJoin, Subject, Observable, of } from 'rxjs';
 import { map, takeUntil, switchMap } from 'rxjs/operators';
 import { SkeletonCardComponent, EmptyStateComponent } from '../../../shared';
 
@@ -114,68 +114,62 @@ export class ProgramViewComponent implements OnInit, OnDestroy {
           this.dspaceApi.getBundles(item.uuid).pipe(
             switchMap((bundlesResponse) => {
               const bundles = bundlesResponse._embedded?.['bundles'] || [];
-
               const thumbnailBundle = bundles.find((b) => b.name === 'THUMBNAIL');
-
-              if (thumbnailBundle) {
-                return this.dspaceApi.getBitstreamsFromBundle(thumbnailBundle.uuid).pipe(
-                  map((bitstreamsResponse) => {
-                    const bitstreams = bitstreamsResponse._embedded?.['bitstreams'] || [];
-                    const thumbnail = bitstreams[0];
-
-                    return {
-                      id: item.uuid,
-                      name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
-                      description: item.metadata?.['dc.description']?.[0]?.value || '',
-                      dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-                      handle: item.handle,
-                      coverImage: thumbnail
-                        ? `/server/api/core/bitstreams/${thumbnail.uuid}/content`
-                        : null,
-                    } as ItemView;
-                  }),
-                );
-              }
-
               const originalBundle = bundles.find((b) => b.name === 'ORIGINAL');
-              if (originalBundle) {
-                return this.dspaceApi.getBitstreamsFromBundle(originalBundle.uuid).pipe(
-                  map((bitstreamsResponse) => {
-                    const bitstreams = bitstreamsResponse._embedded?.['bitstreams'] || [];
-                    const thumbnail = bitstreams.find((b) => {
-                      const fileName = b.name?.toLowerCase() || '';
-                      return (
-                        fileName.endsWith('.jpeg') ||
-                        fileName.endsWith('.jpg') ||
-                        fileName.endsWith('.png')
-                      );
-                    });
+
+              const thumbnail$ = thumbnailBundle
+                ? this.dspaceApi.getBitstreamsFromBundle(thumbnailBundle.uuid)
+                : of(null);
+              const original$ = originalBundle
+                ? this.dspaceApi.getBitstreamsFromBundle(originalBundle.uuid)
+                : of(null);
+
+              return forkJoin({ thumbnail: thumbnail$, original: original$ }).pipe(
+                map(({ thumbnail, original }) => {
+                  const originalBitstreams = original?._embedded?.['bitstreams'] || [];
+                  const downloadableBitstreams: BitstreamView[] = originalBitstreams.map((b: any) => {
+                    const fileName = b.name?.toLowerCase() || '';
+                    let format = 'application/octet-stream';
+                    if (fileName.endsWith('.pdf')) format = 'application/pdf';
+                    else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) format = 'image/jpeg';
+                    else if (fileName.endsWith('.png')) format = 'image/png';
 
                     return {
-                      id: item.uuid,
-                      name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
-                      description: item.metadata?.['dc.description']?.[0]?.value || '',
-                      dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-                      handle: item.handle,
-                      coverImage: thumbnail
-                        ? `/server/api/core/bitstreams/${thumbnail.uuid}/content`
-                        : null,
-                    } as ItemView;
-                  }),
-                );
-              }
+                      name: b.name || '',
+                      url: `/server/api/core/bitstreams/${b.uuid}/content`,
+                      size: b.sizeBytes || 0,
+                      format,
+                      uuid: b.uuid,
+                    };
+                  });
 
-              return new Observable<ItemView>((observer) => {
-                observer.next({
-                  id: item.uuid,
-                  name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
-                  description: item.metadata?.['dc.description']?.[0]?.value || '',
-                  dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-                  handle: item.handle,
-                  coverImage: null,
-                });
-                observer.complete();
-              });
+                  // Cover image: primero THUMBNAIL, si no hay buscar imagen en ORIGINAL
+                  const thumbnailBitstreams = thumbnail?._embedded?.['bitstreams'] || [];
+                  let coverImage: string | null = null;
+
+                  if (thumbnailBitstreams.length > 0) {
+                    coverImage = `/server/api/core/bitstreams/${thumbnailBitstreams[0].uuid}/content`;
+                  } else {
+                    const imageBitstream = originalBitstreams.find((b: any) => {
+                      const fileName = b.name?.toLowerCase() || '';
+                      return fileName.endsWith('.jpeg') || fileName.endsWith('.jpg') || fileName.endsWith('.png');
+                    });
+                    if (imageBitstream) {
+                      coverImage = `/server/api/core/bitstreams/${imageBitstream.uuid}/content`;
+                    }
+                  }
+
+                  return {
+                    id: item.uuid,
+                    name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
+                    description: item.metadata?.['dc.description']?.[0]?.value || '',
+                    dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
+                    handle: item.handle,
+                    coverImage,
+                    bitstreams: downloadableBitstreams,
+                  } as ItemView;
+                }),
+              );
             }),
           ),
         );
@@ -198,6 +192,7 @@ export class ProgramViewComponent implements OnInit, OnDestroy {
               dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
               handle: item.handle,
               coverImage: null,
+              bitstreams: [],
             }));
             this.currentPage = 0;
             this.updatePaginatedItems();
@@ -245,6 +240,13 @@ export class ProgramViewComponent implements OnInit, OnDestroy {
     const start = this.currentPage * this.itemsPerPage;
     const end = start + this.itemsPerPage;
     this.paginatedItems = this.items.slice(start, end);
+  }
+
+  downloadBitstream(bitstream: BitstreamView) {
+    const link = document.createElement('a');
+    link.href = bitstream.url;
+    link.download = bitstream.name;
+    link.click();
   }
 
   goBack() {
