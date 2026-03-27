@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 
 import { HalListResponse } from './models/hal.model';
@@ -209,40 +209,26 @@ export class DSpaceApiService {
       .set('page', page)
       .set('size', size);
 
+    const emptyResponse: HalListResponse<Bitstream> = {
+      _embedded: { bitstreams: [] },
+      _links: { self: { href: '' } },
+      page: { size: 0, totalElements: 0, totalPages: 0, number: 0 },
+    };
+
     return this.http.get<BundlesResponse>(
       `${this.apiUrl}/core/items/${itemUuid}/bundles`,
       { params }
     ).pipe(
       switchMap((bundlesResponse) => {
         const bundles = bundlesResponse._embedded?.bundles || [];
-
-        if (bundles.length === 0) {
-          return new Observable<HalListResponse<Bitstream>>((observer) => {
-            observer.next({
-              _embedded: { bitstreams: [] },
-              _links: { self: { href: '' } },
-              page: { size: 0, totalElements: 0, totalPages: 0, number: 0 }
-            });
-            observer.complete();
-          });
-        }
-
         const originalBundle = bundles.find((b: Bundle) => b.name === 'ORIGINAL');
 
         if (!originalBundle) {
-          return new Observable<HalListResponse<Bitstream>>((observer) => {
-            observer.next({
-              _embedded: { bitstreams: [] },
-              _links: { self: { href: '' } },
-              page: { size: 0, totalElements: 0, totalPages: 0, number: 0 }
-            });
-            observer.complete();
-          });
+          return of(emptyResponse);
         }
 
-        const bundleUuid = originalBundle.uuid;
         return this.http.get<HalListResponse<Bitstream>>(
-          `${this.apiUrl}/core/bundles/${bundleUuid}/bitstreams`,
+          `${this.apiUrl}/core/bundles/${originalBundle.uuid}/bitstreams`,
           { params }
         );
       })

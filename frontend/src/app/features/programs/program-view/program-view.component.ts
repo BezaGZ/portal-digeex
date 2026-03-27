@@ -18,7 +18,7 @@ import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionView, ItemView, BitstreamView, PaginatorEvent } from '../../../core/api/models';
 import { forkJoin, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
-import { SkeletonCardComponent, EmptyStateComponent } from '../../../shared';
+import { SkeletonCardComponent, EmptyStateComponent, DocumentCardComponent } from '../../../shared';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
@@ -33,17 +33,19 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     ButtonModule,
     SkeletonCardComponent,
     EmptyStateComponent,
+    DocumentCardComponent,
   ],
   templateUrl: './program-view.component.html',
 })
 export class ProgramViewComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
+  private collectionUuid = '';
   currentNode: CollectionView | null = null;
   items: ItemView[] = [];
   isLoading = false;
   itemsPerPage = 8;
   currentPage = 0;
-  paginatedItems: ItemView[] = [];
+  totalRecords = 0;
 
   constructor(
     private route: ActivatedRoute,
@@ -75,7 +77,8 @@ export class ProgramViewComponent implements OnInit {
           type: 'collection',
         };
 
-        this.loadItems(collection.uuid);
+        this.collectionUuid = collection.uuid;
+        this.loadItems(collection.uuid, 0);
       },
       error: (error) => {
         console.error('Error al cargar colección desde DSpace:', error);
@@ -92,15 +95,17 @@ export class ProgramViewComponent implements OnInit {
     });
   }
 
-  private loadItems(collectionUuid: string) {
-    this.dspaceApi.getItems(collectionUuid, 0, 100).subscribe({
+  private loadItems(collectionUuid: string, page: number) {
+    this.isLoading = true;
+    this.cdr.markForCheck();
+
+    this.dspaceApi.getItems(collectionUuid, page, this.itemsPerPage).subscribe({
       next: (itemsResponse) => {
         const items = itemsResponse._embedded?.['items'] || [];
+        this.totalRecords = itemsResponse.page?.totalElements ?? 0;
 
         if (items.length === 0) {
           this.items = [];
-          this.currentPage = 0;
-          this.updatePaginatedItems();
           this.isLoading = false;
           this.cdr.markForCheck();
           this.updateBreadcrumb();
@@ -140,7 +145,6 @@ export class ProgramViewComponent implements OnInit {
                     };
                   });
 
-                  // Cover image: primero THUMBNAIL, si no hay buscar imagen en ORIGINAL
                   const thumbnailBitstreams = thumbnail?._embedded?.['bitstreams'] || [];
                   let coverImage: string | null = null;
 
@@ -174,8 +178,6 @@ export class ProgramViewComponent implements OnInit {
         forkJoin(itemsWithThumbnails$).subscribe({
           next: (itemsWithCovers) => {
             this.items = itemsWithCovers;
-            this.currentPage = 0;
-            this.updatePaginatedItems();
             this.isLoading = false;
             this.cdr.markForCheck();
             this.updateBreadcrumb();
@@ -191,8 +193,6 @@ export class ProgramViewComponent implements OnInit {
               coverImage: null,
               bitstreams: [],
             }));
-            this.currentPage = 0;
-            this.updatePaginatedItems();
             this.isLoading = false;
             this.cdr.markForCheck();
             this.updateBreadcrumb();
@@ -202,6 +202,7 @@ export class ProgramViewComponent implements OnInit {
       error: (error) => {
         console.error('Error al cargar items desde DSpace:', error);
         this.items = [];
+        this.totalRecords = 0;
         this.isLoading = false;
         this.cdr.markForCheck();
       },
@@ -229,14 +230,7 @@ export class ProgramViewComponent implements OnInit {
 
   onPageChange(event: PaginatorEvent) {
     this.currentPage = event.page ?? 0;
-    this.updatePaginatedItems();
-    this.cdr.markForCheck();
-  }
-
-  updatePaginatedItems() {
-    const start = this.currentPage * this.itemsPerPage;
-    const end = start + this.itemsPerPage;
-    this.paginatedItems = this.items.slice(start, end);
+    this.loadItems(this.collectionUuid, this.currentPage);
   }
 
   downloadBitstream(bitstream: BitstreamView) {

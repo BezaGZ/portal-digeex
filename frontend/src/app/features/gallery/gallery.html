@@ -67,42 +67,10 @@
         } @else {
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
             @for (album of albums(); track album.id) {
-              <p-card styleClass="album-card" (click)="openAlbum(album)">
-                <div class="cover-container">
-                  <img [src]="album.coverPhoto" [alt]="album.title" class="album-cover" />
-                </div>
-
-                <div class="p-4">
-                  <div class="album-date">
-                    <i class="pi pi-calendar text-sm"></i>
-                    <span>{{ formatDate(album.date) }}</span>
-                  </div>
-
-                  <h3
-                    class="album-title"
-                    style="font-family: var(--font-heading); font-weight: 500"
-                  >
-                    {{ album.title }}
-                  </h3>
-
-                  <p
-                    class="album-description"
-                    style="font-family: var(--font-body); font-weight: 400; font-size: 1rem"
-                  >
-                    {{ album.description }}
-                  </p>
-
-                  <p-button
-                    label="Ver Álbum"
-                    icon="pi pi-arrow-right"
-                    iconPos="right"
-                    severity="primary"
-                    [rounded]="true"
-                    styleClass="w-full !font-medium"
-                    (onClick)="openAlbum(album); $event.stopPropagation()"
-                  />
-                </div>
-              </p-card>
+              <app-album-card
+                [album]="album"
+                (cardClick)="openAlbum($event)"
+              />
             }
           </div>
         }
