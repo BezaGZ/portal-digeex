@@ -1,9 +1,10 @@
 import {
   Component,
   OnInit,
-  OnDestroy,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
+  inject,
+  DestroyRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
@@ -12,10 +13,11 @@ import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { BitstreamView, MetadataFieldView, Item, MetadataMap } from '../../../core/api/models';
-import { forkJoin, Subject } from 'rxjs';
-import { takeUntil, switchMap } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { SkeletonDetailComponent } from '../../../shared';
 import { FileSizePipe } from '../../../shared/pipes';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-document-detail',
@@ -24,8 +26,8 @@ import { FileSizePipe } from '../../../shared/pipes';
   imports: [CommonModule, ButtonModule, SkeletonDetailComponent, FileSizePipe],
   templateUrl: './document-detail.component.html',
 })
-export class DocumentDetailComponent implements OnInit, OnDestroy {
-  private destroy$ = new Subject<void>();
+export class DocumentDetailComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   documentId: string = '';
   programId: string = '';
   documentTitle: string = 'Documento';
@@ -43,16 +45,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.route.params.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+    this.route.params.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       this.documentId = params['docId'];
       this.programId = params['id'] || '';
       this.loadDocument(this.documentId);
     });
-  }
-
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   private loadDocument(itemUuid: string) {
@@ -88,7 +85,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           })
         );
       }),
-      takeUntil(this.destroy$)
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (response: any) => {
         if (response.original) {

@@ -1,9 +1,10 @@
 import {
   Component,
   OnInit,
-  OnDestroy,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
+  inject,
+  DestroyRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -15,9 +16,10 @@ import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionView, ItemView, BitstreamView, PaginatorEvent } from '../../../core/api/models';
-import { forkJoin, Subject, Observable, of } from 'rxjs';
-import { map, takeUntil, switchMap } from 'rxjs/operators';
+import { forkJoin, of } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 import { SkeletonCardComponent, EmptyStateComponent } from '../../../shared';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-program-view',
@@ -34,8 +36,8 @@ import { SkeletonCardComponent, EmptyStateComponent } from '../../../shared';
   ],
   templateUrl: './program-view.component.html',
 })
-export class ProgramViewComponent implements OnInit, OnDestroy {
-  private destroy$ = new Subject<void>();
+export class ProgramViewComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   currentNode: CollectionView | null = null;
   items: ItemView[] = [];
   isLoading = false;
@@ -52,17 +54,12 @@ export class ProgramViewComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.route.params.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+    this.route.params.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const collectionUuid = params['id'];
       if (collectionUuid) {
         this.loadCollection(collectionUuid);
       }
     });
-  }
-
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   private loadCollection(collectionUuid: string) {
