@@ -64,17 +64,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.documentDescription = item.metadata?.['dc.description']?.[0]?.value || '';
         this.buildMetadataFields(item.metadata, null);
 
-        // Obtener bundles para acceder a THUMBNAIL y ORIGINAL
         return this.dspaceApi.getBundles(itemUuid).pipe(
           switchMap((bundlesResponse) => {
             const bundles = bundlesResponse._embedded?.['bundles'] || [];
 
-            // Buscar bundle THUMBNAIL para la imagen de portada
             const thumbnailBundle = bundles.find((b) => b.name === 'THUMBNAIL');
-            // Buscar bundle ORIGINAL para los archivos descargables
             const originalBundle = bundles.find((b) => b.name === 'ORIGINAL');
 
-            // Crear objeto con solo Observables para forkJoin
             const requests: any = {};
 
             if (thumbnailBundle) {
@@ -95,7 +91,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       takeUntil(this.destroy$)
     ).subscribe({
       next: (response: any) => {
-        // Procesar bitstreams del bundle ORIGINAL (archivos descargables)
         if (response.original) {
           const originalBitstreams = response.original._embedded?.['bitstreams'] || [];
           this.documentBitstreams = originalBitstreams.map((bitstream: any) => {

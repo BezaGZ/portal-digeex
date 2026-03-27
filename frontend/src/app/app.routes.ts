@@ -19,17 +19,14 @@ export const routes: Routes = [
       {
         path: 'programas/:id',
         loadComponent: () => import('./features/programs/program-view/program-view.component').then(m => m.ProgramViewComponent),
-        data: { breadcrumb: 'Programa' }
       },
       {
         path: 'programas/:id/documentos/:docId',
         loadComponent: () => import('./features/programs/document-detail/document-detail.component').then(m => m.DocumentDetailComponent),
-        data: { breadcrumb: 'Documento' }
       },
       {
         path: 'documentos/:docId',
         loadComponent: () => import('./features/programs/document-detail/document-detail.component').then(m => m.DocumentDetailComponent),
-        data: { breadcrumb: 'Documento' }
       },
       {
         path: 'busqueda-avanzada',

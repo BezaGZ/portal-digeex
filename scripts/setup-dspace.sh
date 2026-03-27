@@ -110,6 +110,47 @@ log_success "Autenticacion correcta"
 CSRF_TOKEN=$(grep DSPACE-XSRF-COOKIE "$COOKIES_FILE" | awk '{print $NF}')
 
 # ----------------------------------------------------------------------------
+# Registro de dc.audience en metadata registry
+# DSpace no lo trae por defecto (solo los 15 elementos DC core).
+# Se usa para nivel educativo: Alfabetización, Primaria adultos, Básico, etc.
+# ----------------------------------------------------------------------------
+log_info "Verificando campo dc.audience en metadata registry..."
+
+EXISTING_FIELDS=$(curl -s -X GET \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  "$BASE_URL/api/core/metadatafields/search/byFieldName?schema=dc&element=audience")
+
+HAS_AUDIENCE=$(echo "$EXISTING_FIELDS" | grep -c '"element" : "audience"' || true)
+
+if [ "$HAS_AUDIENCE" -gt 0 ]; then
+  log_success "dc.audience ya existe en metadata registry"
+else
+  log_info "Registrando dc.audience..."
+
+  DC_SCHEMA_ID=$(curl -s -X GET \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    "$BASE_URL/api/core/metadataschemas" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for s in data.get('_embedded',{}).get('metadataschemas',[]):
+    if s['prefix'] == 'dc':
+        print(s['id']); break
+")
+
+  curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"element":"audience","qualifier":null,"scopeNote":"Nivel educativo del recurso: Alfabetización, Primaria adultos, Básico, Medio, Formación laboral, Todos"}' \
+    "$BASE_URL/api/core/metadatafields?schemaId=$DC_SCHEMA_ID" > /dev/null
+
+  log_success "dc.audience registrado"
+fi
+
+# ----------------------------------------------------------------------------
 # Top-Level Community: DIGEEX
 # ----------------------------------------------------------------------------
 log_info "Verificando si DIGEEX ya existe..."

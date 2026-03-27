@@ -53,6 +53,11 @@ fi
 
 log_success "Collection PEAC UUID: $PEAC_UUID"
 
+# Limpiar restos de importaciones anteriores
+log_info "Limpiando importaciones anteriores..."
+docker exec dspace rm -rf /tmp/saf-peac 2>/dev/null || true
+docker exec dspace rm -f /tmp/peac-mapfile.txt 2>/dev/null || true
+
 # Copiar SAF al contenedor
 log_info "Copiando archivos al contenedor..."
 docker cp "$SAF_DIR" dspace:/tmp/saf-peac

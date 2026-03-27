@@ -19,8 +19,8 @@ export class PublicBreadcrumb implements OnInit, OnDestroy {
   private routeItems = signal<MenuItem[]>([]);
 
   displayItems = computed(() => {
-    const route = this.routeItems();
-    return route.length > 0 ? route : this.breadcrumbService.trail();
+    const serviceTrail = this.breadcrumbService.trail();
+    return serviceTrail.length > 0 ? serviceTrail : this.routeItems();
   });
 
   constructor(
