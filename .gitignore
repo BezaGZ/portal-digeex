@@ -8,6 +8,8 @@
 
 # Scripts - archivos SAF temporales (solo para desarrollo)
 scripts/saf-peac/
+scripts/saf-albums/
+scripts/saf-videos/
 
 # Sistema
 .DS_Store

@@ -21,7 +21,7 @@
       } @else {
         <div class="w-full aspect-[3/4] bg-[#F3F4F6] flex items-center justify-center">
           <i
-            class="pi pi-file-pdf text-4xl"
+            [class]="isVideo ? 'pi pi-play-circle text-4xl' : 'pi pi-file-pdf text-4xl'"
             style="color: var(--gob-competitividad)"
           ></i>
         </div>
@@ -51,7 +51,16 @@
             {{ item().dateIssued | date: 'shortDate' }}
           </span>
         }
-        @if (item().bitstreams.length > 0) {
+        @if (isVideo) {
+          <p-button
+            label="Ver"
+            icon="pi pi-play"
+            severity="primary"
+            [rounded]="true"
+            styleClass="!font-medium !px-6 !py-2 transition-all duration-200"
+            (onClick)="onWatchVideo($event)"
+          ></p-button>
+        } @else if (item().bitstreams.length > 0) {
           <p-button
             label="Descargar"
             icon="pi pi-download"

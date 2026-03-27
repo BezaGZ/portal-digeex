@@ -168,6 +168,8 @@ export class ProgramViewComponent implements OnInit {
                     handle: item.handle,
                     coverImage,
                     bitstreams: downloadableBitstreams,
+                    type: item.metadata?.['dc.type']?.[0]?.value || '',
+                    relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
                   } as ItemView;
                 }),
               );
@@ -192,6 +194,8 @@ export class ProgramViewComponent implements OnInit {
               handle: item.handle,
               coverImage: null,
               bitstreams: [],
+              type: item.metadata?.['dc.type']?.[0]?.value || '',
+              relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
             }));
             this.isLoading = false;
             this.cdr.markForCheck();
@@ -231,6 +235,12 @@ export class ProgramViewComponent implements OnInit {
   onPageChange(event: PaginatorEvent) {
     this.currentPage = event.page ?? 0;
     this.loadItems(this.collectionUuid, this.currentPage);
+  }
+
+  openVideo(item: ItemView) {
+    if (item.relationUri) {
+      window.open(item.relationUri, '_blank', 'noopener');
+    }
   }
 
   downloadBitstream(bitstream: BitstreamView) {

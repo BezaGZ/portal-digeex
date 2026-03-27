@@ -16,6 +16,11 @@ export class DocumentCardComponent {
 
   cardClick = output<ItemView>();
   download = output<BitstreamView>();
+  watchVideo = output<ItemView>();
+
+  get isVideo(): boolean {
+    return this.item().type === 'MovingImage';
+  }
 
   onCardClick() {
     this.cardClick.emit(this.item());
@@ -24,5 +29,10 @@ export class DocumentCardComponent {
   onDownload(event: Event, bitstream: BitstreamView) {
     event.stopPropagation();
     this.download.emit(bitstream);
+  }
+
+  onWatchVideo(event: Event) {
+    event.stopPropagation();
+    this.watchVideo.emit(this.item());
   }
 }

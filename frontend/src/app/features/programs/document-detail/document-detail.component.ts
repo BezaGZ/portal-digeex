@@ -36,6 +36,8 @@ export class DocumentDetailComponent implements OnInit {
   documentBitstreams: BitstreamView[] = [];
   metadataFields: MetadataFieldView[] = [];
   isLoading = false;
+  isVideo = false;
+  videoUrl = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -59,6 +61,8 @@ export class DocumentDetailComponent implements OnInit {
       switchMap((item: Item) => {
         this.documentTitle = item.metadata?.['dc.title']?.[0]?.value || 'Sin título';
         this.documentDescription = item.metadata?.['dc.description.abstract']?.[0]?.value || '';
+        this.isVideo = item.metadata?.['dc.type']?.[0]?.value === 'MovingImage';
+        this.videoUrl = item.metadata?.['dc.relation.uri']?.[0]?.value || '';
         this.buildMetadataFields(item.metadata, null);
 
         return this.dspaceApi.getBundles(itemUuid).pipe(
@@ -284,6 +288,14 @@ export class DocumentDetailComponent implements OnInit {
           console.error('Error al cargar PDF para visualización:', error);
           window.open(pdfBitstream.url, '_blank');
         });
+    } else if (this.documentBitstreams.length > 0) {
+      window.open(this.documentBitstreams[0].url, '_blank');
+    }
+  }
+
+  openVideo() {
+    if (this.videoUrl) {
+      window.open(this.videoUrl, '_blank', 'noopener');
     }
   }
 

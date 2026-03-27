@@ -24,7 +24,9 @@ export interface ItemView {
   dateIssued: string;
   handle: string;
   coverImage: string | null;
-  bitstreams: BitstreamView[]; 
+  bitstreams: BitstreamView[];
+  type: string;
+  relationUri: string;
 }
 
 /**

@@ -61,8 +61,46 @@
         </div>
 
         <div class="md:col-span-2">
-          <!-- Sección de Archivos -->
-          @if (documentBitstreams.length > 0) {
+          @if (isVideo && videoUrl) {
+            <div class="mb-8">
+              <h3
+                class="text-sm uppercase tracking-wide mb-3"
+                style="
+                  color: var(--color-text-secondary);
+                  font-family: var(--font-heading);
+                  font-weight: 500;
+                "
+              >
+                Enlace del video
+              </h3>
+              <a
+                [href]="videoUrl"
+                target="_blank"
+                rel="noopener"
+                class="inline-flex items-center gap-2 text-base underline"
+                style="
+                  color: var(--gob-azul-gobierno);
+                  font-family: var(--font-body);
+                  font-weight: 400;
+                "
+              >
+                <i class="pi pi-external-link"></i>
+                {{ videoUrl }}
+              </a>
+              <div class="mt-4">
+                <p-button
+                  label="Ver video"
+                  icon="pi pi-play"
+                  severity="primary"
+                  [rounded]="true"
+                  styleClass="!font-medium !px-6 !py-2 transition-all duration-200"
+                  (onClick)="openVideo()"
+                ></p-button>
+              </div>
+            </div>
+          }
+
+          @if (!isVideo && documentBitstreams.length > 0) {
             <div class="mb-8">
               <h3
                 class="text-sm uppercase tracking-wide mb-3"
