@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<node id="tipo-poblacion" label="Tipo de población predominante">
+  <isComposedBy>
+    <node id="mujeres-jovenes" label="Mujeres jóvenes"/>
+    <node id="mujeres-adultas" label="Mujeres adultas"/>
+    <node id="hombres-jovenes" label="Hombres jóvenes"/>
+    <node id="hombres-adultos" label="Hombres adultos"/>
+    <node id="tecnicos-docentes" label="Técnicos docentes"/>
+    <node id="coordinadores" label="Coordinadores"/>
+    <node id="comunidad" label="Comunidad"/>
+  </isComposedBy>
+</node>

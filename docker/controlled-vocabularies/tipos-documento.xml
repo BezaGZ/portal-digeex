@@ -9,5 +9,11 @@
     <node id="evaluacion" label="Evaluación"/>
     <node id="material-educativo" label="Material educativo"/>
     <node id="libro-de-texto" label="Libro de texto"/>
+    <node id="acuerdo" label="Acuerdo"/>
+    <node id="resolucion" label="Resolución"/>
+    <node id="memoria-de-labores" label="Memoria de labores"/>
+    <node id="investigaciones" label="Investigaciones"/>
+    <node id="calendario-anual" label="Calendario anual"/>
+    <node id="protocolos" label="Protocolos"/>
   </isComposedBy>
 </node>

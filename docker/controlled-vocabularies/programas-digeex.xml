@@ -9,6 +9,9 @@
     <node id="scc" label="SCC"/>
     <node id="etcae" label="ETCAE"/>
     <node id="probefi" label="PROBEFI"/>
-    <node id="digeex-general" label="DIGEEX General"/>
+    <node id="digeex-direccion" label="DIGEEX — Dirección General de Educación Extraescolar"/>
+    <node id="integracion-educativa" label="Integración educativa para poblaciones en condición de vulnerabilidad y migrantes retornados"/>
+    <node id="inclusion-educativa" label="Inclusión educativa de niñas y adolescentes embarazadas y madres víctimas de violencia sexual"/>
+    <node id="radios-educativas" label="Radios Educativas"/>
   </isComposedBy>
 </node>
