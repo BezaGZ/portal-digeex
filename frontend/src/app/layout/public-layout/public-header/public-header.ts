@@ -1,9 +1,10 @@
-import { Component, signal, HostListener } from '@angular/core';
+import { Component, signal, HostListener, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { CommonModule } from '@angular/common';
 import { Menu } from 'primeng/menu';
 import { MenuItem } from 'primeng/api';
+import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 
 @Component({
   selector: 'app-public-header',
@@ -12,15 +13,58 @@ import { MenuItem } from 'primeng/api';
   templateUrl: './public-header.html',
   styleUrls: ['./public-header.scss'],
 })
-export class PublicHeader {
+export class PublicHeader implements OnInit {
   mobileOpen = signal(false);
   menuVisible = false;
 
-  menuItems: MenuItem[] = [
-    { label: 'Galería Institucional', icon: 'pi pi-images', routerLink: '/galeria' },
-  ];
+  menuItems: MenuItem[] = [];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private dspaceApi: DSpaceApiService,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngOnInit() {
+    this.loadSecondaryMenu();
+  }
+
+  loadSecondaryMenu() {
+    this.dspaceApi.getAllCollections(0, 100).subscribe({
+      next: (response) => {
+        const collections = response._embedded?.['collections'] || [];
+
+        const secondaryMenuCollections = collections.filter((collection) => {
+          const type = collection.metadata?.['dc.type']?.[0]?.value;
+          return type === 'menu-secundario';
+        });
+
+        secondaryMenuCollections.sort((a, b) => {
+          const orderA = parseInt(a.metadata?.['dc.identifier.other']?.[0]?.value || '999');
+          const orderB = parseInt(b.metadata?.['dc.identifier.other']?.[0]?.value || '999');
+          return orderA - orderB;
+        });
+
+        this.menuItems = [];
+        secondaryMenuCollections.forEach((collection, index) => {
+          this.menuItems.push({
+            label: collection.metadata?.['dc.subject']?.[0]?.value || collection.name,
+            routerLink: `/programas/${collection.uuid}`
+          });
+
+          if (index < secondaryMenuCollections.length - 1) {
+            this.menuItems.push({ separator: true });
+          }
+        });
+
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('Error al cargar menú secundario desde DSpace:', error);
+        this.cdr.markForCheck();
+      },
+    });
+  }
 
   toggleMobileMenu() {
     this.mobileOpen.update((v) => !v);
