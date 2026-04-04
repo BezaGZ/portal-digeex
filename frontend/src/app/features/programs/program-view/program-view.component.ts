@@ -15,10 +15,11 @@ import { PaginatorModule } from 'primeng/paginator';
 import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
-import { CollectionView, ItemView, BitstreamView, PaginatorEvent } from '../../../core/api/models';
+import { CollectionView, ItemView, BitstreamView, PaginatorEvent, Bitstream } from '../../../core/api/models';
 import { forkJoin, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { SkeletonCardComponent, EmptyStateComponent, DocumentCardComponent } from '../../../shared';
+import { getCollectionRoute } from '../../../core/config/collection-format.config';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
@@ -70,6 +71,15 @@ export class ProgramViewComponent implements OnInit {
 
     this.dspaceApi.getCollection(collectionUuid).subscribe({
       next: (collection) => {
+        const format = collection.metadata?.['dc.format']?.[0]?.value || 'documento';
+        if (format !== 'documento') {
+          this.router.navigateByUrl(
+            getCollectionRoute(format, collection.uuid),
+            { replaceUrl: true }
+          );
+          return;
+        }
+
         this.currentNode = {
           id: collection.uuid,
           name: collection.metadata?.['dc.subject']?.[0]?.value || collection.name,
@@ -129,7 +139,7 @@ export class ProgramViewComponent implements OnInit {
               return forkJoin({ thumbnail: thumbnail$, original: original$ }).pipe(
                 map(({ thumbnail, original }) => {
                   const originalBitstreams = original?._embedded?.['bitstreams'] || [];
-                  const downloadableBitstreams: BitstreamView[] = originalBitstreams.map((b: any) => {
+                  const downloadableBitstreams: BitstreamView[] = originalBitstreams.map((b: Bitstream) => {
                     const fileName = b.name?.toLowerCase() || '';
                     let format = 'application/octet-stream';
                     if (fileName.endsWith('.pdf')) format = 'application/pdf';
@@ -151,7 +161,7 @@ export class ProgramViewComponent implements OnInit {
                   if (thumbnailBitstreams.length > 0) {
                     coverImage = `/server/api/core/bitstreams/${thumbnailBitstreams[0].uuid}/content`;
                   } else {
-                    const imageBitstream = originalBitstreams.find((b: any) => {
+                    const imageBitstream = originalBitstreams.find((b: Bitstream) => {
                       const fileName = b.name?.toLowerCase() || '';
                       return fileName.endsWith('.jpeg') || fileName.endsWith('.jpg') || fileName.endsWith('.png');
                     });

@@ -12,8 +12,8 @@ import { MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
-import { BitstreamView, MetadataFieldView, Item, MetadataMap } from '../../../core/api/models';
-import { forkJoin } from 'rxjs';
+import { BitstreamView, MetadataFieldView, Item, MetadataMap, Bitstream } from '../../../core/api/models';
+import { forkJoin, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { SkeletonDetailComponent } from '../../../shared';
 import { FileSizePipe } from '../../../shared/pipes';
@@ -72,29 +72,23 @@ export class DocumentDetailComponent implements OnInit {
             const thumbnailBundle = bundles.find((b) => b.name === 'THUMBNAIL');
             const originalBundle = bundles.find((b) => b.name === 'ORIGINAL');
 
-            const requests: any = {};
+            const thumbnail$ = thumbnailBundle
+              ? this.dspaceApi.getBitstreamsFromBundle(thumbnailBundle.uuid)
+              : of(null);
+            const original$ = originalBundle
+              ? this.dspaceApi.getBitstreamsFromBundle(originalBundle.uuid)
+              : of(null);
 
-            if (thumbnailBundle) {
-              requests.thumbnail = this.dspaceApi.getBitstreamsFromBundle(thumbnailBundle.uuid);
-            }
-            if (originalBundle) {
-              requests.original = this.dspaceApi.getBitstreamsFromBundle(originalBundle.uuid);
-            }
-
-            if (Object.keys(requests).length === 0) {
-              return forkJoin({ empty: Promise.resolve(null) });
-            }
-
-            return forkJoin(requests);
+            return forkJoin({ thumbnail: thumbnail$, original: original$ });
           })
         );
       }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: (response: any) => {
+      next: (response) => {
         if (response.original) {
           const originalBitstreams = response.original._embedded?.['bitstreams'] || [];
-          this.documentBitstreams = originalBitstreams.map((bitstream: any) => {
+          this.documentBitstreams = originalBitstreams.map((bitstream: Bitstream) => {
             const fileName = bitstream.name?.toLowerCase() || '';
             let format = 'application/octet-stream';
             if (fileName.endsWith('.pdf')) {

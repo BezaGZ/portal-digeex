@@ -73,6 +73,48 @@
     />
   </div>
 
+  <div class="mb-4">
+    <label
+      for="populationType"
+      class="block text-sm font-medium mb-2"
+      style="color: var(--color-text-primary); font-family: var(--font-body)"
+    >
+      Tipo de Población
+    </label>
+    <p-select
+      id="populationType"
+      [options]="populationTypeOptions"
+      [(ngModel)]="selectedPopulationType"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="Todas las poblaciones"
+      [showClear]="true"
+      (onChange)="onFilterChange()"
+      class="w-full"
+    />
+  </div>
+
+  <div class="mb-4">
+    <label
+      for="imageContext"
+      class="block text-sm font-medium mb-2"
+      style="color: var(--color-text-primary); font-family: var(--font-body)"
+    >
+      Enfoque de Imagen
+    </label>
+    <p-select
+      id="imageContext"
+      [options]="imageContextOptions"
+      [(ngModel)]="selectedImageContext"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="Todos los enfoques"
+      [showClear]="true"
+      (onChange)="onFilterChange()"
+      class="w-full"
+    />
+  </div>
+
   <div class="pt-4 border-t border-gray-100">
     <p-button
       label="Limpiar Filtros"

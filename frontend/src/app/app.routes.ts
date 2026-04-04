@@ -1,10 +1,4 @@
 import { Routes } from '@angular/router';
-import { albumResolver } from './features/gallery/resolvers/album.resolver';
-import { Album } from './features/gallery/services/gallery.service';
-
-interface AlbumRouteData {
-  album?: Album;
-}
 
 export const routes: Routes = [
 
@@ -34,9 +28,9 @@ export const routes: Routes = [
         data: { breadcrumb: 'Búsqueda Avanzada' }
       },
       {
-        path: 'estadisticas',
+        path: 'estadistica',
         loadComponent: () => import('./features/administration/dashboard/dashboard').then(m => m.Dashboard),
-        data: { breadcrumb: 'Estadísticas' }
+        data: { breadcrumb: 'Estadística' }
       },
       {
         path: 'galeria',
@@ -48,13 +42,8 @@ export const routes: Routes = [
           },
           {
             path: ':id',
-            loadComponent: () => import('./features/gallery/album-viewer').then(m => m.AlbumViewer),
-            resolve: {
-              album: albumResolver
-            },
-            data: {
-              breadcrumb: (data: AlbumRouteData) => data.album?.title || 'Álbum'
-            }
+            loadComponent: () => import('./features/gallery/components/album-viewer/album-viewer').then(m => m.AlbumViewer),
+            data: { breadcrumb: 'Álbum' }
           }
         ]
       }

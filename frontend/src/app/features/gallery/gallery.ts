@@ -1,18 +1,29 @@
 import { Component, OnInit, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-import { SkeletonModule } from 'primeng/skeleton';
-import { GalleryService, Album, GalleryFilters, FilterOption } from './services/gallery.service';
-import { GalleryFiltersComponent } from './gallery-filters/gallery-filters';
-import { AlbumCardComponent } from '../../shared';
+import { PaginatorModule } from 'primeng/paginator';
+import { GalleryService } from './services/gallery.service';
+import { Album, GalleryFilters, FilterOption } from './models';
+import { GalleryFiltersComponent } from './components/gallery-filters/gallery-filters';
+import { AlbumCardComponent } from './components/album-card/album-card';
+import { AlbumSkeletonComponent } from './components/album-skeleton/album-skeleton';
+import { EmptyStateComponent } from '../../shared';
+import { PaginatorEvent } from '../../core/api/models';
 
 @Component({
   selector: 'app-gallery',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CardModule, ButtonModule, SkeletonModule, GalleryFiltersComponent, AlbumCardComponent],
+  imports: [
+    CommonModule,
+    ButtonModule,
+    PaginatorModule,
+    GalleryFiltersComponent,
+    AlbumCardComponent,
+    AlbumSkeletonComponent,
+    EmptyStateComponent,
+  ],
   templateUrl: './gallery.html',
   styles: [
     `
@@ -25,8 +36,14 @@ import { AlbumCardComponent } from '../../shared';
 export class Gallery implements OnInit {
   albums = signal<Album[]>([]);
   isLoading = signal(true);
+  totalRecords = signal(0);
+  currentPage = signal(0);
+  readonly pageSize = 6;
+
   programOptions = signal<FilterOption[]>([]);
   eventTypeOptions = signal<FilterOption[]>([]);
+  populationTypeOptions = signal<FilterOption[]>([]);
+  imageContextOptions = signal<FilterOption[]>([]);
   currentFilters: GalleryFilters = {};
 
   constructor(
@@ -44,31 +61,42 @@ export class Gallery implements OnInit {
       next: (options) => {
         this.programOptions.set(options.programs);
         this.eventTypeOptions.set(options.eventTypes);
+        this.populationTypeOptions.set(options.populationTypes);
+        this.imageContextOptions.set(options.imageContexts);
       },
     });
   }
 
-  loadAlbums(filters: GalleryFilters = {}) {
+  loadAlbums(filters: GalleryFilters = {}, page = 0) {
     this.isLoading.set(true);
     this.currentFilters = filters;
 
-    this.galleryService.searchAlbums(filters).subscribe({
-      next: (albums) => {
-        this.albums.set(albums);
+    this.galleryService.searchAlbums(filters, page, this.pageSize).subscribe({
+      next: (result) => {
+        this.albums.set(result.albums);
+        this.totalRecords.set(result.totalElements);
+        this.currentPage.set(result.page);
         this.isLoading.set(false);
       },
       error: () => {
+        this.albums.set([]);
+        this.totalRecords.set(0);
         this.isLoading.set(false);
       },
     });
   }
 
   onFiltersChange(filters: GalleryFilters) {
-    this.loadAlbums(filters);
+    this.loadAlbums(filters, 0);
   }
 
   onClearFilters() {
-    this.loadAlbums({});
+    this.loadAlbums({}, 0);
+  }
+
+  onPageChange(event: PaginatorEvent) {
+    const page = event.page ?? 0;
+    this.loadAlbums(this.currentFilters, page);
   }
 
   openAlbum(album: Album) {

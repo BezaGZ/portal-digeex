@@ -66,7 +66,6 @@ describe('DSpaceApiService', () => {
       }
     };
 
-    // ACT
     const promise = new Promise((resolve, reject) => {
       service.getCommunities().subscribe({
         next: (response) => {

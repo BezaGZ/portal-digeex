@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { Menu } from 'primeng/menu';
 import { MenuItem } from 'primeng/api';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
+import { getCollectionRoute } from '../../../core/config/collection-format.config';
 
 @Component({
   selector: 'app-public-header',
@@ -47,9 +48,11 @@ export class PublicHeader implements OnInit {
 
         this.menuItems = [];
         secondaryMenuCollections.forEach((collection, index) => {
+          const format = collection.metadata?.['dc.format']?.[0]?.value || 'documento';
+
           this.menuItems.push({
             label: collection.metadata?.['dc.subject']?.[0]?.value || collection.name,
-            routerLink: `/programas/${collection.uuid}`
+            routerLink: getCollectionRoute(format, collection.uuid)
           });
 
           if (index < secondaryMenuCollections.length - 1) {

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { CollectionView, ItemView } from '../../core/api/models';
+import { getCollectionRoute } from '../../core/config/collection-format.config';
 import { SkeletonCardComponent, EmptyStateComponent } from '../../shared';
 
 @Component({
@@ -51,7 +52,7 @@ export class Home implements OnInit {
           name: collection.metadata?.['dc.subject']?.[0]?.value || collection.name,
           description: collection.metadata?.['dc.title']?.[0]?.value || '',
           type: 'collection',
-          handle: collection.handle,
+          format: collection.metadata?.['dc.format']?.[0]?.value || 'documento',
         }));
 
         this.items = [];
@@ -67,7 +68,7 @@ export class Home implements OnInit {
   }
 
   navigateToChild(child: CollectionView) {
-    this.router.navigate(['/programas', child.id]);
+    this.router.navigateByUrl(getCollectionRoute(child.format || 'documento', child.id));
   }
 
   navigateToDocument(item: ItemView) {

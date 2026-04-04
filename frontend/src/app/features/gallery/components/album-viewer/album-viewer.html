@@ -1,0 +1,159 @@
+<div class="min-h-screen" style="background-color: var(--color-background)">
+  @if (isLoading()) {
+    <div class="container mx-auto max-w-7xl px-6 py-12">
+      <p-skeleton width="140px" height="2.25rem" borderRadius="9999px" styleClass="mb-4" />
+      <p-skeleton width="55%" height="2.5rem" styleClass="mb-3" />
+      <div class="flex gap-2 mb-3">
+        <p-skeleton width="100px" height="1.75rem" borderRadius="9999px" />
+        <p-skeleton width="120px" height="1.75rem" borderRadius="9999px" />
+      </div>
+      <div class="flex gap-4 mb-3">
+        <p-skeleton width="160px" height="1.25rem" />
+        <p-skeleton width="80px" height="1.25rem" />
+      </div>
+      <p-skeleton width="80%" height="3rem" styleClass="mb-6" />
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        @for (s of [1, 2, 3, 4, 5, 6, 7, 8]; track s) {
+          <p-skeleton width="100%" height="300px" borderRadius="8px" />
+        }
+      </div>
+    </div>
+  } @else if (album()) {
+    <div class="container mx-auto max-w-7xl px-6 py-12">
+      <div class="mb-4">
+        <p-button
+          label=" Regresar"
+          icon="pi pi-arrow-left"
+          severity="primary"
+          [rounded]="true"
+          styleClass="!text-white !font-medium !px-4 !py-2 transition-all duration-200"
+          (onClick)="goBack()"
+        />
+      </div>
+
+      <div class="mb-8">
+        <h1
+          class="text-4xl mb-3"
+          style="
+            color: var(--gob-azul-gobierno);
+            font-family: var(--font-heading);
+            font-weight: 700;
+          "
+        >
+          {{ album()!.title }}
+        </h1>
+
+        <!-- Badges de tipo de evento y programa -->
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          @if (album()!.eventType) {
+            <span
+              class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium"
+              style="background-color: var(--gob-azul-gobierno); color: white; font-family: var(--font-body)"
+            >
+              <i class="pi pi-tag text-xs"></i>
+              {{ album()!.eventType }}
+            </span>
+          }
+          @if (album()!.program) {
+            <span
+              class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium"
+              style="background-color: var(--gob-azul-acento); color: white; font-family: var(--font-body)"
+            >
+              {{ album()!.program }}
+            </span>
+          }
+        </div>
+
+        <!-- Fecha y conteo de fotos -->
+        <div
+          class="flex items-center gap-4 mb-3"
+          style="color: var(--color-text-secondary); font-family: var(--font-body)"
+        >
+          <span class="flex items-center gap-2">
+            <i class="pi pi-calendar"></i>
+            {{ formatDate(album()!.date) }}
+          </span>
+          <span class="flex items-center gap-2">
+            <i class="pi pi-images"></i>
+            {{ album()!.photos.length }} {{ album()!.photos.length === 1 ? 'foto' : 'fotos' }}
+          </span>
+        </div>
+
+        <p
+          class="text-lg leading-relaxed max-w-3xl mb-4"
+          style="color: var(--color-text-primary); font-family: var(--font-body); font-weight: 400"
+        >
+          {{ album()!.description }}
+        </p>
+
+        <!-- Metadata detallada -->
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm mb-4 max-w-3xl" style="font-family: var(--font-body)">
+          @if (album()!.author) {
+            <span class="flex items-center gap-1" style="color: var(--color-text-secondary)">
+              <i class="pi pi-user text-xs" style="color: var(--gob-azul-gobierno)"></i>
+              {{ album()!.author }}
+            </span>
+          }
+          @if (album()!.publisher) {
+            <span class="flex items-center gap-1" style="color: var(--color-text-secondary)">
+              <i class="pi pi-building text-xs" style="color: var(--gob-azul-gobierno)"></i>
+              {{ album()!.publisher }}
+            </span>
+          }
+          @if (album()!.populationType) {
+            <span class="flex items-center gap-1" style="color: var(--color-text-secondary)">
+              <i class="pi pi-users text-xs" style="color: var(--gob-azul-gobierno)"></i>
+              {{ album()!.populationType }}
+            </span>
+          }
+          @if (album()!.imageContext) {
+            <span class="flex items-center gap-1" style="color: var(--color-text-secondary)">
+              <i class="pi pi-eye text-xs" style="color: var(--gob-azul-gobierno)"></i>
+              {{ album()!.imageContext }}
+            </span>
+          }
+        </div>
+
+        <!-- Etiquetas / Subjects -->
+        @if (album()!.subjects.length > 0) {
+          <div class="flex flex-wrap items-center gap-2 mb-6 max-w-3xl">
+            @for (subject of album()!.subjects; track subject) {
+              <span
+                class="inline-block px-3 py-1 rounded-full text-xs font-medium"
+                style="background-color: rgba(30, 49, 89, 0.08); color: var(--gob-azul-gobierno); font-family: var(--font-body)"
+              >
+                {{ subject }}
+              </span>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        @for (photo of album()!.photos; track photo.id; let i = $index) {
+          <app-photo-grid-item
+            [src]="photo.thumbnailUrl"
+            [alt]="'Foto ' + (i + 1) + ' del álbum'"
+            (clicked)="openGalleria(i)"
+          />
+        }
+      </div>
+
+      <p-galleria
+        [value]="album()!.photos"
+        [(visible)]="displayGalleria"
+        [(activeIndex)]="activeIndex"
+        [fullScreen]="true"
+        [circular]="true"
+        [showItemNavigators]="true"
+        [showThumbnails]="false"
+        [showItemNavigatorsOnHover]="true"
+        [baseZIndex]="100000"
+      >
+        <ng-template #item let-photo>
+          <img [src]="photo.url" style="width: 100%; height: 100%; object-fit: contain" />
+        </ng-template>
+      </p-galleria>
+    </div>
+  }
+</div>

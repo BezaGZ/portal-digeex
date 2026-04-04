@@ -1,0 +1,68 @@
+<p-card styleClass="album-card" (click)="onCardClick()">
+  <div class="cover-container">
+    @if (album().coverPhoto) {
+      <img [src]="album().coverPhoto" [alt]="album().title" loading="lazy" class="album-cover" />
+    } @else {
+      <div class="album-cover flex items-center justify-center" style="background-color: #f5f2ee">
+        <i class="pi pi-images text-6xl" style="color: #d9d5d0"></i>
+      </div>
+    }
+  </div>
+
+  <div class="p-4">
+    <div class="album-date">
+      <i class="pi pi-calendar text-sm"></i>
+      <span>{{ album().date | date: 'longDate' }}</span>
+      @if (album().photoCount > 0) {
+        <span class="ml-2 flex items-center gap-1">
+          <i class="pi pi-images text-sm"></i>
+          {{ album().photoCount }}
+        </span>
+      }
+    </div>
+
+    <div class="flex flex-wrap items-center justify-center gap-2 mb-2">
+      @if (album().eventType) {
+        <span
+          class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+          style="background-color: var(--gob-azul-gobierno); color: white; font-family: var(--font-body)"
+        >
+          <i class="pi pi-tag text-xs"></i>
+          {{ album().eventType }}
+        </span>
+      }
+      @if (album().program) {
+        <span
+          class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+          style="background-color: var(--gob-azul-acento); color: white; font-family: var(--font-body)"
+        >
+          {{ album().program }}
+        </span>
+      }
+    </div>
+
+    <h3
+      class="album-title"
+      style="font-family: var(--font-heading); font-weight: 500"
+    >
+      {{ album().title }}
+    </h3>
+
+    <p
+      class="album-description"
+      style="font-family: var(--font-body); font-weight: 400; font-size: 1rem"
+    >
+      {{ album().description }}
+    </p>
+
+    <p-button
+      label="Ver Álbum"
+      icon="pi pi-arrow-right"
+      iconPos="right"
+      severity="primary"
+      [rounded]="true"
+      styleClass="w-full !font-medium"
+      (onClick)="onButtonClick($event)"
+    />
+  </div>
+</p-card>
