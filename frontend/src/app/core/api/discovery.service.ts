@@ -12,6 +12,15 @@ export class DiscoveryService {
   constructor(private readonly http: HttpClient) {}
 
   search(params: SearchParams = {}): Observable<SearchResult> {
+    return this.http.get<SearchResponse>(
+      `${this.apiUrl}/discover/search/objects`,
+      { params: this.buildSearchParams(params) }
+    ).pipe(
+      map((response) => this.mapResponse(response))
+    );
+  }
+
+  private buildSearchParams(params: SearchParams): HttpParams {
     let httpParams = new HttpParams()
       .set('page', params.page ?? 0)
       .set('size', params.size ?? 20);
@@ -34,26 +43,23 @@ export class DiscoveryService {
       }
     }
 
-    return this.http.get<SearchResponse>(
-      `${this.apiUrl}/discover/search/objects`,
-      { params: httpParams }
-    ).pipe(
-      map((response) => {
-        const objects = response._embedded?.searchResult?._embedded?.objects || [];
-        const items = objects
-          .filter((obj) => obj._embedded?.indexableObject?.type === 'item')
-          .map((obj) => obj._embedded.indexableObject);
+    return httpParams;
+  }
 
-        const page = response._embedded?.searchResult?.page;
+  private mapResponse(response: SearchResponse): SearchResult {
+    const objects = response._embedded?.searchResult?._embedded?.objects || [];
+    const items = objects
+      .filter((obj) => obj._embedded?.indexableObject?.type === 'item')
+      .map((obj) => obj._embedded.indexableObject);
 
-        return {
-          items,
-          totalElements: page?.totalElements ?? 0,
-          totalPages: page?.totalPages ?? 0,
-          page: page?.number ?? 0,
-          size: page?.size ?? 20,
-        };
-      })
-    );
+    const page = response._embedded?.searchResult?.page;
+
+    return {
+      items,
+      totalElements: page?.totalElements ?? 0,
+      totalPages: page?.totalPages ?? 0,
+      page: page?.number ?? 0,
+      size: page?.size ?? 20,
+    };
   }
 }
