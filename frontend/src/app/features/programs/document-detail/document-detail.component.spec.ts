@@ -2,7 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute } from '@angular/router';
-import { of } from 'rxjs';
+import { vi } from 'vitest';
+import { of, throwError } from 'rxjs';
 import { DocumentDetailComponent } from './document-detail.component';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
@@ -14,13 +15,86 @@ import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
  * DSpace por UUID, muestra thumbnail, bitstreams descargables,
  * y soporta documentos PDF y videos (MovingImage).
  *
- * Ciclo 4 TDD — Sprint 4 (RED).
+ * Ciclo 4 TDD — Sprint 4 (GREEN).
  *
  */
 describe('DocumentDetailComponent', () => {
   let component: DocumentDetailComponent;
   let dspaceApi: DSpaceApiService;
   let breadcrumbService: BreadcrumbService;
+
+  const MOCK_ITEM_DOC = {
+    uuid: 'item-doc-001',
+    name: 'Guía Curricular PEAC',
+    handle: '123456789/10',
+    metadata: {
+      'dc.title': [{ value: 'Guía Curricular PEAC' }],
+      'dc.description.abstract': [{ value: 'Guía para el programa PEAC de educación.' }],
+      'dc.contributor.author': [{ value: 'DIGEEX' }],
+      'dc.date.issued': [{ value: '2025' }],
+      'dc.type': [{ value: 'Guía' }],
+      'dc.audience': [{ value: 'Primaria' }],
+      'dc.subject': [{ value: 'Educación' }, { value: 'PEAC' }],
+      'dc.language.iso': [{ value: 'es' }],
+      'dc.publisher': [{ value: 'MINEDUC' }],
+    },
+    inArchive: true,
+    discoverable: true,
+    withdrawn: false,
+    lastModified: '2025-03-15',
+    type: 'item',
+  };
+
+  const MOCK_ITEM_VIDEO = {
+    uuid: 'item-video-001',
+    name: 'Capacitación docente 2025',
+    handle: '123456789/20',
+    metadata: {
+      'dc.title': [{ value: 'Capacitación docente 2025' }],
+      'dc.description.abstract': [{ value: 'Video de capacitación.' }],
+      'dc.type': [{ value: 'MovingImage' }],
+      'dc.relation.uri': [{ value: 'https://youtube.com/watch?v=abc123' }],
+      'dc.contributor.author': [{ value: 'DIGEEX' }],
+      'dc.date.issued': [{ value: '2025-06-10' }],
+      'dc.language.iso': [{ value: 'es' }],
+    },
+    inArchive: true,
+    discoverable: true,
+    withdrawn: false,
+    lastModified: '2025-06-10',
+    type: 'item',
+  };
+
+  const MOCK_BUNDLES = {
+    _embedded: {
+      bundles: [
+        { uuid: 'thumb-bundle-001', name: 'THUMBNAIL', handle: '', type: 'bundle', _links: {} },
+        { uuid: 'orig-bundle-001', name: 'ORIGINAL', handle: '', type: 'bundle', _links: {} },
+      ],
+    },
+    _links: {},
+    page: { size: 20, totalElements: 2, totalPages: 1, number: 0 },
+  };
+
+  const MOCK_THUMBNAIL_BITSTREAMS = {
+    _embedded: {
+      bitstreams: [
+        { uuid: 'thumb-bs-001', name: 'guia-peac.jpg.jpg', sizeBytes: 5000, _links: {} },
+      ],
+    },
+    _links: {},
+    page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+  };
+
+  const MOCK_ORIGINAL_BITSTREAMS = {
+    _embedded: {
+      bitstreams: [
+        { uuid: 'orig-bs-001', name: 'guia-peac.pdf', sizeBytes: 245000, _links: {} },
+      ],
+    },
+    _links: {},
+    page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+  };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -39,7 +113,20 @@ describe('DocumentDetailComponent', () => {
     component = fixture.componentInstance;
     dspaceApi = TestBed.inject(DSpaceApiService);
     breadcrumbService = TestBed.inject(BreadcrumbService);
+
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    vi.spyOn(dspaceApi, 'getItem').mockReturnValue(of(MOCK_ITEM_DOC as any));
+    vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(MOCK_BUNDLES as any));
+    vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
+      if (bundleUuid === 'thumb-bundle-001') return of(MOCK_THUMBNAIL_BITSTREAMS as any);
+      if (bundleUuid === 'orig-bundle-001') return of(MOCK_ORIGINAL_BITSTREAMS as any);
+      return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any);
+    });
+    vi.spyOn(dspaceApi, 'getCollection').mockReturnValue(of({ name: 'PEAC', metadata: { 'dc.subject': [{ value: 'PEAC' }] } } as any));
+    vi.spyOn(breadcrumbService, 'setTrail');
+    /* eslint-enable @typescript-eslint/no-explicit-any */
   });
+
 
   it('should create', () => {
     expect(component).toBeTruthy();
@@ -50,6 +137,7 @@ describe('DocumentDetailComponent', () => {
 
     expect(component.documentId).toBe('item-doc-001');
     expect(component.programId).toBe('program-001');
+    expect(dspaceApi.getItem).toHaveBeenCalledWith('item-doc-001');
   });
 
   it('should display metadata fields from item response', () => {
@@ -82,6 +170,9 @@ describe('DocumentDetailComponent', () => {
   it('should load THUMBNAIL and ORIGINAL bundles via forkJoin', () => {
     component.ngOnInit();
 
+    expect(dspaceApi.getBundles).toHaveBeenCalledWith('item-doc-001');
+    expect(dspaceApi.getBitstreamsFromBundle).toHaveBeenCalledWith('thumb-bundle-001');
+    expect(dspaceApi.getBitstreamsFromBundle).toHaveBeenCalledWith('orig-bundle-001');
     expect(component.documentCoverImage).toBe('/server/api/core/bitstreams/thumb-bs-001/content');
   });
 
@@ -96,6 +187,9 @@ describe('DocumentDetailComponent', () => {
   });
 
   it('should detect video item by dc.type MovingImage', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(dspaceApi, 'getItem').mockReturnValue(of(MOCK_ITEM_VIDEO as any));
+
     component.ngOnInit();
 
     expect(component.isVideo).toBe(true);
@@ -109,6 +203,8 @@ describe('DocumentDetailComponent', () => {
   });
 
   it('should handle API error gracefully', () => {
+    vi.spyOn(dspaceApi, 'getItem').mockReturnValue(throwError(() => new Error('404 Not Found')));
+
     component.ngOnInit();
 
     expect(component.documentTitle).toBe('Error');
