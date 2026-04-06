@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, ChangeDetectorRef, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -7,6 +7,9 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { DatePickerModule } from 'primeng/datepicker';
 import { CardModule } from 'primeng/card';
+import { DiscoveryService } from '../../core/api/discovery.service';
+import { SearchResult } from '../../core/api/models/discovery.model';
+import { Item } from '../../core/api/models/item.model';
 
 interface SearchFilters {
   query: string;
@@ -16,12 +19,6 @@ interface SearchFilters {
   anioInicio: Date | null;
   anioFin: Date | null;
   orderBy: string;
-}
-
-interface SearchResult {
-  id: string;
-  title: string;
-  description: string;
 }
 
 @Component({
@@ -53,7 +50,8 @@ export class AdvancedSearch {
 
   isSearching = signal(false);
   hasSearched = signal(false);
-  results = signal<SearchResult[]>([]);
+  results = signal<Item[]>([]);
+  totalElements = signal(0);
 
   comunidadesOptions = [
     { label: 'PEAC', value: 'peac' },
@@ -84,18 +82,30 @@ export class AdvancedSearch {
     { label: 'Título Z-A', value: 'titulo-desc' },
   ];
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  constructor(private discoveryService: DiscoveryService) {}
 
   onSearch() {
     this.isSearching.set(true);
     this.hasSearched.set(true);
-    this.cdr.markForCheck();
 
-    setTimeout(() => {
-      this.results.set([]);
+    this.discoveryService.search({
+      query: this.filters.query || undefined,
+      sort: this.mapSort(this.filters.orderBy),
+    }).subscribe((result: SearchResult) => {
+      this.results.set(result.items);
+      this.totalElements.set(result.totalElements);
       this.isSearching.set(false);
-      this.cdr.markForCheck();
-    }, 800);
+    });
+  }
+
+  private mapSort(orderBy: string): string | undefined {
+    const sortMap: Record<string, string> = {
+      'fecha-desc': 'dc.date.issued,DESC',
+      'fecha-asc': 'dc.date.issued,ASC',
+      'titulo-asc': 'dc.title,ASC',
+      'titulo-desc': 'dc.title,DESC',
+    };
+    return sortMap[orderBy];
   }
 
   clearFilters() {
@@ -110,7 +120,7 @@ export class AdvancedSearch {
     };
     this.hasSearched.set(false);
     this.results.set([]);
-    this.cdr.markForCheck();
+    this.totalElements.set(0);
   }
 
   hasActiveFilters(): boolean {

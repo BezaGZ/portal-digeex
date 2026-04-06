@@ -197,7 +197,7 @@
               </h2>
 
               <div class="space-y-4">
-                @for (result of results(); track result.id) {
+                @for (result of results(); track result.uuid) {
                   <div class="border-b border-gray-100 pb-4 last:border-0">
                     <h3
                       class="mb-1"
@@ -207,13 +207,13 @@
                         font-weight: 500;
                       "
                     >
-                      {{ result.title }}
+                      {{ result.name }}
                     </h3>
                     <p
                       class="text-sm"
                       style="color: var(--color-text-secondary); font-family: var(--font-body)"
                     >
-                      {{ result.description }}
+                      {{ result.metadata['dc.description.abstract']?.[0]?.value ?? '' }}
                     </p>
                   </div>
                 }
