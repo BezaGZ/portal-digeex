@@ -1,0 +1,210 @@
+<p-card styleClass="mb-8">
+  <div class="space-y-6">
+    <div>
+      <label
+        for="search-query"
+        class="block text-sm font-medium mb-2"
+        style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+      >
+        <i class="pi pi-search mr-2"></i>Buscar en todo el portal
+      </label>
+      <input
+        pInputText
+        id="search-query"
+        type="text"
+        [(ngModel)]="filters.query"
+        placeholder="Ej: Manual de docentes, acuerdo ministerial, PEAC..."
+        class="w-full"
+        (keyup.enter)="onSearch()"
+      />
+    </div>
+
+    <div class="flex items-center gap-3 my-6">
+      <div class="flex-grow border-t border-gray-200"></div>
+      <span
+        class="text-sm font-semibold uppercase tracking-wide"
+        style="color: var(--color-text-secondary)"
+        >Filtros Avanzados</span
+      >
+      <div class="flex-grow border-t border-gray-200"></div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div>
+        <label
+          class="block text-sm font-medium mb-2"
+          style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+        >
+          <i class="pi pi-sitemap mr-2"></i>Programas/Comunidades
+        </label>
+        <p-multiselect
+          [(ngModel)]="filters.comunidades"
+          [options]="comunidadesOptions()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Todos los programas"
+          [maxSelectedLabels]="2"
+          styleClass="w-full"
+          [showClear]="true"
+        />
+      </div>
+
+      <div>
+        <label
+          class="block text-sm font-medium mb-2"
+          style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+        >
+          <i class="pi pi-file mr-2"></i>Tipo de Documento
+        </label>
+        <p-multiselect
+          [(ngModel)]="filters.tipoDocumento"
+          [options]="tipoDocumentoOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Todos los tipos"
+          [maxSelectedLabels]="2"
+          styleClass="w-full"
+          [showClear]="true"
+        />
+      </div>
+
+      <div>
+        <label
+          class="block text-sm font-medium mb-2"
+          style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+        >
+          <i class="pi pi-book mr-2"></i>Nivel Educativo
+        </label>
+        <p-multiselect
+          [(ngModel)]="filters.nivelEducativo"
+          [options]="nivelEducativoOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Todos los niveles"
+          [maxSelectedLabels]="2"
+          styleClass="w-full"
+          [showClear]="true"
+        />
+      </div>
+
+      <div>
+        <label
+          class="block text-sm font-medium mb-2"
+          style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+        >
+          <i class="pi pi-globe mr-2"></i>Idioma
+        </label>
+        <p-multiselect
+          [(ngModel)]="filters.idioma"
+          [options]="idiomaOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Todos los idiomas"
+          [maxSelectedLabels]="2"
+          styleClass="w-full"
+          [showClear]="true"
+        />
+      </div>
+
+      <div>
+        <label
+          class="block text-sm font-medium mb-2"
+          style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+        >
+          <i class="pi pi-user mr-2"></i>Autor/Área
+        </label>
+        <input
+          pInputText
+          type="text"
+          [(ngModel)]="filters.autorArea"
+          placeholder="Nombre del autor o área"
+          class="w-full"
+        />
+      </div>
+
+      <div>
+        <label
+          class="block text-sm font-medium mb-2"
+          style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+        >
+          <i class="pi pi-sort-alt mr-2"></i>Ordenar por
+        </label>
+        <p-select
+          [(ngModel)]="filters.orderBy"
+          [options]="orderByOptions"
+          optionLabel="label"
+          optionValue="value"
+          styleClass="w-full"
+        />
+      </div>
+
+      <div>
+        <label
+          class="block text-sm font-medium mb-2"
+          style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+        >
+          <i class="pi pi-calendar mr-2"></i>Año desde
+        </label>
+        <p-datepicker
+          [(ngModel)]="filters.anioInicio"
+          view="year"
+          dateFormat="yy"
+          placeholder="Seleccionar año"
+          styleClass="w-full"
+          [showClear]="true"
+        />
+      </div>
+
+      <div>
+        <label
+          class="block text-sm font-medium mb-2"
+          style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+        >
+          <i class="pi pi-calendar mr-2"></i>Año hasta
+        </label>
+        <p-datepicker
+          [(ngModel)]="filters.anioFin"
+          view="year"
+          dateFormat="yy"
+          placeholder="Seleccionar año"
+          styleClass="w-full"
+          [showClear]="true"
+        />
+      </div>
+    </div>
+
+    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+      <div>
+        @if (hasActiveFilters()) {
+          <span class="text-sm" style="color: var(--color-text-secondary)">
+            <i class="pi pi-filter mr-1"></i>
+            Filtros activos
+          </span>
+        }
+      </div>
+
+      <div class="flex gap-3">
+        <p-button
+          label="Limpiar"
+          icon="pi pi-times"
+          [outlined]="true"
+          severity="secondary"
+          [rounded]="true"
+          styleClass="!font-medium !px-6 !py-2"
+          (onClick)="onClear()"
+          [disabled]="!hasActiveFilters() && !filters.query"
+        />
+
+        <p-button
+          label="Buscar"
+          icon="pi pi-search"
+          severity="primary"
+          [rounded]="true"
+          styleClass="!text-white !font-medium !px-6 !py-2"
+          (onClick)="onSearch()"
+          [disabled]="!filters.query && !hasActiveFilters()"
+        />
+      </div>
+    </div>
+  </div>
+</p-card>

@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { SearchResponse } from './models/search.model';
-import { SearchParams, SearchResult } from './models/discovery.model';
+import { SearchParams, SearchResult, Facet } from './models/discovery.model';
 
 @Injectable({ providedIn: 'root' })
 export class DiscoveryService {
@@ -39,7 +39,7 @@ export class DiscoveryService {
 
     if (params.filters) {
       for (const filter of params.filters) {
-        httpParams = httpParams.set(`f.${filter.name}`, `${filter.value},${filter.operator}`);
+        httpParams = httpParams.append(`f.${filter.name}`, `${filter.value},${filter.operator}`);
       }
     }
 
@@ -53,13 +53,26 @@ export class DiscoveryService {
       .map((obj) => obj._embedded.indexableObject);
 
     const page = response._embedded?.searchResult?.page;
+    const facets = this.mapFacets(response);
 
     return {
       items,
+      facets,
       totalElements: page?.totalElements ?? 0,
       totalPages: page?.totalPages ?? 0,
       page: page?.number ?? 0,
       size: page?.size ?? 20,
     };
+  }
+
+  private mapFacets(response: SearchResponse): Facet[] {
+    const rawFacets = response._embedded?.facets || [];
+    return rawFacets.map((facet) => ({
+      name: facet.name,
+      values: (facet._embedded?.values || []).map((v) => ({
+        label: v.label,
+        count: v.count,
+      })),
+    }));
   }
 }

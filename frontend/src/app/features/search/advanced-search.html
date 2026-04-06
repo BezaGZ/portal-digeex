@@ -12,233 +12,58 @@
       </p>
     </div>
 
-    <p-card styleClass="mb-8">
-      <div class="space-y-6">
-        <div>
-          <label
-            for="search-query"
-            class="block text-sm font-medium mb-2"
-            style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
-          >
-            <i class="pi pi-search mr-2"></i>Buscar en todo el portal
-          </label>
-          <input
-            pInputText
-            id="search-query"
-            type="text"
-            [(ngModel)]="filters.query"
-            placeholder="Ej: Manual de docentes, acuerdo ministerial, PEAC..."
-            class="w-full"
-            (keyup.enter)="onSearch()"
-          />
-        </div>
+    <app-search-filters
+      [comunidadesOptions]="comunidadesOptions()"
+      (search)="onSearch($event)"
+      (clear)="onClear()"
+    />
 
-        <div class="flex items-center gap-3 my-6">
-          <div class="flex-grow border-t border-gray-200"></div>
-          <span
-            class="text-sm font-semibold uppercase tracking-wide"
-            style="color: var(--color-text-secondary)"
-            >Filtros Avanzados</span
-          >
-          <div class="flex-grow border-t border-gray-200"></div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div>
-            <label
-              for="comunidades"
-              class="block text-sm font-medium mb-2"
-              style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
-            >
-              <i class="pi pi-sitemap mr-2"></i>Programas/Comunidades
-            </label>
-            <p-multiselect
-              [(ngModel)]="filters.comunidades"
-              [options]="comunidadesOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Todos los programas"
-              [maxSelectedLabels]="2"
-              styleClass="w-full"
-              [showClear]="true"
-            />
-          </div>
-
-          <div>
-            <label
-              for="tipo-doc"
-              class="block text-sm font-medium mb-2"
-              style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
-            >
-              <i class="pi pi-file mr-2"></i>Tipo de Documento
-            </label>
-            <p-multiselect
-              [(ngModel)]="filters.tipoDocumento"
-              [options]="tipoDocumentoOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Todos los tipos"
-              [maxSelectedLabels]="2"
-              styleClass="w-full"
-              [showClear]="true"
-            />
-          </div>
-
-          <div>
-            <label
-              for="order-by"
-              class="block text-sm font-medium mb-2"
-              style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
-            >
-              <i class="pi pi-sort-alt mr-2"></i>Ordenar por
-            </label>
-            <p-select
-              [(ngModel)]="filters.orderBy"
-              [options]="orderByOptions"
-              optionLabel="label"
-              optionValue="value"
-              styleClass="w-full"
-            />
-          </div>
-
-          <div>
-            <label
-              for="anio-inicio"
-              class="block text-sm font-medium mb-2"
-              style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
-            >
-              <i class="pi pi-calendar mr-2"></i>Año desde
-            </label>
-            <p-datepicker
-              [(ngModel)]="filters.anioInicio"
-              view="year"
-              dateFormat="yy"
-              placeholder="Seleccionar año"
-              styleClass="w-full"
-              [showClear]="true"
-            />
-          </div>
-
-          <div>
-            <label
-              for="anio-fin"
-              class="block text-sm font-medium mb-2"
-              style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
-            >
-              <i class="pi pi-calendar mr-2"></i>Año hasta
-            </label>
-            <p-datepicker
-              [(ngModel)]="filters.anioFin"
-              view="year"
-              dateFormat="yy"
-              placeholder="Seleccionar año"
-              styleClass="w-full"
-              [showClear]="true"
-            />
+    <div class="mt-6">
+      @if (isSearching()) {
+        <div class="max-w-[1400px] mx-auto">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
+              <app-skeleton-card />
+            }
           </div>
         </div>
+      } @else if (results().length > 0) {
+        <div class="max-w-[1400px] mx-auto">
+          <div class="mb-4">
+            <p
+              class="text-sm"
+              style="color: var(--color-text-secondary); font-family: var(--font-body)"
+            >
+              {{ totalElements() }} resultados encontrados
+            </p>
+          </div>
 
-        <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-          <div>
-            @if (hasActiveFilters()) {
-              <span class="text-sm" style="color: var(--color-text-secondary)">
-                <i class="pi pi-filter mr-1"></i>
-                Filtros activos
-              </span>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
+            @for (item of results(); track item.id) {
+              <app-document-card
+                [item]="item"
+                (cardClick)="navigateToDocument($event)"
+                (download)="downloadBitstream($event)"
+              />
             }
           </div>
 
-          <div class="flex gap-3">
-            <p-button
-              label="Limpiar"
-              icon="pi pi-times"
-              [outlined]="true"
-              severity="secondary"
-              [rounded]="true"
-              styleClass="!font-medium !px-6 !py-2"
-              (onClick)="clearFilters()"
-              [disabled]="!hasActiveFilters() && !filters.query"
-            />
-
-            <p-button
-              label="Buscar"
-              icon="pi pi-search"
-              severity="primary"
-              [rounded]="true"
-              styleClass="!text-white !font-medium !px-6 !py-2"
-              (onClick)="onSearch()"
-              [disabled]="!filters.query"
+          <div class="mt-6">
+            <p-paginator
+              [rows]="itemsPerPage"
+              [totalRecords]="totalElements()"
+              [first]="currentPage * itemsPerPage"
+              (onPageChange)="onPageChange($event)"
             />
           </div>
         </div>
-      </div>
-    </p-card>
-
-    @if (hasSearched()) {
-      <div>
-        @if (isSearching()) {
-          <div class="text-center py-16">
-            <i class="pi pi-spin pi-spinner text-4xl" style="color: var(--gob-azul-gobierno)"></i>
-            <p
-              class="mt-4"
-              style="color: var(--color-text-secondary); font-family: var(--font-body)"
-            >
-              Buscando en el repositorio...
-            </p>
-          </div>
-        } @else {
-          @if (results().length > 0) {
-            <div class="bg-white rounded-lg p-6 shadow-sm">
-              <h2
-                class="text-xl font-bold mb-4"
-                style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
-              >
-                Resultados ({{ results().length }})
-              </h2>
-
-              <div class="space-y-4">
-                @for (result of results(); track result.uuid) {
-                  <div class="border-b border-gray-100 pb-4 last:border-0">
-                    <h3
-                      class="mb-1"
-                      style="
-                        color: var(--gob-azul-gobierno);
-                        font-family: var(--font-heading);
-                        font-weight: 500;
-                      "
-                    >
-                      {{ result.name }}
-                    </h3>
-                    <p
-                      class="text-sm"
-                      style="color: var(--color-text-secondary); font-family: var(--font-body)"
-                    >
-                      {{ result.metadata['dc.description.abstract']?.[0]?.value ?? '' }}
-                    </p>
-                  </div>
-                }
-              </div>
-            </div>
-          } @else {
-            <div class="bg-white rounded-lg p-12 text-center shadow-sm">
-              <i class="pi pi-search text-5xl text-gray-300 mb-4 block"></i>
-              <h3
-                class="text-xl mb-2"
-                style="
-                  color: var(--gob-azul-gobierno);
-                  font-family: var(--font-heading);
-                  font-weight: 500;
-                "
-              >
-                No se encontraron resultados
-              </h3>
-              <p style="color: var(--color-text-secondary); font-family: var(--font-body)">
-                Intenta con otros términos o ajusta los filtros
-              </p>
-            </div>
-          }
-        }
-      </div>
-    }
+      } @else if (hasSearched()) {
+        <app-empty-state
+          icon="pi pi-search"
+          title="No se encontraron resultados"
+          message="Intenta con otros términos o ajusta los filtros"
+        />
+      }
+    </div>
   </div>
 </div>

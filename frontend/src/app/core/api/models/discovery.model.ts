@@ -6,6 +6,16 @@ export interface FacetFilter {
   operator: string;
 }
 
+export interface FacetValue {
+  label: string;
+  count: number;
+}
+
+export interface Facet {
+  name: string;
+  values: FacetValue[];
+}
+
 export interface SearchParams {
   query?: string;
   scope?: string;
@@ -17,6 +27,7 @@ export interface SearchParams {
 
 export interface SearchResult {
   items: Item[];
+  facets: Facet[];
   totalElements: number;
   totalPages: number;
   page: number;

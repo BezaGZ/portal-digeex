@@ -14,6 +14,27 @@ export interface SearchObject {
 }
 
 /**
+ * Valor individual de una faceta retornada por DSpace Discovery.
+ */
+export interface SearchFacetValue {
+  label: string;
+  count: number;
+  _links: HalLinks;
+}
+
+/**
+ * Faceta retornada por DSpace Discovery (autor, tipo, idioma, etc.).
+ */
+export interface SearchFacet {
+  name: string;
+  facetType: string;
+  _embedded: {
+    values: SearchFacetValue[];
+  };
+  _links: HalLinks;
+}
+
+/**
  * Respuesta de la API de búsqueda/descubrimiento de DSpace.
  */
 export interface SearchResponse {
@@ -24,6 +45,7 @@ export interface SearchResponse {
       };
       page: HalPage;
     };
+    facets: SearchFacet[];
   };
   _links: HalLinks;
 }

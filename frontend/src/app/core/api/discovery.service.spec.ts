@@ -45,6 +45,16 @@ describe('DiscoveryService', () => {
           number: 0,
         },
       },
+      facets: [
+        {
+          name: 'type',
+          facetType: 'text',
+          _embedded: {
+            values: [{ label: 'Manual', count: 1, _links: { self: { href: '' } } }],
+          },
+          _links: { self: { href: '' } },
+        },
+      ],
     },
     _links: {
       self: { href: '/api/discover/search/objects' },
