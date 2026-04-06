@@ -2,9 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, Router } from '@angular/router';
+import { vi } from 'vitest';
 import { of } from 'rxjs';
 import { AlbumViewer } from './album-viewer';
 import { GalleryService } from '../../services/gallery.service';
+import { Album } from '../../models';
 
 /**
  * Tests para AlbumViewer (vista detalle de álbum con grid de fotos).
@@ -12,11 +14,32 @@ import { GalleryService } from '../../services/gallery.service';
  * Carga un álbum completo por UUID desde route params,
  * muestra grid de fotos y abre modal PrimeNG Galleria.
  *
- * Ciclo 6 TDD — Sprint 4 (RED).
+ * Ciclo 6 TDD — Sprint 4 (GREEN).
  */
 describe('AlbumViewer', () => {
   let galleryService: GalleryService;
   let router: Router;
+
+  const MOCK_ALBUM: Album = {
+    id: 'album-001',
+    title: 'Taller PEAC 2025',
+    description: 'Fotografías del taller.',
+    date: '2025-03-15',
+    coverPhoto: '/server/api/core/bitstreams/thumb-001/content',
+    photos: [
+      { id: 'photo-1', url: '/server/api/core/bitstreams/p1/content', thumbnailUrl: '/server/api/core/bitstreams/p1/content' },
+      { id: 'photo-2', url: '/server/api/core/bitstreams/p2/content', thumbnailUrl: '/server/api/core/bitstreams/p2/content' },
+      { id: 'photo-3', url: '/server/api/core/bitstreams/p3/content', thumbnailUrl: '/server/api/core/bitstreams/p3/content' },
+    ],
+    program: 'PEAC',
+    subjects: ['Educación'],
+    eventType: 'Taller',
+    author: 'DIGEEX',
+    publisher: 'MINEDUC',
+    populationType: 'Jóvenes',
+    imageContext: 'Grupal',
+    photoCount: 3,
+  };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -33,6 +56,9 @@ describe('AlbumViewer', () => {
 
     galleryService = TestBed.inject(GalleryService);
     router = TestBed.inject(Router);
+
+    vi.spyOn(galleryService, 'getAlbumById').mockReturnValue(of(MOCK_ALBUM));
+    vi.spyOn(router, 'navigate').mockImplementation(() => Promise.resolve(true));
   });
 
   it('should create', () => {
@@ -44,6 +70,7 @@ describe('AlbumViewer', () => {
     const fixture = TestBed.createComponent(AlbumViewer);
     fixture.detectChanges();
 
+    expect(galleryService.getAlbumById).toHaveBeenCalledWith('album-001');
     expect(fixture.componentInstance.album()).not.toBeNull();
     expect(fixture.componentInstance.album()!.id).toBe('album-001');
   });
@@ -65,7 +92,7 @@ describe('AlbumViewer', () => {
   });
 
   it('should navigate to /galeria when album is not found', () => {
-    vi.spyOn(router, 'navigate').mockImplementation(() => Promise.resolve(true));
+    vi.spyOn(galleryService, 'getAlbumById').mockReturnValue(of(undefined));
 
     const fixture = TestBed.createComponent(AlbumViewer);
     fixture.detectChanges();
@@ -91,8 +118,6 @@ describe('AlbumViewer', () => {
   });
 
   it('should navigate to /galeria on goBack', () => {
-    vi.spyOn(router, 'navigate').mockImplementation(() => Promise.resolve(true));
-
     const fixture = TestBed.createComponent(AlbumViewer);
     fixture.componentInstance.goBack();
 
