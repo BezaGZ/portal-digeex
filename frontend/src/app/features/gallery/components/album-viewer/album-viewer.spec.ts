@@ -14,11 +14,13 @@ import { Album } from '../../models';
  * Carga un álbum completo por UUID desde route params,
  * muestra grid de fotos y abre modal PrimeNG Galleria.
  *
- * Ciclo 6 TDD — Sprint 4 (GREEN).
+ * Ciclo 6 TDD — Sprint 4
  */
 describe('AlbumViewer', () => {
   let galleryService: GalleryService;
   let router: Router;
+
+  /** Fixtures */
 
   const MOCK_ALBUM: Album = {
     id: 'album-001',
@@ -40,6 +42,8 @@ describe('AlbumViewer', () => {
     imageContext: 'Grupal',
     photoCount: 3,
   };
+
+  /** Setup */
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -66,61 +70,69 @@ describe('AlbumViewer', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('should extract album id from route params and call getAlbumById', () => {
-    const fixture = TestBed.createComponent(AlbumViewer);
-    fixture.detectChanges();
+  /** Carga de álbum */
 
-    expect(galleryService.getAlbumById).toHaveBeenCalledWith('album-001');
-    expect(fixture.componentInstance.album()).not.toBeNull();
-    expect(fixture.componentInstance.album()!.id).toBe('album-001');
+  describe('album loading', () => {
+    it('should extract album id from route params and call getAlbumById', () => {
+      const fixture = TestBed.createComponent(AlbumViewer);
+      fixture.detectChanges();
+
+      expect(galleryService.getAlbumById).toHaveBeenCalledWith('album-001');
+      expect(fixture.componentInstance.album()).not.toBeNull();
+      expect(fixture.componentInstance.album()!.id).toBe('album-001');
+    });
+
+    it('should set album signal with loaded data', () => {
+      const fixture = TestBed.createComponent(AlbumViewer);
+      fixture.detectChanges();
+      const album = fixture.componentInstance.album();
+
+      expect(album!.title).toBe('Taller PEAC 2025');
+      expect(album!.photos.length).toBe(3);
+    });
+
+    it('should set isLoading to false after load completes', () => {
+      const fixture = TestBed.createComponent(AlbumViewer);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.isLoading()).toBe(false);
+    });
+
+    it('should navigate to /galeria when album is not found', () => {
+      vi.spyOn(galleryService, 'getAlbumById').mockReturnValue(of(undefined));
+
+      const fixture = TestBed.createComponent(AlbumViewer);
+      fixture.detectChanges();
+
+      expect(router.navigate).toHaveBeenCalledWith(['/galeria']);
+    });
   });
 
-  it('should set album signal with loaded data', () => {
-    const fixture = TestBed.createComponent(AlbumViewer);
-    fixture.detectChanges();
-    const album = fixture.componentInstance.album();
+  /** Galleria modal y utilidades */
 
-    expect(album!.title).toBe('Taller PEAC 2025');
-    expect(album!.photos.length).toBe(3);
-  });
+  describe('galleria and utilities', () => {
+    it('should open galleria with correct index', () => {
+      const fixture = TestBed.createComponent(AlbumViewer);
+      const component = fixture.componentInstance;
 
-  it('should set isLoading to false after load completes', () => {
-    const fixture = TestBed.createComponent(AlbumViewer);
-    fixture.detectChanges();
+      component.openGalleria(3);
 
-    expect(fixture.componentInstance.isLoading()).toBe(false);
-  });
+      expect(component.activeIndex()).toBe(3);
+      expect(component.displayGalleria()).toBe(true);
+    });
 
-  it('should navigate to /galeria when album is not found', () => {
-    vi.spyOn(galleryService, 'getAlbumById').mockReturnValue(of(undefined));
+    it('should format date in Spanish locale', () => {
+      const fixture = TestBed.createComponent(AlbumViewer);
+      const formatted = fixture.componentInstance.formatDate('2025-03-15');
 
-    const fixture = TestBed.createComponent(AlbumViewer);
-    fixture.detectChanges();
+      expect(formatted).toContain('2025');
+    });
 
-    expect(router.navigate).toHaveBeenCalledWith(['/galeria']);
-  });
+    it('should navigate to /galeria on goBack', () => {
+      const fixture = TestBed.createComponent(AlbumViewer);
+      fixture.componentInstance.goBack();
 
-  it('should open galleria with correct index', () => {
-    const fixture = TestBed.createComponent(AlbumViewer);
-    const component = fixture.componentInstance;
-
-    component.openGalleria(3);
-
-    expect(component.activeIndex()).toBe(3);
-    expect(component.displayGalleria()).toBe(true);
-  });
-
-  it('should format date in Spanish locale', () => {
-    const fixture = TestBed.createComponent(AlbumViewer);
-    const formatted = fixture.componentInstance.formatDate('2025-03-15');
-
-    expect(formatted).toContain('2025');
-  });
-
-  it('should navigate to /galeria on goBack', () => {
-    const fixture = TestBed.createComponent(AlbumViewer);
-    fixture.componentInstance.goBack();
-
-    expect(router.navigate).toHaveBeenCalledWith(['/galeria']);
+      expect(router.navigate).toHaveBeenCalledWith(['/galeria']);
+    });
   });
 });
