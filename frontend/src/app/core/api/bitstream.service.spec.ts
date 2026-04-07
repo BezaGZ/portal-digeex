@@ -9,11 +9,13 @@ import { BitstreamService } from './bitstream.service';
  * Servicio que encadena las peticiones bundles → bitstreams
  * de un item y genera URLs de descarga.
  *
- * Ciclo 2 TDD — Sprint 4 (RED).
+ * Ciclo 2 TDD — Sprint 4
  */
 describe('BitstreamService', () => {
   let service: BitstreamService;
   let httpMock: HttpTestingController;
+
+  /** Fixtures */
 
   const mockBundlesResponse = {
     _embedded: {
@@ -45,6 +47,8 @@ describe('BitstreamService', () => {
     page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
   };
 
+  /** Setup */
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
@@ -62,10 +66,12 @@ describe('BitstreamService', () => {
     httpMock.verify();
   });
 
+  /** Verifica que el servicio se instancie correctamente. */
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
 
+  /** Verifica la cadena getBundles → getBitstreamsFromBundle del bundle ORIGINAL. */
   it('should get bitstreams from item bundles', async () => {
     const promise = new Promise((resolve, reject) => {
       service.getBitstreamsForItem('item-uuid-123').subscribe({
@@ -96,6 +102,7 @@ describe('BitstreamService', () => {
     await promise;
   });
 
+  /** Verifica que getDownloadUrl() genere la URL correcta de descarga. */
   it('should build download URL', () => {
     const url = service.getDownloadUrl('bs-001');
     expect(url).toBe('/server/api/core/bitstreams/bs-001/content');

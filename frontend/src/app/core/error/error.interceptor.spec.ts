@@ -13,7 +13,7 @@ import { errorInterceptor } from './error.interceptor';
  * Proporciona feedback consistente al usuario mediante redirecciones
  * y notificaciones toast según el tipo de error HTTP.
  *
- * Ciclo 3 TDD - Sprint 3: 5 tests implementados.
+ * Ciclo 3 TDD — Sprint 3
  */
 describe('errorInterceptor', () => {
   let httpMock: HttpTestingController;
@@ -21,6 +21,8 @@ describe('errorInterceptor', () => {
   let router: Router;
   let messageService: MessageService;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+  /** Setup */
 
   beforeEach(() => {
     const routerMock = {
@@ -51,7 +53,7 @@ describe('errorInterceptor', () => {
     httpMock.verify();
   });
 
-  // ─── 401 Unauthorized ─────────────────────────────────────
+  /** 401 Unauthorized */
 
   /** Verifica que el interceptor redirija a /login cuando recibe un error 401. */
   it('should redirect to /login on 401 Unauthorized', async () => {
@@ -75,7 +77,7 @@ describe('errorInterceptor', () => {
     }
   });
 
-  // ─── 403 Forbidden ────────────────────────────────────────
+  /** 403 Forbidden */
 
   /** Verifica que el interceptor muestre un toast de error cuando recibe un 403. */
   it('should show toast error on 403 Forbidden', async () => {
@@ -103,7 +105,7 @@ describe('errorInterceptor', () => {
     }
   });
 
-  // ─── 500 Server Error ─────────────────────────────────────
+  /** 500 Server Error */
 
   /** Verifica que el interceptor muestre un toast genérico para errores 500. */
   it('should show generic error on 500 Server Error', async () => {
@@ -131,7 +133,7 @@ describe('errorInterceptor', () => {
     }
   });
 
-  // ─── Console Logging ──────────────────────────────────────
+  /** Console Logging */
 
   /** Verifica que el interceptor registre todos los errores HTTP en consola. */
   it('should log errors to console', async () => {
@@ -158,7 +160,7 @@ describe('errorInterceptor', () => {
     }
   });
 
-  // ─── Successful Responses ─────────────────────────────────
+  /** Successful Responses */
 
   /** Verifica que el interceptor NO intercepte respuestas exitosas (2xx). */
   it('should NOT intercept successful responses (2xx)', async () => {

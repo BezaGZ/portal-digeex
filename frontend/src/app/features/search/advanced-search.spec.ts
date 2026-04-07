@@ -9,10 +9,21 @@ import { DiscoveryService } from '../../core/api/discovery.service';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { SearchFilters } from './models/search-filters.model';
 
+/**
+ * Tests para AdvancedSearch (página de búsqueda avanzada pública).
+ *
+ * Componente con barra de búsqueda + filtros dropdown que consume
+ * Discovery API con scope por colección. Implementa filtrado
+ * client-side y paginación local sobre resultados completos.
+ *
+ * Ciclo 3 TDD — Sprint 4
+ */
 describe('AdvancedSearch', () => {
   let component: AdvancedSearch;
   let discoveryService: DiscoveryService;
   let dspaceApi: DSpaceApiService;
+
+  /** Fixtures */
 
   const mockSearchResult = {
     items: [
@@ -81,6 +92,8 @@ describe('AdvancedSearch', () => {
     orderBy: 'relevancia',
   };
 
+  /** Setup */
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AdvancedSearch],
@@ -106,10 +119,12 @@ describe('AdvancedSearch', () => {
     });
   });
 
+  /** Verifica que el componente se instancie correctamente. */
   it('should be created', () => {
     expect(component).toBeTruthy();
   });
 
+  /** Verifica que los signals iniciales estén en estado por defecto. */
   it('should render search bar and filter dropdowns', () => {
     expect(component.isSearching()).toBe(false);
     expect(component.hasSearched()).toBe(false);
@@ -117,6 +132,9 @@ describe('AdvancedSearch', () => {
     expect(component.totalElements()).toBe(0);
   });
 
+  /** Búsqueda con scope por colección */
+
+  /** Verifica que forkJoin envíe un search por cada colección cuando se seleccionan todas. */
   it('should use forkJoin with scope per collection when all programs are selected', () => {
     const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
@@ -132,6 +150,7 @@ describe('AdvancedSearch', () => {
     );
   });
 
+  /** Verifica que se use un solo scope cuando se selecciona una comunidad. */
   it('should use scope when only one program is selected', () => {
     const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
@@ -144,6 +163,7 @@ describe('AdvancedSearch', () => {
     );
   });
 
+  /** Verifica que forkJoin envíe search por cada colección del subconjunto seleccionado. */
   it('should use forkJoin when a subset of programs is selected', () => {
     const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
@@ -159,6 +179,9 @@ describe('AdvancedSearch', () => {
     );
   });
 
+  /** Thumbnails, bitstreams y paginación */
+
+  /** Verifica la carga de thumbnails y bitstreams después del search (patrón program-view). */
   it('should load thumbnails and bitstreams after search (patrón program-view)', () => {
     vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
@@ -176,6 +199,7 @@ describe('AdvancedSearch', () => {
     expect(results[0].bitstreams[0].url).toBe('/server/api/core/bitstreams/orig-bs-001/content');
   });
 
+  /** Verifica que la paginación sea client-side sin nuevas llamadas al API. */
   it('should paginate client-side without new API calls', () => {
     const manyItems = Array.from({ length: 15 }, (_, i) => ({
       uuid: `item-${i}`,
@@ -205,6 +229,9 @@ describe('AdvancedSearch', () => {
     expect(component.results().length).toBe(5);
   });
 
+  /** Filtrado client-side */
+
+  /** Verifica que onClear() re-ejecute la búsqueda sin query. */
   it('should re-execute search when onClear is called', () => {
     const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
@@ -219,6 +246,7 @@ describe('AdvancedSearch', () => {
     );
   });
 
+  /** Verifica que NO se envíen parámetros f.xxx al API (filtrado client-side). */
   it('should NOT send f.xxx filter params to DSpace API (client-side filtering)', () => {
     const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
@@ -239,6 +267,7 @@ describe('AdvancedSearch', () => {
     expect(callArgs).not.toHaveProperty('filters');
   });
 
+  /** Verifica el filtrado client-side por campos de metadata (idioma, tipo, etc.). */
   it('should filter items client-side by metadata fields', () => {
     const itemsWithMetadata = [
       {

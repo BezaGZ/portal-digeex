@@ -8,11 +8,13 @@ import { LayoutService } from './layout.service';
  * Controla el comportamiento del sidebar en diferentes resoluciones (desktop ≥1024px, tablet 768-1023px, mobile <768px)
  * y gestiona el tema oscuro/claro de la aplicación.
  *
- * Ciclo 5 TDD - Sprint 3: 6 tests implementados.
+ * Ciclo 5 TDD — Sprint 3
  */
 describe('LayoutService', () => {
   let service: LayoutService;
   let originalInnerWidth: number;
+
+  /** Setup */
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -23,7 +25,6 @@ describe('LayoutService', () => {
   });
 
   afterEach(() => {
-    // Restaurar window.innerWidth original
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
@@ -31,7 +32,7 @@ describe('LayoutService', () => {
     });
   });
 
-  // ─── Initialization ───────────────────────────────────────
+  /** Initialization */
 
   /** Verifica que el servicio se inicialice con configuración por defecto. */
   it('should initialize with default config', () => {
@@ -43,7 +44,7 @@ describe('LayoutService', () => {
     expect(config.menuMode).toBe('static');
   });
 
-  // ─── Responsive Behavior ──────────────────────────────────
+  /** Responsive Behavior */
 
   /** Verifica que isDesktop() retorne true cuando window.innerWidth ≥ 1024px. */
   it('should detect desktop viewport (≥1024px)', () => {
@@ -84,62 +85,52 @@ describe('LayoutService', () => {
     expect(service.isMobile()).toBe(true);
   });
 
-  // ─── Dark Theme ───────────────────────────────────────────
+  /** Dark Theme */
 
   /** Verifica que toggleDarkMode() agregue la clase 'dark' al documentElement cuando darkTheme es true. */
   it('should toggle dark mode', () => {
-    // Inicialmente darkTheme es false
     expect(service.layoutConfig().darkTheme).toBe(false);
     expect(document.documentElement.classList.contains('dark')).toBe(false);
 
-    // Actualizar a darkTheme = true
     service.layoutConfig.update((prev) => ({ ...prev, darkTheme: true }));
     service.toggleDarkMode();
 
     expect(document.documentElement.classList.contains('dark')).toBe(true);
 
-    // Actualizar a darkTheme = false
     service.layoutConfig.update((prev) => ({ ...prev, darkTheme: false }));
     service.toggleDarkMode();
 
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 
-  // ─── Computed Signals ─────────────────────────────────────
+  /** Computed Signals */
 
   /** Verifica que el computed signal isSidebarActive sea true cuando overlayMenuActive o staticMenuMobileActive son true. */
   it('computed: isSidebarActive should be true when menu is active', () => {
-    // Inicialmente ningún menú está activo
     expect(service.isSidebarActive()).toBe(false);
 
-    // Activar overlay menu
     service.layoutState.update((prev) => ({ ...prev, overlayMenuActive: true }));
     expect(service.isSidebarActive()).toBe(true);
 
-    // Desactivar overlay, activar mobile menu
     service.layoutState.update((prev) => ({ ...prev, overlayMenuActive: false, staticMenuMobileActive: true }));
     expect(service.isSidebarActive()).toBe(true);
 
-    // Desactivar ambos
     service.layoutState.update((prev) => ({ ...prev, staticMenuMobileActive: false }));
     expect(service.isSidebarActive()).toBe(false);
   });
 
-  // ─── State Immutability ───────────────────────────────────
+  /** State Immutability */
 
   /** Verifica que layoutState.update() actualice el estado de forma inmutable. */
   it('signal: layoutState should update immutably', () => {
     const initialState = service.layoutState();
 
-    // Actualizar estado
     service.layoutState.update((prev) => ({ ...prev, overlayMenuActive: true }));
 
     const updatedState = service.layoutState();
 
-    // El objeto debe ser diferente (inmutabilidad)
     expect(updatedState).not.toBe(initialState);
 
-    // Pero el valor debe estar actualizado
     expect(updatedState.overlayMenuActive).toBe(true);
     expect(initialState.overlayMenuActive).toBe(false);
   });

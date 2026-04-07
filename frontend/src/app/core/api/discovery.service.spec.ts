@@ -10,11 +10,13 @@ import { DiscoveryService } from './discovery.service';
  * (`/api/discover/search/objects`). Soporta query de texto
  * y filtros por facetas.
  *
- * Ciclo 1 TDD — Sprint 4 (RED).
+ * Ciclo 1 TDD — Sprint 4
  */
 describe('DiscoveryService', () => {
   let service: DiscoveryService;
   let httpMock: HttpTestingController;
+
+  /** Fixtures */
 
   const mockSearchResponse = {
     _embedded: {
@@ -61,6 +63,8 @@ describe('DiscoveryService', () => {
     },
   };
 
+  /** Setup */
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
@@ -78,10 +82,12 @@ describe('DiscoveryService', () => {
     httpMock.verify();
   });
 
+  /** Verifica que el servicio se instancie correctamente. */
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
 
+  /** Verifica que search() envíe el parámetro query al endpoint Discovery. */
   it('should search items with query parameter', async () => {
     const promise = new Promise((resolve, reject) => {
       service.search({ query: 'educación' }).subscribe({
@@ -105,6 +111,7 @@ describe('DiscoveryService', () => {
     await promise;
   });
 
+  /** Verifica que search() aplique filtros de facetas como f.type=Manual,equals. */
   it('should apply facet filters', async () => {
     const promise = new Promise((resolve, reject) => {
       service.search({

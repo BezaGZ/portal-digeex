@@ -69,6 +69,7 @@ describe('Gallery', () => {
     vi.spyOn(router, 'navigate').mockImplementation(() => Promise.resolve(true));
   });
 
+  /** Verifica que el componente se instancie correctamente. */
   it('should create', () => {
     const fixture = TestBed.createComponent(Gallery);
     expect(fixture.componentInstance).toBeTruthy();
@@ -77,6 +78,7 @@ describe('Gallery', () => {
   /** Carga de álbumes */
 
   describe('album loading', () => {
+    /** Verifica que se llame a searchAlbums y getFilterOptions al inicializar. */
     it('should call searchAlbums and getFilterOptions on init', () => {
       const fixture = TestBed.createComponent(Gallery);
       fixture.detectChanges();
@@ -87,6 +89,7 @@ describe('Gallery', () => {
       expect(fixture.componentInstance.totalRecords()).toBe(8);
     });
 
+    /** Verifica que los signals se actualicen tras carga exitosa de álbumes. */
     it('should update signals after successful album load', () => {
       const fixture = TestBed.createComponent(Gallery);
       fixture.detectChanges();
@@ -97,6 +100,7 @@ describe('Gallery', () => {
       expect(component.isLoading()).toBe(false);
     });
 
+    /** Verifica que se establezcan álbumes vacíos en caso de error del servicio. */
     it('should set empty albums on service error', () => {
       vi.spyOn(galleryService, 'searchAlbums').mockReturnValue(throwError(() => new Error('Server error')));
 
@@ -107,6 +111,7 @@ describe('Gallery', () => {
       expect(fixture.componentInstance.totalRecords()).toBe(0);
     });
 
+    /** Verifica que los signals de opciones de filtro se pueblen desde el servicio. */
     it('should populate filter option signals from service', () => {
       const fixture = TestBed.createComponent(Gallery);
       fixture.detectChanges();
@@ -121,6 +126,7 @@ describe('Gallery', () => {
   /** Paginación y filtros */
 
   describe('pagination and filters', () => {
+    /** Verifica que onPageChange() llame a searchAlbums con la nueva página. */
     it('should call searchAlbums with new page on onPageChange', () => {
       const fixture = TestBed.createComponent(Gallery);
       fixture.detectChanges();
@@ -133,6 +139,7 @@ describe('Gallery', () => {
       expect(searchSpy).toHaveBeenCalledWith({}, 2, 6);
     });
 
+    /** Verifica que onFiltersChange() reinicie a página 0 con los nuevos filtros. */
     it('should reset to page 0 on onFiltersChange', () => {
       const fixture = TestBed.createComponent(Gallery);
       fixture.detectChanges();
@@ -145,6 +152,7 @@ describe('Gallery', () => {
       expect(searchSpy).toHaveBeenCalledWith({ programs: ['PRONEA'] }, 0, 6);
     });
 
+    /** Verifica que onClearFilters() limpie filtros y reinicie la búsqueda. */
     it('should clear filters on onClearFilters', () => {
       const fixture = TestBed.createComponent(Gallery);
       fixture.detectChanges();
@@ -161,6 +169,7 @@ describe('Gallery', () => {
   /** Navegación */
 
   describe('navigation', () => {
+    /** Verifica que openAlbum() navegue a /galeria/:id. */
     it('should navigate to /galeria/:id on openAlbum', () => {
       const fixture = TestBed.createComponent(Gallery);
       fixture.detectChanges();
@@ -171,6 +180,7 @@ describe('Gallery', () => {
       expect(router.navigate).toHaveBeenCalledWith(['/galeria', 'album-1']);
     });
 
+    /** Verifica que goBack() navegue a la raíz. */
     it('should navigate to / on goBack', () => {
       const fixture = TestBed.createComponent(Gallery);
       fixture.detectChanges();

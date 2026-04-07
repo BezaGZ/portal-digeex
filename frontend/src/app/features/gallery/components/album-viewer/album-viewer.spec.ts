@@ -65,6 +65,7 @@ describe('AlbumViewer', () => {
     vi.spyOn(router, 'navigate').mockImplementation(() => Promise.resolve(true));
   });
 
+  /** Verifica que el componente se instancie correctamente. */
   it('should create', () => {
     const fixture = TestBed.createComponent(AlbumViewer);
     expect(fixture.componentInstance).toBeTruthy();
@@ -73,6 +74,7 @@ describe('AlbumViewer', () => {
   /** Carga de álbum */
 
   describe('album loading', () => {
+    /** Verifica que extraiga el id del álbum de la ruta y llame a getAlbumById. */
     it('should extract album id from route params and call getAlbumById', () => {
       const fixture = TestBed.createComponent(AlbumViewer);
       fixture.detectChanges();
@@ -82,6 +84,7 @@ describe('AlbumViewer', () => {
       expect(fixture.componentInstance.album()!.id).toBe('album-001');
     });
 
+    /** Verifica que el signal album se actualice con los datos cargados. */
     it('should set album signal with loaded data', () => {
       const fixture = TestBed.createComponent(AlbumViewer);
       fixture.detectChanges();
@@ -91,6 +94,7 @@ describe('AlbumViewer', () => {
       expect(album!.photos.length).toBe(3);
     });
 
+    /** Verifica que isLoading sea false después de completar la carga. */
     it('should set isLoading to false after load completes', () => {
       const fixture = TestBed.createComponent(AlbumViewer);
       fixture.detectChanges();
@@ -98,6 +102,7 @@ describe('AlbumViewer', () => {
       expect(fixture.componentInstance.isLoading()).toBe(false);
     });
 
+    /** Verifica que navegue a /galeria cuando el álbum no se encuentra. */
     it('should navigate to /galeria when album is not found', () => {
       vi.spyOn(galleryService, 'getAlbumById').mockReturnValue(of(undefined));
 
@@ -111,6 +116,7 @@ describe('AlbumViewer', () => {
   /** Galleria modal y utilidades */
 
   describe('galleria and utilities', () => {
+    /** Verifica que openGalleria() establezca el índice activo y muestre la galleria. */
     it('should open galleria with correct index', () => {
       const fixture = TestBed.createComponent(AlbumViewer);
       const component = fixture.componentInstance;
@@ -121,6 +127,7 @@ describe('AlbumViewer', () => {
       expect(component.displayGalleria()).toBe(true);
     });
 
+    /** Verifica que formatDate() incluya el año en formato español. */
     it('should format date in Spanish locale', () => {
       const fixture = TestBed.createComponent(AlbumViewer);
       const formatted = fixture.componentInstance.formatDate('2025-03-15');
@@ -128,6 +135,7 @@ describe('AlbumViewer', () => {
       expect(formatted).toContain('2025');
     });
 
+    /** Verifica que goBack() navegue a /galeria. */
     it('should navigate to /galeria on goBack', () => {
       const fixture = TestBed.createComponent(AlbumViewer);
       fixture.componentInstance.goBack();

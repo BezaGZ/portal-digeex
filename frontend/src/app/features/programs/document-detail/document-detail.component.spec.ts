@@ -131,6 +131,7 @@ describe('DocumentDetailComponent', () => {
     /* eslint-enable @typescript-eslint/no-explicit-any */
   });
 
+  /** Verifica que el componente se instancie correctamente. */
   it('should create', () => {
     expect(component).toBeTruthy();
   });
@@ -138,6 +139,7 @@ describe('DocumentDetailComponent', () => {
   /** Carga de item y metadata */
 
   describe('carga de item', () => {
+    /** Verifica que extraiga docId de la ruta y llame a getItem. */
     it('should extract docId from route params and call getItem', () => {
       component.ngOnInit();
 
@@ -146,6 +148,7 @@ describe('DocumentDetailComponent', () => {
       expect(dspaceApi.getItem).toHaveBeenCalledWith('item-doc-001');
     });
 
+    /** Verifica que los campos de metadata se mapeen correctamente al UI. */
     it('should display metadata fields from item response', () => {
       component.ngOnInit();
 
@@ -177,6 +180,7 @@ describe('DocumentDetailComponent', () => {
   /** Bundles y bitstreams */
 
   describe('bundles y bitstreams', () => {
+    /** Verifica la carga de bundles THUMBNAIL y ORIGINAL mediante forkJoin. */
     it('should load THUMBNAIL and ORIGINAL bundles via forkJoin', () => {
       component.ngOnInit();
 
@@ -186,6 +190,7 @@ describe('DocumentDetailComponent', () => {
       expect(component.documentCoverImage).toBe('/server/api/core/bitstreams/thumb-bs-001/content');
     });
 
+    /** Verifica que se construyan URLs de descarga y se mapeen a BitstreamView. */
     it('should build download URL and map bitstreams to BitstreamView', () => {
       component.ngOnInit();
 
@@ -200,6 +205,7 @@ describe('DocumentDetailComponent', () => {
   /** Tipo video (MovingImage) */
 
   describe('tipo video', () => {
+    /** Verifica la detección de items de video por dc.type MovingImage. */
     it('should detect video item by dc.type MovingImage', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.spyOn(dspaceApi, 'getItem').mockReturnValue(of(MOCK_ITEM_VIDEO as any));
@@ -214,12 +220,14 @@ describe('DocumentDetailComponent', () => {
   /** Estados: loading y error */
 
   describe('estados', () => {
+    /** Verifica que isLoading sea false después de completar la carga. */
     it('should set isLoading to false after load completes', () => {
       component.ngOnInit();
 
       expect(component.isLoading).toBe(false);
     });
 
+    /** Verifica el manejo graceful de errores del API. */
     it('should handle API error gracefully', () => {
       vi.spyOn(dspaceApi, 'getItem').mockReturnValue(throwError(() => new Error('404 Not Found')));
 

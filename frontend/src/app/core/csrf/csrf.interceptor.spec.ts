@@ -10,11 +10,13 @@ import { csrfInterceptor } from './csrf.interceptor';
  * Lee el token desde la cookie DSPACE-XSRF-COOKIE y lo adjunta como header
  * X-XSRF-TOKEN en operaciones mutantes (POST, PUT, PATCH, DELETE).
  *
- * Ciclo 2 TDD - Sprint 3: 6 tests implementados.
+ * Ciclo 2 TDD — Sprint 3
  */
 describe('csrfInterceptor', () => {
   let httpMock: HttpTestingController;
   let httpClient: HttpClient;
+
+  /** Setup */
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -29,13 +31,11 @@ describe('csrfInterceptor', () => {
   });
 
   afterEach(() => {
-    // Verifica que no haya requests HTTP pendientes
     httpMock.verify();
-    // Limpia cookies después de cada test
     document.cookie = 'DSPACE-XSRF-COOKIE=; expires=Thu, 01 Jan 1970 00:00:00 UTC';
   });
 
-  // ─── POST Requests ────────────────────────────────────────
+  /** POST Requests */
 
   /** Verifica que el interceptor adjunte el header X-XSRF-TOKEN en requests POST. */
   it('should attach X-XSRF-TOKEN on POST requests', async () => {
@@ -56,7 +56,7 @@ describe('csrfInterceptor', () => {
     await promise;
   });
 
-  // ─── PUT Requests ─────────────────────────────────────────
+  /** PUT Requests */
 
   /** Verifica que el interceptor adjunte el header X-XSRF-TOKEN en requests PUT. */
   it('should attach X-XSRF-TOKEN on PUT requests', async () => {
@@ -77,7 +77,7 @@ describe('csrfInterceptor', () => {
     await promise;
   });
 
-  // ─── PATCH Requests ───────────────────────────────────────
+  /** PATCH Requests */
 
   /** Verifica que el interceptor adjunte el header X-XSRF-TOKEN en requests PATCH. */
   it('should attach X-XSRF-TOKEN on PATCH requests', async () => {
@@ -98,7 +98,7 @@ describe('csrfInterceptor', () => {
     await promise;
   });
 
-  // ─── DELETE Requests ──────────────────────────────────────
+  /** DELETE Requests */
 
   /** Verifica que el interceptor adjunte el header X-XSRF-TOKEN en requests DELETE. */
   it('should attach X-XSRF-TOKEN on DELETE requests', async () => {
@@ -119,7 +119,7 @@ describe('csrfInterceptor', () => {
     await promise;
   });
 
-  // ─── GET Requests (sin token) ─────────────────────────────
+  /** GET Requests (sin token) */
 
   /** Verifica que el interceptor NO adjunte el header en requests GET (solo lectura). */
   it('should NOT attach token on GET requests', async () => {
@@ -140,7 +140,7 @@ describe('csrfInterceptor', () => {
     await promise;
   });
 
-  // ─── Cookie Reading ───────────────────────────────────────
+  /** Cookie Reading */
 
   /** Verifica que el interceptor lea correctamente el token desde la cookie DSPACE-XSRF-COOKIE. */
   it('should read token from DSPACE-XSRF-COOKIE', async () => {

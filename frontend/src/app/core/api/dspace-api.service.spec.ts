@@ -10,11 +10,13 @@ import { DSpaceApiService } from './dspace-api.service';
  * Verifica URLs correctas, parámetros de paginación, transformación
  * de respuestas HAL+HATEOAS y manejo de errores HTTP.
  *
- * Ciclo 1 TDD - Sprint 3: 12 tests implementados.
+ * Ciclo 1 TDD — Sprint 3
  */
 describe('DSpaceApiService', () => {
   let service: DSpaceApiService;
   let httpMock: HttpTestingController;
+
+  /** Setup */
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -30,7 +32,6 @@ describe('DSpaceApiService', () => {
   });
 
   afterEach(() => {
-    // Verifica que no haya requests HTTP pendientes
     httpMock.verify();
   });
 
@@ -38,7 +39,7 @@ describe('DSpaceApiService', () => {
     expect(service).toBeTruthy();
   });
 
-  // ─── Communities ──────────────────────────────────────────
+  /** Communities */
 
   /** Verifica que getCommunities() use paginación por defecto (page=0, size=20). */
   it('should fetch communities with default pagination', async () => {
@@ -177,7 +178,7 @@ describe('DSpaceApiService', () => {
     await promise;
   });
 
-  // ─── Collections ──────────────────────────────────────────
+  /** Collections */
 
   /** Verifica que getAllCollections() obtenga todas las colecciones del repositorio. */
   it('should fetch all collections', async () => {
@@ -272,7 +273,7 @@ describe('DSpaceApiService', () => {
     await promise;
   });
 
-  // ─── Items ────────────────────────────────────────────────
+  /** Items */
 
   /** Verifica que getItems() obtenga los ítems de una colección mediante el endpoint de búsqueda. */
   it('should fetch items from collection', async () => {
@@ -351,7 +352,7 @@ describe('DSpaceApiService', () => {
     await promise;
   });
 
-  // ─── Bitstreams ───────────────────────────────────────────
+  /** Bitstreams */
 
   /** Verifica que getBitstreams() obtenga los archivos adjuntos de un ítem. */
   it('should fetch bitstreams of an item', async () => {
@@ -405,7 +406,7 @@ describe('DSpaceApiService', () => {
     await promise;
   });
 
-  // ─── Error Handling ───────────────────────────────────────
+  /** Error Handling */
 
   /** Verifica que el servicio maneje correctamente errores HTTP (404, 401, 500, etc.). */
   it('should handle HTTP errors', async () => {

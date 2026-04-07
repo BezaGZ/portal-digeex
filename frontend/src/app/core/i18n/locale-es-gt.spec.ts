@@ -14,9 +14,11 @@ import localeEsGT from '@angular/common/locales/es-GT';
  * - Decimales: coma como separador decimal, punto como separador de miles
  * - Moneda: Q (Quetzal guatemalteco)
  *
- * Ciclo 4 TDD - Sprint 3: 6 tests implementados.
+ * Ciclo 4 TDD — Sprint 3
  */
 describe('Locale es-GT', () => {
+  /** Setup */
+
   beforeAll(() => {
     registerLocaleData(localeEsGT);
   });
@@ -32,12 +34,12 @@ describe('Locale es-GT', () => {
     });
   });
 
-  // ─── DatePipe ─────────────────────────────────────────────
+  /** DatePipe */
 
   /** Verifica que DatePipe formatee fechas en formato dd/MM/yyyy para es-GT. */
   it('DatePipe should format as dd/MM/yyyy', () => {
     const datePipe = TestBed.inject(DatePipe);
-    const date = new Date(2026, 2, 2); // 2 de marzo de 2026 (mes es 0-indexed)
+    const date = new Date(2026, 2, 2);
 
     const formatted = datePipe.transform(date, 'short');
 
@@ -47,14 +49,14 @@ describe('Locale es-GT', () => {
   /** Verifica que DatePipe muestre los nombres de meses en español. */
   it('DatePipe should show months in Spanish', () => {
     const datePipe = TestBed.inject(DatePipe);
-    const date = new Date(2026, 2, 15); // 15 de marzo de 2026
+    const date = new Date(2026, 2, 15);
 
     const formatted = datePipe.transform(date, 'MMMM');
 
     expect(formatted).toBe('marzo');
   });
 
-  // ─── DecimalPipe ──────────────────────────────────────────
+  /** DecimalPipe */
 
   /** Verifica que DecimalPipe use coma como separador decimal. */
   it('DecimalPipe should use comma as decimal separator', () => {
@@ -76,7 +78,7 @@ describe('Locale es-GT', () => {
     expect(formatted).toBe('1,234,567.89');
   });
 
-  // ─── CurrencyPipe ─────────────────────────────────────────
+  /** CurrencyPipe */
 
   /** Verifica que CurrencyPipe muestre el símbolo Q (Quetzal). */
   it('CurrencyPipe should display Q symbol', () => {
