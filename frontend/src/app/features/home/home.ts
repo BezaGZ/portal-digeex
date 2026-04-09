@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { DSpaceApiService } from '../../core/api/dspace-api.service';
+import { CollectionCacheService } from '../../core/api/collection-cache.service';
 import { CollectionView, ItemView } from '../../core/api/models';
 import { getCollectionRoute } from '../../core/config/collection-format.config';
 import { SkeletonCardComponent, EmptyStateComponent } from '../../shared';
@@ -21,7 +21,7 @@ export class Home implements OnInit {
   constructor(
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private dspaceApi: DSpaceApiService,
+    private collectionCache: CollectionCacheService,
   ) {}
 
   ngOnInit() {
@@ -32,21 +32,8 @@ export class Home implements OnInit {
     this.isLoading = true;
     this.cdr.markForCheck();
 
-    this.dspaceApi.getAllCollections(0, 100).subscribe({
-      next: (response) => {
-        const collections = response._embedded?.['collections'] || [];
-
-        const menuCollections = collections.filter((collection) => {
-          const type = collection.metadata?.['dc.type']?.[0]?.value;
-          return type === 'menu-principal';
-        });
-
-        menuCollections.sort((a, b) => {
-          const orderA = parseInt(a.metadata?.['dc.identifier.other']?.[0]?.value || '999');
-          const orderB = parseInt(b.metadata?.['dc.identifier.other']?.[0]?.value || '999');
-          return orderA - orderB;
-        });
-
+    this.collectionCache.getByMenuType('menu-principal').subscribe({
+      next: (menuCollections) => {
         this.children = menuCollections.map((collection) => ({
           id: collection.uuid,
           name: collection.metadata?.['dc.subject']?.[0]?.value || collection.name,

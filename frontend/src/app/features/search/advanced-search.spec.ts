@@ -10,13 +10,13 @@ import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { SearchFilters } from './models/search-filters.model';
 
 /**
- * Tests para AdvancedSearch (página de búsqueda avanzada pública).
+ * Tests para AdvancedSearch — Arquitectura server-side con scope único.
  *
- * Componente con barra de búsqueda + filtros dropdown que consume
- * Discovery API con scope por colección. Implementa filtrado
- * client-side y paginación local sobre resultados completos.
+ * El componente requiere selección de scope (programa/subdirección) antes
+ * de buscar. Usa un solo request con paginación server-side (page + size)
+ * y filtro implícito f.format=documento para excluir galería/estadísticas.
  *
- * Ciclo 3 TDD — Sprint 4
+ * Sprint 4 — Refactor facetas server-side
  */
 describe('AdvancedSearch', () => {
   let component: AdvancedSearch;
@@ -42,11 +42,28 @@ describe('AdvancedSearch', () => {
         type: 'item',
       },
     ],
-    facets: [],
+    facets: [
+      { name: 'itemtype', values: [{ label: 'Manual', count: 5 }] },
+      { name: 'language', values: [{ label: 'es', count: 10 }] },
+      { name: 'audience', values: [{ label: 'Primaria', count: 3 }] },
+    ],
     totalElements: 1,
     totalPages: 1,
     page: 0,
-    size: 100,
+    size: 10,
+  };
+
+  const mockFacetsOnlyResult = {
+    items: [],
+    facets: [
+      { name: 'itemtype', values: [{ label: 'Manual', count: 5 }, { label: 'Guía', count: 3 }] },
+      { name: 'language', values: [{ label: 'es', count: 10 }] },
+      { name: 'audience', values: [{ label: 'Primaria', count: 3 }] },
+    ],
+    totalElements: 0,
+    totalPages: 0,
+    page: 0,
+    size: 0,
   };
 
   const mockBundlesResponse = {
@@ -82,7 +99,7 @@ describe('AdvancedSearch', () => {
 
   const defaultFilters: SearchFilters = {
     query: '',
-    comunidades: [],
+    scope: 'scope-001',
     tipoDocumento: [],
     nivelEducativo: [],
     idioma: [],
@@ -90,6 +107,12 @@ describe('AdvancedSearch', () => {
     anioInicio: null,
     anioFin: null,
     orderBy: 'relevancia',
+  };
+
+  const mockCommunitiesResponse = {
+    _embedded: { communities: [] },
+    _links: {},
+    page: { size: 10, totalElements: 0, totalPages: 0, number: 0 },
   };
 
   /** Setup */
@@ -109,14 +132,18 @@ describe('AdvancedSearch', () => {
     discoveryService = TestBed.inject(DiscoveryService);
     dspaceApi = TestBed.inject(DSpaceApiService);
 
+    /* Mock community loading to prevent ngOnInit API calls */
     /* eslint-disable @typescript-eslint/no-explicit-any */
+    vi.spyOn(dspaceApi, 'getCommunities').mockReturnValue(of(mockCommunitiesResponse as any));
     vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(mockBundlesResponse as any));
     vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
       if (bundleUuid === 'thumb-bundle-001') return of(mockThumbnailBitstreams as any);
       if (bundleUuid === 'orig-bundle-001') return of(mockOriginalBitstreams as any);
       return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any);
-    /* eslint-enable @typescript-eslint/no-explicit-any */
     });
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+
+    fixture.detectChanges();
   });
 
   /** Verifica que el componente se instancie correctamente. */
@@ -125,68 +152,123 @@ describe('AdvancedSearch', () => {
   });
 
   /** Verifica que los signals iniciales estén en estado por defecto. */
-  it('should render search bar and filter dropdowns', () => {
+  it('should initialize with empty state and no search executed', () => {
     expect(component.isSearching()).toBe(false);
     expect(component.hasSearched()).toBe(false);
     expect(component.results()).toEqual([]);
     expect(component.totalElements()).toBe(0);
   });
 
-  /** Búsqueda con scope por colección */
+  /** Scope y facetas */
 
-  /** Verifica que forkJoin envíe un search por cada colección cuando se seleccionan todas. */
-  it('should use forkJoin with scope per collection when all programs are selected', () => {
-    const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
+  /** Verifica que al cambiar scope se carguen facetas con size=0. */
+  it('should load facets with size=0 when scope changes', () => {
+    const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockFacetsOnlyResult));
 
-    component.documentCollectionUuids.set(['col-001', 'col-002']);
-    component.onSearch({ ...defaultFilters, query: 'educación' });
+    component.onScopeChange('scope-001');
 
-    expect(searchSpy).toHaveBeenCalledTimes(2);
     expect(searchSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ query: 'educación', scope: 'col-001', size: 100 })
-    );
-    expect(searchSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ query: 'educación', scope: 'col-002', size: 100 })
+      expect.objectContaining({
+        scope: 'scope-001',
+        size: 0,
+      })
     );
   });
 
-  /** Verifica que se use un solo scope cuando se selecciona una comunidad. */
-  it('should use scope when only one program is selected', () => {
+  /** Verifica que al cambiar scope se resetee el estado de búsqueda. */
+  it('should reset search state when scope changes', () => {
+    component.onScopeChange('scope-001');
+
+    expect(component.hasSearched()).toBe(false);
+    expect(component.results()).toEqual([]);
+    expect(component.totalElements()).toBe(0);
+  });
+
+  /** Búsqueda con scope único y paginación server-side */
+
+  /** Verifica que la búsqueda usa un solo scope con page y size=10 (server-side pagination). */
+  it('should search with single scope and server-side pagination (page + size=10)', () => {
     const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
-    component.documentCollectionUuids.set(['col-001', 'col-002']);
-    component.onSearch({ ...defaultFilters, query: 'educación', comunidades: ['col-001'] });
+    component.onSearch({ ...defaultFilters, query: 'educación' });
 
     expect(searchSpy).toHaveBeenCalledTimes(1);
     expect(searchSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ query: 'educación', scope: 'col-001', size: 100 })
+      expect.objectContaining({
+        scope: 'scope-001',
+        query: 'educación',
+        page: 0,
+        size: 10,
+      })
     );
   });
 
-  /** Verifica que forkJoin envíe search por cada colección del subconjunto seleccionado. */
-  it('should use forkJoin when a subset of programs is selected', () => {
+  /** Verifica que búsqueda sin filtros activos no envíe filters array. */
+  it('should not send filters when no facet filters are active', () => {
     const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
-    component.documentCollectionUuids.set(['col-001', 'col-002', 'col-003']);
-    component.onSearch({ ...defaultFilters, query: 'educación', comunidades: ['col-001', 'col-002'] });
+    component.onSearch({ ...defaultFilters, query: 'test' });
 
-    expect(searchSpy).toHaveBeenCalledTimes(2);
-    expect(searchSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ scope: 'col-001' })
-    );
-    expect(searchSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ scope: 'col-002' })
+    const callArgs = searchSpy.mock.calls[0][0];
+    expect(callArgs.filters).toBeUndefined(
     );
   });
 
-  /** Thumbnails, bitstreams y paginación */
+  /** Verifica que la paginación sea server-side (nueva llamada al API). */
+  it('should execute new API call on page change (server-side pagination)', () => {
+    const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
-  /** Verifica la carga de thumbnails y bitstreams después del search (patrón program-view). */
-  it('should load thumbnails and bitstreams after search (patrón program-view)', () => {
+    component.onSearch({ ...defaultFilters, query: 'test' });
+    expect(searchSpy).toHaveBeenCalledTimes(1);
+
+    component.onPageChange({ page: 1, first: 10, rows: 10, pageCount: 2 });
+
+    expect(searchSpy).toHaveBeenCalledTimes(2);
+    expect(searchSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, size: 10 })
+    );
+  });
+
+  /** Verifica que no se use forkJoin — siempre un solo search call. */
+  it('should never use forkJoin — always single search call', () => {
+    const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
+
+    component.onSearch({ ...defaultFilters, query: 'educación' });
+
+    expect(searchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  /** Filtrado server-side con f.xxx */
+
+  /** Verifica que se envíen parámetros f.xxx al API. */
+  it('should send f.xxx filter params to DSpace API', () => {
+    const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
+
+    component.onSearch({
+      ...defaultFilters,
+      query: 'test',
+      idioma: ['acr'],
+      tipoDocumento: ['Manual'],
+      nivelEducativo: ['Primaria'],
+    });
+
+    const callArgs = searchSpy.mock.calls[0][0];
+    expect(callArgs.filters).toEqual(
+      expect.arrayContaining([
+        { name: 'itemtype', value: 'Manual', operator: 'equals' },
+        { name: 'audience', value: 'Primaria', operator: 'equals' },
+        { name: 'language', value: 'acr', operator: 'equals' },
+      ])
+    );
+  });
+
+  /** Thumbnails y bitstreams */
+
+  /** Verifica la carga de thumbnails y bitstreams después del search. */
+  it('should load thumbnails and bitstreams after search', () => {
     vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
-    component.documentCollectionUuids.set(['col-001']);
-    component.onSearch({ ...defaultFilters, query: 'educación', comunidades: ['col-001'] });
+    component.onSearch({ ...defaultFilters, query: 'educación' });
 
     expect(dspaceApi.getBundles).toHaveBeenCalledWith('item-001');
     expect(dspaceApi.getBitstreamsFromBundle).toHaveBeenCalledWith('thumb-bundle-001');
@@ -199,122 +281,21 @@ describe('AdvancedSearch', () => {
     expect(results[0].bitstreams[0].url).toBe('/server/api/core/bitstreams/orig-bs-001/content');
   });
 
-  /** Verifica que la paginación sea client-side sin nuevas llamadas al API. */
-  it('should paginate client-side without new API calls', () => {
-    const manyItems = Array.from({ length: 15 }, (_, i) => ({
-      uuid: `item-${i}`,
-      name: `Doc ${i}`,
-      handle: '',
-      metadata: { 'dc.title': [{ value: `Doc ${i}` }] },
-      inArchive: true,
-      discoverable: true,
-      withdrawn: false,
-      lastModified: '',
-      type: 'item',
-    }));
+  /** onClear */
 
-    const bigResult = { items: manyItems, facets: [], totalElements: 15, totalPages: 1, page: 0, size: 100 };
-    const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(bigResult));
-
-    component.documentCollectionUuids.set(['col-001']);
-    component.onSearch({ ...defaultFilters, query: 'test', comunidades: ['col-001'] });
-
-    expect(component.results().length).toBe(10);
-    expect(component.totalElements()).toBe(15);
-    expect(searchSpy).toHaveBeenCalledTimes(1);
-
-    component.onPageChange({ page: 1, first: 10, rows: 10, pageCount: 2 });
-
-    expect(searchSpy).toHaveBeenCalledTimes(1);
-    expect(component.results().length).toBe(5);
-  });
-
-  /** Filtrado client-side */
-
-  /** Verifica que onClear() re-ejecute la búsqueda sin query. */
-  it('should re-execute search when onClear is called', () => {
+  /** Verifica que onClear resetee el estado sin ejecutar búsqueda. */
+  it('should reset state without executing search when onClear is called', () => {
     const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
-    component.documentCollectionUuids.set(['col-001']);
-    component.onSearch({ ...defaultFilters, query: 'test', comunidades: ['col-001'] });
+    component.onSearch({ ...defaultFilters, query: 'test' });
     expect(searchSpy).toHaveBeenCalledTimes(1);
 
     component.onClear();
-    expect(searchSpy).toHaveBeenCalledTimes(2);
-    expect(searchSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({ scope: 'col-001', query: undefined })
-    );
-  });
 
-  /** Verifica que NO se envíen parámetros f.xxx al API (filtrado client-side). */
-  it('should NOT send f.xxx filter params to DSpace API (client-side filtering)', () => {
-    const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
-
-    component.documentCollectionUuids.set(['col-001']);
-    component.onSearch({
-      ...defaultFilters,
-      query: 'test',
-      comunidades: ['col-001'],
-      idioma: ['acr'],
-      tipoDocumento: ['Manual'],
-      nivelEducativo: ['Primaria'],
-    });
-
-    expect(searchSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ query: 'test', scope: 'col-001', size: 100 })
-    );
-    const callArgs = searchSpy.mock.calls[0][0];
-    expect(callArgs).not.toHaveProperty('filters');
-  });
-
-  /** Verifica el filtrado client-side por campos de metadata (idioma, tipo, etc.). */
-  it('should filter items client-side by metadata fields', () => {
-    const itemsWithMetadata = [
-      {
-        uuid: 'item-es', name: 'Doc Español', handle: '', type: 'item',
-        inArchive: true, discoverable: true, withdrawn: false, lastModified: '',
-        metadata: {
-          'dc.title': [{ value: 'Doc Español' }],
-          'dc.type': [{ value: 'Manual' }],
-          'dc.language.iso': [{ value: 'es' }],
-          'dc.audience': [{ value: 'Primaria' }],
-        },
-      },
-      {
-        uuid: 'item-acr', name: 'Doc Achi', handle: '', type: 'item',
-        inArchive: true, discoverable: true, withdrawn: false, lastModified: '',
-        metadata: {
-          'dc.title': [{ value: 'Doc Achi' }],
-          'dc.type': [{ value: 'Guía' }],
-          'dc.language.iso': [{ value: 'acr' }],
-          'dc.audience': [{ value: 'Básico' }],
-        },
-      },
-      {
-        uuid: 'item-en', name: 'Doc English', handle: '', type: 'item',
-        inArchive: true, discoverable: true, withdrawn: false, lastModified: '',
-        metadata: {
-          'dc.title': [{ value: 'Doc English' }],
-          'dc.type': [{ value: 'Manual' }],
-          'dc.language.iso': [{ value: 'en' }],
-          'dc.audience': [{ value: 'Diversificado' }],
-        },
-      },
-    ];
-
-    const resultWith3 = { items: itemsWithMetadata, facets: [], totalElements: 3, totalPages: 1, page: 0, size: 100 };
-    vi.spyOn(discoveryService, 'search').mockReturnValue(of(resultWith3));
-
-    component.documentCollectionUuids.set(['col-001']);
-
-    component.onSearch({
-      ...defaultFilters,
-      comunidades: ['col-001'],
-      idioma: ['acr'],
-    });
-
-    expect(component.totalElements()).toBe(1);
-    expect(component.results().length).toBe(1);
-    expect(component.results()[0].name).toBe('Doc Achi');
+    expect(component.hasSearched()).toBe(false);
+    expect(component.results()).toEqual([]);
+    expect(component.totalElements()).toBe(0);
+    // onClear should NOT trigger a new search
+    expect(searchSpy).toHaveBeenCalledTimes(1);
   });
 });

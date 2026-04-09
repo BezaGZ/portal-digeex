@@ -4,7 +4,7 @@ import { ButtonModule } from 'primeng/button';
 import { CommonModule } from '@angular/common';
 import { Menu } from 'primeng/menu';
 import { MenuItem } from 'primeng/api';
-import { DSpaceApiService } from '../../../core/api/dspace-api.service';
+import { CollectionCacheService } from '../../../core/api/collection-cache.service';
 import { getCollectionRoute } from '../../../core/config/collection-format.config';
 
 @Component({
@@ -22,7 +22,7 @@ export class PublicHeader implements OnInit {
 
   constructor(
     private router: Router,
-    private dspaceApi: DSpaceApiService,
+    private collectionCache: CollectionCacheService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -31,23 +31,10 @@ export class PublicHeader implements OnInit {
   }
 
   loadSecondaryMenu() {
-    this.dspaceApi.getAllCollections(0, 100).subscribe({
-      next: (response) => {
-        const collections = response._embedded?.['collections'] || [];
-
-        const secondaryMenuCollections = collections.filter((collection) => {
-          const type = collection.metadata?.['dc.type']?.[0]?.value;
-          return type === 'menu-secundario';
-        });
-
-        secondaryMenuCollections.sort((a, b) => {
-          const orderA = parseInt(a.metadata?.['dc.identifier.other']?.[0]?.value || '999');
-          const orderB = parseInt(b.metadata?.['dc.identifier.other']?.[0]?.value || '999');
-          return orderA - orderB;
-        });
-
+    this.collectionCache.getByMenuType('menu-secundario').subscribe({
+      next: (menuCollections) => {
         this.menuItems = [];
-        secondaryMenuCollections.forEach((collection, index) => {
+        menuCollections.forEach((collection, index) => {
           const format = collection.metadata?.['dc.format']?.[0]?.value || 'documento';
 
           this.menuItems.push({
@@ -55,7 +42,7 @@ export class PublicHeader implements OnInit {
             routerLink: getCollectionRoute(format, collection.uuid)
           });
 
-          if (index < secondaryMenuCollections.length - 1) {
+          if (index < menuCollections.length - 1) {
             this.menuItems.push({ separator: true });
           }
         });

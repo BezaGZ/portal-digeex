@@ -1,6 +1,6 @@
 export interface SearchFilters {
   query: string;
-  comunidades: string[];
+  scope: string;
   tipoDocumento: string[];
   nivelEducativo: string[];
   idioma: string[];
@@ -8,4 +8,15 @@ export interface SearchFilters {
   anioInicio: Date | null;
   anioFin: Date | null;
   orderBy: string;
+}
+
+export interface SelectOption {
+  label: string;
+  value: string;
+}
+
+export interface ScopeOption {
+  label: string;
+  value: string;
+  group?: string;
 }

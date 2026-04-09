@@ -2,54 +2,67 @@ import { Injectable } from '@angular/core';
 import { Observable, of, forkJoin } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
+import { DiscoveryService } from '../../../core/api/discovery.service';
+import { CollectionCacheService } from '../../../core/api/collection-cache.service';
+import { FacetFilter } from '../../../core/api/models/discovery.model';
 import { Item } from '../../../core/api/models/item.model';
 import { MetadataValue } from '../../../core/api/models/metadata.model';
 import { Album, Photo, AlbumPage, GalleryFilters, FilterOption, FilterOptions } from '../models';
 export type { Album, Photo, AlbumPage, GalleryFilters, FilterOption, FilterOptions } from '../models';
 
+/**
+ * Servicio dedicado a la galería institucional.
+ * Busca álbumes de fotos dentro de la colección con dc.format = 'galeria'
+ * usando Discovery para filtros y paginación del servidor.
+ */
 @Injectable({
   providedIn: 'root',
 })
 export class GalleryService {
-  private galleryCollectionUuid: string | null = null;
+  constructor(
+    private dspaceApi: DSpaceApiService,
+    private discoveryService: DiscoveryService,
+    private collectionCache: CollectionCacheService,
+  ) {}
 
-  constructor(private dspaceApi: DSpaceApiService) {}
+  /** ─── Buscar colección de galería ─── */
 
-  // ─── Buscar colección de galería ───────────────────────
-
+  /**
+   * Obtiene el UUID de la colección de galería desde el caché global.
+   * @returns Observable con el UUID de la colección que tiene dc.format = 'galeria'
+   */
   private findGalleryCollection(): Observable<string> {
-    if (this.galleryCollectionUuid) {
-      return of(this.galleryCollectionUuid);
-    }
-
-    return this.dspaceApi.getAllCollections(0, 100).pipe(
-      map((response) => {
-        const collections = response._embedded?.['collections'] || [];
-        const gallery = collections.find(
-          (c) => c.metadata?.['dc.format']?.[0]?.value === 'galeria'
-        );
-
-        if (!gallery) {
-          throw new Error('No se encontró la colección de galería (dc.format = "galeria")');
-        }
-
-        this.galleryCollectionUuid = gallery.uuid;
-        return gallery.uuid;
-      })
-    );
+    return this.collectionCache.findByFormat('galeria');
   }
 
-  // ─── Cargar álbumes (paginado) ─────────────────────────
+  /** ─── Cargar álbumes (paginado) ─── */
 
+  /**
+   * Busca álbumes dentro de la colección de galería con filtros y paginación.
+   * Para cada ítem obtiene el thumbnail del bundle THUMBNAIL y el conteo
+   * de fotos del bundle ORIGINAL.
+   * @param filters - Filtros de galería (programa, tipo evento, población, contexto)
+   * @param page - Página actual (default: 0)
+   * @param size - Cantidad de álbumes por página (default: 6)
+   * @returns Observable con AlbumPage (álbumes + datos de paginación)
+   */
   searchAlbums(filters: GalleryFilters = {}, page = 0, size = 6): Observable<AlbumPage> {
     return this.findGalleryCollection().pipe(
-      switchMap((collectionUuid) =>
-        this.dspaceApi.getItems(collectionUuid, page, size)
-      ),
-      switchMap((itemsResponse) => {
-        const items = itemsResponse._embedded?.['items'] || [];
-        const totalElements = itemsResponse.page?.totalElements ?? 0;
-        const totalPages = Math.ceil(totalElements / size);
+      switchMap((collectionUuid) => {
+        const facetFilters = this.buildGalleryFacetFilters(filters);
+
+        return this.discoveryService.search({
+          query: filters.searchQuery?.trim() || undefined,
+          scope: collectionUuid,
+          filters: facetFilters.length > 0 ? facetFilters : undefined,
+          page,
+          size,
+        });
+      }),
+      switchMap((result) => {
+        const items = result.items;
+        const totalElements = result.totalElements;
+        const totalPages = result.totalPages;
 
         if (items.length === 0) {
           return of({ albums: [], totalElements, totalPages, page, size });
@@ -95,7 +108,7 @@ export class GalleryService {
 
         return forkJoin(albumRequests$).pipe(
           map((albums) => ({
-            albums: this.applyFilters(albums, filters),
+            albums,
             totalElements,
             totalPages,
             page,
@@ -110,8 +123,14 @@ export class GalleryService {
     );
   }
 
-  // ─── Cargar un álbum con todas sus fotos ───────────────
+  /** ─── Cargar un álbum con todas sus fotos ─── */
 
+  /**
+   * Carga un álbum completo por UUID incluyendo todas sus fotos.
+   * Obtiene el thumbnail del bundle THUMBNAIL y las fotos del bundle ORIGINAL.
+   * @param uuid - UUID del ítem (álbum) en DSpace
+   * @returns Observable con el álbum completo o undefined si falla
+   */
   getAlbumById(uuid: string): Observable<Album | undefined> {
     return this.dspaceApi.getItem(uuid).pipe(
       switchMap((item) =>
@@ -169,48 +188,50 @@ export class GalleryService {
     );
   }
 
-  // ─── Opciones de filtro (facetas) ──────────────────────
+  /** ─── Opciones de filtro (facetas) ─── */
 
+  /**
+   * Obtiene las opciones de filtro disponibles para la galería.
+   * Hace un request con size=0 para obtener solo las facetas sin ítems.
+   * @returns Observable con FilterOptions (programas, tipos evento, población, contexto)
+   */
   getFilterOptions(): Observable<FilterOptions> {
-    return this.searchAlbums({}, 0, 200).pipe(
-      map(({ albums }) => {
-        const programCounts = new Map<string, number>();
-        const eventTypeCounts = new Map<string, number>();
-        const populationCounts = new Map<string, number>();
-        const imageContextCounts = new Map<string, number>();
+    return this.findGalleryCollection().pipe(
+      switchMap((collectionUuid) =>
+        this.discoveryService.search({ scope: collectionUuid, page: 0, size: 0 })
+      ),
+      map((result) => {
+        const facetMap = new Map(result.facets.map((f) => [f.name, f.values]));
 
-        albums.forEach((album) => {
-          if (album.program) {
-            programCounts.set(album.program, (programCounts.get(album.program) || 0) + 1);
-          }
-          if (album.eventType) {
-            eventTypeCounts.set(album.eventType, (eventTypeCounts.get(album.eventType) || 0) + 1);
-          }
-          if (album.populationType) {
-            populationCounts.set(album.populationType, (populationCounts.get(album.populationType) || 0) + 1);
-          }
-          if (album.imageContext) {
-            imageContextCounts.set(album.imageContext, (imageContextCounts.get(album.imageContext) || 0) + 1);
-          }
-        });
-
-        const toSortedOptions = (counts: Map<string, number>): FilterOption[] =>
-          Array.from(counts.entries())
-            .map(([value, count]) => ({ label: value, value, count }))
+        const toFilterOptions = (facetName: string): FilterOption[] =>
+          (facetMap.get(facetName) || [])
+            .map((v) => ({ label: v.label, value: v.label, count: v.count }))
             .sort((a, b) => a.label.localeCompare(b.label));
 
         return {
-          programs: toSortedOptions(programCounts),
-          eventTypes: toSortedOptions(eventTypeCounts),
-          populationTypes: toSortedOptions(populationCounts),
-          imageContexts: toSortedOptions(imageContextCounts),
+          programs: toFilterOptions('classification'),
+          eventTypes: toFilterOptions('itemtype'),
+          populationTypes: toFilterOptions('sponsorship'),
+          imageContexts: toFilterOptions('spatial'),
         };
+      }),
+      catchError((error) => {
+        console.error('Error al cargar opciones de filtro:', error);
+        return of({ programs: [], eventTypes: [], populationTypes: [], imageContexts: [] });
       })
     );
   }
 
-  // ─── Helpers privados ──────────────────────────────────
+  /** ─── Helpers privados ─── */
 
+  /**
+   * Transforma un ítem de DSpace al modelo Album del frontend.
+   * Extrae la metadata Dublin Core y la mapea a propiedades legibles.
+   * @param item - Ítem crudo de DSpace
+   * @param coverPhoto - URL del thumbnail
+   * @param photoCount - Cantidad de fotos en el bundle ORIGINAL
+   * @returns Album con los datos mapeados
+   */
   private mapItemToAlbum(item: Item, coverPhoto: string, photoCount: number): Album {
     const allSubjects: string[] = (item.metadata?.['dc.subject'] || []).map((s: MetadataValue) => s.value);
 
@@ -219,7 +240,7 @@ export class GalleryService {
       title: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
       description: item.metadata?.['dc.description.abstract']?.[0]?.value || item.metadata?.['dc.description']?.[0]?.value || '',
       date: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-      program: allSubjects[0] || '',
+      program: item.metadata?.['dc.subject.classification']?.[0]?.value || '',
       subjects: allSubjects,
       eventType: item.metadata?.['dc.type']?.[0]?.value || '',
       author: item.metadata?.['dc.contributor.author']?.[0]?.value || '',
@@ -232,34 +253,39 @@ export class GalleryService {
     };
   }
 
-  private applyFilters(albums: Album[], filters: GalleryFilters): Album[] {
-    let filtered = [...albums];
-
-    if (filters.searchQuery?.trim()) {
-      const query = filters.searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (album) =>
-          album.title.toLowerCase().includes(query) ||
-          album.description.toLowerCase().includes(query)
-      );
-    }
+  /**
+   * Construye los filtros de faceta para la petición de Discovery.
+   * Convierte los filtros del frontend al formato que espera DSpace.
+   * @param filters - Filtros seleccionados por el usuario
+   * @returns Arreglo de FacetFilter para enviar a DiscoveryService
+   */
+  private buildGalleryFacetFilters(filters: GalleryFilters): FacetFilter[] {
+    const facets: FacetFilter[] = [];
 
     if (filters.programs && filters.programs.length > 0) {
-      filtered = filtered.filter((album) => filters.programs!.includes(album.program));
+      for (const program of filters.programs) {
+        facets.push({ name: 'classification', value: program, operator: 'equals' });
+      }
     }
 
     if (filters.eventTypes && filters.eventTypes.length > 0) {
-      filtered = filtered.filter((album) => filters.eventTypes!.includes(album.eventType));
+      for (const eventType of filters.eventTypes) {
+        facets.push({ name: 'itemtype', value: eventType, operator: 'equals' });
+      }
     }
 
     if (filters.populationTypes && filters.populationTypes.length > 0) {
-      filtered = filtered.filter((album) => filters.populationTypes!.includes(album.populationType));
+      for (const popType of filters.populationTypes) {
+        facets.push({ name: 'sponsorship', value: popType, operator: 'equals' });
+      }
     }
 
     if (filters.imageContexts && filters.imageContexts.length > 0) {
-      filtered = filtered.filter((album) => filters.imageContexts!.includes(album.imageContext));
+      for (const context of filters.imageContexts) {
+        facets.push({ name: 'spatial', value: context, operator: 'equals' });
+      }
     }
 
-    return filtered;
+    return facets;
   }
 }

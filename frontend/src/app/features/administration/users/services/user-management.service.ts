@@ -1,6 +1,12 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { UserView, UserRole, UserStatus } from '../models/user-view.model';
 
+/**
+ * Servicio para gestión de usuarios del panel administrativo.
+ * Maneja CRUD de usuarios con validaciones de negocio (máximo 2 superadmins,
+ * correo @mineduc.gob.gt obligatorio, subdirección requerida para no-superadmin).
+ * Actualmente usa datos en memoria; se conectará a DSpace EPerson API.
+ */
 @Injectable({
   providedIn: 'root',
 })
@@ -101,13 +107,20 @@ export class UserManagementService {
   private currentUserSignal = signal<UserView>(this.usersSignal()[0]);
   currentUser = this.currentUserSignal.asReadonly();
 
+  /** Cantidad de superadmins activos (máximo permitido: 2) */
   activeSuperadminsCount = computed(() => {
     return this.usersSignal().filter((u) => u.role === 'superadmin' && u.status === 'active')
       .length;
   });
 
+  /** true si se puede crear un nuevo superadmin (hay menos de 2 activos) */
   canCreateSuperadmin = computed(() => this.activeSuperadminsCount() < 2);
 
+  /**
+   * Valida que el correo termine en @mineduc.gob.gt.
+   * @param email - Correo a validar
+   * @returns Objeto con valid y error opcional
+   */
   validateEmail(email: string): { valid: boolean; error?: string } {
     if (!email.endsWith('@mineduc.gob.gt')) {
       return { valid: false, error: 'El correo debe terminar en @mineduc.gob.gt' };
@@ -115,12 +128,24 @@ export class UserManagementService {
     return { valid: true };
   }
 
+  /**
+   * Verifica si ya existe una cuenta activa con este correo.
+   * @param email - Correo a verificar
+   * @param excludeUuid - UUID a excluir de la búsqueda (para edición)
+   * @returns true si ya existe otra cuenta activa con ese correo
+   */
   emailExistsAsActive(email: string, excludeUuid?: string): boolean {
     return this.usersSignal().some(
       (u) => u.email === email && u.status === 'active' && u.uuid !== excludeUuid,
     );
   }
 
+  /**
+   * Crea un nuevo usuario con las validaciones de negocio.
+   * Valida correo, duplicados, límite de superadmins y subdirección.
+   * @param userData - Datos del nuevo usuario
+   * @returns Resultado con success, error opcional y usuario creado
+   */
   createUser(userData: {
     email: string;
     firstName: string;
@@ -162,6 +187,12 @@ export class UserManagementService {
     return { success: true, user: newUser };
   }
 
+  /**
+   * Desactiva un usuario. No permite desactivar al último superadmin
+   * ni que un usuario se desactive a sí mismo.
+   * @param uuid - UUID del usuario a desactivar
+   * @returns Resultado con success y error opcional
+   */
   deactivateUser(uuid: string): { success: boolean; error?: string } {
     const user = this.usersSignal().find((u) => u.uuid === uuid);
 
@@ -184,6 +215,12 @@ export class UserManagementService {
     return { success: true };
   }
 
+  /**
+   * Reactiva un usuario previamente desactivado.
+   * Valida que no se exceda el límite de superadmins y que no haya duplicado de correo.
+   * @param uuid - UUID del usuario a reactivar
+   * @returns Resultado con success y error opcional
+   */
   reactivateUser(uuid: string): { success: boolean; error?: string } {
     const user = this.usersSignal().find((u) => u.uuid === uuid);
 
@@ -210,6 +247,14 @@ export class UserManagementService {
     return { success: true };
   }
 
+  /**
+   * Cambia el rol y subdirección de un usuario.
+   * Valida límite de superadmins y que no se deje sin superadmin activo.
+   * @param uuid - UUID del usuario
+   * @param newRole - Nuevo rol a asignar
+   * @param newSubdivision - Nueva subdirección (null para superadmin)
+   * @returns Resultado con success y error opcional
+   */
   changeUserRole(
     uuid: string,
     newRole: UserRole,
@@ -244,6 +289,11 @@ export class UserManagementService {
     return { success: true };
   }
 
+  /**
+   * Marca que el usuario debe cambiar su contraseña en el próximo login.
+   * @param uuid - UUID del usuario
+   * @returns Resultado con success y error opcional
+   */
   resetPassword(uuid: string): { success: boolean; error?: string } {
     const user = this.usersSignal().find((u) => u.uuid === uuid);
 
@@ -258,6 +308,11 @@ export class UserManagementService {
     return { success: true };
   }
 
+  /**
+   * Devuelve los usuarios visibles según el rol del usuario actual.
+   * Superadmin ve todos; admin de subdirección solo ve su subdirección.
+   * @returns Arreglo de usuarios visibles
+   */
   getVisibleUsers(): UserView[] {
     const current = this.currentUser();
 
@@ -272,6 +327,11 @@ export class UserManagementService {
     return [];
   }
 
+  /**
+   * Devuelve los roles que el usuario actual puede asignar al crear.
+   * Superadmin puede crear cualquier rol; admin solo personal delegado.
+   * @returns Arreglo de roles permitidos
+   */
   getAllowedRolesForCreation(): UserRole[] {
     const current = this.currentUser();
 
@@ -286,6 +346,11 @@ export class UserManagementService {
     return [];
   }
 
+  /**
+   * Devuelve la subdirección por defecto para nuevos usuarios.
+   * Si el creador es admin de subdirección, se asigna su propia subdirección.
+   * @returns Subdirección por defecto o null si es superadmin
+   */
   getDefaultSubdivision(): string | null {
     const current = this.currentUser();
 
@@ -296,6 +361,11 @@ export class UserManagementService {
     return null;
   }
 
+  /**
+   * Indica si el usuario actual tiene permiso para cambiar roles.
+   * Solo los superadmins pueden modificar roles de otros usuarios.
+   * @returns true si el usuario actual es superadmin
+   */
   canModifyRoles(): boolean {
     return this.currentUser().role === 'superadmin';
   }

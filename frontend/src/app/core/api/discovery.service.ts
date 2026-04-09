@@ -5,12 +5,24 @@ import { map } from 'rxjs/operators';
 import { SearchResponse } from './models/search.model';
 import { SearchParams, SearchResult, Facet } from './models/discovery.model';
 
+/**
+ * Servicio que encapsula la Discovery API de DSpace (Apache Solr).
+ * Todas las búsquedas con filtros, facetas y texto completo pasan por aquí.
+ * El endpoint base es /api/discover/search/objects.
+ */
 @Injectable({ providedIn: 'root' })
 export class DiscoveryService {
   private readonly apiUrl = '/server/api';
 
   constructor(private readonly http: HttpClient) {}
 
+  /**
+   * Ejecuta una búsqueda en Discovery con los parámetros dados.
+   * Devuelve ítems, facetas y datos de paginación.
+   * Si se pasa size=0, solo devuelve facetas sin ítems (útil para llenar dropdowns).
+   * @param params - Parámetros de búsqueda (query, scope, filters, page, size, sort)
+   * @returns Observable con los resultados mapeados a SearchResult
+   */
   search(params: SearchParams = {}): Observable<SearchResult> {
     return this.http.get<SearchResponse>(
       `${this.apiUrl}/discover/search/objects`,
@@ -20,6 +32,12 @@ export class DiscoveryService {
     );
   }
 
+  /**
+   * Construye los HttpParams a partir de los parámetros de búsqueda.
+   * Los filtros se agregan como f.nombre=valor,operador (formato que espera DSpace).
+   * @param params - Parámetros de búsqueda del frontend
+   * @returns HttpParams listos para enviar al backend
+   */
   private buildSearchParams(params: SearchParams): HttpParams {
     let httpParams = new HttpParams()
       .set('page', params.page ?? 0)
@@ -46,6 +64,13 @@ export class DiscoveryService {
     return httpParams;
   }
 
+  /**
+   * Transforma la respuesta cruda de DSpace (HAL+HATEOAS) al modelo limpio SearchResult.
+   * Extrae ítems del objeto anidado searchResult._embedded.objects y
+   * la paginación de searchResult.page.
+   * @param response - Respuesta cruda de la Discovery API
+   * @returns SearchResult con ítems, facetas, totales y paginación
+   */
   private mapResponse(response: SearchResponse): SearchResult {
     const objects = response._embedded?.searchResult?._embedded?.objects || [];
     const items = objects
@@ -65,6 +90,12 @@ export class DiscoveryService {
     };
   }
 
+  /**
+   * Extrae las facetas de la respuesta de Discovery y las simplifica.
+   * Cada faceta tiene nombre y arreglo de valores con label y count.
+   * @param response - Respuesta cruda de la Discovery API
+   * @returns Arreglo de Facet simplificadas
+   */
   private mapFacets(response: SearchResponse): Facet[] {
     const rawFacets = response._embedded?.facets || [];
     return rawFacets.map((facet) => ({

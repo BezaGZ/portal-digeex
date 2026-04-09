@@ -12,14 +12,9 @@ import { SearchResponse, BundlesResponse, Bundle } from './models/search.model';
 
 /**
  * Servicio principal para comunicación con la API REST de DSpace 9.
- *
- * Todas las peticiones pasan por el proxy de Angular (`/server` → `localhost:8080`)
- * configurado en `proxy.conf.json`.
- *
- * Las respuestas siguen el formato HAL+HATEOAS con `_embedded`, `_links` y `page`.
- *
- * @see docs/02-desarrollo/04-arquitectura-frontend.md - Arquitectura de servicios
- * @see docs/03-testing/01-guia-testing.md - Testing de servicios HTTP
+ * Todas las peticiones pasan por el proxy de Angular (/server → localhost:8080)
+ * configurado en proxy.conf.json.
+ * Las respuestas siguen el formato HAL+HATEOAS con _embedded, _links y page.
  */
 @Injectable({ providedIn: 'root' })
 export class DSpaceApiService {
@@ -27,13 +22,12 @@ export class DSpaceApiService {
 
   constructor(private readonly http: HttpClient) {}
 
-  // ─── Communities ──────────────────────────────────────────
+  /** ─── Communities ─── */
 
   /**
    * Obtiene la lista paginada de comunidades de nivel superior.
-   *
    * @param page - Número de página (default: 0)
-   * @param size - Tamaño de página (default: 20)
+   * @param size - Cantidad por página (default: 20)
    * @returns Observable con lista HAL de comunidades
    */
   getCommunities(page = 0, size = 20): Observable<HalListResponse<Community>> {
@@ -49,7 +43,6 @@ export class DSpaceApiService {
 
   /**
    * Obtiene una comunidad por su UUID.
-   *
    * @param uuid - UUID de la comunidad
    * @returns Observable con los datos de la comunidad
    */
@@ -59,7 +52,13 @@ export class DSpaceApiService {
     );
   }
 
-  /** Obtiene las sub-comunidades de una comunidad padre. */
+  /**
+   * Obtiene las sub-comunidades de una comunidad padre.
+   * @param parentUuid - UUID de la comunidad padre
+   * @param page - Número de página (default: 0)
+   * @param size - Cantidad por página (default: 20)
+   * @returns Observable con lista HAL de sub-comunidades
+   */
   getSubcommunities(parentUuid: string, page = 0, size = 20): Observable<HalListResponse<Community>> {
     const params = new HttpParams()
       .set('page', page)
@@ -71,9 +70,15 @@ export class DSpaceApiService {
     );
   }
 
-  // ─── Collections ──────────────────────────────────────────
+  /** ─── Collections ─── */
 
-  /** Obtiene TODAS las colecciones del repositorio. */
+  /**
+   * Obtiene todas las colecciones del repositorio (sin filtrar por comunidad).
+   * Usado internamente por CollectionCacheService para llenar el caché.
+   * @param page - Número de página (default: 0)
+   * @param size - Cantidad por página (default: 100)
+   * @returns Observable con lista HAL de colecciones
+   */
   getAllCollections(page = 0, size = 100): Observable<HalListResponse<Collection>> {
     const params = new HttpParams()
       .set('page', page)
@@ -85,7 +90,13 @@ export class DSpaceApiService {
     );
   }
 
-  /** Obtiene las colecciones de una comunidad. */
+  /**
+   * Obtiene las colecciones que pertenecen a una comunidad específica.
+   * @param communityUuid - UUID de la comunidad padre
+   * @param page - Número de página (default: 0)
+   * @param size - Cantidad por página (default: 20)
+   * @returns Observable con lista HAL de colecciones
+   */
   getCollections(communityUuid: string, page = 0, size = 20): Observable<HalListResponse<Collection>> {
     const params = new HttpParams()
       .set('page', page)
@@ -97,15 +108,28 @@ export class DSpaceApiService {
     );
   }
 
-  /** Obtiene una colección por su UUID. */
+  /**
+   * Obtiene una colección por su UUID.
+   * @param uuid - UUID de la colección
+   * @returns Observable con los datos de la colección
+   */
   getCollection(uuid: string): Observable<Collection> {
     return this.http.get<Collection>(
       `${this.apiUrl}/core/collections/${uuid}`
     );
   }
 
-  // ─── Items ────────────────────────────────────────────────
+  /** ─── Items ─── */
 
+  /**
+   * Obtiene los ítems de una colección usando Discovery (Solr).
+   * La respuesta HAL viene anidada en searchResult._embedded.objects,
+   * así que este método la transforma a un HalListResponse<Item> limpio.
+   * @param collectionUuid - UUID de la colección (scope)
+   * @param page - Número de página (default: 0)
+   * @param size - Cantidad por página (default: 20)
+   * @returns Observable con lista HAL de ítems
+   */
   getItems(collectionUuid: string, page = 0, size = 20): Observable<HalListResponse<Item>> {
     const params = new HttpParams()
       .set('scope', collectionUuid)
@@ -131,20 +155,22 @@ export class DSpaceApiService {
     );
   }
 
-  /** Obtiene un ítem por su UUID. */
+  /**
+   * Obtiene un ítem por su UUID.
+   * @param uuid - UUID del ítem
+   * @returns Observable con los datos del ítem incluyendo toda su metadata
+   */
   getItem(uuid: string): Observable<Item> {
     return this.http.get<Item>(
       `${this.apiUrl}/core/items/${uuid}`
     );
   }
 
-  // ─── Bitstreams ───────────────────────────────────────────
+  /** ─── Bitstreams ─── */
 
   /**
-   * Retorna la URL del thumbnail de un ítem.
-   *
-   * DSpace sirve el thumbnail desde bundle THUMBNAIL o genera uno desde PDF.
-   *
+   * Construye la URL del thumbnail de un ítem.
+   * DSpace lo sirve desde el bundle THUMBNAIL o genera uno desde PDF.
    * @param itemUuid - UUID del ítem
    * @returns URL del thumbnail
    */
@@ -153,14 +179,11 @@ export class DSpaceApiService {
   }
 
   /**
-   * Obtiene los bundles de un ítem.
-   *
-   * Bundles disponibles: ORIGINAL (PDFs), THUMBNAIL (portadas), LICENSE
-   *
+   * Obtiene los bundles de un ítem (ORIGINAL, THUMBNAIL, LICENSE, etc.).
    * @param itemUuid - UUID del ítem
    * @param page - Número de página (default: 0)
-   * @param size - Tamaño de página (default: 20)
-   * @returns Observable con respuesta HAL de bundles
+   * @param size - Cantidad por página (default: 20)
+   * @returns Observable con respuesta de bundles
    */
   getBundles(itemUuid: string, page = 0, size = 20): Observable<BundlesResponse> {
     const params = new HttpParams()
@@ -174,11 +197,10 @@ export class DSpaceApiService {
   }
 
   /**
-   * Obtiene los bitstreams de un bundle específico.
-   *
+   * Obtiene los bitstreams (archivos) de un bundle específico.
    * @param bundleUuid - UUID del bundle
    * @param page - Número de página (default: 0)
-   * @param size - Tamaño de página (default: 20)
+   * @param size - Cantidad por página (default: 20)
    * @returns Observable con lista HAL de bitstreams
    */
   getBitstreamsFromBundle(bundleUuid: string, page = 0, size = 20): Observable<HalListResponse<Bitstream>> {
@@ -193,15 +215,13 @@ export class DSpaceApiService {
   }
 
   /**
-   * Obtiene los bitstreams del bundle ORIGINAL de un ítem.
-   *
-   * En DSpace 9.2 los bitstreams se consultan en dos pasos:
-   * 1. GET /api/core/items/{uuid}/bundles
-   * 2. GET /api/core/bundles/{bundle-uuid}/bitstreams
-   *
+   * Obtiene los bitstreams del bundle ORIGINAL de un ítem en dos pasos:
+   * 1) GET /items/{uuid}/bundles → busca el bundle ORIGINAL
+   * 2) GET /bundles/{uuid}/bitstreams → devuelve los archivos
+   * Si no existe bundle ORIGINAL, devuelve arreglo vacío.
    * @param itemUuid - UUID del ítem
    * @param page - Número de página (default: 0)
-   * @param size - Tamaño de página (default: 20)
+   * @param size - Cantidad por página (default: 20)
    * @returns Observable con lista HAL de bitstreams del bundle ORIGINAL
    */
   getBitstreams(itemUuid: string, page = 0, size = 20): Observable<HalListResponse<Bitstream>> {

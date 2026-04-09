@@ -1,18 +1,18 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { PaginatorModule } from 'primeng/paginator';
-import { forkJoin, of } from 'rxjs';
-import { switchMap, map } from 'rxjs/operators';
+import { forkJoin, of, EMPTY } from 'rxjs';
+import { switchMap, map, catchError } from 'rxjs/operators';
 import { DiscoveryService } from '../../core/api/discovery.service';
-import { SearchResult } from '../../core/api/models/discovery.model';
+import { SearchResult, FacetFilter } from '../../core/api/models/discovery.model';
 import { Item } from '../../core/api/models/item.model';
 import { Bitstream } from '../../core/api/models/bitstream.model';
 import { ItemView, BitstreamView, PaginatorEvent } from '../../core/api/models/view.model';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { DocumentCardComponent, SkeletonCardComponent, EmptyStateComponent } from '../../shared';
 import { SearchFiltersComponent } from './components/search-filters/search-filters';
-import { SearchFilters } from './models/search-filters.model';
+import { SearchFilters, ScopeOption } from './models/search-filters.model';
 
 @Component({
   selector: 'app-advanced-search',
@@ -29,18 +29,23 @@ import { SearchFilters } from './models/search-filters.model';
   templateUrl: './advanced-search.html',
 })
 export class AdvancedSearch implements OnInit {
+  @ViewChild(SearchFiltersComponent) filtersComponent!: SearchFiltersComponent;
+
   isSearching = signal(false);
+  isLoadingFacets = signal(false);
   hasSearched = signal(false);
   results = signal<ItemView[]>([]);
   totalElements = signal(0);
-  documentCollectionUuids = signal<string[]>([]);
-  comunidadesOptions = signal<{ label: string; value: string }[]>([]);
+  scopeOptions = signal<ScopeOption[]>([]);
 
   itemsPerPage = 10;
   currentPage = 0;
 
   private currentFilters: SearchFilters | null = null;
-  private allItems: Item[] = [];
+  private currentScope = '';
+
+  /** UUID de la community raíz DIGEEX — se detecta dinámicamente */
+  private digeexCommunityUuid = '';
 
   constructor(
     private discoveryService: DiscoveryService,
@@ -49,7 +54,16 @@ export class AdvancedSearch implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.loadDocumentCollections();
+    this.loadScopeOptions();
+  }
+
+  onScopeChange(scopeUuid: string) {
+    this.currentScope = scopeUuid;
+    this.currentFilters = null;
+    this.hasSearched.set(false);
+    this.results.set([]);
+    this.totalElements.set(0);
+    this.loadFacetsForScope(scopeUuid);
   }
 
   onSearch(filters: SearchFilters) {
@@ -61,12 +75,14 @@ export class AdvancedSearch implements OnInit {
   onClear() {
     this.currentFilters = null;
     this.currentPage = 0;
-    this.executeSearch();
+    this.results.set([]);
+    this.totalElements.set(0);
+    this.hasSearched.set(false);
   }
 
   onPageChange(event: PaginatorEvent) {
     this.currentPage = event.page ?? 0;
-    this.showCurrentPage();
+    this.executeSearch();
   }
 
   navigateToDocument(item: ItemView) {
@@ -80,123 +96,157 @@ export class AdvancedSearch implements OnInit {
     link.click();
   }
 
-  private loadDocumentCollections() {
-    this.dspaceApi.getAllCollections(0, 100).subscribe((response) => {
-      const collections = response._embedded?.['collections'] || [];
-      const documentCollections = collections.filter(
-        (c) => c.metadata?.['dc.format']?.[0]?.value === 'documento'
-      );
-      const uuids = documentCollections.map((c) => c.uuid);
-      this.documentCollectionUuids.set(uuids);
-      this.comunidadesOptions.set(
-        documentCollections.map((c) => ({
-          label: c.metadata?.['dc.title']?.[0]?.value || c.name,
-          value: c.uuid,
-        }))
+  /**
+   * Carga opciones de ámbito: sub-comunidades como grupos, colecciones como programas individuales.
+   * También agrega una opción "Todos los programas" usando el UUID de la comunidad raíz DIGEEX.
+   */
+  private loadScopeOptions() {
+    this.dspaceApi.getCommunities(0, 10).subscribe((response) => {
+      const communities = response._embedded?.['communities'] || [];
+      const digeex = communities.find(
+        (c) =>
+          c.name?.includes('DIGEEX') ||
+          c.metadata?.['dc.title']?.[0]?.value?.includes('DIGEEX') ||
+          c.metadata?.['dc.title']?.[0]?.value?.includes('Extraescolar')
       );
 
-      if (uuids.length > 0) {
-        this.executeSearch();
+      if (!digeex) return;
+      this.digeexCommunityUuid = digeex.uuid;
+
+      this.dspaceApi.getSubcommunities(digeex.uuid, 0, 20).subscribe((subResponse) => {
+        const subCommunities = subResponse._embedded?.['subcommunities'] || [];
+        const options: ScopeOption[] = [
+          { label: 'Todos los programas (DIGEEX)', value: digeex.uuid },
+        ];
+
+        let remaining = subCommunities.length;
+        if (remaining === 0) {
+          this.scopeOptions.set(options);
+          return;
+        }
+
+        for (const sub of subCommunities) {
+          const subName = sub.metadata?.['dc.title']?.[0]?.value || sub.name;
+
+          options.push({
+            label: `${subName} (todos)`,
+            value: sub.uuid,
+            group: subName,
+          });
+
+          this.dspaceApi.getCollections(sub.uuid, 0, 20).subscribe((colResponse) => {
+            const collections = colResponse._embedded?.['collections'] || [];
+            for (const col of collections) {
+              const format = col.metadata?.['dc.format']?.[0]?.value;
+              if (format === 'documento') {
+                options.push({
+                  label: col.metadata?.['dc.title']?.[0]?.value || col.name,
+                  value: col.uuid,
+                  group: subName,
+                });
+              }
+            }
+
+            remaining--;
+            if (remaining === 0) {
+              this.scopeOptions.set(options);
+            }
+          });
+        }
+      });
+    });
+  }
+
+  /**
+   * Carga facetas para el ámbito seleccionado usando size=0 (no se devuelven elementos).
+   */
+  private loadFacetsForScope(scopeUuid: string) {
+    this.isLoadingFacets.set(true);
+
+    this.discoveryService.search({
+      scope: scopeUuid,
+      size: 0,
+    }).pipe(
+      catchError(() => {
+        this.isLoadingFacets.set(false);
+        return EMPTY;
+      }),
+    ).subscribe((result) => {
+      this.isLoadingFacets.set(false);
+      if (this.filtersComponent) {
+        this.filtersComponent.updateFacetOptions(result.facets);
       }
     });
   }
 
+  /**
+   * Ejecuta búsqueda con un único ámbito + paginación del lado del servidor.
+   */
   private executeSearch() {
+    const filters = this.currentFilters;
+    const scope = filters?.scope || this.currentScope;
+
+    if (!scope) return;
+
     this.isSearching.set(true);
     this.hasSearched.set(true);
 
-    const allUuids = this.documentCollectionUuids();
-    const filters = this.currentFilters;
+    const facetFilters = this.buildFacetFilters(filters);
 
-    const selected = filters && (filters.comunidades?.length ?? 0) > 0
-      ? filters.comunidades
-      : allUuids;
-
-    if (selected.length === 0) {
-      this.isSearching.set(false);
-      return;
-    }
-
-    const baseParams = {
+    this.discoveryService.search({
+      scope,
       query: filters?.query || undefined,
       sort: filters ? this.mapSort(filters.orderBy) : undefined,
-      page: 0,
-      size: 100,
-    };
-
-    if (selected.length === 1) {
-      this.discoveryService.search({ ...baseParams, scope: selected[0] })
-        .subscribe((result: SearchResult) => {
-          this.allItems = result.items;
-          this.showCurrentPage();
-        });
-    } else {
-      const searches = selected.map((scope) =>
-        this.discoveryService.search({ ...baseParams, scope })
-      );
-
-      forkJoin(searches).subscribe((results: SearchResult[]) => {
-        this.allItems = results.flatMap((r) => r.items);
-        this.showCurrentPage();
-      });
-    }
-  }
-
-  private showCurrentPage() {
-    const filtered = this.applyClientFilters(this.allItems);
-    this.totalElements.set(filtered.length);
-
-    const start = this.currentPage * this.itemsPerPage;
-    const pageItems = filtered.slice(start, start + this.itemsPerPage);
-
-    if (pageItems.length === 0) {
-      this.results.set([]);
-      this.isSearching.set(false);
-      return;
-    }
-
-    this.isSearching.set(true);
-    this.loadItemDetails(pageItems);
-  }
-
-  private applyClientFilters(items: Item[]): Item[] {
-    const filters = this.currentFilters;
-    if (!filters) return items;
-
-    return items.filter((item) => {
-      if (filters.tipoDocumento?.length > 0) {
-        const itemType = item.metadata?.['dc.type']?.[0]?.value || '';
-        if (!filters.tipoDocumento.includes(itemType)) return false;
-      }
-
-      if (filters.nivelEducativo?.length > 0) {
-        const itemAudience = item.metadata?.['dc.audience']?.[0]?.value || '';
-        if (!filters.nivelEducativo.includes(itemAudience)) return false;
-      }
-
-      if (filters.idioma?.length > 0) {
-        const itemLang = item.metadata?.['dc.language.iso']?.[0]?.value || '';
-        if (!filters.idioma.includes(itemLang)) return false;
-      }
-
-      if (filters.autorArea) {
-        const authors = item.metadata?.['dc.contributor.author'] || [];
-        const match = authors.some((a) =>
-          a.value?.toLowerCase().includes(filters.autorArea.toLowerCase())
-        );
-        if (!match) return false;
-      }
-
-      if (filters.anioInicio || filters.anioFin) {
-        const dateStr = item.metadata?.['dc.date.issued']?.[0]?.value || '';
-        const itemYear = parseInt(dateStr.substring(0, 4), 10);
-        if (isNaN(itemYear)) return false;
-        if (filters.anioInicio && itemYear < filters.anioInicio.getFullYear()) return false;
-        if (filters.anioFin && itemYear > filters.anioFin.getFullYear()) return false;
-      }
-
-      return true;
+      filters: facetFilters.length > 0 ? facetFilters : undefined,
+      page: this.currentPage,
+      size: this.itemsPerPage,
+    }).pipe(
+      catchError((error) => {
+        console.error('Error en búsqueda:', error);
+        this.results.set([]);
+        this.totalElements.set(0);
+        this.isSearching.set(false);
+        return EMPTY;
+      }),
+    ).subscribe((result: SearchResult) => {
+      this.totalElements.set(result.totalElements);
+      this.loadItemDetails(result.items);
     });
+  }
+
+  private buildFacetFilters(filters: SearchFilters | null): FacetFilter[] {
+    if (!filters) return [];
+    const facets: FacetFilter[] = [];
+
+    if (filters.tipoDocumento?.length > 0) {
+      for (const tipo of filters.tipoDocumento) {
+        facets.push({ name: 'itemtype', value: tipo, operator: 'equals' });
+      }
+    }
+
+    if (filters.nivelEducativo?.length > 0) {
+      for (const nivel of filters.nivelEducativo) {
+        facets.push({ name: 'audience', value: nivel, operator: 'equals' });
+      }
+    }
+
+    if (filters.idioma?.length > 0) {
+      for (const idioma of filters.idioma) {
+        facets.push({ name: 'language', value: idioma, operator: 'equals' });
+      }
+    }
+
+    if (filters.autorArea) {
+      facets.push({ name: 'author', value: filters.autorArea, operator: 'contains' });
+    }
+
+    if (filters.anioInicio || filters.anioFin) {
+      const start = filters.anioInicio ? filters.anioInicio.getFullYear() : '*';
+      const end = filters.anioFin ? filters.anioFin.getFullYear() : '*';
+      facets.push({ name: 'dateIssued', value: `[${start} TO ${end}]`, operator: 'equals' });
+    }
+
+    return facets;
   }
 
   private mapSort(orderBy: string): string | undefined {
@@ -210,6 +260,12 @@ export class AdvancedSearch implements OnInit {
   }
 
   private loadItemDetails(items: Item[]) {
+    if (items.length === 0) {
+      this.results.set([]);
+      this.isSearching.set(false);
+      return;
+    }
+
     const itemsWithDetails$ = items.map((item) =>
       this.dspaceApi.getBundles(item.uuid).pipe(
         switchMap((bundlesResponse) => {
@@ -225,7 +281,7 @@ export class AdvancedSearch implements OnInit {
             : of(null);
 
           return forkJoin({ thumbnail: thumbnail$, original: original$ }).pipe(
-            map(({ thumbnail, original }) => {
+            map(({ thumbnail, original }: { thumbnail: any; original: any }) => {
               const originalBitstreams = original?._embedded?.['bitstreams'] || [];
               const downloadableBitstreams: BitstreamView[] = originalBitstreams.map((b: Bitstream) => {
                 const fileName = b.name?.toLowerCase() || '';
@@ -276,11 +332,11 @@ export class AdvancedSearch implements OnInit {
     );
 
     forkJoin(itemsWithDetails$).subscribe({
-      next: (itemsWithCovers) => {
+      next: (itemsWithCovers: ItemView[]) => {
         this.results.set(itemsWithCovers);
         this.isSearching.set(false);
       },
-      error: (error) => {
+      error: (error: unknown) => {
         console.error('Error al cargar bitstreams:', error);
         this.results.set(items.map((item) => ({
           id: item.uuid,

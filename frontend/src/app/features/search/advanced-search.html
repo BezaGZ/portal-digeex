@@ -8,14 +8,15 @@
         Búsqueda Avanzada
       </h1>
       <p style="color: var(--color-text-secondary); font-family: var(--font-body)">
-        Encuentra documentos, guías y recursos educativos con filtros especializados
+        Selecciona un programa o subdirección y encuentra documentos con filtros especializados
       </p>
     </div>
 
     <app-search-filters
-      [comunidadesOptions]="comunidadesOptions()"
+      [scopeOptions]="scopeOptions()"
       (search)="onSearch($event)"
       (clear)="onClear()"
+      (scopeChange)="onScopeChange($event)"
     />
 
     <div class="mt-6">
