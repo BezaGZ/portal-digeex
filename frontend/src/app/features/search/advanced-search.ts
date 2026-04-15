@@ -281,7 +281,7 @@ export class AdvancedSearch implements OnInit {
             : of(null);
 
           return forkJoin({ thumbnail: thumbnail$, original: original$ }).pipe(
-            map(({ thumbnail, original }: { thumbnail: any; original: any }) => {
+            map(({ thumbnail, original }) => {
               const originalBitstreams = original?._embedded?.['bitstreams'] || [];
               const downloadableBitstreams: BitstreamView[] = originalBitstreams.map((b: Bitstream) => {
                 const fileName = b.name?.toLowerCase() || '';
