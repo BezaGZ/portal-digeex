@@ -1,0 +1,440 @@
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { GalleryService } from './gallery.service';
+import { DSpaceApiService } from '../../../core/api/dspace-api.service';
+import { DiscoveryService } from '../../../core/api/discovery.service';
+import { CollectionCacheService } from '../../../core/api/collection-cache.service';
+
+/**
+ * Tests para GalleryService.
+ *
+ * Servicio de galería institucional que busca álbumes dentro de la
+ * colección con dc.format = 'galeria'. Verifica la carga paginada de
+ * álbumes con facetas, la carga de un álbum individual con sus fotos,
+ * la obtención de opciones de filtro y el mapeo de metadata Dublin Core.
+ *
+ * Ciclo 8 TDD - Sprint 4 TDD — Galería con Discovery + caché
+ */
+describe('GalleryService', () => {
+  let service: GalleryService;
+  let httpMock: HttpTestingController;
+
+  /** Setup */
+
+  const mockCollectionsResponse = {
+    _embedded: {
+      collections: [
+        {
+          uuid: 'col-galeria',
+          name: 'Galería Institucional',
+          type: 'collection',
+          metadata: {
+            'dc.format': [{ value: 'galeria' }],
+          },
+        },
+      ],
+    },
+    _links: {},
+    page: { size: 100, totalElements: 1, totalPages: 1, number: 0 },
+  };
+
+  const mockDiscoveryResponse = {
+    _embedded: {
+      searchResult: {
+        _embedded: {
+          objects: [
+            {
+              _embedded: {
+                indexableObject: {
+                  uuid: 'album-1',
+                  name: 'Graduación PEAC 2024',
+                  type: 'item',
+                  metadata: {
+                    'dc.title': [{ value: 'Graduación PEAC 2024' }],
+                    'dc.description.abstract': [{ value: 'Ceremonia de graduación' }],
+                    'dc.date.issued': [{ value: '2024-11-15' }],
+                    'dc.subject.classification': [{ value: 'PEAC' }],
+                    'dc.type': [{ value: 'graduacion' }],
+                    'dc.contributor.author': [{ value: 'DIGEEX' }],
+                    'dc.publisher': [{ value: 'MINEDUC' }],
+                    'dc.description.sponsorship': [{ value: 'jovenes' }],
+                    'dc.coverage.spatial': [{ value: 'interior' }],
+                    'dc.subject': [
+                      { value: 'educación' },
+                      { value: 'graduación' },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        },
+        _links: {},
+        page: { size: 6, totalElements: 1, totalPages: 1, number: 0 },
+      },
+      facets: [],
+    },
+  };
+
+  const mockBundlesResponse = {
+    _embedded: {
+      bundles: [
+        {
+          uuid: 'bundle-thumbnail',
+          name: 'THUMBNAIL',
+          _links: { self: { href: '/api/core/bundles/bundle-thumbnail' } },
+        },
+        {
+          uuid: 'bundle-original',
+          name: 'ORIGINAL',
+          _links: { self: { href: '/api/core/bundles/bundle-original' } },
+        },
+      ],
+    },
+  };
+
+  const mockThumbnailBitstreams = {
+    _embedded: {
+      bitstreams: [
+        {
+          uuid: 'thumb-1',
+          name: 'cover.jpg',
+          _links: { content: { href: '/api/core/bitstreams/thumb-1/content' } },
+        },
+      ],
+    },
+    page: { totalElements: 1 },
+  };
+
+  const mockOriginalBitstreams = {
+    _embedded: {
+      bitstreams: [
+        {
+          uuid: 'photo-1',
+          name: 'foto-01.jpg',
+          _links: { content: { href: '/api/core/bitstreams/photo-1/content' } },
+        },
+        {
+          uuid: 'photo-2',
+          name: 'foto-02.png',
+          _links: { content: { href: '/api/core/bitstreams/photo-2/content' } },
+        },
+        {
+          uuid: 'not-image',
+          name: 'readme.txt',
+          _links: { content: { href: '/api/core/bitstreams/not-image/content' } },
+        },
+      ],
+    },
+    page: { totalElements: 3 },
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        DSpaceApiService,
+        DiscoveryService,
+        CollectionCacheService,
+        GalleryService,
+      ],
+    });
+
+    service = TestBed.inject(GalleryService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpMock.verify();
+  });
+
+  it('should be created', () => {
+    expect(service).toBeTruthy();
+  });
+
+  /** searchAlbums — carga paginada con facetas */
+
+  /** Verifica que searchAlbums() encuentre la colección 'galeria' y devuelva álbumes mapeados. */
+  it('should search albums in the gallery collection', async () => {
+    const promise = new Promise((resolve, reject) => {
+      service.searchAlbums({}, 0, 6).subscribe({
+        next: (page) => {
+          expect(page.albums.length).toBe(1);
+          expect(page.albums[0].title).toBe('Graduación PEAC 2024');
+          expect(page.albums[0].program).toBe('PEAC');
+          expect(page.albums[0].photoCount).toBe(3);
+          expect(page.totalElements).toBe(1);
+          resolve(page);
+        },
+        error: reject,
+      });
+    });
+
+    /** 1) Caché de colecciones. */
+    const collectionsReq = httpMock.expectOne('/server/api/core/collections?page=0&size=100');
+    collectionsReq.flush(mockCollectionsResponse);
+
+    /** 2) Discovery con scope = col-galeria. */
+    const discoveryReq = httpMock.expectOne((req) =>
+      req.url.includes('/server/api/discover/search/objects') &&
+      req.params.get('scope') === 'col-galeria'
+    );
+    discoveryReq.flush(mockDiscoveryResponse);
+
+    /** 3) Bundles del álbum. */
+    const bundlesReq = httpMock.expectOne('/server/api/core/items/album-1/bundles?page=0&size=20');
+    bundlesReq.flush(mockBundlesResponse);
+
+    /** 4) Thumbnail bitstream. */
+    const thumbReq = httpMock.expectOne('/server/api/core/bundles/bundle-thumbnail/bitstreams?page=0&size=20');
+    thumbReq.flush(mockThumbnailBitstreams);
+
+    /** 5) Conteo de originales (size=1 para solo traer totalElements). */
+    const countReq = httpMock.expectOne('/server/api/core/bundles/bundle-original/bitstreams?page=0&size=1');
+    countReq.flush({ _embedded: { bitstreams: [] }, page: { totalElements: 3 } });
+
+    await promise;
+  });
+
+  /** Verifica que searchAlbums() devuelva página vacía cuando Discovery no encuentra ítems. */
+  it('should return empty page when discovery returns no items', async () => {
+    const emptyDiscoveryResponse = {
+      _embedded: {
+        searchResult: {
+          _embedded: { objects: [] },
+          _links: {},
+          page: { totalElements: 0, totalPages: 0 },
+        },
+        facets: [],
+      },
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.searchAlbums({}, 0, 6).subscribe({
+        next: (page) => {
+          expect(page.albums.length).toBe(0);
+          expect(page.totalElements).toBe(0);
+          resolve(page);
+        },
+        error: reject,
+      });
+    });
+
+    httpMock.expectOne('/server/api/core/collections?page=0&size=100').flush(mockCollectionsResponse);
+    httpMock
+      .expectOne((req) => req.url.includes('/server/api/discover/search/objects'))
+      .flush(emptyDiscoveryResponse);
+
+    await promise;
+  });
+
+  /** Verifica que searchAlbums() pase los filtros de faceta al Discovery. */
+  it('should send facet filters to discovery when filters are applied', async () => {
+    const promise = new Promise((resolve, reject) => {
+      service
+        .searchAlbums(
+          {
+            programs: ['PEAC'],
+            eventTypes: ['graduacion'],
+            populationTypes: ['jovenes'],
+            imageContexts: ['interior'],
+          },
+          0,
+          6,
+        )
+        .subscribe({ next: resolve, error: reject });
+    });
+
+    httpMock.expectOne('/server/api/core/collections?page=0&size=100').flush(mockCollectionsResponse);
+
+    const discoveryReq = httpMock.expectOne((req) =>
+      req.url.includes('/server/api/discover/search/objects')
+    );
+
+    const params = discoveryReq.request.params;
+    const fValues = params.getAll('f.classification') || [];
+    expect(fValues.some((v) => v.includes('PEAC'))).toBe(true);
+
+    discoveryReq.flush({
+      _embedded: {
+        searchResult: {
+          _embedded: { objects: [] },
+          _links: {},
+          page: { totalElements: 0, totalPages: 0 },
+        },
+        facets: [],
+      },
+    });
+
+    await promise;
+  });
+
+  /** Verifica que searchAlbums() capture errores y devuelva página vacía. */
+  it('should handle errors gracefully and return empty page', async () => {
+    const promise = new Promise((resolve, reject) => {
+      service.searchAlbums({}, 0, 6).subscribe({
+        next: (page) => {
+          expect(page.albums.length).toBe(0);
+          expect(page.totalElements).toBe(0);
+          resolve(page);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100');
+    req.flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+
+    await promise;
+  });
+
+  /** getAlbumById — álbum individual con sus fotos */
+
+  /** Verifica que getAlbumById() cargue un álbum con sus fotos filtradas por extensión. */
+  it('should load an album by id with its photos', async () => {
+    const mockItem = {
+      uuid: 'album-1',
+      name: 'Graduación PEAC 2024',
+      type: 'item',
+      metadata: {
+        'dc.title': [{ value: 'Graduación PEAC 2024' }],
+        'dc.description': [{ value: 'Descripción del álbum' }],
+        'dc.date.issued': [{ value: '2024-11-15' }],
+      },
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.getAlbumById('album-1').subscribe({
+        next: (album) => {
+          expect(album).toBeTruthy();
+          expect(album?.title).toBe('Graduación PEAC 2024');
+          expect(album?.photos.length).toBe(2);
+          expect(album?.photos[0].id).toBe('photo-1');
+          resolve(album);
+        },
+        error: reject,
+      });
+    });
+
+    httpMock.expectOne('/server/api/core/items/album-1').flush(mockItem);
+    httpMock.expectOne('/server/api/core/items/album-1/bundles?page=0&size=20').flush(mockBundlesResponse);
+    httpMock
+      .expectOne('/server/api/core/bundles/bundle-thumbnail/bitstreams?page=0&size=20')
+      .flush(mockThumbnailBitstreams);
+    httpMock
+      .expectOne('/server/api/core/bundles/bundle-original/bitstreams?page=0&size=200')
+      .flush(mockOriginalBitstreams);
+
+    await promise;
+  });
+
+  /** Verifica que getAlbumById() devuelva undefined cuando falla el fetch. */
+  it('should return undefined when item fetch fails', async () => {
+    const promise = new Promise<void>((resolve, reject) => {
+      service.getAlbumById('invalid-uuid').subscribe({
+        next: (album) => {
+          expect(album).toBeUndefined();
+          resolve();
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/items/invalid-uuid');
+    req.flush('Not Found', { status: 404, statusText: 'Not Found' });
+
+    await promise;
+  });
+
+  /** getFilterOptions — opciones de faceta para la galería */
+
+  /** Verifica que getFilterOptions() obtenga las facetas disponibles mapeadas a FilterOptions. */
+  it('should fetch filter options from discovery facets', async () => {
+    const mockFacetsResponse = {
+      _embedded: {
+        searchResult: {
+          _embedded: { objects: [] },
+          _links: {},
+          page: { totalElements: 0, totalPages: 0 },
+        },
+        facets: [
+          {
+            name: 'classification',
+            _embedded: {
+              values: [
+                { label: 'PEAC', count: 12 },
+                { label: 'PRONEA', count: 5 },
+              ],
+            },
+          },
+          {
+            name: 'itemtype',
+            _embedded: {
+              values: [
+                { label: 'graduacion', count: 8 },
+                { label: 'capacitacion', count: 4 },
+              ],
+            },
+          },
+          {
+            name: 'sponsorship',
+            _embedded: {
+              values: [{ label: 'jovenes', count: 10 }],
+            },
+          },
+          {
+            name: 'spatial',
+            _embedded: {
+              values: [{ label: 'interior', count: 7 }],
+            },
+          },
+        ],
+      },
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.getFilterOptions().subscribe({
+        next: (options) => {
+          expect(options.programs.length).toBe(2);
+          expect(options.programs[0].label).toBe('PEAC');
+          expect(options.programs[0].count).toBe(12);
+          expect(options.eventTypes.length).toBe(2);
+          expect(options.populationTypes.length).toBe(1);
+          expect(options.imageContexts.length).toBe(1);
+          resolve(options);
+        },
+        error: reject,
+      });
+    });
+
+    httpMock.expectOne('/server/api/core/collections?page=0&size=100').flush(mockCollectionsResponse);
+    httpMock
+      .expectOne((req) => req.url.includes('/server/api/discover/search/objects'))
+      .flush(mockFacetsResponse);
+
+    await promise;
+  });
+
+  /** Verifica que getFilterOptions() devuelva objeto vacío en caso de error. */
+  it('should return empty options on error', async () => {
+    const promise = new Promise((resolve, reject) => {
+      service.getFilterOptions().subscribe({
+        next: (options) => {
+          expect(options.programs).toEqual([]);
+          expect(options.eventTypes).toEqual([]);
+          expect(options.populationTypes).toEqual([]);
+          expect(options.imageContexts).toEqual([]);
+          resolve(options);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100');
+    req.flush('Error', { status: 500, statusText: 'Server Error' });
+
+    await promise;
+  });
+});
