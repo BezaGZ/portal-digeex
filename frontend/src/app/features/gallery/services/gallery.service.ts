@@ -8,11 +8,12 @@ import { FacetFilter } from '../../../core/api/models/discovery.model';
 import { Item } from '../../../core/api/models/item.model';
 import { MetadataValue } from '../../../core/api/models/metadata.model';
 import { Album, Photo, AlbumPage, GalleryFilters, FilterOption, FilterOptions } from '../models';
+import { RENDER_TYPE } from '../../../core/config/digeex-values.config';
 export type { Album, Photo, AlbumPage, GalleryFilters, FilterOption, FilterOptions } from '../models';
 
 /**
  * Servicio dedicado a la galería institucional.
- * Busca álbumes de fotos dentro de la colección con dc.format = 'galeria'
+ * Busca álbumes de fotos dentro de la colección con digeex.renderType = 'galeria'
  * usando Discovery para filtros y paginación del servidor.
  */
 @Injectable({
@@ -29,10 +30,10 @@ export class GalleryService {
 
   /**
    * Obtiene el UUID de la colección de galería desde el caché global.
-   * @returns Observable con el UUID de la colección que tiene dc.format = 'galeria'
+   * @returns Observable con el UUID de la colección que tiene digeex.renderType = 'galeria'
    */
   private findGalleryCollection(): Observable<string> {
-    return this.collectionCache.findByFormat('galeria');
+    return this.collectionCache.findByFormat(RENDER_TYPE.GALERIA);
   }
 
   /** ─── Cargar álbumes (paginado) ─── */
@@ -211,8 +212,8 @@ export class GalleryService {
         return {
           programs: toFilterOptions('classification'),
           eventTypes: toFilterOptions('itemtype'),
-          populationTypes: toFilterOptions('sponsorship'),
-          imageContexts: toFilterOptions('spatial'),
+          populationTypes: toFilterOptions('populationType'),
+          imageContexts: toFilterOptions('imageFocus'),
         };
       }),
       catchError((error) => {
@@ -245,8 +246,8 @@ export class GalleryService {
       eventType: item.metadata?.['dc.type']?.[0]?.value || '',
       author: item.metadata?.['dc.contributor.author']?.[0]?.value || '',
       publisher: item.metadata?.['dc.publisher']?.[0]?.value || '',
-      populationType: item.metadata?.['dc.description.sponsorship']?.[0]?.value || '',
-      imageContext: item.metadata?.['dc.coverage.spatial']?.[0]?.value || '',
+      populationType: item.metadata?.['digeex.populationType']?.[0]?.value || '',
+      imageContext: item.metadata?.['digeex.imageFocus']?.[0]?.value || '',
       coverPhoto,
       photos: [],
       photoCount,
@@ -276,13 +277,13 @@ export class GalleryService {
 
     if (filters.populationTypes && filters.populationTypes.length > 0) {
       for (const popType of filters.populationTypes) {
-        facets.push({ name: 'sponsorship', value: popType, operator: 'equals' });
+        facets.push({ name: 'populationType', value: popType, operator: 'equals' });
       }
     }
 
     if (filters.imageContexts && filters.imageContexts.length > 0) {
       for (const context of filters.imageContexts) {
-        facets.push({ name: 'spatial', value: context, operator: 'equals' });
+        facets.push({ name: 'imageFocus', value: context, operator: 'equals' });
       }
     }
 

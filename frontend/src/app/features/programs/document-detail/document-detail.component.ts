@@ -61,7 +61,7 @@ export class DocumentDetailComponent implements OnInit {
       switchMap((item: Item) => {
         this.documentTitle = item.metadata?.['dc.title']?.[0]?.value || 'Sin título';
         this.documentDescription = item.metadata?.['dc.description.abstract']?.[0]?.value || '';
-        this.isVideo = item.metadata?.['dc.type']?.[0]?.value === 'MovingImage';
+        this.isVideo = item.metadata?.['dc.type']?.[0]?.value === 'Video';
         this.videoUrl = item.metadata?.['dc.relation.uri']?.[0]?.value || '';
         this.buildMetadataFields(item.metadata, null);
 

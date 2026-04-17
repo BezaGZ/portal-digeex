@@ -6,6 +6,7 @@ import { Menu } from 'primeng/menu';
 import { MenuItem } from 'primeng/api';
 import { CollectionCacheService } from '../../../core/api/collection-cache.service';
 import { getCollectionRoute } from '../../../core/config/collection-format.config';
+import { NAV_LOCATION, RENDER_TYPE } from '../../../core/config/digeex-values.config';
 
 @Component({
   selector: 'app-public-header',
@@ -31,11 +32,11 @@ export class PublicHeader implements OnInit {
   }
 
   loadSecondaryMenu() {
-    this.collectionCache.getByMenuType('menu-secundario').subscribe({
+    this.collectionCache.getByMenuType(NAV_LOCATION.MENU_SECUNDARIO).subscribe({
       next: (menuCollections) => {
         this.menuItems = [];
         menuCollections.forEach((collection, index) => {
-          const format = collection.metadata?.['dc.format']?.[0]?.value || 'documento';
+          const format = collection.metadata?.['digeex.renderType']?.[0]?.value || RENDER_TYPE.DOCUMENTO;
 
           this.menuItems.push({
             label: collection.metadata?.['dc.subject']?.[0]?.value || collection.name,

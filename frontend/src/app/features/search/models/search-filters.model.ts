@@ -19,4 +19,6 @@ export interface ScopeOption {
   label: string;
   value: string;
   group?: string;
+  /** Tipo de entidad DSpace: 'community' (incluye sub-community) o 'collection'. */
+  scopeType?: 'community' | 'collection';
 }

@@ -54,7 +54,7 @@ describe('DocumentDetailComponent', () => {
     metadata: {
       'dc.title': [{ value: 'Capacitación docente 2025' }],
       'dc.description.abstract': [{ value: 'Video de capacitación.' }],
-      'dc.type': [{ value: 'MovingImage' }],
+      'dc.type': [{ value: 'Video' }],
       'dc.relation.uri': [{ value: 'https://youtube.com/watch?v=abc123' }],
       'dc.contributor.author': [{ value: 'DIGEEX' }],
       'dc.date.issued': [{ value: '2025-06-10' }],
@@ -202,11 +202,11 @@ describe('DocumentDetailComponent', () => {
     });
   });
 
-  /** Tipo video (MovingImage) */
+  /** Tipo video */
 
   describe('tipo video', () => {
-    /** Verifica la detección de items de video por dc.type MovingImage. */
-    it('should detect video item by dc.type MovingImage', () => {
+    /** Verifica la detección de items de video por dc.type Video. */
+    it('should detect video item by dc.type Video', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.spyOn(dspaceApi, 'getItem').mockReturnValue(of(MOCK_ITEM_VIDEO as any));
 

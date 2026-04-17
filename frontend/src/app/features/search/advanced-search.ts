@@ -13,6 +13,7 @@ import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { DocumentCardComponent, SkeletonCardComponent, EmptyStateComponent } from '../../shared';
 import { SearchFiltersComponent } from './components/search-filters/search-filters';
 import { SearchFilters, ScopeOption } from './models/search-filters.model';
+import { CONTENT_TYPE, RENDER_TYPE } from '../../core/config/digeex-values.config';
 
 @Component({
   selector: 'app-advanced-search',
@@ -43,6 +44,7 @@ export class AdvancedSearch implements OnInit {
 
   private currentFilters: SearchFilters | null = null;
   private currentScope = '';
+  private currentScopeType: 'community' | 'collection' = 'community';
 
   /** UUID de la community raíz DIGEEX — se detecta dinámicamente */
   private digeexCommunityUuid = '';
@@ -59,6 +61,8 @@ export class AdvancedSearch implements OnInit {
 
   onScopeChange(scopeUuid: string) {
     this.currentScope = scopeUuid;
+    const selectedOption = this.scopeOptions().find((o) => o.value === scopeUuid);
+    this.currentScopeType = selectedOption?.scopeType ?? 'community';
     this.currentFilters = null;
     this.hasSearched.set(false);
     this.results.set([]);
@@ -116,7 +120,7 @@ export class AdvancedSearch implements OnInit {
       this.dspaceApi.getSubcommunities(digeex.uuid, 0, 20).subscribe((subResponse) => {
         const subCommunities = subResponse._embedded?.['subcommunities'] || [];
         const options: ScopeOption[] = [
-          { label: 'Todos los programas (DIGEEX)', value: digeex.uuid },
+          { label: 'Todos los programas (DIGEEX)', value: digeex.uuid, scopeType: 'community' },
         ];
 
         let remaining = subCommunities.length;
@@ -132,17 +136,19 @@ export class AdvancedSearch implements OnInit {
             label: `${subName} (todos)`,
             value: sub.uuid,
             group: subName,
+            scopeType: 'community',
           });
 
           this.dspaceApi.getCollections(sub.uuid, 0, 20).subscribe((colResponse) => {
             const collections = colResponse._embedded?.['collections'] || [];
             for (const col of collections) {
-              const format = col.metadata?.['dc.format']?.[0]?.value;
-              if (format === 'documento') {
+              const format = col.metadata?.['digeex.renderType']?.[0]?.value;
+              if (format === RENDER_TYPE.DOCUMENTO) {
                 options.push({
                   label: col.metadata?.['dc.title']?.[0]?.value || col.name,
                   value: col.uuid,
                   group: subName,
+                  scopeType: 'collection',
                 });
               }
             }
@@ -163,9 +169,15 @@ export class AdvancedSearch implements OnInit {
   private loadFacetsForScope(scopeUuid: string) {
     this.isLoadingFacets.set(true);
 
+    const facetFilters: FacetFilter[] = [];
+    if (this.currentScopeType === 'community') {
+      facetFilters.push({ name: 'contentType', value: CONTENT_TYPE.DOCUMENTO, operator: 'equals' });
+    }
+
     this.discoveryService.search({
       scope: scopeUuid,
       size: 0,
+      filters: facetFilters.length > 0 ? facetFilters : undefined,
     }).pipe(
       catchError(() => {
         this.isLoadingFacets.set(false);
@@ -215,8 +227,17 @@ export class AdvancedSearch implements OnInit {
   }
 
   private buildFacetFilters(filters: SearchFilters | null): FacetFilter[] {
-    if (!filters) return [];
     const facets: FacetFilter[] = [];
+
+    /**
+     * Si el scope es community o sub-community, filtrar solo items de tipo "documento"
+     * para no mezclar álbumes de galería ni estadísticas en los resultados.
+     */
+    if (this.currentScopeType === 'community') {
+      facets.push({ name: 'contentType', value: CONTENT_TYPE.DOCUMENTO, operator: 'equals' });
+    }
+
+    if (!filters) return facets;
 
     if (filters.tipoDocumento?.length > 0) {
       for (const tipo of filters.tipoDocumento) {

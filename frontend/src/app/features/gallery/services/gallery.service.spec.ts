@@ -5,14 +5,15 @@ import { GalleryService } from './gallery.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { DiscoveryService } from '../../../core/api/discovery.service';
 import { CollectionCacheService } from '../../../core/api/collection-cache.service';
+import { RENDER_TYPE } from '../../../core/config/digeex-values.config';
 
 /**
  * Tests para GalleryService.
  *
  * Servicio de galería institucional que busca álbumes dentro de la
- * colección con dc.format = 'galeria'. Verifica la carga paginada de
+ * colección con digeex.renderType = 'galeria'. Verifica la carga paginada de
  * álbumes con facetas, la carga de un álbum individual con sus fotos,
- * la obtención de opciones de filtro y el mapeo de metadata Dublin Core.
+ * la obtención de opciones de filtro y el mapeo de metadata Dublin Core + digeex.
  *
  * Ciclo 8 TDD - Sprint 4 TDD — Galería con Discovery + caché
  */
@@ -30,7 +31,7 @@ describe('GalleryService', () => {
           name: 'Galería Institucional',
           type: 'collection',
           metadata: {
-            'dc.format': [{ value: 'galeria' }],
+            'digeex.renderType': [{ value: RENDER_TYPE.GALERIA }],
           },
         },
       ],
@@ -58,8 +59,8 @@ describe('GalleryService', () => {
                     'dc.type': [{ value: 'graduacion' }],
                     'dc.contributor.author': [{ value: 'DIGEEX' }],
                     'dc.publisher': [{ value: 'MINEDUC' }],
-                    'dc.description.sponsorship': [{ value: 'jovenes' }],
-                    'dc.coverage.spatial': [{ value: 'interior' }],
+                    'digeex.populationType': [{ value: 'jovenes' }],
+                    'digeex.imageFocus': [{ value: 'interior' }],
                     'dc.subject': [
                       { value: 'educación' },
                       { value: 'graduación' },
@@ -379,13 +380,13 @@ describe('GalleryService', () => {
             },
           },
           {
-            name: 'sponsorship',
+            name: 'populationType',
             _embedded: {
               values: [{ label: 'jovenes', count: 10 }],
             },
           },
           {
-            name: 'spatial',
+            name: 'imageFocus',
             _embedded: {
               values: [{ label: 'interior', count: 7 }],
             },

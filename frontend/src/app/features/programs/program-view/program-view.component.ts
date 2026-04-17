@@ -20,6 +20,7 @@ import { forkJoin, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { SkeletonCardComponent, EmptyStateComponent, DocumentCardComponent } from '../../../shared';
 import { getCollectionRoute } from '../../../core/config/collection-format.config';
+import { RENDER_TYPE } from '../../../core/config/digeex-values.config';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
@@ -71,8 +72,8 @@ export class ProgramViewComponent implements OnInit {
 
     this.dspaceApi.getCollection(collectionUuid).subscribe({
       next: (collection) => {
-        const format = collection.metadata?.['dc.format']?.[0]?.value || 'documento';
-        if (format !== 'documento') {
+        const format = collection.metadata?.['digeex.renderType']?.[0]?.value || RENDER_TYPE.DOCUMENTO;
+        if (format !== RENDER_TYPE.DOCUMENTO) {
           this.router.navigateByUrl(
             getCollectionRoute(format, collection.uuid),
             { replaceUrl: true }

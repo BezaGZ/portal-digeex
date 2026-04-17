@@ -8,13 +8,15 @@ import { AdvancedSearch } from './advanced-search';
 import { DiscoveryService } from '../../core/api/discovery.service';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { SearchFilters } from './models/search-filters.model';
+import { CONTENT_TYPE } from '../../core/config/digeex-values.config';
 
 /**
  * Tests para AdvancedSearch — Arquitectura server-side con scope único.
  *
  * El componente requiere selección de scope (programa/subdirección) antes
  * de buscar. Usa un solo request con paginación server-side (page + size)
- * y filtro implícito f.format=documento para excluir galería/estadísticas.
+ * y filtro implícito f.contentType=documento para excluir galería/estadísticas
+ * cuando el scope es community o sub-community.
  *
  * Sprint 4 — Refactor facetas server-side
  */
@@ -161,8 +163,8 @@ describe('AdvancedSearch', () => {
 
   /** Scope y facetas */
 
-  /** Verifica que al cambiar scope se carguen facetas con size=0. */
-  it('should load facets with size=0 when scope changes', () => {
+  /** Verifica que al cambiar scope se carguen facetas con size=0 y filtro contentType. */
+  it('should load facets with size=0 and contentType filter when scope is community', () => {
     const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockFacetsOnlyResult));
 
     component.onScopeChange('scope-001');
@@ -171,6 +173,7 @@ describe('AdvancedSearch', () => {
       expect.objectContaining({
         scope: 'scope-001',
         size: 0,
+        filters: [{ name: 'contentType', value: CONTENT_TYPE.DOCUMENTO, operator: 'equals' }],
       })
     );
   });
@@ -203,14 +206,17 @@ describe('AdvancedSearch', () => {
     );
   });
 
-  /** Verifica que búsqueda sin filtros activos no envíe filters array. */
-  it('should not send filters when no facet filters are active', () => {
+  /** Verifica que búsqueda con scope community inyecte f.contentType=documento automáticamente. */
+  it('should inject contentType filter when scope is community (default)', () => {
     const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
     component.onSearch({ ...defaultFilters, query: 'test' });
 
     const callArgs = searchSpy.mock.calls[0][0];
-    expect(callArgs.filters).toBeUndefined(
+    expect(callArgs.filters).toEqual(
+      expect.arrayContaining([
+        { name: 'contentType', value: CONTENT_TYPE.DOCUMENTO, operator: 'equals' },
+      ])
     );
   });
 
@@ -255,6 +261,7 @@ describe('AdvancedSearch', () => {
     const callArgs = searchSpy.mock.calls[0][0];
     expect(callArgs.filters).toEqual(
       expect.arrayContaining([
+        { name: 'contentType', value: CONTENT_TYPE.DOCUMENTO, operator: 'equals' },
         { name: 'itemtype', value: 'Manual', operator: 'equals' },
         { name: 'audience', value: 'Primaria', operator: 'equals' },
         { name: 'language', value: 'acr', operator: 'equals' },

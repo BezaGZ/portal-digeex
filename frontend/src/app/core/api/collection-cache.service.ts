@@ -45,16 +45,16 @@ export class CollectionCacheService {
   }
 
   /**
-   * Filtra colecciones por su valor de dc.type y las ordena
+   * Filtra colecciones por su valor de digeex.navLocation y las ordena
    * por dc.identifier.other (campo de orden en el menú).
-   * @param menuType - Valor de dc.type a buscar (ej: 'menu-principal', 'menu-secundario')
+   * @param menuType - Valor de digeex.navLocation a buscar (ej: 'menu-principal', 'menu-secundario')
    * @returns Observable con las colecciones filtradas y ordenadas
    */
   getByMenuType(menuType: string): Observable<Collection[]> {
     return this.getAll().pipe(
       map((collections) =>
         collections
-          .filter((c) => c.metadata?.['dc.type']?.[0]?.value === menuType)
+          .filter((c) => c.metadata?.['digeex.navLocation']?.[0]?.value === menuType)
           .sort((a, b) => {
             const orderA = parseInt(a.metadata?.['dc.identifier.other']?.[0]?.value || '999');
             const orderB = parseInt(b.metadata?.['dc.identifier.other']?.[0]?.value || '999');
@@ -65,19 +65,19 @@ export class CollectionCacheService {
   }
 
   /**
-   * Busca una colección por su valor de dc.format y devuelve su UUID.
+   * Busca una colección por su valor de digeex.renderType y devuelve su UUID.
    * Lanza error si no encuentra ninguna coincidencia.
-   * @param format - Valor de dc.format a buscar (ej: 'galeria', 'estadistica')
+   * @param format - Valor de digeex.renderType a buscar (ej: 'galeria', 'estadistica')
    * @returns Observable con el UUID de la colección encontrada
    */
   findByFormat(format: string): Observable<string> {
     return this.getAll().pipe(
       map((collections) => {
         const found = collections.find(
-          (c) => c.metadata?.['dc.format']?.[0]?.value === format
+          (c) => c.metadata?.['digeex.renderType']?.[0]?.value === format
         );
         if (!found) {
-          throw new Error(`No se encontró colección con dc.format = "${format}"`);
+          throw new Error(`No se encontró colección con digeex.renderType = "${format}"`);
         }
         return found.uuid;
       })

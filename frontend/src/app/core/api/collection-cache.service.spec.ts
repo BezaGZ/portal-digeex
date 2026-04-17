@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { CollectionCacheService } from './collection-cache.service';
 import { DSpaceApiService } from './dspace-api.service';
+import { NAV_LOCATION, RENDER_TYPE } from '../config/digeex-values.config';
 
 /**
  * Tests para CollectionCacheService.
@@ -10,7 +11,7 @@ import { DSpaceApiService } from './dspace-api.service';
  * Caché centralizado de colecciones del repositorio.
  * Verifica que se haga una única petición HTTP compartida entre
  * los tres consumidores (Home, PublicHeader, GalleryService),
- * el filtrado por dc.type, la búsqueda por dc.format y la
+ * el filtrado por digeex.navLocation, la búsqueda por digeex.renderType y la
  * invalidación del caché.
  *
  * Ciclo 7 TDD - Sprint 4 TDD 
@@ -29,7 +30,7 @@ describe('CollectionCacheService', () => {
           name: 'Inicio',
           type: 'collection',
           metadata: {
-            'dc.type': [{ value: 'menu-principal' }],
+            'digeex.navLocation': [{ value: NAV_LOCATION.MENU_PRINCIPAL }],
             'dc.identifier.other': [{ value: '1' }],
           },
         },
@@ -38,7 +39,7 @@ describe('CollectionCacheService', () => {
           name: 'Acerca de',
           type: 'collection',
           metadata: {
-            'dc.type': [{ value: 'menu-secundario' }],
+            'digeex.navLocation': [{ value: NAV_LOCATION.MENU_SECUNDARIO }],
             'dc.identifier.other': [{ value: '2' }],
           },
         },
@@ -47,7 +48,7 @@ describe('CollectionCacheService', () => {
           name: 'Contacto',
           type: 'collection',
           metadata: {
-            'dc.type': [{ value: 'menu-secundario' }],
+            'digeex.navLocation': [{ value: NAV_LOCATION.MENU_SECUNDARIO }],
             'dc.identifier.other': [{ value: '1' }],
           },
         },
@@ -56,7 +57,7 @@ describe('CollectionCacheService', () => {
           name: 'Galería Institucional',
           type: 'collection',
           metadata: {
-            'dc.format': [{ value: 'galeria' }],
+            'digeex.renderType': [{ value: RENDER_TYPE.GALERIA }],
           },
         },
         {
@@ -64,7 +65,7 @@ describe('CollectionCacheService', () => {
           name: 'Estadísticas DIGEEX',
           type: 'collection',
           metadata: {
-            'dc.format': [{ value: 'estadistica' }],
+            'digeex.renderType': [{ value: RENDER_TYPE.ESTADISTICA }],
           },
         },
       ],
@@ -158,12 +159,12 @@ describe('CollectionCacheService', () => {
     expect((second as unknown[]).length).toBe(5);
   });
 
-  /** getByMenuType — filtrado por dc.type */
+  /** getByMenuType — filtrado por digeex.navLocation */
 
-  /** Verifica que getByMenuType() filtre por dc.type y ordene por dc.identifier.other. */
+  /** Verifica que getByMenuType() filtre por digeex.navLocation y ordene por dc.identifier.other. */
   it('should filter collections by menuType and sort by order field', async () => {
     const promise = new Promise((resolve, reject) => {
-      service.getByMenuType('menu-secundario').subscribe({
+      service.getByMenuType(NAV_LOCATION.MENU_SECUNDARIO).subscribe({
         next: (collections) => {
           expect(collections.length).toBe(2);
           expect(collections[0].name).toBe('Contacto');
@@ -198,12 +199,12 @@ describe('CollectionCacheService', () => {
     await promise;
   });
 
-  /** findByFormat — búsqueda por dc.format */
+  /** findByFormat — búsqueda por digeex.renderType */
 
   /** Verifica que findByFormat('galeria') devuelva el UUID correcto. */
   it('should find collection UUID by format', async () => {
     const promise = new Promise((resolve, reject) => {
-      service.findByFormat('galeria').subscribe({
+      service.findByFormat(RENDER_TYPE.GALERIA).subscribe({
         next: (uuid) => {
           expect(uuid).toBe('col-galeria');
           resolve(uuid);
