@@ -43,7 +43,7 @@ describe('jwtInterceptor', () => {
   describe('con token', () => {
     /** Verifica que adjunte Authorization: Bearer en GET cuando hay JWT. */
     it('should attach Bearer token on GET requests', async () => {
-      spyOn(authService, 'getToken').and.returnValue('my-jwt-token');
+      vi.spyOn(authService, 'getToken').mockReturnValue('my-jwt-token');
 
       const promise = new Promise((resolve, reject) => {
         httpClient.get('/server/api/core/communities').subscribe({
@@ -61,7 +61,7 @@ describe('jwtInterceptor', () => {
 
     /** Verifica que adjunte Authorization: Bearer en POST cuando hay JWT. */
     it('should attach Bearer token on POST requests', async () => {
-      spyOn(authService, 'getToken').and.returnValue('my-jwt-token');
+      vi.spyOn(authService, 'getToken').mockReturnValue('my-jwt-token');
 
       const promise = new Promise((resolve, reject) => {
         httpClient.post('/server/api/authn/logout', null).subscribe({
@@ -83,7 +83,7 @@ describe('jwtInterceptor', () => {
   describe('sin token', () => {
     /** Verifica que NO adjunte Authorization cuando no hay JWT. */
     it('should NOT attach Authorization header when no token', async () => {
-      spyOn(authService, 'getToken').and.returnValue(null);
+      vi.spyOn(authService, 'getToken').mockReturnValue(null);
 
       const promise = new Promise((resolve, reject) => {
         httpClient.get('/server/api/core/communities').subscribe({

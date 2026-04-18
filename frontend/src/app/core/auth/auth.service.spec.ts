@@ -42,11 +42,6 @@ describe('AuthService', () => {
     },
   };
 
-  const mockAuthStatusAnonymous: AuthStatus = {
-    okay: true,
-    authenticated: false,
-  };
-
   /** Helpers */
 
   function performLogin(): Promise<void> {
