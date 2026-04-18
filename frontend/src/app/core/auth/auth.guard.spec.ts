@@ -1,5 +1,4 @@
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
 import { provideRouter } from '@angular/router';
 import { AuthService } from './auth.service';
 import { authGuard } from './auth.guard';
@@ -15,9 +14,9 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
  *
  * Ciclo 3 TDD — Sprint 5
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 describe('authGuard', () => {
   let authService: AuthService;
-  let router: Router;
 
   /** Setup */
 
@@ -35,7 +34,6 @@ describe('authGuard', () => {
     });
 
     authService = TestBed.inject(AuthService);
-    router = TestBed.inject(Router);
   });
 
   /** Autenticado */

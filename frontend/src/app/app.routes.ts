@@ -55,8 +55,8 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login/login').then(m => m.LoginComponent)
   },
   {
-    path: 'restablecer-contrasena',
-    loadComponent: () => import('./features/auth/reset-password/reset-password').then(m => m.ResetPasswordComponent)
+    path: 'cambiar-contrasena',
+    loadComponent: () => import('./features/auth/change-password/change-password').then(m => m.ChangePasswordComponent)
   },
 
   {

@@ -10,7 +10,7 @@ import { AuthService } from './auth.service';
  *
  * Ciclo 3 TDD — Sprint 5
  */
-export const authGuard: CanActivateFn = (route, state) => {
+export const authGuard: CanActivateFn = (_route, _state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 

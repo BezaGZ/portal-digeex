@@ -6,12 +6,12 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 
 @Component({
-  selector: 'app-reset-password',
+  selector: 'app-change-password',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule, PasswordModule, ButtonModule, CardModule],
-  templateUrl: './reset-password.html',
+  templateUrl: './change-password.html',
 })
-export class ResetPasswordComponent {
+export class ChangePasswordComponent {
   private router = inject(Router);
 
   currentPassword = '';
@@ -21,7 +21,7 @@ export class ResetPasswordComponent {
 
   onSubmit() {
     if (this.newPassword !== this.confirmPassword) {
-      this.errorMessage = 'La nueva contrasena y su confirmacion no coinciden.';
+      this.errorMessage = 'La nueva contraseña y su confirmación no coinciden.';
       return;
     }
     this.errorMessage = '';
