@@ -6,6 +6,7 @@ import { PasswordModule } from 'primeng/password';
 import { CheckboxModule } from 'primeng/checkbox';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
+import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -15,18 +16,28 @@ import { CardModule } from 'primeng/card';
 })
 export class LoginComponent {
   private router = inject(Router);
+  private authService = inject(AuthService);
 
   email = signal('');
   password = signal('');
   rememberMe = signal(false);
+  errorMessage = signal('');
+  isLoading = signal(false);
 
   onLogin() {
-    const mustChangePassword = true;
-    if (mustChangePassword) {
-      this.router.navigate(['/restablecer-contrasena']);
-      return;
-    }
-    this.router.navigate(['/administrador/estadisticas']);
+    this.errorMessage.set('');
+    this.isLoading.set(true);
+
+    this.authService.login(this.email(), this.password()).subscribe({
+      next: () => {
+        this.isLoading.set(false);
+        this.router.navigate(['/administrador/estadisticas']);
+      },
+      error: () => {
+        this.isLoading.set(false);
+        this.errorMessage.set('Correo o contraseña incorrectos. Intente de nuevo.');
+      },
+    });
   }
 
   goToHome() {

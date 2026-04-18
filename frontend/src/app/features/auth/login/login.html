@@ -39,6 +39,19 @@
           />
         </div>
 
+        @if (errorMessage()) {
+          <div
+            class="text-sm rounded-lg px-3 py-2"
+            style="
+              color: var(--color-error);
+              background-color: var(--gob-competitividad-light);
+              border: 1px solid var(--color-error);
+            "
+          >
+            {{ errorMessage() }}
+          </div>
+        }
+
         <div class="flex flex-col gap-4 pt-2">
           <p-button
             type="submit"
@@ -47,6 +60,8 @@
             styleClass="w-full !text-white !font-medium"
             severity="primary"
             [rounded]="true"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
           />
 
           <p-button
@@ -59,6 +74,12 @@
             [rounded]="true"
             (onClick)="goToHome()"
           />
+        </div>
+
+        <div class="text-center pt-1">
+          <a href="#" class="text-sm text-primary hover:underline">
+            ¿Olvidaste tu contraseña?
+          </a>
         </div>
       </form>
     </p-card>
