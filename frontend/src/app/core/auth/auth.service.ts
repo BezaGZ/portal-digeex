@@ -1,7 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
-import { Observable, tap, switchMap, map } from 'rxjs';
+import { Observable, tap, switchMap } from 'rxjs';
 import { AuthStatus, AuthUser } from './models/auth-session.model';
+import { EPerson } from '../api/models';
 
 /**
  * Servicio central de autenticación para el Portal DIGEEX.
@@ -90,7 +91,7 @@ export class AuthService {
    * Extrae los campos relevantes del EPerson de DSpace
    * al modelo AuthUser que usa el frontend.
    */
-  private mapEPersonToUser(eperson: AuthStatus['_embedded'] extends { eperson: infer E } ? E : never): AuthUser {
+  private mapEPersonToUser(eperson: EPerson): AuthUser {
     return {
       uuid: eperson.uuid,
       email: eperson.email,

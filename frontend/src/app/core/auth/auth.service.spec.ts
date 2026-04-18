@@ -47,6 +47,24 @@ describe('AuthService', () => {
     authenticated: false,
   };
 
+  /** Helpers */
+
+  function performLogin(): Promise<void> {
+    const promise = new Promise<void>((resolve, reject) => {
+      service.login('juan@mineduc.gob.gt', 'Password1').subscribe({
+        next: () => resolve(),
+        error: reject,
+      });
+    });
+
+    httpMock.expectOne('/server/api/authn/login').flush(null, {
+      headers: { Authorization: 'Bearer fake-jwt-token-123' },
+    });
+    httpMock.expectOne('/server/api/authn/status').flush(mockAuthStatusAuthenticated);
+
+    return promise;
+  }
+
   /** Setup */
 
   beforeEach(() => {
@@ -66,126 +84,105 @@ describe('AuthService', () => {
     httpMock.verify();
   });
 
-  /** Instanciación */
-
   /** Verifica que el servicio se instancie correctamente. */
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
 
-  /** Login */
+  /** Estado inicial */
 
-  /** Verifica que login() envíe POST a /api/authn/login con credenciales x-www-form-urlencoded. */
-  it('should POST credentials to /api/authn/login', async () => {
-    const promise = new Promise<void>((resolve, reject) => {
-      service.login('juan@mineduc.gob.gt', 'Password1').subscribe({
-        next: () => resolve(),
-        error: reject,
-      });
+  describe('estado inicial', () => {
+    /** Verifica que los signals empiecen con valores por defecto (no autenticado). */
+    it('should start with isAuthenticated false and currentUser null', () => {
+      expect(service.isAuthenticated()).toBe(false);
+      expect(service.currentUser()).toBeNull();
     });
-
-    const loginReq = httpMock.expectOne('/server/api/authn/login');
-    expect(loginReq.request.method).toBe('POST');
-    expect(loginReq.request.body).toBe('user=juan%40mineduc.gob.gt&password=Password1');
-    expect(loginReq.request.headers.get('Content-Type')).toBe('application/x-www-form-urlencoded');
-    loginReq.flush(null, {
-      headers: { Authorization: 'Bearer fake-jwt-token-123' },
-    });
-
-    const statusReq = httpMock.expectOne('/server/api/authn/status');
-    expect(statusReq.request.method).toBe('GET');
-    statusReq.flush(mockAuthStatusAuthenticated);
-
-    await promise;
   });
 
-  /** Verifica que login() actualice isAuthenticated a true tras un login exitoso. */
-  it('should set isAuthenticated to true after successful login', async () => {
-    expect(service.isAuthenticated()).toBe(false);
+  /** Login */
 
-    const promise = new Promise<void>((resolve, reject) => {
-      service.login('juan@mineduc.gob.gt', 'Password1').subscribe({
-        next: () => resolve(),
-        error: reject,
+  describe('login()', () => {
+    /** Verifica que login() envíe POST a /api/authn/login con credenciales x-www-form-urlencoded. */
+    it('should POST credentials to /api/authn/login', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service.login('juan@mineduc.gob.gt', 'Password1').subscribe({
+          next: () => resolve(),
+          error: reject,
+        });
       });
+
+      const loginReq = httpMock.expectOne('/server/api/authn/login');
+      expect(loginReq.request.method).toBe('POST');
+      expect(loginReq.request.body).toBe('user=juan%40mineduc.gob.gt&password=Password1');
+      expect(loginReq.request.headers.get('Content-Type')).toBe('application/x-www-form-urlencoded');
+      loginReq.flush(null, {
+        headers: { Authorization: 'Bearer fake-jwt-token-123' },
+      });
+
+      const statusReq = httpMock.expectOne('/server/api/authn/status');
+      expect(statusReq.request.method).toBe('GET');
+      statusReq.flush(mockAuthStatusAuthenticated);
+
+      await promise;
     });
 
-    const loginReq = httpMock.expectOne('/server/api/authn/login');
-    loginReq.flush(null, {
-      headers: { Authorization: 'Bearer fake-jwt-token-123' },
+    /** Verifica que login() actualice isAuthenticated a true tras un login exitoso. */
+    it('should set isAuthenticated to true after successful login', async () => {
+      expect(service.isAuthenticated()).toBe(false);
+
+      await performLogin();
+
+      expect(service.isAuthenticated()).toBe(true);
+      expect(service.currentUser()).toBeTruthy();
+      expect(service.currentUser()!.email).toBe('juan@mineduc.gob.gt');
     });
-
-    const statusReq = httpMock.expectOne('/server/api/authn/status');
-    statusReq.flush(mockAuthStatusAuthenticated);
-
-    await promise;
-
-    expect(service.isAuthenticated()).toBe(true);
-    expect(service.currentUser()).toBeTruthy();
-    expect(service.currentUser()!.email).toBe('juan@mineduc.gob.gt');
   });
 
   /** Logout */
 
-  /** Verifica que logout() envíe POST a /api/authn/logout y limpie el estado. */
-  it('should POST to /api/authn/logout and clear state', async () => {
-    const loginPromise = new Promise<void>((resolve, reject) => {
-      service.login('juan@mineduc.gob.gt', 'Password1').subscribe({
-        next: () => resolve(),
-        error: reject,
+  describe('logout()', () => {
+    /** Verifica que logout() envíe POST a /api/authn/logout y limpie el estado. */
+    it('should POST to /api/authn/logout and clear state', async () => {
+      await performLogin();
+      expect(service.isAuthenticated()).toBe(true);
+
+      const logoutPromise = new Promise<void>((resolve, reject) => {
+        service.logout().subscribe({
+          next: () => resolve(),
+          error: reject,
+        });
       });
+
+      const logoutReq = httpMock.expectOne('/server/api/authn/logout');
+      expect(logoutReq.request.method).toBe('POST');
+      logoutReq.flush(null, { status: 204, statusText: 'No Content' });
+
+      await logoutPromise;
+
+      expect(service.isAuthenticated()).toBe(false);
+      expect(service.currentUser()).toBeNull();
     });
-
-    httpMock.expectOne('/server/api/authn/login').flush(null, {
-      headers: { Authorization: 'Bearer fake-jwt-token-123' },
-    });
-    httpMock.expectOne('/server/api/authn/status').flush(mockAuthStatusAuthenticated);
-    await loginPromise;
-
-    expect(service.isAuthenticated()).toBe(true);
-
-    const logoutPromise = new Promise<void>((resolve, reject) => {
-      service.logout().subscribe({
-        next: () => resolve(),
-        error: reject,
-      });
-    });
-
-    const logoutReq = httpMock.expectOne('/server/api/authn/logout');
-    expect(logoutReq.request.method).toBe('POST');
-    logoutReq.flush(null, { status: 204, statusText: 'No Content' });
-
-    await logoutPromise;
-
-    expect(service.isAuthenticated()).toBe(false);
-    expect(service.currentUser()).toBeNull();
   });
 
   /** Status */
 
-  /** Verifica que status() envíe GET a /api/authn/status y devuelva los datos del EPerson. */
-  it('should GET /api/authn/status and return auth state', async () => {
-    const promise = new Promise<AuthStatus>((resolve, reject) => {
-      service.status().subscribe({
-        next: (result) => resolve(result),
-        error: reject,
+  describe('status()', () => {
+    /** Verifica que status() envíe GET a /api/authn/status y devuelva los datos del EPerson. */
+    it('should GET /api/authn/status and return auth state', async () => {
+      const promise = new Promise<AuthStatus>((resolve, reject) => {
+        service.status().subscribe({
+          next: (result) => resolve(result),
+          error: reject,
+        });
       });
+
+      const req = httpMock.expectOne('/server/api/authn/status');
+      expect(req.request.method).toBe('GET');
+      req.flush(mockAuthStatusAuthenticated);
+
+      const result = await promise;
+      expect(result.authenticated).toBe(true);
+      expect(result._embedded?.eperson.email).toBe('juan@mineduc.gob.gt');
     });
-
-    const req = httpMock.expectOne('/server/api/authn/status');
-    expect(req.request.method).toBe('GET');
-    req.flush(mockAuthStatusAuthenticated);
-
-    const result = await promise;
-    expect(result.authenticated).toBe(true);
-    expect(result._embedded?.eperson.email).toBe('juan@mineduc.gob.gt');
-  });
-
-  /** Estado inicial */
-
-  /** Verifica que los signals empiecen con valores por defecto (no autenticado). */
-  it('should start with isAuthenticated false and currentUser null', () => {
-    expect(service.isAuthenticated()).toBe(false);
-    expect(service.currentUser()).toBeNull();
   });
 });
