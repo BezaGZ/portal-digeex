@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { HttpInterceptorFn } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, catchError, shareReplay, switchMap, tap, throwError } from 'rxjs';
+import { Observable, OperatorFunction, catchError, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 
 /** Umbral en segundos para disparar refresh automático (5 minutos). */
@@ -65,7 +65,7 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
  * Operador que intercepta respuestas 401 (Unauthorized)
  * y redirige al usuario a la pantalla de login.
  */
-function redirectOn401(router: Router) {
+function redirectOn401<T>(router: Router): OperatorFunction<T, T> {
   return catchError((error: { status?: number }) => {
     if (error.status === 401) {
       router.navigate(['/login']);
