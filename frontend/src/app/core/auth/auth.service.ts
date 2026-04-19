@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
-import { Observable, tap, switchMap } from 'rxjs';
+import { Observable, tap, switchMap, map } from 'rxjs';
 import { AuthStatus, AuthUser } from './models/auth-session.model';
 import { EPerson } from '../api/models';
 
@@ -78,6 +78,32 @@ export class AuthService {
    */
   status(): Observable<AuthStatus> {
     return this.http.get<AuthStatus>(`${this.apiUrl}/status`);
+  }
+
+  /**
+   * Renueva el JWT enviando el token actual a DSpace.
+   *
+   * POST /api/authn/login sin body, solo con el header
+   * Authorization: Bearer <token-actual>. DSpace responde
+   * con un nuevo JWT en el header Authorization.
+   */
+  refreshToken(): Observable<void> {
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${this.jwt}`,
+    });
+
+    return this.http.post(`${this.apiUrl}/login`, null, {
+      headers,
+      observe: 'response',
+    }).pipe(
+      tap((response: HttpResponse<unknown>) => {
+        const authHeader = response.headers.get('Authorization');
+        if (authHeader?.startsWith('Bearer ')) {
+          this.jwt = authHeader.substring(7);
+        }
+      }),
+      map(() => undefined),
+    );
   }
 
   /**
