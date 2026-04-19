@@ -14,6 +14,7 @@ registerLocaleData(localeEsGT);
 
 import { routes } from './app.routes';
 import { csrfInterceptor } from './core/csrf/csrf.interceptor';
+import { jwtInterceptor } from './core/auth/auth.interceptor';
 import { errorInterceptor } from './core/error/error.interceptor';
 
 
@@ -163,7 +164,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideHttpClient(
-      withInterceptors([csrfInterceptor, errorInterceptor])
+      withInterceptors([csrfInterceptor, jwtInterceptor, errorInterceptor])
     ),
     provideAnimations(),
     { provide: LOCALE_ID, useValue: 'es-GT' },
