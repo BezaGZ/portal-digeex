@@ -26,6 +26,11 @@ export interface AuthStatus {
   _embedded?: {
     eperson: EPerson;
   };
+  _links?: {
+    eperson?: {
+      href: string;
+    };
+  };
 }
 
 /**

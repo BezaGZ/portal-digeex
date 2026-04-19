@@ -3,3 +3,4 @@ export * from './skeleton-detail/skeleton-detail.component';
 export * from './loading-spinner/loading-spinner.component';
 export * from './empty-state/empty-state.component';
 export * from './document-card/document-card';
+export * from './session-warning-modal/session-warning-modal';

@@ -1,0 +1,55 @@
+@if (idleService.warningVisible()) {
+  <div
+    data-testid="session-warning-modal"
+    class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50"
+  >
+    <div
+      class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 text-center"
+    >
+      <div class="mb-4">
+        <i
+          class="pi pi-clock text-4xl"
+          style="color: var(--gob-ocre-amanecer)"
+        ></i>
+      </div>
+
+      <h2
+        class="text-lg font-bold mb-2"
+        style="color: var(--color-text-primary)"
+      >
+        Sesión a punto de expirar
+      </h2>
+
+      <p
+        class="text-sm mb-6"
+        style="color: var(--color-text-secondary)"
+      >
+        Tu sesión se cerrará automáticamente por inactividad.
+        ¿Deseas continuar trabajando?
+      </p>
+
+      <div class="flex gap-3 justify-center">
+        <button
+          data-testid="btn-logout"
+          class="px-5 py-2.5 rounded-xl text-sm font-medium border transition-colors"
+          style="
+            color: var(--color-text-secondary);
+            border-color: var(--color-border);
+          "
+          (click)="onLogout()"
+        >
+          Cerrar sesión
+        </button>
+
+        <button
+          data-testid="btn-continue"
+          class="px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-colors"
+          style="background-color: var(--gob-azul-gobierno)"
+          (click)="onContinue()"
+        >
+          Seguir trabajando
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,8 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
-import { Observable, tap, switchMap, map } from 'rxjs';
+import { Observable, of, tap, switchMap, map, catchError } from 'rxjs';
 import { AuthStatus, AuthUser } from './models/auth-session.model';
 import { EPerson } from '../api/models';
+import { resetCsrfToken } from '../csrf/csrf.interceptor';
 
 /**
  * Servicio central de autenticación para el Portal DIGEEX.
@@ -46,10 +47,22 @@ export class AuthService {
       }),
       switchMap(() => this.status()),
       tap((authStatus: AuthStatus) => {
-        if (authStatus.authenticated && authStatus._embedded?.eperson) {
+        if (authStatus.authenticated) {
           this.isAuthenticated.set(true);
-          this.currentUser.set(this.mapEPersonToUser(authStatus._embedded.eperson));
         }
+      }),
+      switchMap((authStatus: AuthStatus) => {
+        const epersonHref = authStatus._links?.eperson?.href;
+        if (authStatus.authenticated && epersonHref) {
+          const relativeUrl = epersonHref.replace(/^https?:\/\/[^/]+/, '');
+          return this.http.get<EPerson>(relativeUrl).pipe(
+            tap((eperson: EPerson) => {
+              this.currentUser.set(this.mapEPersonToUser(eperson));
+            }),
+            map(() => authStatus),
+          );
+        }
+        return [authStatus];
       }),
     );
   }
@@ -66,6 +79,7 @@ export class AuthService {
         this.jwt = null;
         this.isAuthenticated.set(false);
         this.currentUser.set(null);
+        resetCsrfToken();
       }),
     );
   }
@@ -78,6 +92,46 @@ export class AuthService {
    */
   status(): Observable<AuthStatus> {
     return this.http.get<AuthStatus>(`${this.apiUrl}/status`);
+  }
+
+  /**
+   * Restaura la sesión al iniciar la aplicación.
+   *
+   * Llama a GET /api/authn/status para verificar si hay
+   * sesión activa (ej. tras recargar la página). Si DSpace
+   * responde authenticated: true, obtiene el EPerson y
+   * actualiza los signals. También siembra el token CSRF
+   * desde el header DSPACE-XSRF-TOKEN de la respuesta.
+   *
+   * Si falla (backend caído, etc.) no hace nada — el usuario
+   * simplemente verá la app sin sesión.
+   */
+  restoreSession(): Observable<AuthStatus | null> {
+    return this.status().pipe(
+      switchMap((authStatus: AuthStatus) => {
+        if (!authStatus.authenticated) {
+          this.isAuthenticated.set(false);
+          this.currentUser.set(null);
+          return of(authStatus);
+        }
+
+        this.isAuthenticated.set(true);
+
+        const epersonHref = authStatus._links?.eperson?.href;
+        if (epersonHref) {
+          const relativeUrl = epersonHref.replace(/^https?:\/\/[^/]+/, '');
+          return this.http.get<EPerson>(relativeUrl).pipe(
+            tap((eperson: EPerson) => {
+              this.currentUser.set(this.mapEPersonToUser(eperson));
+            }),
+            map(() => authStatus),
+          );
+        }
+
+        return of(authStatus);
+      }),
+      catchError(() => of(null)),
+    );
   }
 
   /**
