@@ -1,12 +1,10 @@
 import { Injectable, signal } from '@angular/core';
 
 /** Tiempo en ms para mostrar el modal de advertencia (25 minutos). */
-/** TODO: revertir a 25 * 60_000 después de prueba visual */
-const WARNING_MS = 20_000;
+const WARNING_MS = 25 * 60_000;
 
 /** Tiempo en ms para expirar la sesión (30 minutos). */
-/** TODO: revertir a 30 * 60_000 después de prueba visual */
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 30 * 60_000;
 
 /** Eventos DOM que se consideran actividad del usuario. */
 const ACTIVITY_EVENTS = ['click', 'keydown', 'mousemove', 'scroll'] as const;

@@ -22,24 +22,28 @@ describe('AuthService', () => {
   const mockAuthStatusAuthenticated: AuthStatus = {
     okay: true,
     authenticated: true,
-    _embedded: {
+    _links: {
       eperson: {
-        uuid: 'eperson-001',
-        name: 'Juan Pérez',
-        handle: null,
-        metadata: {
-          'eperson.firstname': [{ value: 'Juan', language: null, authority: null, confidence: -1, place: 0 }],
-          'eperson.lastname': [{ value: 'Pérez', language: null, authority: null, confidence: -1, place: 0 }],
-        },
-        netid: null,
-        lastActive: '2026-04-18',
-        canLogIn: true,
-        email: 'juan@mineduc.gob.gt',
-        requireCertificate: false,
-        selfRegistered: false,
-        type: 'eperson',
+        href: 'http://localhost:8080/server/api/eperson/epersons/eperson-001',
       },
     },
+  };
+
+  const mockEPerson = {
+    uuid: 'eperson-001',
+    name: 'Juan Pérez',
+    handle: null,
+    metadata: {
+      'eperson.firstname': [{ value: 'Juan', language: null, authority: null, confidence: -1, place: 0 }],
+      'eperson.lastname': [{ value: 'Pérez', language: null, authority: null, confidence: -1, place: 0 }],
+    },
+    netid: null,
+    lastActive: '2026-04-18',
+    canLogIn: true,
+    email: 'juan@mineduc.gob.gt',
+    requireCertificate: false,
+    selfRegistered: false,
+    type: 'eperson',
   };
 
   /** Helpers */
@@ -56,6 +60,7 @@ describe('AuthService', () => {
       headers: { Authorization: 'Bearer fake-jwt-token-123' },
     });
     httpMock.expectOne('/server/api/authn/status').flush(mockAuthStatusAuthenticated);
+    httpMock.expectOne('/server/api/eperson/epersons/eperson-001').flush(mockEPerson);
 
     return promise;
   }
@@ -117,6 +122,10 @@ describe('AuthService', () => {
       const statusReq = httpMock.expectOne('/server/api/authn/status');
       expect(statusReq.request.method).toBe('GET');
       statusReq.flush(mockAuthStatusAuthenticated);
+
+      const epersonReq = httpMock.expectOne('/server/api/eperson/epersons/eperson-001');
+      expect(epersonReq.request.method).toBe('GET');
+      epersonReq.flush(mockEPerson);
 
       await promise;
     });
@@ -204,7 +213,7 @@ describe('AuthService', () => {
 
       const result = await promise;
       expect(result.authenticated).toBe(true);
-      expect(result._embedded?.eperson.email).toBe('juan@mineduc.gob.gt');
+      expect(result._links?.eperson?.href).toContain('eperson-001');
     });
   });
 });
