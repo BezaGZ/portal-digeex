@@ -19,9 +19,17 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const messageService = inject(MessageService);
 
+  /**
+   * Las rutas de autenticación (/authn/login, /authn/logout, /authn/status)
+   * manejan sus propios errores en cada componente. Evitamos toasts
+   * duplicados o redirecciones innecesarias desde el interceptor global.
+   */
+  if (req.url.includes('/authn/')) {
+    return next(req);
+  }
+
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      // Registrar error en consola
       console.error('[HTTP Error]', error);
 
       // Manejar errores según código de estado

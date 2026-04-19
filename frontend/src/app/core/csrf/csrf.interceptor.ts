@@ -1,5 +1,5 @@
 import { inject } from '@angular/core';
-import { HttpClient, HttpInterceptorFn } from '@angular/common/http';
+import { HttpClient, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { switchMap, tap } from 'rxjs';
 
 /**
@@ -84,14 +84,8 @@ function sendWithToken(
  * de la respuesta y lo guarda en memoria.
  */
 function extractCsrfFromResponse(event: unknown): void {
-  if (
-    event &&
-    typeof event === 'object' &&
-    'headers' in event &&
-    typeof (event as { headers: { get: (name: string) => string | null } }).headers?.get === 'function'
-  ) {
-    const response = event as { headers: { get: (name: string) => string | null } };
-    const newToken = response.headers.get('DSPACE-XSRF-TOKEN');
+  if (event instanceof HttpResponse) {
+    const newToken = event.headers.get('DSPACE-XSRF-TOKEN');
     if (newToken) {
       csrfToken = newToken;
     }
