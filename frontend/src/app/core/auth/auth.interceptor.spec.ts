@@ -99,4 +99,63 @@ describe('jwtInterceptor', () => {
       await promise;
     });
   });
+
+  /** Refresh automático */
+
+  describe('refresh automático', () => {
+    /**
+     * Helper: genera un JWT falso con un claim exp específico.
+     * El payload es base64 del JSON con el exp.
+     */
+    function fakeJwt(expTimestamp: number): string {
+      const header = btoa(JSON.stringify({ alg: 'HS256' }));
+      const payload = btoa(JSON.stringify({ eid: 'user-001', exp: expTimestamp }));
+      return `${header}.${payload}.fake-signature`;
+    }
+
+    /** Verifica que haga refresh cuando el token expira en menos de 5 minutos. */
+    it('should refresh token when exp is less than 5 minutes away', async () => {
+      const expiringSoon = Math.floor(Date.now() / 1000) + 200;
+      vi.spyOn(authService, 'getToken').mockReturnValue(fakeJwt(expiringSoon));
+      vi.spyOn(authService, 'refreshToken').mockReturnValue(
+        new (await import('rxjs')).Observable((subscriber) => {
+          subscriber.next(undefined);
+          subscriber.complete();
+        }),
+      );
+
+      const promise = new Promise((resolve, reject) => {
+        httpClient.get('/server/api/core/communities').subscribe({
+          next: resolve,
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne('/server/api/core/communities');
+      req.flush({});
+
+      await promise;
+      expect(authService.refreshToken).toHaveBeenCalled();
+    });
+
+    /** Verifica que NO haga refresh cuando el token tiene más de 5 minutos de vida. */
+    it('should NOT refresh token when exp is more than 5 minutes away', async () => {
+      const expiresLater = Math.floor(Date.now() / 1000) + 600;
+      vi.spyOn(authService, 'getToken').mockReturnValue(fakeJwt(expiresLater));
+      vi.spyOn(authService, 'refreshToken');
+
+      const promise = new Promise((resolve, reject) => {
+        httpClient.get('/server/api/core/communities').subscribe({
+          next: resolve,
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne('/server/api/core/communities');
+      req.flush({});
+
+      await promise;
+      expect(authService.refreshToken).not.toHaveBeenCalled();
+    });
+  });
 });

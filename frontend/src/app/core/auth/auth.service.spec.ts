@@ -159,6 +159,33 @@ describe('AuthService', () => {
     });
   });
 
+  /** Refresh Token */
+
+  describe('refreshToken()', () => {
+    /** Verifica que refreshToken() envíe POST sin body y con Bearer token actual. */
+    it('should POST to /api/authn/login with Bearer header and no body', async () => {
+      await performLogin();
+
+      const promise = new Promise<void>((resolve, reject) => {
+        service.refreshToken().subscribe({
+          next: () => resolve(),
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne('/server/api/authn/login');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toBeNull();
+      expect(req.request.headers.get('Authorization')).toBe('Bearer fake-jwt-token-123');
+      req.flush(null, {
+        headers: { Authorization: 'Bearer new-refreshed-token-456' },
+      });
+
+      await promise;
+      expect(service.getToken()).toBe('new-refreshed-token-456');
+    });
+  });
+
   /** Status */
 
   describe('status()', () => {
