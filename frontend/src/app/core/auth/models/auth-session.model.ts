@@ -1,5 +1,3 @@
-import { EPerson } from '../../api/models';
-
 /**
  * Credenciales para el endpoint POST /api/authn/login.
  *
