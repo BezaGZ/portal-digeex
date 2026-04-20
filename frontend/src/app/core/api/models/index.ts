@@ -4,6 +4,7 @@ export * from './collection.model';
 export * from './item.model';
 export * from './bitstream.model';
 export * from './eperson.model';
+export * from './group.model';
 export * from './hal.model';
 export * from './search.model';
 export * from './view.model';
