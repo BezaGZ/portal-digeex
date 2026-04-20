@@ -36,6 +36,15 @@ type JsonPatchReplace = {
 };
 
 /**
+ * Construye una operación replace de JSON Patch.
+ * Helper a nivel de módulo para que sea stateless y evitar repetir
+ * la estructura `{ op: 'replace', path, value }` en cada push.
+ */
+function replaceOp(path: string, value: string | boolean): JsonPatchReplace {
+  return { op: PATCH_OP_REPLACE, path, value };
+}
+
+/**
  * Wrapper HTTP del recurso /api/eperson/epersons de DSpace.
  * Solo habla con el backend, sin reglas de negocio.
  * Ciclos 5, 6 y 7 TDD — Sprint 5.
@@ -74,7 +83,9 @@ export class EPersonApiService {
 
   /**
    * Edita datos básicos del eperson vía JSON Patch.
-   * Cada campo presente en `changes` se traduce a una operación replace.
+   * Cada campo presente en `changes` se traduce a una operación replace
+   * creada explícitamente, siguiendo el mismo estilo que los IT oficiales
+   * de DSpace (ver EPersonRestRepositoryIT.patchMultipleReplaceMetadataByAdmin).
    * Los metadatos se parchean apuntando al índice 0 y a /value, siguiendo
    * el patrón documentado en metadata-patch-suite.json de DSpace.
    */
@@ -85,33 +96,18 @@ export class EPersonApiService {
     const patch: JsonPatchReplace[] = [];
 
     if (changes.firstName !== undefined) {
-      patch.push({
-        op: PATCH_OP_REPLACE,
-        path: PATCH_PATH_FIRSTNAME_VALUE,
-        value: changes.firstName,
-      });
+      patch.push(replaceOp(PATCH_PATH_FIRSTNAME_VALUE, changes.firstName));
     }
 
     if (changes.lastName !== undefined) {
-      patch.push({
-        op: PATCH_OP_REPLACE,
-        path: PATCH_PATH_LASTNAME_VALUE,
-        value: changes.lastName,
-      });
+      patch.push(replaceOp(PATCH_PATH_LASTNAME_VALUE, changes.lastName));
     }
 
     if (changes.email !== undefined) {
-      patch.push({
-        op: PATCH_OP_REPLACE,
-        path: PATCH_PATH_EMAIL,
-        value: changes.email,
-      });
+      patch.push(replaceOp(PATCH_PATH_EMAIL, changes.email));
     }
 
-    return this.http.patch<EPerson>(
-      `${this.apiUrl}${EPERSONS_PATH}/${uuid}`,
-      patch,
-    );
+    return this.sendPatch(uuid, patch);
   }
 
   /**
@@ -129,14 +125,16 @@ export class EPersonApiService {
    * No borra al usuario: RN-11 exige preservarlo para trazabilidad histórica.
    */
   setActive(uuid: string, active: boolean): Observable<EPerson> {
-    const patch: JsonPatchReplace[] = [
-      { op: PATCH_OP_REPLACE, path: PATCH_PATH_CAN_LOGIN, value: active },
-    ];
+    return this.sendPatch(uuid, [replaceOp(PATCH_PATH_CAN_LOGIN, active)]);
+  }
 
-    return this.http.patch<EPerson>(
-      `${this.apiUrl}${EPERSONS_PATH}/${uuid}`,
-      patch,
-    );
+  /**
+   * Envía un JSON Patch al recurso /eperson/epersons/{uuid}.
+   * Centraliza la construcción de la URL y la llamada HTTP para que
+   * update() y setActive() tengan un único punto de cambio.
+   */
+  private sendPatch(uuid: string, patch: JsonPatchReplace[]): Observable<EPerson> {
+    return this.http.patch<EPerson>(`${this.apiUrl}${EPERSONS_PATH}/${uuid}`, patch);
   }
 
   /**
