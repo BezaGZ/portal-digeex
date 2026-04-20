@@ -5,12 +5,14 @@ import { EPersonApiService } from './eperson-api.service';
 
 /**
  * Tests de EPersonApiService, wrapper HTTP del recurso /api/eperson/epersons.
- * 
- * Verifica list() (GET paginado con mapeo HAL) y create() (POST eperson +
- * POST registrations encadenados para enviar correo de invitación).
- * 
- * Ciclo 5, 6 TDD — Sprint 5.
- * 
+ *
+ * Verifica list() (GET paginado con mapeo HAL), create() (POST eperson +
+ * POST registrations encadenados) y los métodos de gestión update(),
+ * resendRegistration() y setActive() implementados sobre JSON Patch
+ * según el contrato REST de DSpace 9.2.
+ *
+ * Ciclo 5, 6, 7 TDD — Sprint 5.
+ *
  */
 describe('EPersonApiService', () => {
   let service: EPersonApiService;
@@ -344,6 +346,117 @@ describe('EPersonApiService', () => {
         { message: 'Internal Server Error' },
         { status: 500, statusText: 'Internal Server Error' },
       );
+
+      await promise;
+    });
+  });
+
+  /**
+   * update(): PATCH /api/eperson/epersons/{uuid} con JSON Patch.
+   * Permite editar firstname y lastname del eperson sin tocar otros campos.
+   */
+  describe('update()', () => {
+    /**
+     * Verifica que editar firstName y lastName arme un JSON Patch con dos
+     * operaciones replace sobre /metadata/eperson.firstname/0/value y
+     * /metadata/eperson.lastname/0/value. Targetea solo /value para no
+     * tener que cargar los cuatro campos del entry (language, authority,
+     * confidence) cuando lo único que cambia es el texto.
+     */
+    it('should PATCH eperson when editing basic data', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service
+          .update('eperson-uuid-001', { firstName: 'NuevoNombre', lastName: 'NuevoApellido' })
+          .subscribe({ next: () => resolve(), error: reject });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/epersons/eperson-uuid-001' && r.method === 'PATCH',
+      );
+      expect(req.request.body).toEqual([
+        { op: 'replace', path: '/metadata/eperson.firstname/0/value', value: 'NuevoNombre' },
+        { op: 'replace', path: '/metadata/eperson.lastname/0/value', value: 'NuevoApellido' },
+      ]);
+      req.flush({});
+
+      await promise;
+    });
+  });
+
+  /**
+   * resendRegistration(): POST /api/eperson/registrations?accountRequestType=forgot.
+   * Reenvía el correo con token para que el usuario fije su contraseña cuando
+   * el original se perdió o expiró.
+   */
+  describe('resendRegistration()', () => {
+    /**
+     * Verifica que dispare el mismo endpoint, query param y body que usa
+     * create() al final, para aprovechar el mecanismo nativo de DSpace.
+     */
+    it('should POST registrations?accountRequestType=forgot to resend invitation', async () => {
+      const promise = new Promise((resolve, reject) => {
+        service
+          .resendRegistration('olvidadizo@mineduc.gob.gt')
+          .subscribe({ next: resolve, error: reject });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/registrations' &&
+          r.method === 'POST' &&
+          r.params.get('accountRequestType') === 'forgot',
+      );
+      expect(req.request.body.email).toBe('olvidadizo@mineduc.gob.gt');
+      expect(req.request.body.type).toBe('registration');
+      req.flush({});
+
+      await promise;
+    });
+  });
+
+  /**
+   * setActive(): PATCH /api/eperson/epersons/{uuid} con replace de /canLogIn.
+   * Activa o desactiva la capacidad de login sin borrar el eperson, que es
+   * lo que RN-11 exige para preservar trazabilidad histórica.
+   */
+  describe('setActive()', () => {
+    /**
+     * Al desactivar, canLogIn pasa a false. Reemplaza al "borrar" en UI.
+     */
+    it('should PATCH eperson.canLogIn=false on deactivate', async () => {
+      const promise = new Promise((resolve, reject) => {
+        service
+          .setActive('eperson-uuid-001', false)
+          .subscribe({ next: resolve, error: reject });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/epersons/eperson-uuid-001' && r.method === 'PATCH',
+      );
+      expect(req.request.body).toEqual([{ op: 'replace', path: '/canLogIn', value: false }]);
+      req.flush({});
+
+      await promise;
+    });
+
+    /**
+     * Al reactivar, canLogIn vuelve a true.
+     */
+    it('should PATCH eperson.canLogIn=true on activate', async () => {
+      const promise = new Promise((resolve, reject) => {
+        service
+          .setActive('eperson-uuid-001', true)
+          .subscribe({ next: resolve, error: reject });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/epersons/eperson-uuid-001' && r.method === 'PATCH',
+      );
+      expect(req.request.body).toEqual([{ op: 'replace', path: '/canLogIn', value: true }]);
+      req.flush({});
 
       await promise;
     });
