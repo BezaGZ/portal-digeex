@@ -6,9 +6,9 @@ import { EPersonApiService } from './eperson-api.service';
 /**
  * Tests para EPersonApiService.
  *
- * Wrapper HTTP del recurso /api/eperson/epersons de DSpace.
- * Responsabilidad: hablar el idioma del backend. No aplica reglas
- * de negocio ni mapea a modelos de UI.
+ * Servicio dedicado al recurso /api/eperson/epersons de DSpace,
+ * en la capa `core/api/` junto al resto de wrappers por recurso
+ * (DiscoveryService, DSpaceApiService).
  *
  * Ciclo 5 TDD — Sprint 5
  */
@@ -25,14 +25,19 @@ describe('EPersonApiService', () => {
           uuid: 'eperson-001',
           name: 'carlos.ramirez@mineduc.gob.gt',
           email: 'carlos.ramirez@mineduc.gob.gt',
+          handle: null,
           netid: null,
           canLogIn: true,
           requireCertificate: false,
           selfRegistered: false,
           lastActive: '2026-04-10T10:30:00Z',
           metadata: {
-            'eperson.firstname': [{ value: 'Carlos' }],
-            'eperson.lastname': [{ value: 'Ramírez' }],
+            'eperson.firstname': [
+              { value: 'Carlos', language: null, authority: null, confidence: -1, place: 0 },
+            ],
+            'eperson.lastname': [
+              { value: 'Ramírez', language: null, authority: null, confidence: -1, place: 0 },
+            ],
           },
           type: 'eperson',
         },
@@ -40,14 +45,19 @@ describe('EPersonApiService', () => {
           uuid: 'eperson-002',
           name: 'ana.lopez@mineduc.gob.gt',
           email: 'ana.lopez@mineduc.gob.gt',
+          handle: null,
           netid: null,
           canLogIn: true,
           requireCertificate: false,
           selfRegistered: false,
           lastActive: null,
           metadata: {
-            'eperson.firstname': [{ value: 'Ana' }],
-            'eperson.lastname': [{ value: 'López' }],
+            'eperson.firstname': [
+              { value: 'Ana', language: null, authority: null, confidence: -1, place: 0 },
+            ],
+            'eperson.lastname': [
+              { value: 'López', language: null, authority: null, confidence: -1, place: 0 },
+            ],
           },
           type: 'eperson',
         },

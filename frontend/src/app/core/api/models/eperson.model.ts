@@ -6,7 +6,7 @@ export interface EPerson {
   handle: string | null;
   metadata: MetadataMap;
   netid: string | null;
-  lastActive: string;
+  lastActive: string | null;
   canLogIn: boolean;
   email: string;
   requireCertificate: boolean;
