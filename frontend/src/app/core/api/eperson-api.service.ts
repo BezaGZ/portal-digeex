@@ -6,13 +6,9 @@ import { EPerson } from './models/eperson.model';
 import { HalListResponse, Paginated } from './models/hal.model';
 
 /**
- * Servicio dedicado al recurso /api/eperson/epersons de DSpace.
- * Sigue el patrón de `DiscoveryService`: un servicio por recurso
- * en `core/api/`, con una sola razón de cambio.
- *
- * Responsabilidad: hablar el idioma del backend. No aplica reglas
- * de negocio ni mapea a modelos de UI — eso lo hace la fachada
- * de feature (`UserManagementService`).
+ * Wrapper HTTP del recurso /api/eperson/epersons de DSpace.
+ * Solo habla con el backend, sin reglas de negocio.
+ * Ciclo 5, 6 TDD — Sprint 5.
  */
 @Injectable({ providedIn: 'root' })
 export class EPersonApiService {
@@ -21,8 +17,7 @@ export class EPersonApiService {
 
   /**
    * Lista epersons paginados desde DSpace.
-   * @param params Paginación (size y page, 0-indexed).
-   * @returns Respuesta aplanada en `Paginated<EPerson>`.
+   * Devuelve la respuesta aplanada en Paginated<EPerson>.
    */
   list(params: { size?: number; page?: number } = {}): Observable<Paginated<EPerson>> {
     const httpParams = this.buildHttpParams(params);
@@ -33,8 +28,16 @@ export class EPersonApiService {
   }
 
   /**
-   * Construye los HttpParams solo con los valores definidos,
-   * para no enviar `size=undefined` o `page=undefined` al backend.
+   * Crea un eperson y dispara el registration para que fije su contraseña.
+   * DSpace no acepta password en el POST directo, por eso van encadenados.
+   */
+  create(_input: { email: string; firstName: string; lastName: string }): Observable<EPerson> {
+    throw new Error('EPersonApiService.create() no implementado');
+  }
+
+  /**
+   * Arma HttpParams agregando solo los valores que vinieron definidos.
+   * Así evitamos mandar size=undefined o page=undefined al backend.
    */
   private buildHttpParams(params: { size?: number; page?: number }): HttpParams {
     let httpParams = new HttpParams();
@@ -51,10 +54,9 @@ export class EPersonApiService {
   }
 
   /**
-   * Aplana la respuesta HAL de DSpace a `Paginated<EPerson>`.
-   * `_embedded.epersons` es el arreglo real de usuarios;
+   * Aplana la respuesta HAL de DSpace a Paginated<EPerson>.
    * `page.number` se expone como `page` para que el frontend
-   * no tenga que conocer la nomenclatura de HAL.
+   * no tenga que conocer la nomenclatura HAL.
    */
   private mapResponse(response: HalListResponse<EPerson>): Paginated<EPerson> {
     return {
