@@ -15,9 +15,30 @@ const EPERSON_TYPE = 'eperson';
 const REGISTRATION_TYPE = 'registration';
 
 /**
+ * Paths de JSON Patch sobre el recurso eperson (contrato DSpace 9.2).
+ * `/canLogin` en minúscula la 'i' es lo que espera EPersonLoginReplaceOperation.
+ * Los de metadata apuntan solo a `/value` para editar el texto sin reenviar
+ * los cuatro campos del entry (value, language, authority, confidence).
+ */
+const PATCH_PATH_CAN_LOGIN = '/canLogin';
+const PATCH_PATH_FIRSTNAME_VALUE = '/metadata/eperson.firstname/0/value';
+const PATCH_PATH_LASTNAME_VALUE = '/metadata/eperson.lastname/0/value';
+const PATCH_PATH_EMAIL = '/email';
+
+/** Única operación de JSON Patch que usa este wrapper hoy. */
+const PATCH_OP_REPLACE = 'replace';
+
+/** Entrada del array de JSON Patch (RFC 6902) que acepta DSpace. */
+type JsonPatchReplace = {
+  op: typeof PATCH_OP_REPLACE;
+  path: string;
+  value: string | boolean;
+};
+
+/**
  * Wrapper HTTP del recurso /api/eperson/epersons de DSpace.
  * Solo habla con el backend, sin reglas de negocio.
- * Ciclo 5, 6 TDD — Sprint 5.
+ * Ciclos 5, 6 y 7 TDD — Sprint 5.
  */
 @Injectable({ providedIn: 'root' })
 export class EPersonApiService {
@@ -49,6 +70,73 @@ export class EPersonApiService {
           this.triggerPasswordSetupEmail(input.email).pipe(map(() => created)),
         ),
       );
+  }
+
+  /**
+   * Edita datos básicos del eperson vía JSON Patch.
+   * Cada campo presente en `changes` se traduce a una operación replace.
+   * Los metadatos se parchean apuntando al índice 0 y a /value, siguiendo
+   * el patrón documentado en metadata-patch-suite.json de DSpace.
+   */
+  update(
+    uuid: string,
+    changes: { firstName?: string; lastName?: string; email?: string },
+  ): Observable<EPerson> {
+    const patch: JsonPatchReplace[] = [];
+
+    if (changes.firstName !== undefined) {
+      patch.push({
+        op: PATCH_OP_REPLACE,
+        path: PATCH_PATH_FIRSTNAME_VALUE,
+        value: changes.firstName,
+      });
+    }
+
+    if (changes.lastName !== undefined) {
+      patch.push({
+        op: PATCH_OP_REPLACE,
+        path: PATCH_PATH_LASTNAME_VALUE,
+        value: changes.lastName,
+      });
+    }
+
+    if (changes.email !== undefined) {
+      patch.push({
+        op: PATCH_OP_REPLACE,
+        path: PATCH_PATH_EMAIL,
+        value: changes.email,
+      });
+    }
+
+    return this.http.patch<EPerson>(
+      `${this.apiUrl}${EPERSONS_PATH}/${uuid}`,
+      patch,
+    );
+  }
+
+  /**
+   * Reenvía el correo con token para que el usuario fije su contraseña.
+   * Es el mismo mecanismo que dispara create() al final, extraído para que
+   * se pueda invocar de forma independiente cuando el correo original se
+   * perdió o expiró.
+   */
+  resendRegistration(email: string): Observable<unknown> {
+    return this.triggerPasswordSetupEmail(email);
+  }
+
+  /**
+   * Activa o desactiva la capacidad de login del eperson conmutando canLogIn.
+   * No borra al usuario: RN-11 exige preservarlo para trazabilidad histórica.
+   */
+  setActive(uuid: string, active: boolean): Observable<EPerson> {
+    const patch: JsonPatchReplace[] = [
+      { op: PATCH_OP_REPLACE, path: PATCH_PATH_CAN_LOGIN, value: active },
+    ];
+
+    return this.http.patch<EPerson>(
+      `${this.apiUrl}${EPERSONS_PATH}/${uuid}`,
+      patch,
+    );
   }
 
   /**

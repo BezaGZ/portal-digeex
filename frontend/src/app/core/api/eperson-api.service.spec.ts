@@ -416,9 +416,10 @@ describe('EPersonApiService', () => {
   });
 
   /**
-   * setActive(): PATCH /api/eperson/epersons/{uuid} con replace de /canLogIn.
+   * setActive(): PATCH /api/eperson/epersons/{uuid} con replace de /canLogin.
    * Activa o desactiva la capacidad de login sin borrar el eperson, que es
    * lo que RN-11 exige para preservar trazabilidad histórica.
+   * El path /canLogin sigue el contrato DSpace 9.2 (ver EPersonLoginReplaceOperation).
    */
   describe('setActive()', () => {
     /**
@@ -435,7 +436,7 @@ describe('EPersonApiService', () => {
         (r) =>
           r.url === '/server/api/eperson/epersons/eperson-uuid-001' && r.method === 'PATCH',
       );
-      expect(req.request.body).toEqual([{ op: 'replace', path: '/canLogIn', value: false }]);
+      expect(req.request.body).toEqual([{ op: 'replace', path: '/canLogin', value: false }]);
       req.flush({});
 
       await promise;
@@ -455,7 +456,7 @@ describe('EPersonApiService', () => {
         (r) =>
           r.url === '/server/api/eperson/epersons/eperson-uuid-001' && r.method === 'PATCH',
       );
-      expect(req.request.body).toEqual([{ op: 'replace', path: '/canLogIn', value: true }]);
+      expect(req.request.body).toEqual([{ op: 'replace', path: '/canLogin', value: true }]);
       req.flush({});
 
       await promise;
