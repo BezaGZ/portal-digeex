@@ -5,6 +5,15 @@ import { map, switchMap } from 'rxjs/operators';
 import { EPerson } from './models/eperson.model';
 import { HalListResponse, Paginated } from './models/hal.model';
 
+/** Paths relativos al apiUrl base de DSpace. */
+const EPERSONS_PATH = '/eperson/epersons';
+const REGISTRATIONS_PATH = '/eperson/registrations';
+
+/** Valores fijos del contrato REST de DSpace. */
+const ACCOUNT_REQUEST_FORGOT = 'forgot';
+const EPERSON_TYPE = 'eperson';
+const REGISTRATION_TYPE = 'registration';
+
 /**
  * Wrapper HTTP del recurso /api/eperson/epersons de DSpace.
  * Solo habla con el backend, sin reglas de negocio.
@@ -23,7 +32,7 @@ export class EPersonApiService {
     const httpParams = this.buildHttpParams(params);
 
     return this.http
-      .get<HalListResponse<EPerson>>(`${this.apiUrl}/eperson/epersons`, { params: httpParams })
+      .get<HalListResponse<EPerson>>(`${this.apiUrl}${EPERSONS_PATH}`, { params: httpParams })
       .pipe(map((response) => this.mapResponse(response)));
   }
 
@@ -33,34 +42,50 @@ export class EPersonApiService {
    * DSpace no acepta password en el POST directo, por eso van encadenados.
    */
   create(input: { email: string; firstName: string; lastName: string }): Observable<EPerson> {
-    const epersonBody = this.buildEPersonBody(input);
-
     return this.http
-      .post<EPerson>(`${this.apiUrl}/eperson/epersons`, epersonBody)
+      .post<EPerson>(`${this.apiUrl}${EPERSONS_PATH}`, this.buildEPersonBody(input))
       .pipe(
         switchMap((created) =>
-          this.http
-            .post(`${this.apiUrl}/eperson/registrations`, { email: input.email }, {
-              params: new HttpParams().set('accountRequestType', 'forgot'),
-            })
-            .pipe(map(() => created)),
+          this.triggerPasswordSetupEmail(input.email).pipe(map(() => created)),
         ),
       );
   }
 
   /**
    * Construye el body que DSpace espera para crear un eperson.
+   * Alineado al contrato REST oficial de /api/eperson/epersons.
    * No lleva password: eso lo fija el usuario desde el correo de registration.
    */
   private buildEPersonBody(input: { email: string; firstName: string; lastName: string }) {
     return {
+      name: input.email,
       email: input.email,
       canLogIn: true,
+      requireCertificate: false,
+      selfRegistered: false,
+      type: EPERSON_TYPE,
       metadata: {
-        'eperson.firstname': [{ value: input.firstName }],
-        'eperson.lastname': [{ value: input.lastName }],
+        'eperson.firstname': [
+          { value: input.firstName, language: null, authority: '', confidence: -1 },
+        ],
+        'eperson.lastname': [
+          { value: input.lastName, language: null, authority: '', confidence: -1 },
+        ],
       },
     };
+  }
+
+  /**
+   * Dispara el correo de DSpace para que el usuario fije su contraseña.
+   * Usa accountRequestType=forgot porque el eperson ya existe: register está
+   * pensado para autoregistro desde el formulario público, nuestro caso no.
+   */
+  private triggerPasswordSetupEmail(email: string): Observable<unknown> {
+    return this.http.post(
+      `${this.apiUrl}${REGISTRATIONS_PATH}`,
+      { email, type: REGISTRATION_TYPE },
+      { params: new HttpParams().set('accountRequestType', ACCOUNT_REQUEST_FORGOT) },
+    );
   }
 
   /**

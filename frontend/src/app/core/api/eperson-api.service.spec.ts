@@ -223,10 +223,20 @@ describe('EPersonApiService', () => {
       const epersonReq = httpMock.expectOne(
         (r) => r.url === '/server/api/eperson/epersons' && r.method === 'POST',
       );
+      expect(epersonReq.request.body.name).toBe('nuevo@mineduc.gob.gt');
       expect(epersonReq.request.body.email).toBe('nuevo@mineduc.gob.gt');
       expect(epersonReq.request.body.canLogIn).toBe(true);
+      expect(epersonReq.request.body.requireCertificate).toBe(false);
+      expect(epersonReq.request.body.selfRegistered).toBe(false);
+      expect(epersonReq.request.body.type).toBe('eperson');
       expect(epersonReq.request.body.metadata['eperson.firstname'][0].value).toBe('Nuevo');
+      expect(epersonReq.request.body.metadata['eperson.firstname'][0].language).toBeNull();
+      expect(epersonReq.request.body.metadata['eperson.firstname'][0].authority).toBe('');
+      expect(epersonReq.request.body.metadata['eperson.firstname'][0].confidence).toBe(-1);
       expect(epersonReq.request.body.metadata['eperson.lastname'][0].value).toBe('Usuario');
+      expect(epersonReq.request.body.metadata['eperson.lastname'][0].language).toBeNull();
+      expect(epersonReq.request.body.metadata['eperson.lastname'][0].authority).toBe('');
+      expect(epersonReq.request.body.metadata['eperson.lastname'][0].confidence).toBe(-1);
       epersonReq.flush(mockCreatedEPerson);
 
       const regReq = httpMock.expectOne((r) => r.url === '/server/api/eperson/registrations');
@@ -254,6 +264,7 @@ describe('EPersonApiService', () => {
           r.params.get('accountRequestType') === 'forgot',
       );
       expect(regReq.request.body.email).toBe('nuevo@mineduc.gob.gt');
+      expect(regReq.request.body.type).toBe('registration');
       regReq.flush({});
 
       await promise;
