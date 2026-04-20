@@ -177,7 +177,6 @@ export class AuthService {
       email: eperson.email,
       firstName: eperson.metadata?.['eperson.firstname']?.[0]?.value ?? '',
       lastName: eperson.metadata?.['eperson.lastname']?.[0]?.value ?? '',
-      requiresPasswordChange: eperson.metadata?.['local.requiresPasswordChange']?.[0]?.value === 'true',
     };
   }
 }

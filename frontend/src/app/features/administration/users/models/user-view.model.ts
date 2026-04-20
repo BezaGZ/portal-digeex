@@ -9,7 +9,6 @@ export interface UserView {
   role: UserRole;
   subdivision: string | null;
   status: UserStatus;
-  requiresPasswordChange: boolean;
   lastActive: string | null;
 }
 

@@ -20,7 +20,6 @@ export class UserManagementService {
       role: 'superadmin',
       subdivision: null,
       status: 'active',
-      requiresPasswordChange: false,
       lastActive: '2026-02-13T10:30:00Z',
     },
     {
@@ -31,7 +30,6 @@ export class UserManagementService {
       role: 'superadmin',
       subdivision: null,
       status: 'active',
-      requiresPasswordChange: false,
       lastActive: '2026-02-12T15:45:00Z',
     },
     {
@@ -42,7 +40,6 @@ export class UserManagementService {
       role: 'admin_subdireccion',
       subdivision: 'Educación Básica',
       status: 'active',
-      requiresPasswordChange: false,
       lastActive: '2026-02-13T09:15:00Z',
     },
     {
@@ -53,7 +50,6 @@ export class UserManagementService {
       role: 'admin_subdireccion',
       subdivision: 'Educación para el Trabajo y la Cultura',
       status: 'active',
-      requiresPasswordChange: false,
       lastActive: '2026-02-11T14:20:00Z',
     },
     {
@@ -64,7 +60,6 @@ export class UserManagementService {
       role: 'admin_subdireccion',
       subdivision: 'Investigación y Proyectos Educativos',
       status: 'active',
-      requiresPasswordChange: false,
       lastActive: '2026-02-13T11:00:00Z',
     },
     {
@@ -75,7 +70,6 @@ export class UserManagementService {
       role: 'personal_delegado',
       subdivision: 'Educación Básica',
       status: 'active',
-      requiresPasswordChange: true,
       lastActive: '2026-02-10T16:30:00Z',
     },
     {
@@ -86,7 +80,6 @@ export class UserManagementService {
       role: 'personal_delegado',
       subdivision: 'Educación Básica',
       status: 'inactive',
-      requiresPasswordChange: false,
       lastActive: '2026-01-15T10:00:00Z',
     },
     {
@@ -97,7 +90,6 @@ export class UserManagementService {
       role: 'personal_delegado',
       subdivision: 'Educación para el Trabajo y la Cultura',
       status: 'active',
-      requiresPasswordChange: false,
       lastActive: '2026-02-13T08:45:00Z',
     },
   ]);
@@ -178,7 +170,6 @@ export class UserManagementService {
       role: userData.role,
       subdivision: userData.subdivision,
       status: 'active',
-      requiresPasswordChange: true,
       lastActive: null,
     };
 
@@ -237,11 +228,7 @@ export class UserManagementService {
     }
 
     this.usersSignal.update((users) =>
-      users.map((u) =>
-        u.uuid === uuid
-          ? { ...u, status: 'active' as UserStatus, requiresPasswordChange: true }
-          : u,
-      ),
+      users.map((u) => (u.uuid === uuid ? { ...u, status: 'active' as UserStatus } : u)),
     );
 
     return { success: true };
@@ -290,7 +277,10 @@ export class UserManagementService {
   }
 
   /**
-   * Marca que el usuario debe cambiar su contraseña en el próximo login.
+   * Reenvía el correo para que el usuario fije una nueva contraseña.
+   * En el Ciclo 9 este método pasa a llamar a EPersonApiService.resendRegistration,
+   * que dispara el correo con token de DSpace. Por ahora solo valida que el
+   * usuario exista para mantener compatibilidad con el UI que tenemos en este punto.
    * @param uuid - UUID del usuario
    * @returns Resultado con success y error opcional
    */
@@ -300,10 +290,6 @@ export class UserManagementService {
     if (!user) {
       return { success: false, error: 'Usuario no encontrado' };
     }
-
-    this.usersSignal.update((users) =>
-      users.map((u) => (u.uuid === uuid ? { ...u, requiresPasswordChange: true } : u)),
-    );
 
     return { success: true };
   }
