@@ -237,9 +237,9 @@ describe('EPersonApiService', () => {
 
     /**
      * Verifica que, tras crear el eperson, se dispare el POST a registrations
-     * con accountRequestType=register para enviar el correo de invitación.
+     * con accountRequestType=forgot para que DSpace envíe el correo con token.
      */
-    it('should POST registrations with accountRequestType=register after eperson is created', async () => {
+    it('should POST registrations with accountRequestType=forgot after eperson is created', async () => {
       const promise = new Promise((resolve, reject) => {
         service.create(input).subscribe({ next: resolve, error: reject });
       });
@@ -251,7 +251,7 @@ describe('EPersonApiService', () => {
         (r) =>
           r.url === '/server/api/eperson/registrations' &&
           r.method === 'POST' &&
-          r.params.get('accountRequestType') === 'register',
+          r.params.get('accountRequestType') === 'forgot',
       );
       expect(regReq.request.body.email).toBe('nuevo@mineduc.gob.gt');
       regReq.flush({});

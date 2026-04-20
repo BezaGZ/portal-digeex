@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import { EPerson } from './models/eperson.model';
 import { HalListResponse, Paginated } from './models/hal.model';
 
@@ -28,11 +28,39 @@ export class EPersonApiService {
   }
 
   /**
-   * Crea un eperson y dispara el registration para que fije su contraseña.
+   * Crea un eperson y dispara un registration con accountRequestType=forgot
+   * para que el usuario fije su contraseña desde el correo con token.
    * DSpace no acepta password en el POST directo, por eso van encadenados.
    */
-  create(_input: { email: string; firstName: string; lastName: string }): Observable<EPerson> {
-    throw new Error('EPersonApiService.create() no implementado');
+  create(input: { email: string; firstName: string; lastName: string }): Observable<EPerson> {
+    const epersonBody = this.buildEPersonBody(input);
+
+    return this.http
+      .post<EPerson>(`${this.apiUrl}/eperson/epersons`, epersonBody)
+      .pipe(
+        switchMap((created) =>
+          this.http
+            .post(`${this.apiUrl}/eperson/registrations`, { email: input.email }, {
+              params: new HttpParams().set('accountRequestType', 'forgot'),
+            })
+            .pipe(map(() => created)),
+        ),
+      );
+  }
+
+  /**
+   * Construye el body que DSpace espera para crear un eperson.
+   * No lleva password: eso lo fija el usuario desde el correo de registration.
+   */
+  private buildEPersonBody(input: { email: string; firstName: string; lastName: string }) {
+    return {
+      email: input.email,
+      canLogIn: true,
+      metadata: {
+        'eperson.firstname': [{ value: input.firstName }],
+        'eperson.lastname': [{ value: input.lastName }],
+      },
+    };
   }
 
   /**
