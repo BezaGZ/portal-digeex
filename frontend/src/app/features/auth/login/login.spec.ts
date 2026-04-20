@@ -76,24 +76,29 @@ describe('LoginComponent', () => {
       statusReq.flush({
         okay: true,
         authenticated: true,
-        _embedded: {
+        _links: {
           eperson: {
-            uuid: 'eperson-001',
-            name: 'Juan Pérez',
-            handle: null,
-            metadata: {
-              'eperson.firstname': [{ value: 'Juan', language: null, authority: null, confidence: -1, place: 0 }],
-              'eperson.lastname': [{ value: 'Pérez', language: null, authority: null, confidence: -1, place: 0 }],
-            },
-            netid: null,
-            lastActive: '2026-04-18',
-            canLogIn: true,
-            email: 'juan@mineduc.gob.gt',
-            requireCertificate: false,
-            selfRegistered: false,
-            type: 'eperson',
+            href: 'http://localhost:8080/server/api/eperson/epersons/eperson-001',
           },
         },
+      });
+
+      const epersonReq = httpMock.expectOne('/server/api/eperson/epersons/eperson-001');
+      epersonReq.flush({
+        uuid: 'eperson-001',
+        name: 'Juan Pérez',
+        handle: null,
+        metadata: {
+          'eperson.firstname': [{ value: 'Juan', language: null, authority: null, confidence: -1, place: 0 }],
+          'eperson.lastname': [{ value: 'Pérez', language: null, authority: null, confidence: -1, place: 0 }],
+        },
+        netid: null,
+        lastActive: '2026-04-18',
+        canLogIn: true,
+        email: 'juan@mineduc.gob.gt',
+        requireCertificate: false,
+        selfRegistered: false,
+        type: 'eperson',
       });
 
       await fixture.whenStable();

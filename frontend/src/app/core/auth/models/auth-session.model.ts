@@ -16,16 +16,15 @@ export interface LoginCredentials {
  *
  * DSpace siempre responde 200. La diferencia está en el campo
  * `authenticated`: true si hay sesión activa, false si no.
- * Cuando está autenticado, incluye el EPerson en `_embedded`.
+ * Cuando está autenticado, incluye un link HAL al EPerson
+ * en `_links.eperson.href`. Para obtener los datos del usuario
+ * hay que hacer un GET adicional a esa URL.
  *
  * @see https://github.com/DSpace/RestContract/blob/main/authentication.md
  */
 export interface AuthStatus {
   okay: boolean;
   authenticated: boolean;
-  _embedded?: {
-    eperson: EPerson;
-  };
   _links?: {
     eperson?: {
       href: string;
