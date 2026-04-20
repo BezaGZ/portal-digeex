@@ -4,10 +4,14 @@ import { Observable } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { EPerson } from './models/eperson.model';
 import { HalListResponse, Paginated } from './models/hal.model';
-
-/** Paths relativos al apiUrl base de DSpace. */
-const EPERSONS_PATH = '/eperson/epersons';
-const REGISTRATIONS_PATH = '/eperson/registrations';
+import {
+  DSPACE_API_BASE,
+  EMBEDDED_KEY_EPERSONS,
+  EPERSONS_COLLECTION_PATH,
+  REGISTRATIONS_COLLECTION_PATH,
+  buildPaginationParams,
+  mapHalList,
+} from './dspace-rest.util';
 
 /** Valores fijos del contrato REST de DSpace. */
 const ACCOUNT_REQUEST_FORGOT = 'forgot';
@@ -52,18 +56,17 @@ function replaceOp(path: string, value: string | boolean): JsonPatchReplace {
 @Injectable({ providedIn: 'root' })
 export class EPersonApiService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = '/server/api';
 
   /**
    * Lista epersons paginados desde DSpace.
    * Devuelve la respuesta aplanada en Paginated<EPerson>.
    */
   list(params: { size?: number; page?: number } = {}): Observable<Paginated<EPerson>> {
-    const httpParams = this.buildHttpParams(params);
-
     return this.http
-      .get<HalListResponse<EPerson>>(`${this.apiUrl}${EPERSONS_PATH}`, { params: httpParams })
-      .pipe(map((response) => this.mapResponse(response)));
+      .get<HalListResponse<EPerson>>(`${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}`, {
+        params: buildPaginationParams(params),
+      })
+      .pipe(map((response) => mapHalList(response, EMBEDDED_KEY_EPERSONS)));
   }
 
   /**
@@ -73,7 +76,7 @@ export class EPersonApiService {
    */
   create(input: { email: string; firstName: string; lastName: string }): Observable<EPerson> {
     return this.http
-      .post<EPerson>(`${this.apiUrl}${EPERSONS_PATH}`, this.buildEPersonBody(input))
+      .post<EPerson>(`${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}`, this.buildEPersonBody(input))
       .pipe(
         switchMap((created) =>
           this.triggerPasswordSetupEmail(input.email).pipe(map(() => created)),
@@ -134,7 +137,10 @@ export class EPersonApiService {
    * update() y setActive() tengan un único punto de cambio.
    */
   private sendPatch(uuid: string, patch: JsonPatchReplace[]): Observable<EPerson> {
-    return this.http.patch<EPerson>(`${this.apiUrl}${EPERSONS_PATH}/${uuid}`, patch);
+    return this.http.patch<EPerson>(
+      `${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}/${uuid}`,
+      patch,
+    );
   }
 
   /**
@@ -168,42 +174,9 @@ export class EPersonApiService {
    */
   private triggerPasswordSetupEmail(email: string): Observable<unknown> {
     return this.http.post(
-      `${this.apiUrl}${REGISTRATIONS_PATH}`,
+      `${DSPACE_API_BASE}${REGISTRATIONS_COLLECTION_PATH}`,
       { email, type: REGISTRATION_TYPE },
       { params: new HttpParams().set('accountRequestType', ACCOUNT_REQUEST_FORGOT) },
     );
-  }
-
-  /**
-   * Arma HttpParams agregando solo los valores que vinieron definidos.
-   * Así evitamos mandar size=undefined o page=undefined al backend.
-   */
-  private buildHttpParams(params: { size?: number; page?: number }): HttpParams {
-    let httpParams = new HttpParams();
-
-    if (params.size !== undefined) {
-      httpParams = httpParams.set('size', String(params.size));
-    }
-
-    if (params.page !== undefined) {
-      httpParams = httpParams.set('page', String(params.page));
-    }
-
-    return httpParams;
-  }
-
-  /**
-   * Aplana la respuesta HAL de DSpace a Paginated<EPerson>.
-   * `page.number` se expone como `page` para que el frontend
-   * no tenga que conocer la nomenclatura HAL.
-   */
-  private mapResponse(response: HalListResponse<EPerson>): Paginated<EPerson> {
-    return {
-      items: response._embedded?.['epersons'] ?? [],
-      totalElements: response.page.totalElements,
-      totalPages: response.page.totalPages,
-      size: response.page.size,
-      page: response.page.number,
-    };
   }
 }

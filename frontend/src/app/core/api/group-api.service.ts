@@ -1,9 +1,23 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Group } from './models/group.model';
-import { HalListResponse, Paginated } from './models/hal.model';
+import { Paginated, HalListResponse } from './models/hal.model';
+import {
+  DSPACE_API_BASE,
+  EMBEDDED_KEY_GROUPS,
+  EPERSONS_COLLECTION_PATH,
+  GROUPS_COLLECTION_PATH,
+  URI_LIST_CONTENT_TYPE,
+  buildAbsoluteApiUrl,
+  buildPaginationParams,
+  mapHalList,
+} from './dspace-rest.util';
+
+/** Subrecursos del contrato DSpace 9.2 usados por este wrapper. */
+const EPERSON_GROUPS_SUBRESOURCE = 'groups';
+const GROUP_EPERSONS_SUBRESOURCE = 'epersons';
 
 /**
  * Wrapper HTTP del recurso /api/eperson/groups y del subrecurso
@@ -11,12 +25,10 @@ import { HalListResponse, Paginated } from './models/hal.model';
  *
  * Solo habla con el backend, sin reglas de negocio: la lógica de qué
  * grupos puede modificar cada rol vive en UserManagementService.
- *
  */
 @Injectable({ providedIn: 'root' })
 export class GroupApiService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = '/server/api';
 
   /**
    * Lista los grupos a los que pertenece un eperson.
@@ -27,14 +39,11 @@ export class GroupApiService {
     epersonUuid: string,
     params: { size?: number; page?: number } = {},
   ): Observable<Paginated<Group>> {
-    const httpParams = this.buildHttpParams(params);
+    const url = `${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}/${epersonUuid}/${EPERSON_GROUPS_SUBRESOURCE}`;
 
     return this.http
-      .get<HalListResponse<Group>>(
-        `${this.apiUrl}/eperson/epersons/${epersonUuid}/groups`,
-        { params: httpParams },
-      )
-      .pipe(map((response) => this.mapResponse(response)));
+      .get<HalListResponse<Group>>(url, { params: buildPaginationParams(params) })
+      .pipe(map((response) => mapHalList(response, EMBEDDED_KEY_GROUPS)));
   }
 
   /**
@@ -45,14 +54,11 @@ export class GroupApiService {
    * tenga que conocer el detalle del formato.
    */
   addMemberToGroup(groupUuid: string, epersonUuid: string): Observable<Group> {
-    const headers = new HttpHeaders({ 'Content-Type': 'text/uri-list' });
-    const epersonUri = `${window.location.origin}${this.apiUrl}/eperson/epersons/${epersonUuid}`;
+    const url = `${DSPACE_API_BASE}${GROUPS_COLLECTION_PATH}/${groupUuid}/${GROUP_EPERSONS_SUBRESOURCE}`;
+    const epersonUri = buildAbsoluteApiUrl(`${EPERSONS_COLLECTION_PATH}/${epersonUuid}`);
+    const headers = new HttpHeaders({ 'Content-Type': URI_LIST_CONTENT_TYPE });
 
-    return this.http.post<Group>(
-      `${this.apiUrl}/eperson/groups/${groupUuid}/epersons`,
-      epersonUri,
-      { headers },
-    );
+    return this.http.post<Group>(url, epersonUri, { headers });
   }
 
   /**
@@ -60,41 +66,8 @@ export class GroupApiService {
    * DSpace responde 204 No Content en éxito, por eso el Observable emite void.
    */
   removeMemberFromGroup(groupUuid: string, epersonUuid: string): Observable<void> {
-    return this.http.delete<void>(
-      `${this.apiUrl}/eperson/groups/${groupUuid}/epersons/${epersonUuid}`,
-    );
-  }
+    const url = `${DSPACE_API_BASE}${GROUPS_COLLECTION_PATH}/${groupUuid}/${GROUP_EPERSONS_SUBRESOURCE}/${epersonUuid}`;
 
-  /**
-   * Arma HttpParams agregando solo los valores que vinieron definidos.
-   * Así evitamos mandar size=undefined o page=undefined al backend.
-   */
-  private buildHttpParams(params: { size?: number; page?: number }): HttpParams {
-    let httpParams = new HttpParams();
-
-    if (params.size !== undefined) {
-      httpParams = httpParams.set('size', String(params.size));
-    }
-
-    if (params.page !== undefined) {
-      httpParams = httpParams.set('page', String(params.page));
-    }
-
-    return httpParams;
-  }
-
-  /**
-   * Aplana la respuesta HAL de DSpace a Paginated<Group>.
-   * `page.number` se expone como `page` para que el frontend no tenga
-   * que conocer la nomenclatura HAL.
-   */
-  private mapResponse(response: HalListResponse<Group>): Paginated<Group> {
-    return {
-      items: response._embedded?.['groups'] ?? [],
-      totalElements: response.page.totalElements,
-      totalPages: response.page.totalPages,
-      size: response.page.size,
-      page: response.page.number,
-    };
+    return this.http.delete<void>(url);
   }
 }
