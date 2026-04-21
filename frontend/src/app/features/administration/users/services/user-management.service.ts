@@ -11,7 +11,13 @@ import { DSpaceApiService } from '../../../../core/api/dspace-api.service';
 import { EPerson } from '../../../../core/api/models/eperson.model';
 import { Group } from '../../../../core/api/models/group.model';
 import { Paginated } from '../../../../core/api/models/hal.model';
-import { extractOwningCommunityUuid, resolveRoleFromGroups } from './role-resolver';
+import {
+  ADMINISTRATOR_GROUP_NAME,
+  COLLECTION_OBJECT_PATH,
+  COMMUNITY_OBJECT_PATH,
+  extractOwningCommunityUuid,
+  resolveRoleFromGroups,
+} from './role-resolver';
 import { BusinessRuleError } from './business-rule-error';
 
 /**
@@ -44,9 +50,20 @@ export interface ChangeUserRoleInput {
 /** Proyección HAL de DSpace para anidar los grupos dentro del eperson. */
 const EMBED_GROUPS = 'groups';
 
+/**
+ * Proyecciones HAL para anidar el grupo dueño dentro de community y
+ * collection. DSpace los expone bajo estos nombres fijos en el contrato
+ * REST 9.2; se guardan como constantes para evitar typos silenciosos.
+ */
+const EMBED_ADMIN_GROUP = 'adminGroup';
+const EMBED_SUBMITTERS_GROUP = 'submittersGroup';
+
 /** Claves del metadata canónico de DSpace para primer y último nombre. */
 const METADATA_FIRSTNAME = 'eperson.firstname';
 const METADATA_LASTNAME = 'eperson.lastname';
+
+/** Dominio que RN-02 exige para los correos institucionales. */
+const INSTITUTIONAL_EMAIL_DOMAIN = '@mineduc.gob.gt';
 
 /**
  * Tupla interna con el rol y la community uuid ya resueltos desde los
@@ -221,9 +238,13 @@ export class UserManagementService {
    * DSpace. Solo si todo pasa dispara el POST al backend.
    */
   createUser$(input: CreateUserInput): Observable<EPerson> {
-    if (!input.email.endsWith('@mineduc.gob.gt')) {
+    if (!input.email.endsWith(INSTITUTIONAL_EMAIL_DOMAIN)) {
       return throwError(
-        () => new BusinessRuleError('EMAIL_INVALID', 'El correo debe ser institucional (@mineduc.gob.gt).'),
+        () =>
+          new BusinessRuleError(
+            'EMAIL_INVALID',
+            `El correo debe ser institucional (${INSTITUTIONAL_EMAIL_DOMAIN}).`,
+          ),
       );
     }
     if (input.role !== 'superadmin' && !input.subdivisionCommunityUuid) {
@@ -398,25 +419,22 @@ export class UserManagementService {
   }
 
   /**
-   * Asigna al eperson al grupo (o grupos) que corresponde a su rol:
-   *  - superadmin        → grupo global Administrator
-   *  - admin_subdireccion → adminGroup de la community
-   *  - personal_delegado → submittersGroup de cada collection asignada
-   * La resolución del grupo destino pasa siempre por los embeds nativos
-   * de DSpace, para no depender del nombre (que no está estandarizado).
+   * Resuelve los uuid de los grupos destino según el rol asignado:
+   *  - superadmin        → [Administrator.uuid]
+   *  - admin_subdireccion → [community.adminGroup.uuid]
+   *  - personal_delegado → collections.map(c => c.submittersGroup.uuid)
+   * No tiene efectos: solo lee DSpace y devuelve uuids. La mutación
+   * (addMember) vive aparte para que el resolver pueda reusarse desde
+   * casos de solo lectura (p. ej. pre-visualizar grupos antes de
+   * confirmar un cambio de rol en el UI).
    */
-  private assignToRoleGroups$(
-    eperson: EPerson,
-    assignment: {
-      role: UserRole;
-      subdivisionCommunityUuid: string | null;
-      collectionUuids?: string[];
-    },
-  ): Observable<unknown> {
+  private resolveTargetGroupUuids$(assignment: {
+    role: UserRole;
+    subdivisionCommunityUuid: string | null;
+    collectionUuids?: string[];
+  }): Observable<string[]> {
     if (assignment.role === 'superadmin') {
-      return this.groupApi
-        .findAdministratorGroup()
-        .pipe(switchMap((admin) => this.groupApi.addMemberToGroup(admin.uuid, eperson.uuid)));
+      return this.groupApi.findAdministratorGroup().pipe(map((admin) => [admin.uuid]));
     }
     if (assignment.role === 'admin_subdireccion') {
       if (!assignment.subdivisionCommunityUuid) {
@@ -429,33 +447,29 @@ export class UserManagementService {
         );
       }
       return this.dspaceApi
-        .getCommunity(assignment.subdivisionCommunityUuid, { embed: 'adminGroup' })
+        .getCommunity(assignment.subdivisionCommunityUuid, { embed: EMBED_ADMIN_GROUP })
         .pipe(
-          switchMap((community) => {
+          map((community) => {
             const adminGroup = community._embedded?.adminGroup;
             if (!adminGroup) {
-              return throwError(
-                () => new Error(`Community ${community.uuid} no expone adminGroup.`),
-              );
+              throw new Error(`Community ${community.uuid} no expone adminGroup.`);
             }
-            return this.groupApi.addMemberToGroup(adminGroup.uuid, eperson.uuid);
+            return [adminGroup.uuid];
           }),
         );
     }
 
     const collectionUuids = assignment.collectionUuids ?? [];
-    if (collectionUuids.length === 0) return of(undefined);
+    if (collectionUuids.length === 0) return of([]);
     return forkJoin(
       collectionUuids.map((collectionUuid) =>
-        this.dspaceApi.getCollection(collectionUuid, { embed: 'submittersGroup' }).pipe(
-          switchMap((collection) => {
+        this.dspaceApi.getCollection(collectionUuid, { embed: EMBED_SUBMITTERS_GROUP }).pipe(
+          map((collection) => {
             const submittersGroup = collection._embedded?.submittersGroup;
             if (!submittersGroup) {
-              return throwError(
-                () => new Error(`Collection ${collection.uuid} no expone submittersGroup.`),
-              );
+              throw new Error(`Collection ${collection.uuid} no expone submittersGroup.`);
             }
-            return this.groupApi.addMemberToGroup(submittersGroup.uuid, eperson.uuid);
+            return submittersGroup.uuid;
           }),
         ),
       ),
@@ -463,18 +477,41 @@ export class UserManagementService {
   }
 
   /**
+   * Agrega al eperson a cada grupo destino devuelto por el resolver.
+   * Se queda chiquita a propósito: la lógica de "a qué grupo va" la pone
+   * resolveTargetGroupUuids$; acá solo se hace el POST por cada uuid.
+   */
+  private assignToRoleGroups$(
+    eperson: EPerson,
+    assignment: {
+      role: UserRole;
+      subdivisionCommunityUuid: string | null;
+      collectionUuids?: string[];
+    },
+  ): Observable<unknown> {
+    return this.resolveTargetGroupUuids$(assignment).pipe(
+      switchMap((groupUuids) => {
+        if (groupUuids.length === 0) return of(undefined);
+        return forkJoin(
+          groupUuids.map((groupUuid) => this.groupApi.addMemberToGroup(groupUuid, eperson.uuid)),
+        );
+      }),
+    );
+  }
+
+  /**
    * Filtra los grupos que representan roles del portal (RN-07, RN-08,
    * RN-13). Se usa al cambiar rol para no borrar al eperson de grupos
    * que no tienen que ver con su rol (p. ej. grupos de colaboración
-   * que algún día se modelen aparte).
+   * que algún día se modelen aparte). Reusa las mismas constantes que
+   * resolveRoleFromGroups para que no se dupliquen los criterios de
+   * "qué es un grupo de rol".
    */
   private filterRoleRelatedGroups(groups: Group[]): Group[] {
     return groups.filter((group) => {
-      if (group.name === 'Administrator') return true;
+      if (group.name === ADMINISTRATOR_GROUP_NAME) return true;
       const objectHref = group._links?.object?.href ?? '';
-      return (
-        objectHref.includes('/core/communities/') || objectHref.includes('/core/collections/')
-      );
+      return objectHref.includes(COMMUNITY_OBJECT_PATH) || objectHref.includes(COLLECTION_OBJECT_PATH);
     });
   }
 

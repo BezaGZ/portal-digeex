@@ -6,8 +6,10 @@ import { UserRole } from '../models/user-view.model';
  * Nombre del grupo global de DSpace que otorga control total (RN-07).
  * Es una constante del producto: DSpace crea este grupo con ese nombre
  * exacto durante la instalación y no se renombra en nuestra instancia.
+ * Se exporta para que el facade lo reuse al filtrar los grupos que
+ * representan roles del portal sin volver a hardcodearlo.
  */
-const ADMINISTRATOR_GROUP_NAME = 'Administrator';
+export const ADMINISTRATOR_GROUP_NAME = 'Administrator';
 
 /**
  * Fragmentos del href de `_links.object` que identifican el tipo de DSO
@@ -16,8 +18,8 @@ const ADMINISTRATOR_GROUP_NAME = 'Administrator';
  * y /core/collections/), pero no impone un patrón de nombres para los
  * grupos de adminGroup y submittersGroup.
  */
-const COMMUNITY_OBJECT_PATH = '/core/communities/';
-const COLLECTION_OBJECT_PATH = '/core/collections/';
+export const COMMUNITY_OBJECT_PATH = '/core/communities/';
+export const COLLECTION_OBJECT_PATH = '/core/collections/';
 
 /**
  * Deriva el rol del sistema a partir de los grupos de DSpace a los que
