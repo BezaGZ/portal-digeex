@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestBed } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
-import { of, throwError } from 'rxjs';
+import { EMPTY, of, throwError } from 'rxjs';
 import { MessageService } from 'primeng/api';
 
 import { Users } from './users';
@@ -78,8 +79,14 @@ describe('Users (contenedor)', () => {
     TestBed.configureTestingModule({
       imports: [Users],
       providers: [
+        provideNoopAnimations(),
         { provide: UserManagementService, useValue: userServiceStub },
-        { provide: MessageService, useValue: { add: messageAddFn } },
+        // Se exponen los Observables vacíos porque p-toast del template
+        // se suscribe en ngOnInit y no se quiere que emita nada real.
+        {
+          provide: MessageService,
+          useValue: { add: messageAddFn, messageObserver: EMPTY, clearObserver: EMPTY },
+        },
       ],
     });
 

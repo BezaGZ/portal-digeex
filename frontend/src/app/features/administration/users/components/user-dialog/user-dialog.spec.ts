@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 import { of } from 'rxjs';
 
@@ -73,6 +74,7 @@ describe('UserDialog', () => {
     TestBed.configureTestingModule({
       imports: [UserDialog],
       providers: [
+        provideNoopAnimations(),
         { provide: DSpaceApiService, useValue: { getCommunities: getCommunitiesFn } },
       ],
     });

@@ -19,8 +19,12 @@ import { CardModule } from 'primeng/card';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { UserView, UserRole, UserStatus, RoleLabels } from '../../models/user-view.model';
 import { UserStatusBadge } from '../user-status-badge/user-status-badge';
-import { UserManagementService } from '../../services/user-management.service';
 
+/**
+ * Componente presentacional: recibe la lista y el caller por input y
+ * emite outputs cuando el usuario pide una acción. El contenedor decide
+ * qué hacer contra el facade y maneja los toasts de resultado.
+ */
 @Component({
   selector: 'app-user-table',
   standalone: true,
@@ -36,26 +40,26 @@ import { UserManagementService } from '../../services/user-management.service';
     CardModule,
     UserStatusBadge,
   ],
-  providers: [ConfirmationService, MessageService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './user-table.html',
 })
 export class UserTable {
-  private userService = inject(UserManagementService);
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
 
   users = input.required<UserView[]>();
+  currentUser = input<UserView | null>(null);
 
   createUserRequested = output<void>();
-  refreshRequested = output<void>();
+  deactivateRequested = output<UserView>();
+  reactivateRequested = output<UserView>();
+  resetPasswordRequested = output<UserView>();
+  modifyRoleRequested = output<UserView>();
 
   globalFilterValue = signal<string>('');
   selectedRole = signal<UserRole | null>(null);
   selectedStatus = signal<UserStatus | null>(null);
   selectedSubdivision = signal<string | null>(null);
-
-  currentUser = this.userService.currentUser;
 
   roleOptions = [
     { label: 'Todos los roles', value: null },
@@ -109,20 +113,21 @@ export class UserTable {
     return `${user.firstName} ${user.lastName}`;
   }
 
+  /**
+   * Solo bloquea la auto-desactivación (RN-12) antes de abrir el diálogo
+   * para no pedirle al servidor algo que va a rechazar. El resto de las
+   * reglas (RN-11 y demás) las aplica el facade y vuelven como toast.
+   */
   canDeactivate(user: UserView): { can: boolean; reason?: string } {
-    if (user.uuid === this.currentUser().uuid) {
+    const caller = this.currentUser();
+    if (caller && user.uuid === caller.uuid) {
       return { can: false, reason: 'No puedes desactivarte a ti mismo' };
     }
-
-    if (user.role === 'superadmin' && this.userService.activeSuperadminsCount() <= 1) {
-      return { can: false, reason: 'No se puede desactivar el último Superadmin activo' };
-    }
-
     return { can: true };
   }
 
   canModifyRoles(): boolean {
-    return this.userService.canModifyRoles();
+    return this.currentUser()?.role === 'superadmin';
   }
 
   onCreateUser() {
@@ -137,34 +142,13 @@ export class UserTable {
       acceptLabel: 'Sí, restablecer',
       rejectLabel: 'Cancelar',
       accept: () => {
-        const result = this.userService.resetPassword(user.uuid);
-        if (result.success) {
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Contraseña restablecida',
-            detail: 'Se ha enviado un correo con las instrucciones para restablecer la contraseña',
-            life: 3000,
-          });
-          this.refreshRequested.emit();
-        } else {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: result.error,
-            life: 3000,
-          });
-        }
+        this.resetPasswordRequested.emit(user);
       },
     });
   }
 
-  onModifyRole(_user: UserView) {
-    this.messageService.add({
-      severity: 'info',
-      summary: 'Funcionalidad en desarrollo',
-      detail: 'La modificación de roles estará disponible próximamente',
-      life: 3000,
-    });
+  onModifyRole(user: UserView) {
+    this.modifyRoleRequested.emit(user);
   }
 
   onDeactivate(user: UserView) {
@@ -188,23 +172,7 @@ export class UserTable {
       rejectLabel: 'Cancelar',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
-        const result = this.userService.deactivateUser(user.uuid);
-        if (result.success) {
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Usuario desactivado',
-            detail: `${this.getFullName(user)} ha sido desactivado`,
-            life: 3000,
-          });
-          this.refreshRequested.emit();
-        } else {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: result.error,
-            life: 3000,
-          });
-        }
+        this.deactivateRequested.emit(user);
       },
     });
   }
@@ -218,23 +186,7 @@ export class UserTable {
       rejectLabel: 'Cancelar',
       acceptButtonStyleClass: 'p-button-success',
       accept: () => {
-        const result = this.userService.reactivateUser(user.uuid);
-        if (result.success) {
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Usuario reactivado',
-            detail: `${this.getFullName(user)} ha sido reactivado`,
-            life: 3000,
-          });
-          this.refreshRequested.emit();
-        } else {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: result.error,
-            life: 3000,
-          });
-        }
+        this.reactivateRequested.emit(user);
       },
     });
   }

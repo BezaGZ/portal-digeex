@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
+import { EMPTY } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { UserTable } from './user-table';
@@ -39,12 +41,17 @@ describe('UserTable', () => {
     TestBed.configureTestingModule({
       imports: [UserTable],
       providers: [
+        provideNoopAnimations(),
         // ConfirmationService.confirm dispara el accept callback al instante
         // para que el test pueda observar el output sin abrir el diálogo real.
+        // Los Observables se dejan en EMPTY porque el p-confirmDialog del
+        // template se suscribe en ngOnInit y no queremos que dispare nada.
         {
           provide: ConfirmationService,
           useValue: {
             confirm: (config: { accept?: () => void }) => config.accept?.(),
+            requireConfirmation$: EMPTY,
+            accept: EMPTY,
           },
         },
         { provide: MessageService, useValue: { add: vi.fn() } },

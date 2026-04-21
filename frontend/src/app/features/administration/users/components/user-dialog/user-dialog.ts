@@ -6,8 +6,10 @@ import {
   inject,
   signal,
   computed,
+  effect,
   ChangeDetectionStrategy,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
@@ -15,11 +17,21 @@ import { InputTextModule } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { FloatLabelModule } from 'primeng/floatlabel';
 import { MessageModule } from 'primeng/message';
-import { UserManagementService } from '../../services/user-management.service';
-import { UserRole, RoleLabels, Subdivisions } from '../../models/user-view.model';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { map, takeUntil } from 'rxjs/operators';
 
+import { DSpaceApiService } from '../../../../../core/api/dspace-api.service';
+import { UserRole, RoleLabels, UserView } from '../../models/user-view.model';
+import { CreateUserInput } from '../../services/user-management.service';
+
+/**
+ * Diálogo de creación de usuario. Recibe al caller por input y poblamos
+ * el selector de subdirección desde getCommunities(). Cuando el caller
+ * es admin_subdireccion el selector de rol queda bloqueado en
+ * personal_delegado y la subdirección se precarga con su propia
+ * community, para no enviar un input que el facade rechazaría con
+ * INSUFFICIENT_PRIVILEGES en runtime.
+ */
 @Component({
   selector: 'app-user-dialog',
   standalone: true,
@@ -55,13 +67,14 @@ import { takeUntil } from 'rxjs/operators';
 })
 export class UserDialog implements OnDestroy {
   private fb = inject(FormBuilder);
-  private userService = inject(UserManagementService);
+  private dspaceApi = inject(DSpaceApiService);
   private destroy$ = new Subject<void>();
 
   visible = input.required<boolean>();
+  caller = input<UserView | null>(null);
 
   visibleChange = output<boolean>();
-  userCreated = output<void>();
+  createSubmitted = output<CreateUserInput>();
 
   errorMessage = signal<string | null>(null);
 
@@ -70,45 +83,98 @@ export class UserDialog implements OnDestroy {
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
     role: ['personal_delegado' as UserRole, Validators.required],
-    subdivision: [this.userService.getDefaultSubdivision(), Validators.required],
+    subdivisionCommunityUuid: [null as string | null, Validators.required],
   });
+
+  /**
+   * Listado de communities aplanado a {label, value} directamente desde
+   * DSpace. Se guarda también la proyección cruda para que el effect
+   * pueda mapear el nombre de subdirección del caller a su uuid sin
+   * tener que pelear con el shape final del select.
+   */
+  private communities = toSignal(
+    this.dspaceApi.getCommunities().pipe(map((response) => response._embedded['communities'])),
+    { initialValue: [] },
+  );
+
+  subdivisionOptions = computed(() =>
+    this.communities().map((community) => ({ label: community.name, value: community.uuid })),
+  );
+
+  /**
+   * Rol del caller → si es admin_subdireccion, el selector queda
+   * bloqueado. El template lo lee para deshabilitar p-select.
+   */
+  roleSelectorDisabled = computed(() => this.caller()?.role === 'admin_subdireccion');
 
   allowedRoles = computed(() => {
-    const roles = this.userService.getAllowedRolesForCreation();
-    return roles.map((role) => ({
-      label: RoleLabels[role],
-      value: role,
-      disabled: role === 'superadmin' && !this.userService.canCreateSuperadmin(),
-    }));
+    const callerRole = this.caller()?.role ?? null;
+    if (callerRole === 'superadmin') {
+      return [
+        { label: RoleLabels.superadmin, value: 'superadmin' as UserRole, disabled: false },
+        {
+          label: RoleLabels.admin_subdireccion,
+          value: 'admin_subdireccion' as UserRole,
+          disabled: false,
+        },
+        {
+          label: RoleLabels.personal_delegado,
+          value: 'personal_delegado' as UserRole,
+          disabled: false,
+        },
+      ];
+    }
+    if (callerRole === 'admin_subdireccion') {
+      return [
+        {
+          label: RoleLabels.personal_delegado,
+          value: 'personal_delegado' as UserRole,
+          disabled: false,
+        },
+      ];
+    }
+    return [];
   });
 
-  subdivisions = Subdivisions.map((s) => ({ label: s, value: s }));
+  subdivisionFieldDisabled = computed(() => this.caller()?.role === 'admin_subdireccion');
 
-  showSubdivisionField = computed(() => {
-    const role = this.form.get('role')?.value;
-    return role !== 'superadmin';
-  });
-
-  subdivisionFieldDisabled = computed(() => {
-    return this.userService.currentUser().role === 'admin_subdireccion';
-  });
+  showSubdivisionField = computed(() => this.form.get('role')?.value !== 'superadmin');
 
   constructor() {
+    /**
+     * Cuando el caller es admin_subdireccion, precarga el formulario con
+     * personal_delegado y la community del propio caller. Depende de
+     * communities() porque hay que buscar el uuid que corresponde al
+     * nombre de subdivisión del caller; si aún no llegaron, queda en
+     * null y se reintenta al resolver.
+     */
+    effect(() => {
+      const callerValue = this.caller();
+      const communitiesList = this.communities();
+      if (callerValue?.role === 'admin_subdireccion') {
+        const matched = communitiesList.find((community) => community.name === callerValue.subdivision);
+        this.form.patchValue({
+          role: 'personal_delegado',
+          subdivisionCommunityUuid: matched?.uuid ?? null,
+        });
+      }
+    });
+
+    /**
+     * Si el rol cambia a superadmin ya no se pide subdirección. Para
+     * cualquier otro rol se mantiene obligatoria.
+     */
     this.form
       .get('role')
       ?.valueChanges.pipe(takeUntil(this.destroy$))
       .subscribe((role) => {
-        const subdivisionControl = this.form.get('subdivision');
+        const subdivisionControl = this.form.get('subdivisionCommunityUuid');
 
         if (role === 'superadmin') {
           subdivisionControl?.clearValidators();
           subdivisionControl?.setValue(null);
         } else {
           subdivisionControl?.setValidators(Validators.required);
-
-          if (this.userService.currentUser().role === 'admin_subdireccion') {
-            subdivisionControl?.setValue(this.userService.getDefaultSubdivision());
-          }
         }
 
         subdivisionControl?.updateValueAndValidity();
@@ -131,7 +197,7 @@ export class UserDialog implements OnDestroy {
       firstName: '',
       lastName: '',
       role: 'personal_delegado',
-      subdivision: this.userService.getDefaultSubdivision(),
+      subdivisionCommunityUuid: null,
     });
     this.errorMessage.set(null);
   }
@@ -145,32 +211,13 @@ export class UserDialog implements OnDestroy {
     }
 
     const formValue = this.form.value;
-
-    const emailValidation = this.userService.validateEmail(formValue.email!);
-    if (!emailValidation.valid) {
-      this.errorMessage.set(emailValidation.error!);
-      return;
-    }
-
-    if (this.userService.emailExistsAsActive(formValue.email!)) {
-      this.errorMessage.set('Ya existe una cuenta activa con este correo');
-      return;
-    }
-
-    const result = this.userService.createUser({
+    this.createSubmitted.emit({
       email: formValue.email!,
       firstName: formValue.firstName!,
       lastName: formValue.lastName!,
       role: formValue.role!,
-      subdivision: formValue.subdivision ?? null,
+      subdivisionCommunityUuid: formValue.subdivisionCommunityUuid ?? null,
     });
-
-    if (result.success) {
-      this.userCreated.emit();
-      this.onHide();
-    } else {
-      this.errorMessage.set(result.error!);
-    }
   }
 
   hasError(fieldName: string): boolean {

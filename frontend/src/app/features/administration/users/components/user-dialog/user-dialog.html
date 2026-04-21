@@ -76,6 +76,7 @@
           optionLabel="label"
           optionValue="value"
           [optionDisabled]="'disabled'"
+          [disabled]="roleSelectorDisabled()"
           class="w-full"
           [class.ng-invalid]="hasError('role')"
           [class.ng-dirty]="hasError('role')"
@@ -91,20 +92,20 @@
       <div class="form-field">
         <p-floatLabel>
           <p-select
-            id="subdivision"
-            formControlName="subdivision"
-            [options]="subdivisions"
+            id="subdivisionCommunityUuid"
+            formControlName="subdivisionCommunityUuid"
+            [options]="subdivisionOptions()"
             optionLabel="label"
             optionValue="value"
             [disabled]="subdivisionFieldDisabled()"
             class="w-full"
-            [class.ng-invalid]="hasError('subdivision')"
-            [class.ng-dirty]="hasError('subdivision')"
+            [class.ng-invalid]="hasError('subdivisionCommunityUuid')"
+            [class.ng-dirty]="hasError('subdivisionCommunityUuid')"
           />
-          <label for="subdivision">Subdirección *</label>
+          <label for="subdivisionCommunityUuid">Subdirección *</label>
         </p-floatLabel>
-        @if (hasError('subdivision')) {
-          <small style="color: var(--color-error)">{{ getErrorMessage('subdivision') }}</small>
+        @if (hasError('subdivisionCommunityUuid')) {
+          <small style="color: var(--color-error)">{{ getErrorMessage('subdivisionCommunityUuid') }}</small>
         }
       </div>
     }

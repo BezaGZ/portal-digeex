@@ -3,13 +3,19 @@
 
   <app-user-table
     [users]="visibleUsers()"
+    [currentUser]="currentUser()"
     (createUserRequested)="onCreateUserRequested()"
-    (refreshRequested)="onRefreshRequested()"
+    (deactivateRequested)="onDeactivateRequested($event)"
+    (reactivateRequested)="onReactivateRequested($event)"
+    (resetPasswordRequested)="onResetPasswordRequested($event)"
   />
 
-  <app-user-dialog
-    [visible]="showCreateDialog()"
-    (visibleChange)="onDialogClosed()"
-    (userCreated)="onUserCreated()"
-  />
+  @if (showCreateDialog()) {
+    <app-user-dialog
+      [visible]="showCreateDialog()"
+      [caller]="currentUser()"
+      (visibleChange)="onDialogClosed()"
+      (createSubmitted)="onCreateSubmitted($event)"
+    />
+  }
 </div>
