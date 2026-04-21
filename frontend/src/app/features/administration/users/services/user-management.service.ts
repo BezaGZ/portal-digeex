@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { Observable, forkJoin, of } from 'rxjs';
+import { Observable, forkJoin, of, throwError } from 'rxjs';
 import { map, shareReplay, switchMap } from 'rxjs/operators';
 
 import { UserView, UserRole, UserStatus } from '../models/user-view.model';
@@ -12,6 +12,34 @@ import { EPerson } from '../../../../core/api/models/eperson.model';
 import { Group } from '../../../../core/api/models/group.model';
 import { Paginated } from '../../../../core/api/models/hal.model';
 import { extractOwningCommunityUuid, resolveRoleFromGroups } from './role-resolver';
+import { BusinessRuleError } from './business-rule-error';
+
+/**
+ * Entrada del facade para crear un usuario nuevo.
+ * subdivisionCommunityUuid se exige para admin_subdireccion y personal_delegado.
+ * collectionUuids solo aplica a personal_delegado: la lista que el UI ya
+ * resolvió (una colección puntual o todas las de la subdirección).
+ */
+export interface CreateUserInput {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  subdivisionCommunityUuid: string | null;
+  collectionUuids?: string[];
+}
+
+/**
+ * Entrada del facade para cambiar el rol de un usuario existente.
+ * Misma forma que CreateUserInput pero sin datos de identificación,
+ * porque el eperson ya existe y solo se mueven sus grupos.
+ */
+export interface ChangeUserRoleInput {
+  uuid: string;
+  newRole: UserRole;
+  newSubdivisionCommunityUuid: string | null;
+  newCollectionUuids?: string[];
+}
 
 /** Proyección HAL de DSpace para anidar los grupos dentro del eperson. */
 const EMBED_GROUPS = 'groups';
@@ -184,6 +212,46 @@ export class UserManagementService {
       return userViews.filter((view) => view.subdivision === currentUser.subdivision);
     }
     return [];
+  }
+
+  /**
+   * Crea un usuario en DSpace y lo asigna a su grupo según el rol.
+   * Stub del Ciclo 11 RED — la implementación real llega en GREEN.
+   */
+  createUser$(_input: CreateUserInput): Observable<EPerson> {
+    return throwError(() => new Error('createUser$ no implementado todavía'));
+  }
+
+  /**
+   * Desactiva un usuario validando que no sea el caller ni el último superadmin.
+   * Stub del Ciclo 11  — la implementación real llega en GREEN.
+   */
+  deactivateUser$(_uuid: string): Observable<EPerson> {
+    return throwError(() => new Error('deactivateUser$ no implementado todavía'));
+  }
+
+  /**
+   * Reactiva un usuario previamente desactivado.
+   * Stub del Ciclo 11  — la implementación real llega en GREEN.
+   */
+  reactivateUser$(_uuid: string): Observable<EPerson> {
+    return throwError(() => new Error('reactivateUser$ no implementado todavía'));
+  }
+
+  /**
+   * Mueve a un eperson del grupo de su rol actual al grupo del rol nuevo.
+   * Stub del Ciclo 11  — la implementación real llega en GREEN.
+   */
+  changeUserRole$(_input: ChangeUserRoleInput): Observable<EPerson> {
+    return throwError(() => new Error('changeUserRole$ no implementado todavía'));
+  }
+
+  /**
+   * Reenvía el correo nativo de DSpace para que el usuario fije su contraseña.
+   * Stub del Ciclo 11 RED — la implementación real llega en GREEN.
+   */
+  resetPassword$(_email: string): Observable<unknown> {
+    return throwError(() => new Error('resetPassword$ no implementado todavía'));
   }
 
   private usersSignal = signal<UserView[]>([

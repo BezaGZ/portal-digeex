@@ -5,21 +5,21 @@
  * depender del texto del mensaje, que puede cambiar o traducirse.
  *
  * Mapeo a reglas de negocio:
- *  - DUPLICATE_EMAIL     → RN-10 (una cuenta por correo)
- *  - EMAIL_INVALID       → RN-02 (correo institucional obligatorio)
- *  - SUPERADMIN_LIMIT    → RN-11 (máximo 2 superadmins activos)
- *  - LAST_SUPERADMIN     → RN-11 (proteger al último superadmin)
- *  - SELF_DEACTIVATE     → RN-12 (no autodesactivación)
- *  - SUBDIVISION_REQUIRED → RN-08 (alcance del admin de subdirección)
- *  - NOT_FOUND           → usuario no existe en el signal/lista
+ *  - DUPLICATE_EMAIL         → RN-10 (una cuenta por correo)
+ *  - EMAIL_INVALID           → RN-02 (correo institucional obligatorio)
+ *  - LAST_SUPERADMIN         → RN-11 (proteger al último superadmin activo)
+ *  - SELF_DEACTIVATE         → RN-12 (no autodesactivación)
+ *  - SUBDIVISION_REQUIRED    → RN-26 (subdirección obligatoria si el rol no es superadmin)
+ *  - INSUFFICIENT_PRIVILEGES → RN-08 y RN-13 (el caller intenta actuar fuera de su ámbito o elevar permisos por encima de su propio rol)
+ *  - NOT_FOUND               → recurso no existe
  */
 export type BusinessRuleErrorCode =
   | 'DUPLICATE_EMAIL'
   | 'EMAIL_INVALID'
-  | 'SUPERADMIN_LIMIT'
   | 'LAST_SUPERADMIN'
   | 'SELF_DEACTIVATE'
   | 'SUBDIVISION_REQUIRED'
+  | 'INSUFFICIENT_PRIVILEGES'
   | 'NOT_FOUND';
 
 /**
