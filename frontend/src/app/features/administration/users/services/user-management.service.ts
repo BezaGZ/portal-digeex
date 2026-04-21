@@ -1,5 +1,13 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { Observable, of, throwError } from 'rxjs';
+import { map } from 'rxjs/operators';
+
 import { UserView, UserRole, UserStatus } from '../models/user-view.model';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { EPersonApiService } from '../../../../core/api/eperson-api.service';
+import { GroupApiService } from '../../../../core/api/group-api.service';
+import { DSpaceApiService } from '../../../../core/api/dspace-api.service';
+import { Paginated } from '../../../../core/api/models/hal.model';
 
 /**
  * Servicio para gestión de usuarios del panel administrativo.
@@ -11,6 +19,38 @@ import { UserView, UserRole, UserStatus } from '../models/user-view.model';
   providedIn: 'root',
 })
 export class UserManagementService {
+  /**
+   * Dependencias del facade real (Ciclos 10 a 12). Se inyectan desde ya
+   * aunque los miembros nuevos todavía son stubs: así el GREEN solo tiene
+   * que reemplazar cuerpos, sin refactorizar el injection context.
+   */
+  private readonly authService = inject(AuthService);
+  private readonly epersonApi = inject(EPersonApiService);
+  private readonly groupApi = inject(GroupApiService);
+  private readonly dspaceApi = inject(DSpaceApiService);
+
+  /**
+   * Ciclo 10 — stub.
+   * currentUserView$ va a emitir el UserView derivado del eperson
+   * autenticado más sus grupos (rol + nombre de subdivisión). Hoy
+   * lanza para que cualquier test que se suscriba falle en rojo.
+   */
+  readonly currentUserView$: Observable<UserView | null> = of(null).pipe(
+    map((): UserView | null => {
+      throw new Error('Ciclo 10 RED: currentUserView$ pendiente de implementar');
+    }),
+  );
+
+  /**
+   * Ciclo 10 — stub.
+   * getVisibleUsers$ va a tirar del EPersonApi.list y mapear cada eperson
+   * a UserView (rol + subdivisión resueltos), aplicando el filtro de
+   * alcance cuando el caller es admin_subdireccion. Hoy lanza para RED.
+   */
+  getVisibleUsers$(_params: { size?: number; page?: number } = {}): Observable<Paginated<UserView>> {
+    return throwError(() => new Error('Ciclo 10 RED: getVisibleUsers$ pendiente de implementar'));
+  }
+
   private usersSignal = signal<UserView[]>([
     {
       uuid: '1a2b3c4d-5e6f-7g8h-9i0j-k1l2m3n4o5p6',
