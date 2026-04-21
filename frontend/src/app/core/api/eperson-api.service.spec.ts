@@ -156,6 +156,28 @@ describe('EPersonApiService', () => {
       await promise;
     });
 
+    /** Con embed=groups, DSpace anida los grupos dentro de cada eperson. */
+    it('should forward embed param to DSpace when provided', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service.list({ size: 20, page: 0, embed: 'groups' }).subscribe({
+          next: () => resolve(),
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/epersons' &&
+          r.params.get('size') === '20' &&
+          r.params.get('page') === '0' &&
+          r.params.get('embed') === 'groups',
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush(mockEPersonsResponse);
+
+      await promise;
+    });
+
     /**
      * Verifica que un error HTTP se propague como error del Observable
      * en lugar de silenciarse o transformarse en un valor válido.
@@ -176,6 +198,70 @@ describe('EPersonApiService', () => {
         { message: 'Internal Server Error' },
         { status: 500, statusText: 'Internal Server Error' },
       );
+
+      await promise;
+    });
+  });
+
+  /** getOne(): GET /api/eperson/epersons/{uuid}, opcionalmente con embed. */
+  describe('getOne()', () => {
+    const mockEPerson = {
+      uuid: 'eperson-001',
+      name: 'carlos.ramirez@mineduc.gob.gt',
+      email: 'carlos.ramirez@mineduc.gob.gt',
+      handle: null,
+      netid: null,
+      canLogIn: true,
+      requireCertificate: false,
+      selfRegistered: false,
+      lastActive: null,
+      metadata: {
+        'eperson.firstname': [
+          { value: 'Carlos', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'eperson.lastname': [
+          { value: 'Ramírez', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+      type: 'eperson',
+    };
+
+    /** Sin embed: GET directo sin query params. */
+    it('should GET /api/eperson/epersons/{uuid} without embed', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service.getOne('eperson-001').subscribe({
+          next: (result) => {
+            expect(result.uuid).toBe('eperson-001');
+            resolve();
+          },
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne('/server/api/eperson/epersons/eperson-001');
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.keys()).toEqual([]);
+      req.flush(mockEPerson);
+
+      await promise;
+    });
+
+    /** Con embed=groups, el param viaja en la query string. */
+    it('should GET /api/eperson/epersons/{uuid} with embed param when provided', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service.getOne('eperson-001', { embed: 'groups' }).subscribe({
+          next: () => resolve(),
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/epersons/eperson-001' &&
+          r.params.get('embed') === 'groups',
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush(mockEPerson);
 
       await promise;
     });

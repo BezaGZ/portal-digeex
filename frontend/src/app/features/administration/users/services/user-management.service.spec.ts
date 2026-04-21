@@ -12,23 +12,31 @@ import { AuthUser } from '../../../../core/auth/models/auth-session.model';
 import { EPerson } from '../../../../core/api/models/eperson.model';
 import { Group } from '../../../../core/api/models/group.model';
 import { Community } from '../../../../core/api/models/community.model';
-import { Paginated } from '../../../../core/api/models/hal.model';
+import { HalListResponse, Paginated } from '../../../../core/api/models/hal.model';
 
 /**
- * Tests de UserManagementService (lectura). Ensambla UserView combinando
- * 
- * AuthService, GroupApi y DSpaceApi; los wrappers van mockeados porque
- * sus contratos HTTP ya se cubren en sus propios specs. 
- * 
+ * Tests de UserManagementService (lectura). El facade usa la proyección
+ * nativa de DSpace `?embed=groups` para evitar N+1: los grupos vienen
+ * anidados dentro de cada eperson, y el único recurso externo que queda
+ * por resolver por su cuenta es la community (para el nombre legible).
+ *
  * Ciclo 10 — Sprint 5.
- * 
  */
 describe('UserManagementService — lectura (Ciclo 10)', () => {
   let service: UserManagementService;
   let currentAuthUser: WritableSignal<AuthUser | null>;
   let listEPersonsFn: ReturnType<typeof vi.fn>;
-  let getGroupsFn: ReturnType<typeof vi.fn>;
+  let getOneEPersonFn: ReturnType<typeof vi.fn>;
   let getCommunityFn: ReturnType<typeof vi.fn>;
+
+  /** Construye el bloque HAL que DSpace devuelve con ?embed=groups. */
+  function embeddedGroups(groups: Group[]): HalListResponse<Group> {
+    return {
+      _embedded: { groups },
+      _links: { self: { href: '' } },
+      page: { size: groups.length, totalElements: groups.length, totalPages: 1, number: 0 },
+    };
+  }
 
   /** Construye un EPerson con la forma canónica del contrato REST de DSpace. */
   function buildEPerson(input: {
@@ -38,6 +46,7 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
     lastName: string;
     canLogIn?: boolean;
     lastActive?: string | null;
+    groups?: Group[];
   }): EPerson {
     return {
       uuid: input.uuid,
@@ -58,6 +67,7 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
           { value: input.lastName, language: null, authority: '', confidence: -1 },
         ],
       },
+      _embedded: input.groups ? { groups: embeddedGroups(input.groups) } : undefined,
     };
   }
 
@@ -132,15 +142,19 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
   beforeEach(() => {
     currentAuthUser = signal<AuthUser | null>(null);
     listEPersonsFn = vi.fn().mockReturnValue(of(emptyPaginated<EPerson>()));
-    getGroupsFn = vi.fn().mockReturnValue(of(emptyPaginated<Group>()));
+    getOneEPersonFn = vi.fn();
     getCommunityFn = vi.fn();
 
     TestBed.configureTestingModule({
       providers: [
         UserManagementService,
         { provide: AuthService, useValue: { currentUser: currentAuthUser } },
-        { provide: EPersonApiService, useValue: { list: listEPersonsFn } },
-        { provide: GroupApiService, useValue: { getGroupsOfEPerson: getGroupsFn } },
+        {
+          provide: EPersonApiService,
+          useValue: { list: listEPersonsFn, getOne: getOneEPersonFn },
+        },
+        // GroupApi queda cableada para Ciclo 11 (mutaciones); en lectura no se usa.
+        { provide: GroupApiService, useValue: {} },
         { provide: DSpaceApiService, useValue: { getCommunity: getCommunityFn } },
       ],
     });
@@ -157,7 +171,7 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
       const result = await firstValueFrom(service.currentUserView$);
 
       expect(result).toBeNull();
-      expect(getGroupsFn).not.toHaveBeenCalled();
+      expect(getOneEPersonFn).not.toHaveBeenCalled();
       expect(getCommunityFn).not.toHaveBeenCalled();
     });
 
@@ -169,7 +183,17 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
         firstName: 'Carlos',
         lastName: 'Ramírez',
       });
-      getGroupsFn.mockReturnValue(of(paginated<Group>([administratorGroup])));
+      getOneEPersonFn.mockReturnValue(
+        of(
+          buildEPerson({
+            uuid: 'eperson-super',
+            email: 'carlos.ramirez@mineduc.gob.gt',
+            firstName: 'Carlos',
+            lastName: 'Ramírez',
+            groups: [administratorGroup],
+          }),
+        ),
+      );
 
       const result = await firstValueFrom(service.currentUserView$);
 
@@ -183,7 +207,7 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
         status: 'active',
         lastActive: null,
       });
-      expect(getGroupsFn).toHaveBeenCalledWith('eperson-super');
+      expect(getOneEPersonFn).toHaveBeenCalledWith('eperson-super', { embed: 'groups' });
       expect(getCommunityFn).not.toHaveBeenCalled();
     });
 
@@ -195,7 +219,17 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
         firstName: 'Mario',
         lastName: 'García',
       });
-      getGroupsFn.mockReturnValue(of(paginated<Group>([adminGroupEducacionBasica])));
+      getOneEPersonFn.mockReturnValue(
+        of(
+          buildEPerson({
+            uuid: 'eperson-admin-eb',
+            email: 'mario.garcia@mineduc.gob.gt',
+            firstName: 'Mario',
+            lastName: 'García',
+            groups: [adminGroupEducacionBasica],
+          }),
+        ),
+      );
       getCommunityFn.mockReturnValue(of(communityEducacionBasica));
 
       const result = await firstValueFrom(service.currentUserView$);
@@ -208,19 +242,29 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
 
   /** Listado paginado según el alcance del caller (superadmin ve todo, admin ve su subdivisión). */
   describe('getVisibleUsers$()', () => {
-    /** La paginación se delega tal cual al wrapper HTTP. */
-    it('should call EPersonApi.list with the provided size and page params', async () => {
+    /** La paginación se delega al wrapper HTTP y siempre viaja con embed=groups. */
+    it('should call EPersonApi.list with the provided params and embed=groups', async () => {
       currentAuthUser.set({
         uuid: 'eperson-super',
         email: 'carlos.ramirez@mineduc.gob.gt',
         firstName: 'Carlos',
         lastName: 'Ramírez',
       });
-      getGroupsFn.mockReturnValue(of(paginated<Group>([administratorGroup])));
+      getOneEPersonFn.mockReturnValue(
+        of(
+          buildEPerson({
+            uuid: 'eperson-super',
+            email: 'carlos.ramirez@mineduc.gob.gt',
+            firstName: 'Carlos',
+            lastName: 'Ramírez',
+            groups: [administratorGroup],
+          }),
+        ),
+      );
 
       await firstValueFrom(service.getVisibleUsers$({ size: 50, page: 2 }));
 
-      expect(listEPersonsFn).toHaveBeenCalledWith({ size: 50, page: 2 });
+      expect(listEPersonsFn).toHaveBeenCalledWith({ size: 50, page: 2, embed: 'groups' });
     });
 
     /** Cada EPerson se mapea con rol/subdivisión; los metadatos de paginación se preservan. */
@@ -231,20 +275,27 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
         firstName: 'Carlos',
         lastName: 'Ramírez',
       });
+      getOneEPersonFn.mockReturnValue(
+        of(
+          buildEPerson({
+            uuid: 'eperson-super',
+            email: 'carlos.ramirez@mineduc.gob.gt',
+            firstName: 'Carlos',
+            lastName: 'Ramírez',
+            groups: [administratorGroup],
+          }),
+        ),
+      );
+      getCommunityFn.mockImplementation((uuid: string) => {
+        if (uuid === 'community-educacion-basica') return of(communityEducacionBasica);
+        return of(undefined);
+      });
       const mario = buildEPerson({
         uuid: 'eperson-mario',
         email: 'mario.garcia@mineduc.gob.gt',
         firstName: 'Mario',
         lastName: 'García',
-      });
-      getGroupsFn.mockImplementation((uuid: string) => {
-        if (uuid === 'eperson-super') return of(paginated<Group>([administratorGroup]));
-        if (uuid === 'eperson-mario') return of(paginated<Group>([adminGroupEducacionBasica]));
-        return of(emptyPaginated<Group>());
-      });
-      getCommunityFn.mockImplementation((uuid: string) => {
-        if (uuid === 'community-educacion-basica') return of(communityEducacionBasica);
-        return of(undefined);
+        groups: [adminGroupEducacionBasica],
       });
       listEPersonsFn.mockReturnValue(of(paginated<EPerson>([mario], 20, 0)));
 
@@ -274,37 +325,42 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
         firstName: 'Mario',
         lastName: 'García',
       });
+      getOneEPersonFn.mockReturnValue(
+        of(
+          buildEPerson({
+            uuid: 'eperson-admin-eb',
+            email: 'mario.garcia@mineduc.gob.gt',
+            firstName: 'Mario',
+            lastName: 'García',
+            groups: [adminGroupEducacionBasica],
+          }),
+        ),
+      );
+      getCommunityFn.mockImplementation((uuid: string) => {
+        if (uuid === 'community-educacion-basica') return of(communityEducacionBasica);
+        if (uuid === 'community-trabajo-cultura') return of(communityTrabajoCultura);
+        return of(undefined);
+      });
       const mario = buildEPerson({
         uuid: 'eperson-mario',
         email: 'mario.garcia@mineduc.gob.gt',
         firstName: 'Mario',
         lastName: 'García',
+        groups: [adminGroupEducacionBasica],
       });
       const lucia = buildEPerson({
         uuid: 'eperson-lucia',
         email: 'lucia.mendez@mineduc.gob.gt',
         firstName: 'Lucía',
         lastName: 'Méndez',
+        groups: [adminGroupTrabajoCultura],
       });
       const rosa = buildEPerson({
         uuid: 'eperson-rosa',
         email: 'rosa.juarez@mineduc.gob.gt',
         firstName: 'Rosa',
         lastName: 'Juárez',
-      });
-      getGroupsFn.mockImplementation((uuid: string) => {
-        if (uuid === 'eperson-admin-eb' || uuid === 'eperson-mario' || uuid === 'eperson-rosa') {
-          return of(paginated<Group>([adminGroupEducacionBasica]));
-        }
-        if (uuid === 'eperson-lucia') {
-          return of(paginated<Group>([adminGroupTrabajoCultura]));
-        }
-        return of(emptyPaginated<Group>());
-      });
-      getCommunityFn.mockImplementation((uuid: string) => {
-        if (uuid === 'community-educacion-basica') return of(communityEducacionBasica);
-        if (uuid === 'community-trabajo-cultura') return of(communityTrabajoCultura);
-        return of(undefined);
+        groups: [adminGroupEducacionBasica],
       });
       listEPersonsFn.mockReturnValue(of(paginated<EPerson>([mario, lucia, rosa], 20, 0)));
 

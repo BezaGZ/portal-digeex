@@ -81,3 +81,15 @@ export function mapHalList<T>(response: HalListResponse<T>, embeddedKey: string)
 export function buildAbsoluteApiUrl(relativePath: string): string {
   return `${window.location.origin}${DSPACE_API_BASE}${relativePath}`;
 }
+
+/**
+ * Devuelve el uuid que aparece al final de un href HAL. Útil para leer
+ * `_links.object.href` de un grupo y resolver el DSO dueño (community
+ * o collection) contra el wrapper correspondiente.
+ */
+export function extractUuidFromHref(href: string | null | undefined): string | null {
+  if (!href) return null;
+  const clean = href.split('?')[0].split('#')[0];
+  const segments = clean.split('/').filter(Boolean);
+  return segments.length > 0 ? segments[segments.length - 1] : null;
+}

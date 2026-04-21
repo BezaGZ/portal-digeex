@@ -1,13 +1,24 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { Observable, of, throwError } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { Observable, forkJoin, of } from 'rxjs';
+import { map, shareReplay, switchMap } from 'rxjs/operators';
 
 import { UserView, UserRole, UserStatus } from '../models/user-view.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { EPersonApiService } from '../../../../core/api/eperson-api.service';
 import { GroupApiService } from '../../../../core/api/group-api.service';
 import { DSpaceApiService } from '../../../../core/api/dspace-api.service';
+import { EPerson } from '../../../../core/api/models/eperson.model';
+import { Group } from '../../../../core/api/models/group.model';
 import { Paginated } from '../../../../core/api/models/hal.model';
+import { extractOwningCommunityUuid, resolveRoleFromGroups } from './role-resolver';
+
+/** Proyección que DSpace usa para anidar los grupos dentro del eperson. */
+const EMBED_GROUPS = 'groups';
+
+/** Clave del subrecurso `groups` dentro del _embedded del eperson. */
+const METADATA_FIRSTNAME = 'eperson.firstname';
+const METADATA_LASTNAME = 'eperson.lastname';
 
 /**
  * Servicio para gestión de usuarios del panel administrativo.
@@ -30,25 +41,131 @@ export class UserManagementService {
   private readonly dspaceApi = inject(DSpaceApiService);
 
   /**
-   * Ciclo 10 — stub.
-   * currentUserView$ va a emitir el UserView derivado del eperson
-   * autenticado más sus grupos (rol + nombre de subdivisión). Hoy
-   * lanza para que cualquier test que se suscriba falle en rojo.
+   * Vista del usuario logueado con su rol ya resuelto. Pide el eperson
+   * con `?embed=groups` para traer los grupos en una sola llamada y
+   * deriva el rol con resolveRoleFromGroups; si el rol viene de una
+   * community, también resuelve el nombre legible de la subdivisión.
+   * Se cachea con shareReplay para que getVisibleUsers$ no la repita.
    */
-  readonly currentUserView$: Observable<UserView | null> = of(null).pipe(
-    map((): UserView | null => {
-      throw new Error('Ciclo 10 RED: currentUserView$ pendiente de implementar');
+  readonly currentUserView$: Observable<UserView | null> = toObservable(this.authService.currentUser).pipe(
+    switchMap((authUser) => {
+      if (!authUser) return of<UserView | null>(null);
+      return this.epersonApi
+        .getOne(authUser.uuid, { embed: EMBED_GROUPS })
+        .pipe(switchMap((eperson) => this.toUserView(eperson)));
     }),
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
 
   /**
-   * Ciclo 10 — stub.
-   * getVisibleUsers$ va a tirar del EPersonApi.list y mapear cada eperson
-   * a UserView (rol + subdivisión resueltos), aplicando el filtro de
-   * alcance cuando el caller es admin_subdireccion. Hoy lanza para RED.
+   * Listado paginado de usuarios visibles para el caller. Combina el
+   * listado de epersons (con embed=groups, una sola petición) con el
+   * resolver de rol/subdivisión por usuario; si el caller es
+   * admin_subdireccion, filtra del lado cliente porque DSpace no
+   * expone "epersons por community".
    */
-  getVisibleUsers$(_params: { size?: number; page?: number } = {}): Observable<Paginated<UserView>> {
-    return throwError(() => new Error('Ciclo 10 RED: getVisibleUsers$ pendiente de implementar'));
+  getVisibleUsers$(
+    params: { size?: number; page?: number } = {},
+  ): Observable<Paginated<UserView>> {
+    return this.currentUserView$.pipe(
+      switchMap((currentUser) =>
+        this.epersonApi
+          .list({ ...params, embed: EMBED_GROUPS })
+          .pipe(switchMap((paginatedResult) => this.mapPaginatedToUserViews(paginatedResult, currentUser))),
+      ),
+    );
+  }
+
+  /**
+   * Mapea cada EPerson de una página a su UserView correspondiente y
+   * aplica el filtro de alcance del caller. Si la página viene vacía
+   * se cortocircuita para no disparar un forkJoin sobre [].
+   */
+  private mapPaginatedToUserViews(
+    paginatedResult: Paginated<EPerson>,
+    currentUser: UserView | null,
+  ): Observable<Paginated<UserView>> {
+    if (paginatedResult.items.length === 0) {
+      return of({ ...paginatedResult, items: [] });
+    }
+
+    return forkJoin(paginatedResult.items.map((eperson) => this.toUserView(eperson))).pipe(
+      map((userViews) => {
+        const valid = userViews.filter((view): view is UserView => view !== null);
+        const filtered = this.applyCallerScope(valid, currentUser);
+        return { ...paginatedResult, items: filtered };
+      }),
+    );
+  }
+
+  /**
+   * Convierte un EPerson (con grupos embebidos) en su UserView. Si el
+   * rol es admin_subdireccion, busca la community dueña del grupo para
+   * exponer el nombre legible como subdivisión. Si resolveRoleFromGroups
+   * no encuentra nada aplicable, devuelve null para que el caller pueda
+   * descartarlo del listado o tratar la sesión como inválida.
+   */
+  private toUserView(eperson: EPerson): Observable<UserView | null> {
+    const groups = this.extractEmbeddedGroups(eperson);
+    const role = resolveRoleFromGroups(groups);
+    if (role === null) return of(null);
+
+    const communityUuid =
+      role === 'admin_subdireccion' ? extractOwningCommunityUuid(groups) : null;
+
+    const subdivision$ = communityUuid
+      ? this.dspaceApi.getCommunity(communityUuid).pipe(map((community) => community.name))
+      : of<string | null>(null);
+
+    return subdivision$.pipe(
+      map((subdivision) => this.assembleUserView(eperson, role, subdivision)),
+    );
+  }
+
+  /**
+   * Devuelve los grupos anidados en `_embedded.groups._embedded.groups`
+   * cuando la petición usó embed=groups. Centralizado acá para no
+   * desparramar la navegación de la estructura HAL por el resto del facade.
+   */
+  private extractEmbeddedGroups(eperson: EPerson): Group[] {
+    return eperson._embedded?.groups?._embedded?.[EMBED_GROUPS] ?? [];
+  }
+
+  /**
+   * Construye el UserView final a partir del EPerson y los datos ya
+   * resueltos. Lee firstname/lastname desde metadata (la forma canónica
+   * de DSpace) y mapea canLogIn al status que entiende el UI.
+   */
+  private assembleUserView(
+    eperson: EPerson,
+    role: UserRole,
+    subdivision: string | null,
+  ): UserView {
+    return {
+      uuid: eperson.uuid,
+      email: eperson.email,
+      firstName: eperson.metadata[METADATA_FIRSTNAME]?.[0]?.value ?? '',
+      lastName: eperson.metadata[METADATA_LASTNAME]?.[0]?.value ?? '',
+      role,
+      subdivision,
+      status: eperson.canLogIn ? 'active' : 'inactive',
+      lastActive: eperson.lastActive,
+    };
+  }
+
+  /**
+   * Aplica el alcance del caller al listado: el admin_subdireccion solo
+   * ve usuarios de su misma subdivisión (RN-08). El superadmin ve todo.
+   * Cualquier otro rol devuelve lista vacía por defecto, que es lo
+   * conservador hasta que se especifique otro caso de uso.
+   */
+  private applyCallerScope(userViews: UserView[], currentUser: UserView | null): UserView[] {
+    if (!currentUser) return [];
+    if (currentUser.role === 'superadmin') return userViews;
+    if (currentUser.role === 'admin_subdireccion') {
+      return userViews.filter((view) => view.subdivision === currentUser.subdivision);
+    }
+    return [];
   }
 
   private usersSignal = signal<UserView[]>([

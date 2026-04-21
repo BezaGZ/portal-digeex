@@ -1,4 +1,5 @@
 import { Group } from '../../../../core/api/models/group.model';
+import { extractUuidFromHref } from '../../../../core/api/dspace-rest.util';
 import { UserRole } from '../models/user-view.model';
 
 /**
@@ -50,5 +51,20 @@ export function resolveRoleFromGroups(groups: Group[]): UserRole | null {
     return 'personal_delegado';
   }
 
+  return null;
+}
+
+/**
+ * Devuelve el uuid de la community dueña del primer grupo con _links.object
+ * apuntando a /core/communities/. Se usa junto con resolveRoleFromGroups
+ * para mapear admin_subdireccion al nombre legible de la subdivisión.
+ */
+export function extractOwningCommunityUuid(groups: Group[]): string | null {
+  for (const group of groups) {
+    const href = group._links?.object?.href;
+    if (href && href.includes(COMMUNITY_OBJECT_PATH)) {
+      return extractUuidFromHref(href);
+    }
+  }
   return null;
 }

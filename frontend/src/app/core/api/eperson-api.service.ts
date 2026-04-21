@@ -58,15 +58,39 @@ export class EPersonApiService {
   private readonly http = inject(HttpClient);
 
   /**
-   * Lista epersons paginados desde DSpace.
-   * Devuelve la respuesta aplanada en Paginated<EPerson>.
+   * Lista epersons paginados desde DSpace. Acepta el parámetro opcional
+   * `embed` que DSpace usa para traer subrecursos en la misma respuesta
+   * (por ejemplo `embed=groups` para incluir los grupos de cada eperson
+   * y evitar N+1 en el listado administrativo).
    */
-  list(params: { size?: number; page?: number } = {}): Observable<Paginated<EPerson>> {
+  list(
+    params: { size?: number; page?: number; embed?: string } = {},
+  ): Observable<Paginated<EPerson>> {
+    let httpParams = buildPaginationParams(params);
+    if (params.embed) {
+      httpParams = httpParams.set('embed', params.embed);
+    }
+
     return this.http
       .get<HalListResponse<EPerson>>(`${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}`, {
-        params: buildPaginationParams(params),
+        params: httpParams,
       })
       .pipe(map((response) => mapHalList(response, EMBEDDED_KEY_EPERSONS)));
+  }
+
+  /**
+   * Trae un único eperson por uuid. Soporta `embed` para incluir
+   * subrecursos (habitualmente `groups` cuando necesitamos derivar el
+   * rol del usuario en una sola petición, sin pasar por /groups aparte).
+   */
+  getOne(uuid: string, options: { embed?: string } = {}): Observable<EPerson> {
+    const url = `${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}/${uuid}`;
+    if (!options.embed) {
+      return this.http.get<EPerson>(url);
+    }
+
+    const params = new HttpParams().set('embed', options.embed);
+    return this.http.get<EPerson>(url, { params });
   }
 
   /**
