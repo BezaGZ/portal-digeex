@@ -43,12 +43,22 @@ export class DSpaceApiService {
 
   /**
    * Obtiene una comunidad por su UUID.
+   * El parámetro opcional `embed` proyecta subrecursos en la misma
+   * respuesta (ej. `adminGroup` para resolver el grupo destino al crear
+   * un admin_subdireccion, según el contrato REST de DSpace 9.2).
    * @param uuid - UUID de la comunidad
+   * @param options - `embed` con el nombre del subrecurso
    * @returns Observable con los datos de la comunidad
    */
-  getCommunity(uuid: string): Observable<Community> {
+  getCommunity(uuid: string, options: { embed?: string } = {}): Observable<Community> {
+    let params = new HttpParams();
+    if (options.embed) {
+      params = params.set('embed', options.embed);
+    }
+
     return this.http.get<Community>(
-      `${this.apiUrl}/core/communities/${uuid}`
+      `${this.apiUrl}/core/communities/${uuid}`,
+      { params }
     );
   }
 
@@ -110,12 +120,21 @@ export class DSpaceApiService {
 
   /**
    * Obtiene una colección por su UUID.
+   * El parámetro opcional `embed` anida subrecursos (ej. `submittersGroup`
+   * para resolver el grupo destino al dar de alta personal_delegado).
    * @param uuid - UUID de la colección
+   * @param options - `embed` con el nombre del subrecurso
    * @returns Observable con los datos de la colección
    */
-  getCollection(uuid: string): Observable<Collection> {
+  getCollection(uuid: string, options: { embed?: string } = {}): Observable<Collection> {
+    let params = new HttpParams();
+    if (options.embed) {
+      params = params.set('embed', options.embed);
+    }
+
     return this.http.get<Collection>(
-      `${this.apiUrl}/core/collections/${uuid}`
+      `${this.apiUrl}/core/collections/${uuid}`,
+      { params }
     );
   }
 

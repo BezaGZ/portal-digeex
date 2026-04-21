@@ -1,11 +1,13 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { EPerson } from './models/eperson.model';
 import { Group } from './models/group.model';
 import { Paginated, HalListResponse } from './models/hal.model';
 import {
   DSPACE_API_BASE,
+  EMBEDDED_KEY_EPERSONS,
   EMBEDDED_KEY_GROUPS,
   EPERSONS_COLLECTION_PATH,
   GROUPS_COLLECTION_PATH,
@@ -18,6 +20,12 @@ import {
 /** Subrecursos del contrato DSpace 9.2 usados por este wrapper. */
 const EPERSON_GROUPS_SUBRESOURCE = 'groups';
 const GROUP_EPERSONS_SUBRESOURCE = 'epersons';
+
+/** Endpoint nativo de DSpace para buscar grupos por nombre/metadata. */
+const GROUPS_SEARCH_BY_METADATA_PATH = `${GROUPS_COLLECTION_PATH}/search/byMetadata`;
+
+/** Nombre del grupo global de superadministradores en DSpace (RN-07). */
+const ADMINISTRATOR_GROUP_NAME = 'Administrator';
 
 /**
  * Wrapper HTTP del recurso /api/eperson/groups y del subrecurso
@@ -69,5 +77,45 @@ export class GroupApiService {
     const url = `${DSPACE_API_BASE}${GROUPS_COLLECTION_PATH}/${groupUuid}/${GROUP_EPERSONS_SUBRESOURCE}/${epersonUuid}`;
 
     return this.http.delete<void>(url);
+  }
+
+  /**
+   * Devuelve los epersons miembros del grupo indicado. Se usa al desactivar
+   * un superadmin para contar cuántos siguen activos y proteger RN-11 sin
+   * depender de un contador en cliente.
+   */
+  getMembersOfGroup(
+    groupUuid: string,
+    params: { size?: number; page?: number } = {},
+  ): Observable<Paginated<EPerson>> {
+    const url = `${DSPACE_API_BASE}${GROUPS_COLLECTION_PATH}/${groupUuid}/${GROUP_EPERSONS_SUBRESOURCE}`;
+
+    return this.http
+      .get<HalListResponse<EPerson>>(url, { params: buildPaginationParams(params) })
+      .pipe(map((response) => mapHalList(response, EMBEDDED_KEY_EPERSONS)));
+  }
+
+  /**
+   * Resuelve el grupo global Administrator (RN-07) vía el endpoint nativo
+   * de búsqueda por metadata. DSpace no expone un atajo tipo "getAdmin",
+   * por eso se filtra por `dc.title=Administrator` y luego en memoria se
+   * toma el grupo cuyo `name` coincide exactamente, porque `byMetadata`
+   * hace LIKE y podría devolver más de un grupo que empieza por el mismo
+   * prefijo.
+   */
+  findAdministratorGroup(): Observable<Group> {
+    const url = `${DSPACE_API_BASE}${GROUPS_SEARCH_BY_METADATA_PATH}`;
+    const params = new HttpParams().set('query', ADMINISTRATOR_GROUP_NAME);
+
+    return this.http.get<HalListResponse<Group>>(url, { params }).pipe(
+      map((response) => {
+        const groups = response._embedded?.[EMBEDDED_KEY_GROUPS] ?? [];
+        const admin = groups.find((group) => group.name === ADMINISTRATOR_GROUP_NAME);
+        if (!admin) {
+          throw new Error(`Grupo ${ADMINISTRATOR_GROUP_NAME} no encontrado`);
+        }
+        return admin;
+      }),
+    );
   }
 }
