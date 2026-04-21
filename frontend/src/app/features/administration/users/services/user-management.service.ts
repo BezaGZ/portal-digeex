@@ -13,56 +13,57 @@ import { Group } from '../../../../core/api/models/group.model';
 import { Paginated } from '../../../../core/api/models/hal.model';
 import { extractOwningCommunityUuid, resolveRoleFromGroups } from './role-resolver';
 
-/** Proyección que DSpace usa para anidar los grupos dentro del eperson. */
+/** Proyección HAL de DSpace para anidar los grupos dentro del eperson. */
 const EMBED_GROUPS = 'groups';
 
-/** Clave del subrecurso `groups` dentro del _embedded del eperson. */
+/** Claves del metadata canónico de DSpace para primer y último nombre. */
 const METADATA_FIRSTNAME = 'eperson.firstname';
 const METADATA_LASTNAME = 'eperson.lastname';
 
 /**
- * Servicio para gestión de usuarios del panel administrativo.
- * Maneja CRUD de usuarios con validaciones de negocio (máximo 2 superadmins,
- * correo @mineduc.gob.gt obligatorio, subdirección requerida para no-superadmin).
- * Actualmente usa datos en memoria; se conectará a DSpace EPerson API.
+ * Tupla interna con el rol y la community uuid ya resueltos desde los
+ * grupos embebidos. Evita recalcular la proyección cuando solo falta
+ * pedir el nombre legible de la community.
+ */
+interface ResolvedEPerson {
+  readonly eperson: EPerson;
+  readonly role: UserRole;
+  readonly communityUuid: string | null;
+}
+
+/**
+ * Facade del dominio de usuarios administrativos.
+ * Lee de DSpace vía EPerson/Group/Community API y deriva el rol con
+ * resolveRoleFromGroups. Las mutaciones y reglas de negocio viven aparte.
  */
 @Injectable({
   providedIn: 'root',
 })
 export class UserManagementService {
-  /**
-   * Dependencias del facade real (Ciclos 10 a 12). Se inyectan desde ya
-   * aunque los miembros nuevos todavía son stubs: así el GREEN solo tiene
-   * que reemplazar cuerpos, sin refactorizar el injection context.
-   */
   private readonly authService = inject(AuthService);
   private readonly epersonApi = inject(EPersonApiService);
   private readonly groupApi = inject(GroupApiService);
   private readonly dspaceApi = inject(DSpaceApiService);
 
   /**
-   * Vista del usuario logueado con su rol ya resuelto. Pide el eperson
-   * con `?embed=groups` para traer los grupos en una sola llamada y
-   * deriva el rol con resolveRoleFromGroups; si el rol viene de una
-   * community, también resuelve el nombre legible de la subdivisión.
-   * Se cachea con shareReplay para que getVisibleUsers$ no la repita.
+   * Vista del usuario logueado con el rol ya resuelto. Pide el eperson
+   * con ?embed=groups y cachea con shareReplay para que getVisibleUsers$
+   * no lo repita en cada invocación.
    */
   readonly currentUserView$: Observable<UserView | null> = toObservable(this.authService.currentUser).pipe(
     switchMap((authUser) => {
       if (!authUser) return of<UserView | null>(null);
       return this.epersonApi
         .getOne(authUser.uuid, { embed: EMBED_GROUPS })
-        .pipe(switchMap((eperson) => this.toUserView(eperson)));
+        .pipe(switchMap((eperson) => this.buildSingleUserView(eperson)));
     }),
     shareReplay({ bufferSize: 1, refCount: true }),
   );
 
   /**
-   * Listado paginado de usuarios visibles para el caller. Combina el
-   * listado de epersons (con embed=groups, una sola petición) con el
-   * resolver de rol/subdivisión por usuario; si el caller es
-   * admin_subdireccion, filtra del lado cliente porque DSpace no
-   * expone "epersons por community".
+   * Listado paginado filtrado al alcance del caller. Una sola llamada
+   * con embed=groups resuelve los roles de toda la página; las communities
+   * se piden una vez por uuid único.
    */
   getVisibleUsers$(
     params: { size?: number; page?: number } = {},
@@ -77,65 +78,87 @@ export class UserManagementService {
   }
 
   /**
-   * Mapea cada EPerson de una página a su UserView correspondiente y
-   * aplica el filtro de alcance del caller. Si la página viene vacía
-   * se cortocircuita para no disparar un forkJoin sobre [].
+   * Resuelve roles por eperson, junta los community uuids únicos y los
+   * pide en un solo forkJoin en vez de una llamada por usuario.
    */
   private mapPaginatedToUserViews(
     paginatedResult: Paginated<EPerson>,
     currentUser: UserView | null,
   ): Observable<Paginated<UserView>> {
-    if (paginatedResult.items.length === 0) {
-      return of({ ...paginatedResult, items: [] });
-    }
+    const resolved = paginatedResult.items
+      .map((eperson) => this.resolveEPerson(eperson))
+      .filter((item): item is ResolvedEPerson => item !== null);
 
-    return forkJoin(paginatedResult.items.map((eperson) => this.toUserView(eperson))).pipe(
-      map((userViews) => {
-        const valid = userViews.filter((view): view is UserView => view !== null);
-        const filtered = this.applyCallerScope(valid, currentUser);
-        return { ...paginatedResult, items: filtered };
+    const uniqueCommunityUuids = Array.from(
+      new Set(
+        resolved
+          .map((item) => item.communityUuid)
+          .filter((uuid): uuid is string => uuid !== null),
+      ),
+    );
+
+    return this.fetchCommunityNames(uniqueCommunityUuids).pipe(
+      map((communityNames) => {
+        const views = resolved.map((item) =>
+          this.assembleUserView(
+            item.eperson,
+            item.role,
+            item.communityUuid ? communityNames.get(item.communityUuid) ?? null : null,
+          ),
+        );
+        return { ...paginatedResult, items: this.applyCallerScope(views, currentUser) };
       }),
     );
   }
 
   /**
-   * Convierte un EPerson (con grupos embebidos) en su UserView. Si el
-   * rol es admin_subdireccion, busca la community dueña del grupo para
-   * exponer el nombre legible como subdivisión. Si resolveRoleFromGroups
-   * no encuentra nada aplicable, devuelve null para que el caller pueda
-   * descartarlo del listado o tratar la sesión como inválida.
+   * Rama de un solo eperson (currentUserView$). Reutiliza fetchCommunityNames
+   * aunque el set sea 0 o 1 para mantener un único punto de resolución.
    */
-  private toUserView(eperson: EPerson): Observable<UserView | null> {
-    const groups = this.extractEmbeddedGroups(eperson);
-    const role = resolveRoleFromGroups(groups);
-    if (role === null) return of(null);
-
-    const communityUuid =
-      role === 'admin_subdireccion' ? extractOwningCommunityUuid(groups) : null;
-
-    const subdivision$ = communityUuid
-      ? this.dspaceApi.getCommunity(communityUuid).pipe(map((community) => community.name))
-      : of<string | null>(null);
-
-    return subdivision$.pipe(
-      map((subdivision) => this.assembleUserView(eperson, role, subdivision)),
+  private buildSingleUserView(eperson: EPerson): Observable<UserView | null> {
+    const resolved = this.resolveEPerson(eperson);
+    if (!resolved) return of(null);
+    const uuids = resolved.communityUuid ? [resolved.communityUuid] : [];
+    return this.fetchCommunityNames(uuids).pipe(
+      map((communityNames) =>
+        this.assembleUserView(
+          resolved.eperson,
+          resolved.role,
+          resolved.communityUuid ? communityNames.get(resolved.communityUuid) ?? null : null,
+        ),
+      ),
     );
   }
 
   /**
-   * Devuelve los grupos anidados en `_embedded.groups._embedded.groups`
-   * cuando la petición usó embed=groups. Centralizado acá para no
-   * desparramar la navegación de la estructura HAL por el resto del facade.
+   * Mapa uuid→nombre para la lista dada. Cortocircuita cuando viene vacía
+   * para no invocar forkJoin sobre [].
    */
+  private fetchCommunityNames(uuids: string[]): Observable<Map<string, string>> {
+    if (uuids.length === 0) return of(new Map<string, string>());
+    return forkJoin(
+      uuids.map((uuid) =>
+        this.dspaceApi.getCommunity(uuid).pipe(map((community) => [uuid, community.name] as const)),
+      ),
+    ).pipe(map((entries) => new Map(entries)));
+  }
+
+  /** Proyecta rol y community uuid desde los grupos embebidos del eperson. */
+  private resolveEPerson(eperson: EPerson): ResolvedEPerson | null {
+    const groups = this.extractEmbeddedGroups(eperson);
+    const role = resolveRoleFromGroups(groups);
+    if (role === null) return null;
+    const communityUuid =
+      role === 'admin_subdireccion' ? extractOwningCommunityUuid(groups) : null;
+    return { eperson, role, communityUuid };
+  }
+
+  /** Lee los grupos bajo _embedded.groups._embedded.groups (forma HAL anidada). */
   private extractEmbeddedGroups(eperson: EPerson): Group[] {
     return eperson._embedded?.groups?._embedded?.[EMBED_GROUPS] ?? [];
   }
 
-  /**
-   * Construye el UserView final a partir del EPerson y los datos ya
-   * resueltos. Lee firstname/lastname desde metadata (la forma canónica
-   * de DSpace) y mapea canLogIn al status que entiende el UI.
-   */
+  /** Arma el UserView final con metadata canónica y canLogIn → status. */
   private assembleUserView(
     eperson: EPerson,
     role: UserRole,
@@ -153,12 +176,7 @@ export class UserManagementService {
     };
   }
 
-  /**
-   * Aplica el alcance del caller al listado: el admin_subdireccion solo
-   * ve usuarios de su misma subdivisión (RN-08). El superadmin ve todo.
-   * Cualquier otro rol devuelve lista vacía por defecto, que es lo
-   * conservador hasta que se especifique otro caso de uso.
-   */
+  /** RN-08: admin_subdireccion solo ve su subdivisión; superadmin ve todo. */
   private applyCallerScope(userViews: UserView[], currentUser: UserView | null): UserView[] {
     if (!currentUser) return [];
     if (currentUser.role === 'superadmin') return userViews;
