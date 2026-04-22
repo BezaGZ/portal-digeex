@@ -66,6 +66,7 @@ export class UserTable {
     { label: RoleLabels.superadmin, value: 'superadmin' as UserRole },
     { label: RoleLabels.admin_subdireccion, value: 'admin_subdireccion' as UserRole },
     { label: RoleLabels.personal_delegado, value: 'personal_delegado' as UserRole },
+    { label: RoleLabels.sin_asignar, value: 'sin_asignar' as UserRole },
   ];
 
   statusOptions = [

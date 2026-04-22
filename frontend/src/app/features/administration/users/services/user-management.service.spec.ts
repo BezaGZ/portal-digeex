@@ -373,6 +373,51 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
       );
       expect(result.items.every((u) => u.subdivision === 'Educación Básica')).toBe(true);
     });
+
+    /**
+     * Un eperson huérfano (sin ningún grupo de rol del portal, p. ej. porque
+     * lo desactivaron y reactivaron contra DSpace y por error quedó sin
+     * grupo) tiene que seguir apareciendo en la lista del superadmin
+     * marcado como 'sin_asignar', no desaparecer. Si se filtrara, el
+     * único camino para reasignarle un rol sería volver a tocar la API
+     * a mano (que es exactamente lo que pasaba con el eperson 3351 antes
+     * de este cambio).
+     */
+    it('should emit orphan epersons with role=sin_asignar instead of dropping them', async () => {
+      currentAuthUser.set({
+        uuid: 'eperson-super',
+        email: 'carlos.ramirez@mineduc.gob.gt',
+        firstName: 'Carlos',
+        lastName: 'Ramírez',
+      });
+      getOneEPersonFn.mockReturnValue(
+        of(
+          buildEPerson({
+            uuid: 'eperson-super',
+            email: 'carlos.ramirez@mineduc.gob.gt',
+            firstName: 'Carlos',
+            lastName: 'Ramírez',
+            groups: [administratorGroup],
+          }),
+        ),
+      );
+      const huerfano = buildEPerson({
+        uuid: 'eperson-huerfano',
+        email: 'huerfano@mineduc.gob.gt',
+        firstName: 'Sin',
+        lastName: 'Grupo',
+        groups: [],
+      });
+      listEPersonsFn.mockReturnValue(of(paginated<EPerson>([huerfano], 20, 0)));
+
+      const result = await firstValueFrom(service.getVisibleUsers$({ size: 20, page: 0 }));
+
+      expect(result.items.length).toBe(1);
+      expect(result.items[0].uuid).toBe('eperson-huerfano');
+      expect(result.items[0].role).toBe('sin_asignar');
+      expect(result.items[0].subdivision).toBeNull();
+      expect(getCommunityFn).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -985,7 +1030,6 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
         if (uuid === 'target-eperson') return of(targetEperson);
         return of(undefined);
       });
-      // Promoción a superadmin: debe salir de adminGroup-EB y entrar a Administrator.
       await firstValueFrom(
         service.changeUserRole$({
           uuid: 'target-eperson',

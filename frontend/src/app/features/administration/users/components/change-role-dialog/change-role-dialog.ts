@@ -127,8 +127,6 @@ export class ChangeRoleDialog implements OnDestroy {
   showScopeSelector = computed(() => this.currentRole() !== 'superadmin');
 
   canSubmit = computed(() => {
-    // Leer signals arriba para que el computed los registre como dependencias
-    // antes de que el corto-circuito por form.invalid (getter, no signal) los esquive.
     const target = this.target();
     const role = this.currentRole();
     const scope = this.scopeState();
@@ -142,11 +140,14 @@ export class ChangeRoleDialog implements OnDestroy {
     /**
      * Al recibir un nuevo target, se siembra el form con el rol actual
      * del usuario para que el dialog arranque mostrando "su" estado y
-     * el operador solo cambie lo que quiera tocar.
+     * el operador solo cambie lo que quiera tocar. Si el target es un
+     * huérfano (role='sin_asignar') no se siembra: el dropdown no incluye
+     * esa opción, así que se deja el default ('personal_delegado') y el
+     * operador elige qué rol asignarle.
      */
     effect(() => {
       const targetValue = this.target();
-      if (targetValue) {
+      if (targetValue && targetValue.role !== 'sin_asignar') {
         this.form.patchValue({ role: targetValue.role }, { emitEvent: false });
         this.currentRole.set(targetValue.role);
       }

@@ -130,9 +130,7 @@ export class UserManagementService {
     paginatedResult: Paginated<EPerson>,
     currentUser: UserView | null,
   ): Observable<Paginated<UserView>> {
-    const resolved = paginatedResult.items
-      .map((eperson) => this.resolveEPerson(eperson))
-      .filter((item): item is ResolvedEPerson => item !== null);
+    const resolved = paginatedResult.items.map((eperson) => this.resolveEPerson(eperson));
 
     const uniqueCommunityUuids = Array.from(
       new Set(
@@ -159,10 +157,11 @@ export class UserManagementService {
   /**
    * Rama de un solo eperson (currentUserView$). Reutiliza fetchCommunityNames
    * aunque el set sea 0 o 1 para mantener un único punto de resolución.
+   * Si el caller resulta huérfano se devuelve con role='sin_asignar' y
+   * applyCallerScope ya lo trata como sin permisos en el listado.
    */
-  private buildSingleUserView(eperson: EPerson): Observable<UserView | null> {
+  private buildSingleUserView(eperson: EPerson): Observable<UserView> {
     const resolved = this.resolveEPerson(eperson);
-    if (!resolved) return of(null);
     const uuids = resolved.communityUuid ? [resolved.communityUuid] : [];
     return this.fetchCommunityNames(uuids).pipe(
       map((communityNames) =>
@@ -188,11 +187,18 @@ export class UserManagementService {
     ).pipe(map((entries) => new Map(entries)));
   }
 
-  /** Proyecta rol y community uuid desde los grupos embebidos del eperson. */
-  private resolveEPerson(eperson: EPerson): ResolvedEPerson | null {
+  /**
+   * Proyecta rol y community uuid desde los grupos embebidos del eperson.
+   * Si el eperson quedó sin ningún grupo de rol (huérfano: típicamente un
+   * usuario al que se le quitó el grupo manualmente o cuyo grupo se borró)
+   * se devuelve con role='sin_asignar' para que el superadmin pueda
+   * verlo en la lista y reasignarle un rol desde el mismo UI. Si se
+   * filtrara aquí desaparecería de la grilla y solo se podría rescatar
+   * por API, que es exactamente lo que pasaba con el eperson 3351.
+   */
+  private resolveEPerson(eperson: EPerson): ResolvedEPerson {
     const groups = this.extractEmbeddedGroups(eperson);
-    const role = resolveRoleFromGroups(groups);
-    if (role === null) return null;
+    const role = resolveRoleFromGroups(groups) ?? 'sin_asignar';
     const communityUuid =
       role === 'admin_subdireccion' ? extractOwningCommunityUuid(groups) : null;
     return { eperson, role, communityUuid };
