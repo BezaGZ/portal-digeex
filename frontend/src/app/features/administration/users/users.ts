@@ -15,6 +15,10 @@ import {
 } from './services/user-management.service';
 import { BusinessRuleError, BusinessRuleErrorCode } from './services/business-rule-error';
 import { UserView } from './models/user-view.model';
+import { extractErrorDetail } from '../../../core/error/extract-error-detail';
+
+/** Fallback del detail cuando el error no trae ningun texto util. */
+const UNEXPECTED_ERROR_FALLBACK = 'Ocurrió un error al procesar la solicitud. Intenta más tarde.';
 
 /**
  * Contenedor de la pantalla de gestión de usuarios.
@@ -158,8 +162,9 @@ export class Users {
   /**
    * Traduce el error del facade a un toast. Las reglas bloqueantes del
    * propio usuario (RN-11, RN-12) salen como warn porque no son fallas
-   * técnicas, son cosas que el UI ya debería prevenir. Todo lo demás,
-   * incluido un HTTP roto, cae al toast genérico de error.
+   * tecnicas, son cosas que el UI ya deberia prevenir. Cualquier otro error
+   * usa `extractErrorDetail` para revelar el mensaje del backend o del
+   * Error antes de caer al copy generico.
    */
   private errorToToast(err: unknown) {
     if (err instanceof BusinessRuleError) {
@@ -175,7 +180,7 @@ export class Users {
     this.messageService.add({
       severity: 'error',
       summary: 'Error inesperado',
-      detail: 'Ocurrió un error al procesar la solicitud. Intenta más tarde.',
+      detail: extractErrorDetail(err as { error?: unknown; message?: unknown }, UNEXPECTED_ERROR_FALLBACK),
       life: 5000,
     });
   }

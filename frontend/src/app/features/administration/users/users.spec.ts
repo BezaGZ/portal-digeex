@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 import { EMPTY, of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MessageService } from 'primeng/api';
 
 import { Users } from './users';
@@ -21,7 +22,7 @@ import { EPerson } from '../../../core/api/models/eperson.model';
  * mensaje específico por código, cualquier otro error cae al toast
  * genérico.
  *
- * Ciclo 12 — Sprint 5.
+ * Ciclo 12 — Sprint 5. Ajustado en Ciclo 16.
  */
 describe('Users (contenedor)', () => {
   let component: Users;
@@ -81,8 +82,6 @@ describe('Users (contenedor)', () => {
       providers: [
         provideNoopAnimations(),
         { provide: UserManagementService, useValue: userServiceStub },
-        // Se exponen los Observables vacíos porque p-toast del template
-        // se suscribe en ngOnInit y no se quiere que emita nada real.
         {
           provide: MessageService,
           useValue: { add: messageAddFn, messageObserver: EMPTY, clearObserver: EMPTY },
@@ -207,6 +206,73 @@ describe('Users (contenedor)', () => {
       asAny(component).onCreateSubmitted(input);
 
       expect(createUserFn).toHaveBeenCalledWith(input);
+    });
+  });
+
+  /**
+   * Cuando el error no es BusinessRuleError, el detail del toast debe revelar
+   * el mensaje real (del body del backend o del Error) y no el genérico fijo,
+   * porque el generico oculta diagnosticos utiles en operacion.
+   */
+  describe('errorToToast (errores no-BusinessRuleError)', () => {
+    /** Verifica que un Error plano use su message como detail del toast. */
+    it('should show error.message in the toast detail when the thrown error is a plain Error', () => {
+      deactivateUserFn.mockReturnValue(
+        throwError(() => new Error('Collection X no expone submittersGroup.')),
+      );
+
+      asAny(component).onDeactivateRequested(buildUserView({ uuid: 'uuid-target' }));
+
+      expect(messageAddFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          severity: 'error',
+          summary: 'Error inesperado',
+          detail: 'Collection X no expone submittersGroup.',
+        }),
+      );
+    });
+
+    /** Verifica que un HttpErrorResponse con body.message use ese texto antes que err.message. */
+    it('should prefer error.error.message over error.message when the error is an HttpErrorResponse with a body message', () => {
+      deactivateUserFn.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              error: { message: 'El grupo destino no existe' },
+              status: 422,
+              statusText: 'Unprocessable Entity',
+            }),
+        ),
+      );
+
+      asAny(component).onDeactivateRequested(buildUserView({ uuid: 'uuid-target' }));
+
+      expect(messageAddFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          severity: 'error',
+          summary: 'Error inesperado',
+          detail: 'El grupo destino no existe',
+        }),
+      );
+    });
+
+    /** Regresion: el detail del BusinessRuleError sigue siendo el mensaje del error, no el extraido del HTTP. */
+    it('should keep showing the BusinessRuleError detail untouched (regression)', () => {
+      deactivateUserFn.mockReturnValue(
+        throwError(
+          () => new BusinessRuleError('DUPLICATE_EMAIL', 'Ya existe un usuario con ese correo.'),
+        ),
+      );
+
+      asAny(component).onDeactivateRequested(buildUserView({ uuid: 'uuid-target' }));
+
+      expect(messageAddFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          severity: 'error',
+          summary: 'Correo duplicado',
+          detail: 'Ya existe un usuario con ese correo.',
+        }),
+      );
     });
   });
 });

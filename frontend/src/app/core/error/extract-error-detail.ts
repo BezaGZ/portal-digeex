@@ -1,11 +1,14 @@
-import { HttpErrorResponse } from '@angular/common/http';
-
 /**
  * Devuelve el detail mas informativo para el toast: mensaje del body del
- * backend, mensaje del HttpErrorResponse, o el fallback del llamador. Un
- * string vacio se trata como ausente (DSpace a veces manda `message: ""`).
+ * backend, mensaje del propio error, o el fallback del llamador. Un string
+ * vacio se trata como ausente (DSpace a veces manda `message: ""`). Acepta
+ * tanto `HttpErrorResponse` como `Error` plano para poder consumirse desde
+ * `errorToToast` cuando el origen del error no esta estrechado a HTTP.
  */
-export function extractErrorDetail(err: HttpErrorResponse, fallback: string): string {
+export function extractErrorDetail(
+  err: { error?: unknown; message?: unknown },
+  fallback: string,
+): string {
   const body = err.error as { message?: unknown } | null | undefined;
   const fromBody = body && typeof body === 'object' ? pickString(body.message) : null;
   return fromBody ?? pickString(err.message) ?? fallback;
