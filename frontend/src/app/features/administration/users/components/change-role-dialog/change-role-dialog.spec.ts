@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
@@ -12,15 +11,10 @@ import { Collection } from '../../../../../core/api/models/collection.model';
 import { HalListResponse } from '../../../../../core/api/models/hal.model';
 
 /**
- * Tests del ChangeRoleDialog.
+ * Tests del `ChangeRoleDialog`. Recibe al target por input, reusa `ScopeSelector` y siembra el
+ * form con el rol actual del target para que el operador solo cambie lo que quiera.
  *
- * El diálogo recibe al target por input y reusa ScopeSelector. Cuando el
- * target ya tiene un rol válido, el form arranca sembrado con ese rol;
- * cuando el target es huérfano (role='sin_asignar') el dropdown no
- * incluye esa opción, así que el form se queda con el default
- * ('personal_delegado') y el operador elige qué rol asignarle.
- *
- * Patch del Ciclo 12 — visibilidad de huérfanos. Sprint 5.
+ * Ciclo 12 TDD — Sprint 5. Ajustado en Ciclo 13.
  */
 describe('ChangeRoleDialog', () => {
   let fixture: ComponentFixture<ChangeRoleDialog>;
@@ -108,22 +102,5 @@ describe('ChangeRoleDialog', () => {
     fixture.detectChanges();
 
     expect(component.form.value.role).toBe('admin_subdireccion');
-  });
-
-  /**
-   * Caso huérfano: el target tiene role='sin_asignar' (porque alguien le
-   * quitó el grupo en DSpace). El dropdown no expone esa opción, así que
-   * sembrar el form con 'sin_asignar' dejaría el select en blanco. Mejor
-   * dejar el default ('personal_delegado') para que el operador pueda
-   * elegir un rol válido sin tocar nada extra.
-   */
-  it('should keep the default role when the target is an orphan (sin_asignar)', () => {
-    fixture.componentRef.setInput(
-      'target',
-      buildUserView({ role: 'sin_asignar', subdivision: null }),
-    );
-    fixture.detectChanges();
-
-    expect(component.form.value.role).toBe('personal_delegado');
   });
 });

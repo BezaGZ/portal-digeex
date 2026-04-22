@@ -1,8 +1,7 @@
 export type UserRole =
   | 'superadmin'
   | 'admin_subdireccion'
-  | 'personal_delegado'
-  | 'sin_asignar';
+  | 'personal_delegado';
 export type UserStatus = 'active' | 'inactive';
 
 export interface UserView {
@@ -20,7 +19,6 @@ export const RoleLabels: Record<UserRole, string> = {
   superadmin: 'Superadministrador',
   admin_subdireccion: 'Admin. Subdirección',
   personal_delegado: 'Personal Delegado',
-  sin_asignar: 'Sin asignar',
 };
 
 export const Subdivisions = [

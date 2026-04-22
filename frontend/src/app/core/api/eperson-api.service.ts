@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { map } from 'rxjs/operators';
 import { EPerson } from './models/eperson.model';
 import { HalListResponse, Paginated } from './models/hal.model';
 import {
@@ -48,11 +48,7 @@ function replaceOp(path: string, value: string | boolean): JsonPatchReplace {
   return { op: PATCH_OP_REPLACE, path, value };
 }
 
-/**
- * Wrapper HTTP del recurso /api/eperson/epersons de DSpace.
- * Solo habla con el backend, sin reglas de negocio.
- * Ciclos 5, 6 y 7 TDD — Sprint 5.
- */
+/** Wrapper HTTP del recurso `/api/eperson/epersons` de DSpace. Solo habla con el backend, sin reglas de negocio. */
 @Injectable({ providedIn: 'root' })
 export class EPersonApiService {
   private readonly http = inject(HttpClient);
@@ -94,18 +90,22 @@ export class EPersonApiService {
   }
 
   /**
-   * Crea un eperson y dispara un registration con accountRequestType=forgot
-   * para que el usuario fije su contraseña desde el correo con token.
-   * DSpace no acepta password en el POST directo, por eso van encadenados.
+   * Crea un eperson en DSpace con un único POST. La orquestación de correo,
+   * grupo de rol y rollback vive en `UserManagementService`.
    */
   create(input: { email: string; firstName: string; lastName: string }): Observable<EPerson> {
-    return this.http
-      .post<EPerson>(`${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}`, this.buildEPersonBody(input))
-      .pipe(
-        switchMap((created) =>
-          this.triggerPasswordSetupEmail(input.email).pipe(map(() => created)),
-        ),
-      );
+    return this.http.post<EPerson>(
+      `${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}`,
+      this.buildEPersonBody(input),
+    );
+  }
+
+  /**
+   * Borra el eperson con el uuid indicado. DSpace responde 204 No Content, por eso el Observable
+   * emite `void`. Es la pieza que `UserManagementService` usa para hacer rollback del alta.
+   */
+  delete(uuid: string): Observable<void> {
+    return this.http.delete<void>(`${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}/${uuid}`);
   }
 
   /**

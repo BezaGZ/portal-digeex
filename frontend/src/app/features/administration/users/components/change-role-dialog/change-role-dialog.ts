@@ -138,16 +138,12 @@ export class ChangeRoleDialog implements OnDestroy {
 
   constructor() {
     /**
-     * Al recibir un nuevo target, se siembra el form con el rol actual
-     * del usuario para que el dialog arranque mostrando "su" estado y
-     * el operador solo cambie lo que quiera tocar. Si el target es un
-     * huérfano (role='sin_asignar') no se siembra: el dropdown no incluye
-     * esa opción, así que se deja el default ('personal_delegado') y el
-     * operador elige qué rol asignarle.
+     * Al recibir un nuevo target siembra el form con su rol actual para que el dialog
+     * arranque mostrando el estado real y el operador solo cambie lo que quiera tocar.
      */
     effect(() => {
       const targetValue = this.target();
-      if (targetValue && targetValue.role !== 'sin_asignar') {
+      if (targetValue) {
         this.form.patchValue({ role: targetValue.role }, { emitEvent: false });
         this.currentRole.set(targetValue.role);
       }

@@ -4,15 +4,12 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { EPersonApiService } from './eperson-api.service';
 
 /**
- * Tests de EPersonApiService, wrapper HTTP del recurso /api/eperson/epersons.
+ * Tests de `EPersonApiService`, wrapper HTTP del recurso `/api/eperson/epersons`.
+ * Cubre `list()` (GET paginado con mapeo HAL), `create()` (POST eperson sin encadenar
+ * registrations) y los métodos `update()`, `delete()`, `resendRegistration()` y
+ * `setActive()` sobre JSON Patch según el contrato REST de DSpace 9.2.
  *
- * Verifica list() (GET paginado con mapeo HAL), create() (POST eperson +
- * POST registrations encadenados) y los métodos de gestión update(),
- * resendRegistration() y setActive() implementados sobre JSON Patch
- * según el contrato REST de DSpace 9.2.
- *
- * Ciclo 5, 6, 7 TDD — Sprint 5.
- *
+ * Ciclos 5, 6, 7 TDD — Sprint 5. Ajustado en Ciclo 13.
  */
 describe('EPersonApiService', () => {
   let service: EPersonApiService;
@@ -226,8 +223,12 @@ describe('EPersonApiService', () => {
       type: 'eperson',
     };
 
-    /** Sin embed: GET directo sin query params. */
-    it('should GET /api/eperson/epersons/{uuid} without embed', async () => {
+    /**
+     * Sin `embed`, GET directo y sin query params. Para un único eperson la proyección
+     * `embed=groups` no hidrata `_embedded` en esta instalación; los grupos se piden vía
+     * `GroupApiService.getGroupsOfEPerson()`.
+     */
+    it('should GET /api/eperson/epersons/{uuid} without query params', async () => {
       const promise = new Promise<void>((resolve, reject) => {
         service.getOne('eperson-001').subscribe({
           next: (result) => {
@@ -245,31 +246,12 @@ describe('EPersonApiService', () => {
 
       await promise;
     });
-
-    /** Con embed=groups, el param viaja en la query string. */
-    it('should GET /api/eperson/epersons/{uuid} with embed param when provided', async () => {
-      const promise = new Promise<void>((resolve, reject) => {
-        service.getOne('eperson-001', { embed: 'groups' }).subscribe({
-          next: () => resolve(),
-          error: reject,
-        });
-      });
-
-      const req = httpMock.expectOne(
-        (r) =>
-          r.url === '/server/api/eperson/epersons/eperson-001' &&
-          r.params.get('embed') === 'groups',
-      );
-      expect(req.request.method).toBe('GET');
-      req.flush(mockEPerson);
-
-      await promise;
-    });
   });
 
   /**
-   * create(): encadena POST al eperson con POST a registrations.
-   * Así se crea el usuario y se le envía el correo para fijar contraseña.
+   * `create()` hace un POST al recurso `/api/eperson/epersons`. El correo de fijación de
+   * contraseña vive aparte en `resendRegistration()` para que el facade pueda orquestar la
+   * transacción con rollback explícito si la asignación al grupo falla.
    */
   describe('create()', () => {
     const input = {
@@ -301,7 +283,8 @@ describe('EPersonApiService', () => {
 
     /**
      * Verifica que el POST al endpoint de epersons lleve el body que DSpace espera:
-     * email, canLogIn=true y metadata con firstname y lastname.
+     * email, canLogIn=true y metadata con firstname y lastname. Y verifica también
+     * que NO se dispare ningún POST adicional al recurso de registrations.
      */
     it('should POST eperson body with firstname/lastname metadata and canLogIn=true', async () => {
       const promise = new Promise((resolve, reject) => {
@@ -327,42 +310,14 @@ describe('EPersonApiService', () => {
       expect(epersonReq.request.body.metadata['eperson.lastname'][0].confidence).toBe(-1);
       epersonReq.flush(mockCreatedEPerson);
 
-      const regReq = httpMock.expectOne((r) => r.url === '/server/api/eperson/registrations');
-      regReq.flush({});
+      // El correo de registration se orquesta desde el facade, no acá.
+      httpMock.expectNone((r) => r.url === '/server/api/eperson/registrations');
 
       await promise;
     });
 
-    /**
-     * Verifica que, tras crear el eperson, se dispare el POST a registrations
-     * con accountRequestType=forgot para que DSpace envíe el correo con token.
-     */
-    it('should POST registrations with accountRequestType=forgot after eperson is created', async () => {
-      const promise = new Promise((resolve, reject) => {
-        service.create(input).subscribe({ next: resolve, error: reject });
-      });
-
-      const epersonReq = httpMock.expectOne((r) => r.url === '/server/api/eperson/epersons');
-      epersonReq.flush(mockCreatedEPerson);
-
-      const regReq = httpMock.expectOne(
-        (r) =>
-          r.url === '/server/api/eperson/registrations' &&
-          r.method === 'POST' &&
-          r.params.get('accountRequestType') === 'forgot',
-      );
-      expect(regReq.request.body.email).toBe('nuevo@mineduc.gob.gt');
-      expect(regReq.request.body.type).toBe('registration');
-      regReq.flush({});
-
-      await promise;
-    });
-
-    /**
-     * Verifica que el observable emita el EPerson devuelto por el primer POST,
-     * no la respuesta del registration que viene al final del flujo.
-     */
-    it('should return the EPerson created by the first POST', async () => {
+    /** Verifica que el observable emita el EPerson devuelto por el POST. */
+    it('should return the EPerson created by the POST', async () => {
       const promise = new Promise<void>((resolve, reject) => {
         service.create(input).subscribe({
           next: (result) => {
@@ -377,17 +332,11 @@ describe('EPersonApiService', () => {
       const epersonReq = httpMock.expectOne((r) => r.url === '/server/api/eperson/epersons');
       epersonReq.flush(mockCreatedEPerson);
 
-      const regReq = httpMock.expectOne((r) => r.url === '/server/api/eperson/registrations');
-      regReq.flush({});
-
       await promise;
     });
 
-    /**
-     * Si el POST del eperson falla (por ejemplo correo duplicado),
-     * no debe intentarse el registration y el error se propaga al suscriptor.
-     */
-    it('should not call registrations if eperson POST fails', async () => {
+    /** Si el POST del eperson falla, el error se propaga al suscriptor. */
+    it('should propagate HTTP error when the eperson POST fails', async () => {
       const promise = new Promise<void>((resolve, reject) => {
         service.create(input).subscribe({
           next: () => reject(new Error('No debería emitir valor ante un 400')),
@@ -408,30 +357,23 @@ describe('EPersonApiService', () => {
 
       await promise;
     });
+  });
 
-    /**
-     * Si el POST de registration falla tras crear el eperson, el error se propaga.
-     * El rollback del eperson queda como deuda técnica (DSpace no es transaccional).
-     */
-    it('should propagate error from registrations POST (eperson already created)', async () => {
+  /**
+   * `delete()` hace `DELETE /api/eperson/epersons/{uuid}`. Es el contrato que el facade usa
+   * para hacer rollback explícito si la asignación al grupo de rol falla tras el alta.
+   */
+  describe('delete()', () => {
+    it('should DELETE /api/eperson/epersons/{uuid}', async () => {
       const promise = new Promise<void>((resolve, reject) => {
-        service.create(input).subscribe({
-          next: () => reject(new Error('No debería emitir valor ante un 500')),
-          error: (err) => {
-            expect(err.status).toBe(500);
-            resolve();
-          },
-        });
+        service.delete('eperson-uuid-001').subscribe({ next: () => resolve(), error: reject });
       });
 
-      const epersonReq = httpMock.expectOne((r) => r.url === '/server/api/eperson/epersons');
-      epersonReq.flush(mockCreatedEPerson);
-
-      const regReq = httpMock.expectOne((r) => r.url === '/server/api/eperson/registrations');
-      regReq.flush(
-        { message: 'Internal Server Error' },
-        { status: 500, statusText: 'Internal Server Error' },
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/epersons/eperson-uuid-001' && r.method === 'DELETE',
       );
+      req.flush(null, { status: 204, statusText: 'No Content' });
 
       await promise;
     });

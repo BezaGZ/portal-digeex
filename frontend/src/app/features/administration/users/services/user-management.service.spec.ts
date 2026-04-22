@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { signal, WritableSignal } from '@angular/core';
 import { vi } from 'vitest';
-import { firstValueFrom, of } from 'rxjs';
+import { firstValueFrom, of, throwError } from 'rxjs';
 
 import { UserManagementService } from './user-management.service';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -17,18 +17,18 @@ import { HalListResponse, Paginated } from '../../../../core/api/models/hal.mode
 import { BusinessRuleError } from './business-rule-error';
 
 /**
- * Tests de UserManagementService (lectura). El facade usa la proyección
- * nativa de DSpace `?embed=groups` para evitar N+1: los grupos vienen
- * anidados dentro de cada eperson, y el único recurso externo que queda
- * por resolver por su cuenta es la community (para el nombre legible).
+ * Tests de `UserManagementService` (lectura). Aprovecha `?embed=groups` para el listado
+ * paginado (la proyección hidrata `_embedded` sobre la colección) y resuelve los grupos del
+ * eperson individual por el subrecurso `/api/eperson/epersons/{uuid}/groups`.
  *
- * Ciclo 10 — Sprint 5.
+ * Ciclo 10 TDD — Sprint 5. Ajustado en Ciclo 13.
  */
-describe('UserManagementService — lectura (Ciclo 10)', () => {
+describe('UserManagementService — lectura', () => {
   let service: UserManagementService;
   let currentAuthUser: WritableSignal<AuthUser | null>;
   let listEPersonsFn: ReturnType<typeof vi.fn>;
   let getOneEPersonFn: ReturnType<typeof vi.fn>;
+  let getGroupsOfEPersonFn: ReturnType<typeof vi.fn>;
   let getCommunityFn: ReturnType<typeof vi.fn>;
 
   /** Construye el bloque HAL que DSpace devuelve con ?embed=groups. */
@@ -145,6 +145,9 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
     currentAuthUser = signal<AuthUser | null>(null);
     listEPersonsFn = vi.fn().mockReturnValue(of(emptyPaginated<EPerson>()));
     getOneEPersonFn = vi.fn();
+    // Por defecto, el subrecurso /groups devuelve vacío. Cada test que
+    // necesite un caller con rol resuelto lo sobreescribe con paginated([...]).
+    getGroupsOfEPersonFn = vi.fn().mockReturnValue(of(paginated<Group>([])));
     getCommunityFn = vi.fn();
 
     TestBed.configureTestingModule({
@@ -155,8 +158,9 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
           provide: EPersonApiService,
           useValue: { list: listEPersonsFn, getOne: getOneEPersonFn },
         },
-        // GroupApi queda cableada para Ciclo 11 (mutaciones); en lectura no se usa.
-        { provide: GroupApiService, useValue: {} },
+        // En lectura ya se usa: getGroupsOfEPerson resuelve los grupos de
+        // single epersons (caller y target) sin depender de `?embed=groups`.
+        { provide: GroupApiService, useValue: { getGroupsOfEPerson: getGroupsOfEPersonFn } },
         { provide: DSpaceApiService, useValue: { getCommunity: getCommunityFn } },
       ],
     });
@@ -174,6 +178,7 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
 
       expect(result).toBeNull();
       expect(getOneEPersonFn).not.toHaveBeenCalled();
+      expect(getGroupsOfEPersonFn).not.toHaveBeenCalled();
       expect(getCommunityFn).not.toHaveBeenCalled();
     });
 
@@ -192,10 +197,10 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
             email: 'carlos.ramirez@mineduc.gob.gt',
             firstName: 'Carlos',
             lastName: 'Ramírez',
-            groups: [administratorGroup],
           }),
         ),
       );
+      getGroupsOfEPersonFn.mockReturnValue(of(paginated<Group>([administratorGroup])));
 
       const result = await firstValueFrom(service.currentUserView$);
 
@@ -209,7 +214,9 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
         status: 'active',
         lastActive: null,
       });
-      expect(getOneEPersonFn).toHaveBeenCalledWith('eperson-super', { embed: 'groups' });
+      // El single eperson va sin embed; los grupos se piden por separado.
+      expect(getOneEPersonFn).toHaveBeenCalledWith('eperson-super');
+      expect(getGroupsOfEPersonFn).toHaveBeenCalledWith('eperson-super');
       expect(getCommunityFn).not.toHaveBeenCalled();
     });
 
@@ -228,9 +235,11 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
             email: 'mario.garcia@mineduc.gob.gt',
             firstName: 'Mario',
             lastName: 'García',
-            groups: [adminGroupEducacionBasica],
           }),
         ),
+      );
+      getGroupsOfEPersonFn.mockReturnValue(
+        of(paginated<Group>([adminGroupEducacionBasica])),
       );
       getCommunityFn.mockReturnValue(of(communityEducacionBasica));
 
@@ -239,6 +248,33 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
       expect(result?.role).toBe('admin_subdireccion');
       expect(result?.subdivision).toBe('Educación Básica');
       expect(getCommunityFn).toHaveBeenCalledWith('community-educacion-basica');
+    });
+
+    /**
+     * Invariante: todo eperson en el facade debe tener un grupo de rol del portal. Si el
+     * subrecurso `/groups` devuelve vacío para el caller, el Observable propaga error y el
+     * `LoginComponent` reacciona cerrando sesión.
+     */
+    it('should throw an error when the authenticated user has no role group', async () => {
+      currentAuthUser.set({
+        uuid: 'eperson-huerfano',
+        email: 'huerfano@mineduc.gob.gt',
+        firstName: 'Sin',
+        lastName: 'Grupo',
+      });
+      getOneEPersonFn.mockReturnValue(
+        of(
+          buildEPerson({
+            uuid: 'eperson-huerfano',
+            email: 'huerfano@mineduc.gob.gt',
+            firstName: 'Sin',
+            lastName: 'Grupo',
+          }),
+        ),
+      );
+      getGroupsOfEPersonFn.mockReturnValue(of(paginated<Group>([])));
+
+      await expect(firstValueFrom(service.currentUserView$)).rejects.toBeInstanceOf(Error);
     });
   });
 
@@ -259,10 +295,10 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
             email: 'carlos.ramirez@mineduc.gob.gt',
             firstName: 'Carlos',
             lastName: 'Ramírez',
-            groups: [administratorGroup],
           }),
         ),
       );
+      getGroupsOfEPersonFn.mockReturnValue(of(paginated<Group>([administratorGroup])));
 
       await firstValueFrom(service.getVisibleUsers$({ size: 50, page: 2 }));
 
@@ -284,10 +320,10 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
             email: 'carlos.ramirez@mineduc.gob.gt',
             firstName: 'Carlos',
             lastName: 'Ramírez',
-            groups: [administratorGroup],
           }),
         ),
       );
+      getGroupsOfEPersonFn.mockReturnValue(of(paginated<Group>([administratorGroup])));
       getCommunityFn.mockImplementation((uuid: string) => {
         if (uuid === 'community-educacion-basica') return of(communityEducacionBasica);
         return of(undefined);
@@ -334,9 +370,11 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
             email: 'mario.garcia@mineduc.gob.gt',
             firstName: 'Mario',
             lastName: 'García',
-            groups: [adminGroupEducacionBasica],
           }),
         ),
+      );
+      getGroupsOfEPersonFn.mockReturnValue(
+        of(paginated<Group>([adminGroupEducacionBasica])),
       );
       getCommunityFn.mockImplementation((uuid: string) => {
         if (uuid === 'community-educacion-basica') return of(communityEducacionBasica);
@@ -375,15 +413,11 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
     });
 
     /**
-     * Un eperson huérfano (sin ningún grupo de rol del portal, p. ej. porque
-     * lo desactivaron y reactivaron contra DSpace y por error quedó sin
-     * grupo) tiene que seguir apareciendo en la lista del superadmin
-     * marcado como 'sin_asignar', no desaparecer. Si se filtrara, el
-     * único camino para reasignarle un rol sería volver a tocar la API
-     * a mano (que es exactamente lo que pasaba con el eperson 3351 antes
-     * de este cambio).
+     * Si por una desviación externa (manipulación directa en `/server/api` o un eperson
+     * preexistente) un usuario llega al listado sin grupo de rol del portal, se lo filtra
+     * silenciosamente sin contaminar el dominio con un rol simbólico extra.
      */
-    it('should emit orphan epersons with role=sin_asignar instead of dropping them', async () => {
+    it('should drop orphan epersons silently from the visible list', async () => {
       currentAuthUser.set({
         uuid: 'eperson-super',
         email: 'carlos.ramirez@mineduc.gob.gt',
@@ -397,10 +431,10 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
             email: 'carlos.ramirez@mineduc.gob.gt',
             firstName: 'Carlos',
             lastName: 'Ramírez',
-            groups: [administratorGroup],
           }),
         ),
       );
+      getGroupsOfEPersonFn.mockReturnValue(of(paginated<Group>([administratorGroup])));
       const huerfano = buildEPerson({
         uuid: 'eperson-huerfano',
         email: 'huerfano@mineduc.gob.gt',
@@ -408,37 +442,40 @@ describe('UserManagementService — lectura (Ciclo 10)', () => {
         lastName: 'Grupo',
         groups: [],
       });
-      listEPersonsFn.mockReturnValue(of(paginated<EPerson>([huerfano], 20, 0)));
+      const mario = buildEPerson({
+        uuid: 'eperson-mario',
+        email: 'mario.garcia@mineduc.gob.gt',
+        firstName: 'Mario',
+        lastName: 'García',
+        groups: [adminGroupEducacionBasica],
+      });
+      getCommunityFn.mockReturnValue(of(communityEducacionBasica));
+      listEPersonsFn.mockReturnValue(of(paginated<EPerson>([huerfano, mario], 20, 0)));
 
       const result = await firstValueFrom(service.getVisibleUsers$({ size: 20, page: 0 }));
 
-      expect(result.items.length).toBe(1);
-      expect(result.items[0].uuid).toBe('eperson-huerfano');
-      expect(result.items[0].role).toBe('sin_asignar');
-      expect(result.items[0].subdivision).toBeNull();
-      expect(getCommunityFn).not.toHaveBeenCalled();
+      expect(result.items.map((u) => u.uuid)).toEqual(['eperson-mario']);
     });
   });
 });
 
 /**
- * Tests de UserManagementService (mutaciones). El facade cablea la creación
- * del eperson con la asignación al grupo que corresponde a su rol:
- *  - superadmin        → Administrator (grupo global de DSpace)
- *  - admin_subdireccion → adminGroup de la community (embed=adminGroup)
- *  - personal_delegado  → submittersGroup de cada collection (embed=submittersGroup)
+ * Tests de `UserManagementService` (mutaciones). El facade cablea la creación del eperson con
+ * la asignación al grupo de su rol: `superadmin` → `Administrator`; `admin_subdireccion` →
+ * `adminGroup` de la community; `personal_delegado` → `submittersGroup` de cada collection.
+ * La creación es transaccional (rollback con `delete` si la asignación al grupo falla) y el
+ * cambio de rol agrega al grupo nuevo antes de remover del viejo.
  *
- * La desactivación y reactivación sólo conmutan canLogIn en el eperson;
- * el cambio de rol es un "mueve al usuario de un grupo a otro" (remove + add).
- *
- * Ciclo 11 — Sprint 5.
+ * Ciclo 11 TDD — Sprint 5. Ajustado en Ciclo 13.
  */
-describe('UserManagementService — mutaciones (Ciclo 11)', () => {
+describe('UserManagementService — mutaciones', () => {
   let service: UserManagementService;
   let currentAuthUser: WritableSignal<AuthUser | null>;
   let getOneEPersonFn: ReturnType<typeof vi.fn>;
+  let getGroupsOfEPersonFn: ReturnType<typeof vi.fn>;
   let listEPersonsFn: ReturnType<typeof vi.fn>;
   let createEPersonFn: ReturnType<typeof vi.fn>;
+  let deleteEPersonFn: ReturnType<typeof vi.fn>;
   let setActiveEPersonFn: ReturnType<typeof vi.fn>;
   let resendRegistrationFn: ReturnType<typeof vi.fn>;
   let addMemberToGroupFn: ReturnType<typeof vi.fn>;
@@ -581,7 +618,7 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
       lastName: 'Ramírez',
     });
 
-    // currentUserView$ necesita que getOne responda con los grupos del caller.
+    // currentUserView$ pide el eperson y, por separado, sus grupos.
     // Por defecto el caller es superadmin (miembro de Administrator).
     getOneEPersonFn = vi.fn().mockReturnValue(
       of(
@@ -590,12 +627,15 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
           email: 'carlos.ramirez@mineduc.gob.gt',
           firstName: 'Carlos',
           lastName: 'Ramírez',
-          groups: [administratorGroup],
         }),
       ),
     );
+    getGroupsOfEPersonFn = vi.fn().mockReturnValue(of(paginated<Group>([administratorGroup])));
     listEPersonsFn = vi.fn().mockReturnValue(of(emptyPaginated<EPerson>()));
     createEPersonFn = vi.fn();
+    // Por defecto, delete no se invoca: cada test que valide rollback la
+    // sobreescribe con su propio mock para verificar el contrato.
+    deleteEPersonFn = vi.fn().mockReturnValue(of(undefined));
     setActiveEPersonFn = vi.fn();
     resendRegistrationFn = vi.fn().mockReturnValue(of(undefined));
     addMemberToGroupFn = vi.fn().mockReturnValue(of(administratorGroup));
@@ -629,6 +669,7 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
             getOne: getOneEPersonFn,
             list: listEPersonsFn,
             create: createEPersonFn,
+            delete: deleteEPersonFn,
             setActive: setActiveEPersonFn,
             resendRegistration: resendRegistrationFn,
           },
@@ -636,6 +677,7 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
         {
           provide: GroupApiService,
           useValue: {
+            getGroupsOfEPerson: getGroupsOfEPersonFn,
             addMemberToGroup: addMemberToGroupFn,
             removeMemberFromGroup: removeMemberFromGroupFn,
             getMembersOfGroup: getMembersOfGroupFn,
@@ -701,10 +743,10 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
           buildEPerson({
             uuid: 'eperson-caller',
             email: 'mario.garcia@mineduc.gob.gt',
-            groups: [adminGroupEducacionBasica],
           }),
         ),
       );
+      getGroupsOfEPersonFn.mockReturnValue(of(paginated<Group>([adminGroupEducacionBasica])));
 
       const promise = firstValueFrom(
         service.createUser$({
@@ -729,10 +771,10 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
           buildEPerson({
             uuid: 'eperson-caller',
             email: 'mario.garcia@mineduc.gob.gt',
-            groups: [adminGroupEducacionBasica],
           }),
         ),
       );
+      getGroupsOfEPersonFn.mockReturnValue(of(paginated<Group>([adminGroupEducacionBasica])));
 
       const promise = firstValueFrom(
         service.createUser$({
@@ -757,10 +799,10 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
           buildEPerson({
             uuid: 'eperson-caller',
             email: 'mario.garcia@mineduc.gob.gt',
-            groups: [adminGroupEducacionBasica],
           }),
         ),
       );
+      getGroupsOfEPersonFn.mockReturnValue(of(paginated<Group>([adminGroupEducacionBasica])));
 
       const promise = firstValueFrom(
         service.createUser$({
@@ -778,7 +820,7 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
       expect(createEPersonFn).not.toHaveBeenCalled();
     });
 
-    /** Happy path admin_subdireccion: community → adminGroup → addMember. */
+    /** Happy path admin_subdireccion: community → adminGroup → addMember + correo. */
     it('should create the eperson and add it to the community adminGroup when role is admin_subdireccion', async () => {
       const newEperson = buildEPerson({
         uuid: 'new-admin',
@@ -810,10 +852,12 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
         'group-admin-educacion-basica',
         'new-admin',
       );
+      expect(resendRegistrationFn).toHaveBeenCalledWith('mario.garcia@mineduc.gob.gt');
+      expect(deleteEPersonFn).not.toHaveBeenCalled();
       expect(result).toEqual(newEperson);
     });
 
-    /** Happy path personal_delegado: collection(s) → submittersGroup → addMember. */
+    /** Happy path personal_delegado: collection(s) → submittersGroup → addMember + correo. */
     it('should create the eperson and add it to each collection submittersGroup when role is personal_delegado', async () => {
       const newEperson = buildEPerson({
         uuid: 'new-delegado',
@@ -844,6 +888,72 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
       expect(addMemberToGroupFn).toHaveBeenCalledWith('group-submit-peac', 'new-delegado');
       expect(addMemberToGroupFn).toHaveBeenCalledWith('group-submit-pronea', 'new-delegado');
       expect(addMemberToGroupFn).toHaveBeenCalledTimes(2);
+      expect(resendRegistrationFn).toHaveBeenCalledWith('rosa.juarez@mineduc.gob.gt');
+      expect(deleteEPersonFn).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Invariante transaccional: si la asignación al grupo falla después de
+     * crear el eperson, hay que deshacer el POST llamando a delete(uuid)
+     * para no dejar un eperson huérfano (sin grupo de rol del portal). El
+     * error se propaga al caller para que el toast del UI lo muestre.
+     */
+    it('should rollback the created eperson when adding to the role group fails', async () => {
+      const newEperson = buildEPerson({
+        uuid: 'new-admin',
+        email: 'mario.garcia@mineduc.gob.gt',
+        firstName: 'Mario',
+        lastName: 'García',
+      });
+      createEPersonFn.mockReturnValue(of(newEperson));
+      const groupError = new Error('boom: addMemberToGroup falló');
+      addMemberToGroupFn.mockReturnValueOnce(throwError(() => groupError));
+
+      const promise = firstValueFrom(
+        service.createUser$({
+          email: 'mario.garcia@mineduc.gob.gt',
+          firstName: 'Mario',
+          lastName: 'García',
+          role: 'admin_subdireccion',
+          subdivisionCommunityUuid: 'community-educacion-basica',
+        }),
+      );
+
+      await expect(promise).rejects.toBe(groupError);
+      expect(deleteEPersonFn).toHaveBeenCalledWith('new-admin');
+      expect(resendRegistrationFn).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Si el correo de registración falla, el eperson YA tiene grupo asignado:
+     * no se hace rollback (la cuenta es válida) pero sí se propaga el error
+     * para que el operador sepa que tiene que reenviar la invitación con el
+     * botón de "restablecer contraseña" desde la grilla.
+     */
+    it('should not rollback when resendRegistration fails after the group has been assigned', async () => {
+      const newEperson = buildEPerson({
+        uuid: 'new-admin',
+        email: 'mario.garcia@mineduc.gob.gt',
+        firstName: 'Mario',
+        lastName: 'García',
+      });
+      createEPersonFn.mockReturnValue(of(newEperson));
+      const mailError = new Error('boom: resendRegistration falló');
+      resendRegistrationFn.mockReturnValueOnce(throwError(() => mailError));
+
+      const promise = firstValueFrom(
+        service.createUser$({
+          email: 'mario.garcia@mineduc.gob.gt',
+          firstName: 'Mario',
+          lastName: 'García',
+          role: 'admin_subdireccion',
+          subdivisionCommunityUuid: 'community-educacion-basica',
+        }),
+      );
+
+      await expect(promise).rejects.toBe(mailError);
+      expect(addMemberToGroupFn).toHaveBeenCalled();
+      expect(deleteEPersonFn).not.toHaveBeenCalled();
     });
   });
 
@@ -910,14 +1020,13 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
     });
   });
 
-  /** Cambio de rol = mover al eperson de un grupo a otro (remove antiguo + add nuevo). */
+  /** Cambio de rol = mover al eperson entre grupos (add nuevo + remove viejo). */
   describe('changeUserRole$()', () => {
     /** RN-13: solo el superadmin puede promover entre adminGroup/Administrator. */
     it('should reject with BusinessRuleError INSUFFICIENT_PRIVILEGES when the caller is admin_subdireccion and tries to change a user role', async () => {
       const targetEperson = buildEPerson({
         uuid: 'target-eperson',
         email: 'rosa.juarez@mineduc.gob.gt',
-        groups: [peacGroup],
       });
       getOneEPersonFn.mockImplementation((uuid: string) => {
         if (uuid === 'eperson-caller') {
@@ -925,12 +1034,16 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
             buildEPerson({
               uuid: 'eperson-caller',
               email: 'mario.garcia@mineduc.gob.gt',
-              groups: [adminGroupEducacionBasica],
             }),
           );
         }
         if (uuid === 'target-eperson') return of(targetEperson);
         return of(undefined);
+      });
+      getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'eperson-caller') return of(paginated<Group>([adminGroupEducacionBasica]));
+        if (uuid === 'target-eperson') return of(paginated<Group>([peacGroup]));
+        return of(emptyPaginated<Group>());
       });
 
       const promise = firstValueFrom(
@@ -970,7 +1083,6 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
         uuid: 'lonely-super',
         email: 'last@mineduc.gob.gt',
         canLogIn: true,
-        groups: [administratorGroup],
       });
       getOneEPersonFn.mockImplementation((uuid: string) => {
         if (uuid === 'eperson-caller') {
@@ -978,12 +1090,16 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
             buildEPerson({
               uuid: 'eperson-caller',
               email: 'carlos.ramirez@mineduc.gob.gt',
-              groups: [administratorGroup],
             }),
           );
         }
         if (uuid === 'lonely-super') return of(lonelySuper);
         return of(undefined);
+      });
+      getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'eperson-caller') return of(paginated<Group>([administratorGroup]));
+        if (uuid === 'lonely-super') return of(paginated<Group>([administratorGroup]));
+        return of(emptyPaginated<Group>());
       });
       // Solo un activo en Administrator: el target. La guarda corta.
       getMembersOfGroupFn.mockReturnValue(
@@ -1009,13 +1125,26 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
       expect(addMemberToGroupFn).not.toHaveBeenCalled();
     });
 
-    /** Happy path: caller superadmin mueve al target entre grupos. */
-    it('should remove the target from its current group and add it to the new target group when the caller is superadmin', async () => {
-      // Caller = superadmin (ya lo fija el beforeEach por defecto).
+    /**
+     * Happy path con orden invertido: el facade primero agrega al target al
+     * grupo destino y recién después lo retira del grupo previo. Ese orden
+     * es lo que mantiene la invariante "todo eperson tiene grupo de rol":
+     * si addMemberToGroup falla a mitad de camino, el target sigue
+     * perteneciendo al grupo viejo en lugar de quedar huérfano.
+     */
+    it('should add the target to the new group BEFORE removing it from the previous one', async () => {
+      const callOrder: string[] = [];
+      addMemberToGroupFn.mockImplementation(() => {
+        callOrder.push('add');
+        return of(administratorGroup);
+      });
+      removeMemberFromGroupFn.mockImplementation(() => {
+        callOrder.push('remove');
+        return of(undefined);
+      });
       const targetEperson = buildEPerson({
         uuid: 'target-eperson',
         email: 'mario.garcia@mineduc.gob.gt',
-        groups: [adminGroupEducacionBasica],
       });
       getOneEPersonFn.mockImplementation((uuid: string) => {
         if (uuid === 'eperson-caller') {
@@ -1023,13 +1152,18 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
             buildEPerson({
               uuid: 'eperson-caller',
               email: 'carlos.ramirez@mineduc.gob.gt',
-              groups: [administratorGroup],
             }),
           );
         }
         if (uuid === 'target-eperson') return of(targetEperson);
         return of(undefined);
       });
+      getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'eperson-caller') return of(paginated<Group>([administratorGroup]));
+        if (uuid === 'target-eperson') return of(paginated<Group>([adminGroupEducacionBasica]));
+        return of(emptyPaginated<Group>());
+      });
+
       await firstValueFrom(
         service.changeUserRole$({
           uuid: 'target-eperson',
@@ -1038,14 +1172,60 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
         }),
       );
 
-      expect(removeMemberFromGroupFn).toHaveBeenCalledWith(
-        'group-admin-educacion-basica',
-        'target-eperson',
-      );
       expect(addMemberToGroupFn).toHaveBeenCalledWith(
         'group-administrator',
         'target-eperson',
       );
+      expect(removeMemberFromGroupFn).toHaveBeenCalledWith(
+        'group-admin-educacion-basica',
+        'target-eperson',
+      );
+      // El primer add ocurre antes del primer remove.
+      expect(callOrder.indexOf('add')).toBeLessThan(callOrder.indexOf('remove'));
+    });
+
+    /**
+     * Atomicidad del cambio de rol: si la asignación al grupo nuevo falla,
+     * NO se debe ejecutar la baja del grupo previo. De lo contrario, el
+     * target quedaría huérfano (sin grupo de rol) por culpa de un fallo
+     * intermitente, exactamente la condición que la invariante reescrita
+     * busca eliminar.
+     */
+    it('should NOT remove the target from its previous group when the add to the new group fails', async () => {
+      const targetEperson = buildEPerson({
+        uuid: 'target-eperson',
+        email: 'mario.garcia@mineduc.gob.gt',
+      });
+      getOneEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'eperson-caller') {
+          return of(
+            buildEPerson({
+              uuid: 'eperson-caller',
+              email: 'carlos.ramirez@mineduc.gob.gt',
+            }),
+          );
+        }
+        if (uuid === 'target-eperson') return of(targetEperson);
+        return of(undefined);
+      });
+      getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'eperson-caller') return of(paginated<Group>([administratorGroup]));
+        if (uuid === 'target-eperson') return of(paginated<Group>([adminGroupEducacionBasica]));
+        return of(emptyPaginated<Group>());
+      });
+      const addError = new Error('boom: addMemberToGroup falló');
+      addMemberToGroupFn.mockReturnValueOnce(throwError(() => addError));
+
+      const promise = firstValueFrom(
+        service.changeUserRole$({
+          uuid: 'target-eperson',
+          newRole: 'superadmin',
+          newSubdivisionCommunityUuid: null,
+        }),
+      );
+
+      await expect(promise).rejects.toBe(addError);
+      expect(removeMemberFromGroupFn).not.toHaveBeenCalled();
     });
   });
 
