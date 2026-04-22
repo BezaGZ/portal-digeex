@@ -15,13 +15,6 @@ export class App {
   private readonly authService = inject(AuthService);
 
   constructor() {
-    /**
-     * Restaura la sesión al iniciar la app.
-     * GET /api/authn/status siembra el token CSRF y,
-     * si hay sesión activa, restaura el usuario.
-     */
-    this.authService.restoreSession().subscribe();
-
     effect(() => {
       const authenticated = this.authService.isAuthenticated();
       untracked(() => {

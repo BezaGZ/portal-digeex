@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import Cookies from 'js-cookie';
 import { AuthService } from './auth.service';
 import { AuthStatus } from './models/auth-session.model';
 
@@ -11,7 +12,7 @@ import { AuthStatus } from './models/auth-session.model';
  * /api/authn/login, /api/authn/status y /api/authn/logout de DSpace.
  * Expone signals reactivos `isAuthenticated` y `currentUser`.
  *
- * Ciclo 1 TDD — Sprint 5
+ * Ciclo 1 TDD — Sprint 5. Ajustado en Ciclo 14.
  */
 describe('AuthService', () => {
   let service: AuthService;
@@ -82,6 +83,7 @@ describe('AuthService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    Cookies.remove('dsAuthInfo');
   });
 
   /** Verifica que el servicio se instancie correctamente. */
@@ -214,6 +216,78 @@ describe('AuthService', () => {
       const result = await promise;
       expect(result.authenticated).toBe(true);
       expect(result._links?.eperson?.href).toContain('eperson-001');
+    });
+  });
+
+  /** Persistencia del JWT en cookie dsAuthInfo */
+
+  describe('persistencia del JWT en cookie dsAuthInfo', () => {
+    /** Verifica que tras un login exitoso, el JWT se escriba en la cookie dsAuthInfo
+     *  con la forma { accessToken, expires } serializada en JSON. */
+    it('should write the dsAuthInfo cookie with AuthTokenInfo after a successful login', async () => {
+      await performLogin();
+
+      const raw = Cookies.get('dsAuthInfo');
+      expect(raw).toBeTruthy();
+
+      const parsed = JSON.parse(raw!);
+      expect(parsed.accessToken).toBe('fake-jwt-token-123');
+      expect(typeof parsed.expires).toBe('number');
+      expect(parsed.expires).toBeGreaterThan(Date.now());
+    });
+
+    /** Verifica que getToken() devuelva el JWT leído de la cookie cuando el servicio
+     *  no tiene el token en memoria (caso reload del navegador). */
+    it('should read the JWT from the dsAuthInfo cookie when memory is empty', () => {
+      const tokenInfo = {
+        accessToken: 'persisted-jwt-from-cookie',
+        expires: Date.now() + 24 * 60 * 60 * 1000,
+      };
+      Cookies.set('dsAuthInfo', JSON.stringify(tokenInfo));
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          AuthService,
+        ],
+      });
+      const freshService = TestBed.inject(AuthService);
+
+      expect(freshService.getToken()).toBe('persisted-jwt-from-cookie');
+    });
+
+    /** Verifica que logout() elimine la cookie dsAuthInfo. */
+    it('should remove the dsAuthInfo cookie on logout', async () => {
+      await performLogin();
+      expect(Cookies.get('dsAuthInfo')).toBeTruthy();
+
+      const logoutPromise = new Promise<void>((resolve, reject) => {
+        service.logout().subscribe({ next: () => resolve(), error: reject });
+      });
+      httpMock.expectOne('/server/api/authn/logout').flush(null, { status: 204, statusText: 'No Content' });
+      await logoutPromise;
+
+      expect(Cookies.get('dsAuthInfo')).toBeUndefined();
+    });
+
+    /** Verifica que refreshToken() actualice la cookie dsAuthInfo con el nuevo JWT. */
+    it('should update the dsAuthInfo cookie when refreshToken succeeds', async () => {
+      await performLogin();
+
+      const refreshPromise = new Promise<void>((resolve, reject) => {
+        service.refreshToken().subscribe({ next: () => resolve(), error: reject });
+      });
+      httpMock.expectOne('/server/api/authn/login').flush(null, {
+        headers: { Authorization: 'Bearer new-refreshed-token-456' },
+      });
+      await refreshPromise;
+
+      const raw = Cookies.get('dsAuthInfo');
+      expect(raw).toBeTruthy();
+      const parsed = JSON.parse(raw!);
+      expect(parsed.accessToken).toBe('new-refreshed-token-456');
     });
   });
 });

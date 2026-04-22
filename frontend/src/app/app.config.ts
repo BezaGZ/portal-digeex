@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZoneChangeDetection, LOCALE_ID } from '@angular/core';
+import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalErrorListeners, provideZoneChangeDetection, LOCALE_ID } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -6,6 +6,7 @@ import { providePrimeNG } from 'primeng/config';
 import { MessageService } from 'primeng/api';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
+import { firstValueFrom } from 'rxjs';
 
 import { registerLocaleData } from '@angular/common';
 import localeEsGT from '@angular/common/locales/es-GT';
@@ -16,6 +17,7 @@ import { routes } from './app.routes';
 import { csrfInterceptor } from './core/csrf/csrf.interceptor';
 import { jwtInterceptor } from './core/auth/auth.interceptor';
 import { errorInterceptor } from './core/error/error.interceptor';
+import { AuthService } from './core/auth/auth.service';
 
 
 
@@ -166,6 +168,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(
       withInterceptors([csrfInterceptor, jwtInterceptor, errorInterceptor])
     ),
+    provideAppInitializer(() => firstValueFrom(inject(AuthService).restoreSession())),
     provideAnimations(),
     { provide: LOCALE_ID, useValue: 'es-GT' },
     MessageService,

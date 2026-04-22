@@ -1,9 +1,33 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable, of, tap, switchMap, map, catchError } from 'rxjs';
+import Cookies from 'js-cookie';
 import { AuthStatus, AuthUser } from './models/auth-session.model';
 import { EPerson } from '../api/models';
 import { resetCsrfToken } from '../csrf/csrf.interceptor';
+
+/**
+ * Nombre de la cookie donde se guarda el JWT entre recargas. Se mantiene
+ * idéntico al que usa dspace-angular para que el patrón sea reconocible
+ * entre proyectos del ecosistema DSpace.
+ */
+const TOKENITEM = 'dsAuthInfo';
+
+/**
+ * Vida útil de la cookie del JWT en milisegundos. DSpace 9.2 emite tokens
+ * con `exp` típicamente menor a 24h, así que 24h es un techo conservador.
+ */
+const TOKEN_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Forma serializada que se guarda dentro de la cookie. `expires` se usa
+ * en el guard del lado cliente; el `exp` interno del JWT sigue siendo la
+ * fuente de verdad para el servidor.
+ */
+interface AuthTokenInfo {
+  accessToken: string;
+  expires: number;
+}
 
 /**
  * Servicio central de autenticación para el Portal DIGEEX.
@@ -17,7 +41,6 @@ import { resetCsrfToken } from '../csrf/csrf.interceptor';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly apiUrl = '/server/api/authn';
-  private jwt: string | null = null;
 
   readonly isAuthenticated = signal(false);
   readonly currentUser = signal<AuthUser | null>(null);
@@ -42,7 +65,7 @@ export class AuthService {
       tap((response: HttpResponse<unknown>) => {
         const authHeader = response.headers.get('Authorization');
         if (authHeader?.startsWith('Bearer ')) {
-          this.jwt = authHeader.substring(7);
+          this.storeToken(authHeader.substring(7));
         }
       }),
       switchMap(() => this.status()),
@@ -76,7 +99,7 @@ export class AuthService {
   logout(): Observable<unknown> {
     return this.http.post(`${this.apiUrl}/logout`, null).pipe(
       tap(() => {
-        this.jwt = null;
+        this.removeToken();
         this.isAuthenticated.set(false);
         this.currentUser.set(null);
         resetCsrfToken();
@@ -143,7 +166,7 @@ export class AuthService {
    */
   refreshToken(): Observable<void> {
     const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.jwt}`,
+      Authorization: `Bearer ${this.getToken()}`,
     });
 
     return this.http.post(`${this.apiUrl}/login`, null, {
@@ -153,7 +176,7 @@ export class AuthService {
       tap((response: HttpResponse<unknown>) => {
         const authHeader = response.headers.get('Authorization');
         if (authHeader?.startsWith('Bearer ')) {
-          this.jwt = authHeader.substring(7);
+          this.storeToken(authHeader.substring(7));
         }
       }),
       map(() => undefined),
@@ -161,10 +184,42 @@ export class AuthService {
   }
 
   /**
-   * Devuelve el JWT actual para uso en interceptores.
+   * Devuelve el JWT actual leyéndolo de la cookie persistente.
+   * Sobrevive al reload del navegador, que es la diferencia con
+   * mantener el token solo en memoria.
    */
   getToken(): string | null {
-    return this.jwt;
+    const raw = Cookies.get(TOKENITEM);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as AuthTokenInfo;
+      return parsed.accessToken ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Persiste el JWT en la cookie `dsAuthInfo` con vencimiento de 24h.
+   * Replica el patrón de dspace-angular: cookie sin `Secure` ni `SameSite`
+   * para que el navegador la mande también desde http://localhost durante
+   * el desarrollo.
+   */
+  private storeToken(accessToken: string): void {
+    const tokenInfo: AuthTokenInfo = {
+      accessToken,
+      expires: Date.now() + TOKEN_LIFETIME_MS,
+    };
+    Cookies.set(TOKENITEM, JSON.stringify(tokenInfo), {
+      expires: new Date(tokenInfo.expires),
+    });
+  }
+
+  /**
+   * Borra la cookie `dsAuthInfo` para que un próximo reload arranque sin sesión.
+   */
+  private removeToken(): void {
+    Cookies.remove(TOKENITEM);
   }
 
   /**

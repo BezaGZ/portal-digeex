@@ -3,7 +3,8 @@ import { provideRouter } from '@angular/router';
 import { AuthService } from './auth.service';
 import { authGuard } from './auth.guard';
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import Cookies from 'js-cookie';
 
 /**
  * Tests para authGuard.
@@ -12,11 +13,12 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
  * Verifica isAuthenticated(): si es true permite la navegación,
  * si es false redirige a /login.
  *
- * Ciclo 3 TDD — Sprint 5
+ * Ciclo 3 TDD — Sprint 5. Ajustado en Ciclo 14.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 describe('authGuard', () => {
   let authService: AuthService;
+  let httpMock: HttpTestingController;
 
   /** Setup */
 
@@ -34,6 +36,11 @@ describe('authGuard', () => {
     });
 
     authService = TestBed.inject(AuthService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    Cookies.remove('dsAuthInfo');
   });
 
   /** Autenticado */
@@ -64,6 +71,61 @@ describe('authGuard', () => {
 
       expect(result).not.toBe(true);
       expect(result.toString()).toContain('/login');
+    });
+  });
+
+  /** Sesión restaurada desde cookie */
+
+  describe('sesión restaurada desde cookie', () => {
+    /** Verifica que tras un restoreSession exitoso (caso reload), el guard
+     *  permita el paso. El initializer en producción espera a restoreSession
+     *  antes de bootstrap, por lo que el guard ya encuentra isAuthenticated=true. */
+    it('should resolve true after restoreSession completes with isAuthenticated=true', async () => {
+      const tokenInfo = {
+        accessToken: 'persisted-jwt',
+        expires: Date.now() + 24 * 60 * 60 * 1000,
+      };
+      Cookies.set('dsAuthInfo', JSON.stringify(tokenInfo));
+
+      const restorePromise = new Promise<void>((resolve, reject) => {
+        authService.restoreSession().subscribe({ next: () => resolve(), error: reject });
+      });
+
+      httpMock.expectOne('/server/api/authn/status').flush({
+        okay: true,
+        authenticated: true,
+        _links: {
+          eperson: {
+            href: 'http://localhost:8080/server/api/eperson/epersons/eperson-001',
+          },
+        },
+      });
+      httpMock.expectOne('/server/api/eperson/epersons/eperson-001').flush({
+        uuid: 'eperson-001',
+        name: 'Juan Pérez',
+        handle: null,
+        metadata: {
+          'eperson.firstname': [{ value: 'Juan', language: null, authority: null, confidence: -1, place: 0 }],
+          'eperson.lastname': [{ value: 'Pérez', language: null, authority: null, confidence: -1, place: 0 }],
+        },
+        netid: null,
+        lastActive: '2026-04-18',
+        canLogIn: true,
+        email: 'juan@mineduc.gob.gt',
+        requireCertificate: false,
+        selfRegistered: false,
+        type: 'eperson',
+      });
+
+      await restorePromise;
+
+      expect(authService.isAuthenticated()).toBe(true);
+
+      const result = TestBed.runInInjectionContext(() =>
+        authGuard({} as any, {} as any)
+      );
+
+      expect(result).toBe(true);
     });
   });
 });
