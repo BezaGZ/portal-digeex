@@ -86,7 +86,7 @@ describe('AuthService', () => {
     Cookies.remove('dsAuthInfo');
   });
 
-  /** Verifica que el servicio se instancie correctamente. */
+  /** Verifica que el servicio se instancie vía DI. */
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
@@ -94,7 +94,7 @@ describe('AuthService', () => {
   /** Estado inicial */
 
   describe('estado inicial', () => {
-    /** Verifica que los signals empiecen con valores por defecto (no autenticado). */
+    /** Verifica que los signals empiecen con isAuthenticated=false y currentUser=null. */
     it('should start with isAuthenticated false and currentUser null', () => {
       expect(service.isAuthenticated()).toBe(false);
       expect(service.currentUser()).toBeNull();
@@ -104,7 +104,7 @@ describe('AuthService', () => {
   /** Login */
 
   describe('login()', () => {
-    /** Verifica que login() envíe POST a /api/authn/login con credenciales x-www-form-urlencoded. */
+    /** Verifica que login() mande POST a /authn/login con credenciales form-urlencoded. */
     it('should POST credentials to /api/authn/login', async () => {
       const promise = new Promise<void>((resolve, reject) => {
         service.login('juan@mineduc.gob.gt', 'Password1').subscribe({
@@ -132,7 +132,7 @@ describe('AuthService', () => {
       await promise;
     });
 
-    /** Verifica que login() actualice isAuthenticated a true tras un login exitoso. */
+    /** Verifica que isAuthenticated pase a true tras un login exitoso. */
     it('should set isAuthenticated to true after successful login', async () => {
       expect(service.isAuthenticated()).toBe(false);
 
@@ -147,7 +147,7 @@ describe('AuthService', () => {
   /** Logout */
 
   describe('logout()', () => {
-    /** Verifica que logout() envíe POST a /api/authn/logout y limpie el estado. */
+    /** Verifica que logout() mande POST a /authn/logout y deje los signals en cero. */
     it('should POST to /api/authn/logout and clear state', async () => {
       await performLogin();
       expect(service.isAuthenticated()).toBe(true);
@@ -173,7 +173,7 @@ describe('AuthService', () => {
   /** Refresh Token */
 
   describe('refreshToken()', () => {
-    /** Verifica que refreshToken() envíe POST sin body y con Bearer token actual. */
+    /** Verifica que refreshToken() mande POST sin body y con el Bearer actual. */
     it('should POST to /api/authn/login with Bearer header and no body', async () => {
       await performLogin();
 
@@ -200,7 +200,7 @@ describe('AuthService', () => {
   /** Status */
 
   describe('status()', () => {
-    /** Verifica que status() envíe GET a /api/authn/status y devuelva los datos del EPerson. */
+    /** Verifica que status() haga GET a /authn/status y devuelva el estado de sesión. */
     it('should GET /api/authn/status and return auth state', async () => {
       const promise = new Promise<AuthStatus>((resolve, reject) => {
         service.status().subscribe({
@@ -222,8 +222,7 @@ describe('AuthService', () => {
   /** Persistencia del JWT en cookie dsAuthInfo */
 
   describe('persistencia del JWT en cookie dsAuthInfo', () => {
-    /** Verifica que tras un login exitoso, el JWT se escriba en la cookie dsAuthInfo
-     *  con la forma { accessToken, expires } serializada en JSON. */
+    /** Verifica que tras un login la cookie dsAuthInfo quede con accessToken y expires. */
     it('should write the dsAuthInfo cookie with AuthTokenInfo after a successful login', async () => {
       await performLogin();
 
@@ -236,8 +235,10 @@ describe('AuthService', () => {
       expect(parsed.expires).toBeGreaterThan(Date.now());
     });
 
-    /** Verifica que getToken() devuelva el JWT leído de la cookie cuando el servicio
-     *  no tiene el token en memoria (caso reload del navegador). */
+    /**
+     * Verifica que getToken() lea el JWT de la cookie si la memoria está vacía.
+     * Es el camino que usa la app al arrancar tras un reload del navegador.
+     */
     it('should read the JWT from the dsAuthInfo cookie when memory is empty', () => {
       const tokenInfo = {
         accessToken: 'persisted-jwt-from-cookie',
@@ -258,7 +259,7 @@ describe('AuthService', () => {
       expect(freshService.getToken()).toBe('persisted-jwt-from-cookie');
     });
 
-    /** Verifica que logout() elimine la cookie dsAuthInfo. */
+    /** Verifica que logout() borre la cookie dsAuthInfo. */
     it('should remove the dsAuthInfo cookie on logout', async () => {
       await performLogin();
       expect(Cookies.get('dsAuthInfo')).toBeTruthy();
@@ -272,7 +273,7 @@ describe('AuthService', () => {
       expect(Cookies.get('dsAuthInfo')).toBeUndefined();
     });
 
-    /** Verifica que refreshToken() actualice la cookie dsAuthInfo con el nuevo JWT. */
+    /** Verifica que refreshToken() sobrescriba la cookie con el JWT renovado. */
     it('should update the dsAuthInfo cookie when refreshToken succeeds', async () => {
       await performLogin();
 
@@ -288,6 +289,114 @@ describe('AuthService', () => {
       expect(raw).toBeTruthy();
       const parsed = JSON.parse(raw!);
       expect(parsed.accessToken).toBe('new-refreshed-token-456');
+    });
+  });
+
+  /** Restore Session */
+
+  describe('restoreSession()', () => {
+    /**
+     * Verifica que restoreSession() borre la cookie si el `expires` ya pasó.
+     * Un JWT vencido del lado cliente no debe viajar como Bearer al arranque.
+     */
+    it('should remove the dsAuthInfo cookie when expires has passed', async () => {
+      const expiredTokenInfo = {
+        accessToken: 'stale-token',
+        expires: Date.now() - 1000,
+      };
+      Cookies.set('dsAuthInfo', JSON.stringify(expiredTokenInfo));
+      expect(Cookies.get('dsAuthInfo')).toBeTruthy();
+
+      const promise = new Promise<void>((resolve, reject) => {
+        service.restoreSession().subscribe({ next: () => resolve(), error: reject });
+      });
+      httpMock.expectOne('/server/api/authn/status').flush({ okay: true, authenticated: false });
+      await promise;
+
+      expect(Cookies.get('dsAuthInfo')).toBeUndefined();
+    });
+
+    /**
+     * Verifica que restoreSession() borre la cookie cuando /authn/status responde 401.
+     * DSpace devuelve 401 si el JWT ya no es válido (firma cambiada, sesión revocada).
+     */
+    it('should remove the dsAuthInfo cookie when /authn/status responds 401', async () => {
+      const tokenRejectedByBackend = {
+        accessToken: 'token-rejected-by-backend',
+        expires: Date.now() + 60 * 60 * 1000,
+      };
+      Cookies.set('dsAuthInfo', JSON.stringify(tokenRejectedByBackend));
+
+      const promise = new Promise<unknown>((resolve, reject) => {
+        service.restoreSession().subscribe({ next: resolve, error: reject });
+      });
+      httpMock.expectOne('/server/api/authn/status').flush(null, {
+        status: 401,
+        statusText: 'Unauthorized',
+      });
+      await promise;
+
+      expect(Cookies.get('dsAuthInfo')).toBeUndefined();
+    });
+
+    /**
+     * Verifica que restoreSession() borre la cookie cuando /authn/status responde 403.
+     * Sucede si el JWT está vivo pero el usuario perdió los permisos para esta instancia.
+     */
+    it('should remove the dsAuthInfo cookie when /authn/status responds 403', async () => {
+      const tokenRejectedByBackend = {
+        accessToken: 'token-rejected-by-backend',
+        expires: Date.now() + 60 * 60 * 1000,
+      };
+      Cookies.set('dsAuthInfo', JSON.stringify(tokenRejectedByBackend));
+
+      const promise = new Promise<unknown>((resolve, reject) => {
+        service.restoreSession().subscribe({ next: resolve, error: reject });
+      });
+      httpMock.expectOne('/server/api/authn/status').flush(null, {
+        status: 403,
+        statusText: 'Forbidden',
+      });
+      await promise;
+
+      expect(Cookies.get('dsAuthInfo')).toBeUndefined();
+    });
+  });
+
+  /**
+   * Rehidrata `currentUser` con el EPerson devuelto por un PATCH de identidad,
+   * reusando el mismo mapper de login() y restoreSession(). No-op sin sesión.
+   */
+  describe('setCurrentUserFromEPerson()', () => {
+    /** Verifica que el signal tome firstName/lastName del metadata del EPerson recibido. */
+    it('should update currentUser signal with firstName/lastName from EPerson metadata', async () => {
+      await performLogin();
+      expect(service.currentUser()!.firstName).toBe('Juan');
+      expect(service.currentUser()!.lastName).toBe('Pérez');
+
+      const updatedEPerson = {
+        ...mockEPerson,
+        metadata: {
+          'eperson.firstname': [{ value: 'Juana', language: null, authority: null, confidence: -1, place: 0 }],
+          'eperson.lastname': [{ value: 'Pérez García', language: null, authority: null, confidence: -1, place: 0 }],
+        },
+      };
+
+      service.setCurrentUserFromEPerson(updatedEPerson);
+
+      expect(service.currentUser()!.firstName).toBe('Juana');
+      expect(service.currentUser()!.lastName).toBe('Pérez García');
+      expect(service.currentUser()!.uuid).toBe('eperson-001');
+      expect(service.currentUser()!.email).toBe('juan@mineduc.gob.gt');
+    });
+
+    /** Verifica que sin sesión activa el método sea no-op y no pueble el signal. */
+    it('should be a no-op when currentUser is null', () => {
+      expect(service.currentUser()).toBeNull();
+
+      service.setCurrentUserFromEPerson(mockEPerson);
+
+      expect(service.currentUser()).toBeNull();
     });
   });
 });

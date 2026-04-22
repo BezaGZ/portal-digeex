@@ -4,10 +4,12 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { EPersonApiService } from './eperson-api.service';
 
 /**
- * Tests de `EPersonApiService`, wrapper HTTP del recurso `/api/eperson/epersons`.
- * Cubre `list()` (GET paginado con mapeo HAL), `create()` (POST eperson sin encadenar
- * registrations) y los métodos `update()`, `delete()`, `resendRegistration()` y
- * `setActive()` sobre JSON Patch según el contrato REST de DSpace 9.2.
+ * Tests de `EPersonApiService`.
+ *
+ * Wrapper HTTP del recurso `/api/eperson/epersons`. Cubre `list()` (GET
+ * paginado con mapeo HAL), `create()` (POST eperson sin encadenar
+ * registrations) y los métodos `update()`, `delete()`, `resendRegistration()`
+ * y `setActive()` sobre JSON Patch según el contrato REST de DSpace 9.2.
  *
  * Ciclos 5, 6, 7 TDD — Sprint 5. Ajustado en Ciclo 13.
  */
@@ -88,10 +90,7 @@ describe('EPersonApiService', () => {
     httpMock.verify();
   });
 
-  /**
-   * Verifica que el servicio se instancie correctamente
-   * a través del sistema de inyección de dependencias.
-   */
+  /** Verifica que el servicio se instancie vía DI. */
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
@@ -101,10 +100,7 @@ describe('EPersonApiService', () => {
    * Aplana la respuesta HAL a Paginated<EPerson> y propaga errores HTTP.
    */
   describe('list()', () => {
-    /**
-     * Verifica que list() haga GET al endpoint correcto de DSpace
-     * y envíe los parámetros de paginación (size y page).
-     */
+    /** Verifica que list() mande GET con los params size y page. */
     it('should GET /api/eperson/epersons with size and page params', async () => {
       const promise = new Promise((resolve, reject) => {
         service.list({ size: 20, page: 0 }).subscribe({
@@ -125,10 +121,7 @@ describe('EPersonApiService', () => {
       await promise;
     });
 
-    /**
-     * Verifica que list() devuelva la respuesta aplanada en Paginated<EPerson>,
-     * preservando los datos crudos de cada eperson y los campos de paginación.
-     */
+    /** Verifica que list() aplane la respuesta HAL a Paginated<EPerson>. */
     it('should return paginated response with totalElements and items[]', async () => {
       const promise = new Promise<void>((resolve, reject) => {
         service.list({ size: 20, page: 0 }).subscribe({
@@ -153,7 +146,10 @@ describe('EPersonApiService', () => {
       await promise;
     });
 
-    /** Con embed=groups, DSpace anida los grupos dentro de cada eperson. */
+    /**
+     * Verifica que list() reenvíe el param `embed` cuando se lo pasan.
+     * Con `embed=groups` DSpace anida los grupos dentro de cada eperson.
+     */
     it('should forward embed param to DSpace when provided', async () => {
       const promise = new Promise<void>((resolve, reject) => {
         service.list({ size: 20, page: 0, embed: 'groups' }).subscribe({
@@ -175,10 +171,7 @@ describe('EPersonApiService', () => {
       await promise;
     });
 
-    /**
-     * Verifica que un error HTTP se propague como error del Observable
-     * en lugar de silenciarse o transformarse en un valor válido.
-     */
+    /** Verifica que un error HTTP se propague como error del Observable. */
     it('should propagate HTTP errors as Observable error', async () => {
       const promise = new Promise<void>((resolve, reject) => {
         service.list({ size: 20, page: 0 }).subscribe({
@@ -224,9 +217,8 @@ describe('EPersonApiService', () => {
     };
 
     /**
-     * Sin `embed`, GET directo y sin query params. Para un único eperson la proyección
-     * `embed=groups` no hidrata `_embedded` en esta instalación; los grupos se piden vía
-     * `GroupApiService.getGroupsOfEPerson()`.
+     * Verifica que getOne() sin `embed` haga GET directo sin query params.
+     * Para un único eperson `embed=groups` no hidrata `_embedded`; los grupos viajan por GroupApiService.
      */
     it('should GET /api/eperson/epersons/{uuid} without query params', async () => {
       const promise = new Promise<void>((resolve, reject) => {
@@ -282,9 +274,8 @@ describe('EPersonApiService', () => {
     };
 
     /**
-     * Verifica que el POST al endpoint de epersons lleve el body que DSpace espera:
-     * email, canLogIn=true y metadata con firstname y lastname. Y verifica también
-     * que NO se dispare ningún POST adicional al recurso de registrations.
+     * Verifica que el POST lleve el body que DSpace espera y no dispare /registrations.
+     * El correo de fijación de contraseña lo orquesta el facade en un paso aparte.
      */
     it('should POST eperson body with firstname/lastname metadata and canLogIn=true', async () => {
       const promise = new Promise((resolve, reject) => {
@@ -310,7 +301,6 @@ describe('EPersonApiService', () => {
       expect(epersonReq.request.body.metadata['eperson.lastname'][0].confidence).toBe(-1);
       epersonReq.flush(mockCreatedEPerson);
 
-      // El correo de registration se orquesta desde el facade, no acá.
       httpMock.expectNone((r) => r.url === '/server/api/eperson/registrations');
 
       await promise;
@@ -335,7 +325,7 @@ describe('EPersonApiService', () => {
       await promise;
     });
 
-    /** Si el POST del eperson falla, el error se propaga al suscriptor. */
+    /** Verifica que el error HTTP del POST se propague al suscriptor. */
     it('should propagate HTTP error when the eperson POST fails', async () => {
       const promise = new Promise<void>((resolve, reject) => {
         service.create(input).subscribe({
@@ -364,6 +354,7 @@ describe('EPersonApiService', () => {
    * para hacer rollback explícito si la asignación al grupo de rol falla tras el alta.
    */
   describe('delete()', () => {
+    /** Verifica que delete() mande DELETE al recurso eperson por uuid. */
     it('should DELETE /api/eperson/epersons/{uuid}', async () => {
       const promise = new Promise<void>((resolve, reject) => {
         service.delete('eperson-uuid-001').subscribe({ next: () => resolve(), error: reject });
@@ -385,11 +376,8 @@ describe('EPersonApiService', () => {
    */
   describe('update()', () => {
     /**
-     * Verifica que editar firstName y lastName arme un JSON Patch con dos
-     * operaciones replace sobre /metadata/eperson.firstname/0/value y
-     * /metadata/eperson.lastname/0/value. Targetea solo /value para no
-     * tener que cargar los cuatro campos del entry (language, authority,
-     * confidence) cuando lo único que cambia es el texto.
+     * Verifica que editar firstName/lastName arme un PATCH con dos replace sobre /value.
+     * Targetear solo /value evita tener que recargar language, authority y confidence.
      */
     it('should PATCH eperson when editing basic data', async () => {
       const promise = new Promise<void>((resolve, reject) => {
@@ -418,10 +406,7 @@ describe('EPersonApiService', () => {
    * el original se perdió o expiró.
    */
   describe('resendRegistration()', () => {
-    /**
-     * Verifica que dispare el mismo endpoint, query param y body que usa
-     * create() al final, para aprovechar el mecanismo nativo de DSpace.
-     */
+    /** Verifica que reenvíe el correo vía POST /registrations?accountRequestType=forgot. */
     it('should POST registrations?accountRequestType=forgot to resend invitation', async () => {
       const promise = new Promise((resolve, reject) => {
         service
@@ -450,9 +435,7 @@ describe('EPersonApiService', () => {
    * El path /canLogin sigue el contrato DSpace 9.2 (ver EPersonLoginReplaceOperation).
    */
   describe('setActive()', () => {
-    /**
-     * Al desactivar, canLogIn pasa a false. Reemplaza al "borrar" en UI.
-     */
+    /** Verifica que desactivar mande PATCH replace /canLogin=false. */
     it('should PATCH eperson.canLogIn=false on deactivate', async () => {
       const promise = new Promise((resolve, reject) => {
         service
@@ -470,9 +453,7 @@ describe('EPersonApiService', () => {
       await promise;
     });
 
-    /**
-     * Al reactivar, canLogIn vuelve a true.
-     */
+    /** Verifica que reactivar mande PATCH replace /canLogin=true. */
     it('should PATCH eperson.canLogIn=true on activate', async () => {
       const promise = new Promise((resolve, reject) => {
         service
@@ -485,6 +466,37 @@ describe('EPersonApiService', () => {
           r.url === '/server/api/eperson/epersons/eperson-uuid-001' && r.method === 'PATCH',
       );
       expect(req.request.body).toEqual([{ op: 'replace', path: '/canLogin', value: true }]);
+      req.flush({});
+
+      await promise;
+    });
+  });
+
+  /**
+   * changeOwnPassword(): PATCH /api/eperson/epersons/{uuid} con la operacion
+   * `add` sobre /password. Sigue el contrato REST documentado por DSpace 9.2:
+   * el body trae `current_password` y `new_password` dentro del campo `value`.
+   */
+  describe('changeOwnPassword()', () => {
+    /** Verifica que changeOwnPassword() mande PATCH con la operación add /password. */
+    it('should PATCH /api/eperson/epersons/{uuid} with the password add operation when changeOwnPassword is called', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service
+          .changeOwnPassword('eperson-uuid-001', 'CurrentPass1', 'NuevaSegura1')
+          .subscribe({ next: () => resolve(), error: reject });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/epersons/eperson-uuid-001' && r.method === 'PATCH',
+      );
+      expect(req.request.body).toEqual([
+        {
+          op: 'add',
+          path: '/password',
+          value: { new_password: 'NuevaSegura1', current_password: 'CurrentPass1' },
+        },
+      ]);
       req.flush({});
 
       await promise;

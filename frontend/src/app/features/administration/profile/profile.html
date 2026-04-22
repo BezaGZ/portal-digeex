@@ -22,11 +22,6 @@
         <label class="block text-sm font-medium text-gray-700 mb-2">Apellidos *</label>
         <input pInputText class="w-full" [(ngModel)]="lastName" name="lastName" required />
       </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Telefono de contacto</label>
-        <input pInputText class="w-full" [(ngModel)]="phone" name="phone" />
-      </div>
     </div>
   </div>
 
@@ -51,6 +46,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-2">Contrasena actual *</label>
         <p-password
           [(ngModel)]="currentPassword"
+          (ngModelChange)="onPasswordFieldChange()"
           name="currentPassword"
           [feedback]="false"
           [toggleMask]="true"
@@ -64,6 +60,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-2">Contrasena</label>
         <p-password
           [(ngModel)]="newPassword"
+          (ngModelChange)="onPasswordFieldChange()"
           name="newPassword"
           [feedback]="false"
           [toggleMask]="true"
@@ -76,6 +73,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-2">Rescriba para confirmar</label>
         <p-password
           [(ngModel)]="confirmPassword"
+          (ngModelChange)="onPasswordFieldChange()"
           name="confirmPassword"
           [feedback]="false"
           [toggleMask]="true"
@@ -83,6 +81,10 @@
           inputStyleClass="w-full"
         />
       </div>
+
+      @if (passwordValidationError(); as error) {
+        <p-message severity="error" [text]="error" styleClass="w-full" />
+      }
     </div>
   </div>
 

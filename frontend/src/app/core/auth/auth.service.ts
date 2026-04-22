@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable, of, tap, switchMap, map, catchError } from 'rxjs';
 import Cookies from 'js-cookie';
 import { AuthStatus, AuthUser } from './models/auth-session.model';
@@ -118,18 +118,14 @@ export class AuthService {
   }
 
   /**
-   * Restaura la sesión al iniciar la aplicación.
-   *
-   * Llama a GET /api/authn/status para verificar si hay
-   * sesión activa (ej. tras recargar la página). Si DSpace
-   * responde authenticated: true, obtiene el EPerson y
-   * actualiza los signals. También siembra el token CSRF
-   * desde el header DSPACE-XSRF-TOKEN de la respuesta.
-   *
-   * Si falla (backend caído, etc.) no hace nada — el usuario
-   * simplemente verá la app sin sesión.
+   * Restaura la sesion al iniciar la app: GET /api/authn/status, y si
+   * authenticated es true trae el EPerson y siembra el token CSRF. Antes de
+   * llamar al backend purga la cookie `dsAuthInfo` si su `expires` ya paso
+   * para que el `jwtInterceptor` no adjunte un Bearer caduco.
    */
   restoreSession(): Observable<AuthStatus | null> {
+    this.purgeIfExpired();
+
     return this.status().pipe(
       switchMap((authStatus: AuthStatus) => {
         if (!authStatus.authenticated) {
@@ -153,7 +149,16 @@ export class AuthService {
 
         return of(authStatus);
       }),
-      catchError(() => of(null)),
+      catchError((error: unknown) => {
+        /**
+         * 401/403 borran la cookie porque el backend rechaza el token actual.
+         * Otros errores (red caida, 5xx) la dejan intacta: puede seguir siendo valida.
+         */
+        if (error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403)) {
+          this.removeToken();
+        }
+        return of(null);
+      }),
     );
   }
 
@@ -187,8 +192,14 @@ export class AuthService {
    * Devuelve el JWT actual leyéndolo de la cookie persistente.
    * Sobrevive al reload del navegador, que es la diferencia con
    * mantener el token solo en memoria.
+   *
+   * Sanea primero la cookie con `purgeIfExpired()`: un JWT cuyo plazo
+   * local ya pasó no debe adjuntarse a nuevas peticiones porque DSpace
+   * lo va a rechazar y el `jwtInterceptor` dispararía un redirect a
+   * /login en medio del arranque.
    */
   getToken(): string | null {
+    this.purgeIfExpired();
     const raw = Cookies.get(TOKENITEM);
     if (!raw) return null;
     try {
@@ -220,6 +231,38 @@ export class AuthService {
    */
   private removeToken(): void {
     Cookies.remove(TOKENITEM);
+  }
+
+  /**
+   * Borra la cookie `dsAuthInfo` si su `expires` ya pasó. Permite que el
+   * resto del servicio asuma que cualquier cookie presente sigue vigente
+   * del lado cliente y que el `jwtInterceptor` no adjuntará Bearers caducos.
+   * Cookies ilegibles se dejan como están: `getToken()` devolverá null y el
+   * próximo login las sobrescribe.
+   */
+  private purgeIfExpired(): void {
+    const raw = Cookies.get(TOKENITEM);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as AuthTokenInfo;
+      if (parsed.expires && parsed.expires < Date.now()) {
+        this.removeToken();
+      }
+    } catch {
+      /* cookie ilegible: getToken devolverá null sin tocar el almacenamiento. */
+    }
+  }
+
+  /**
+   * Rehidrata el signal `currentUser` con el EPerson devuelto por un PATCH de
+   * identidad, reusando el mismo mapper que `login()` y `restoreSession()`
+   * para que la forma del AuthUser sea idéntica sin importar el origen.
+   * Es no-op cuando no hay sesión activa para que un PATCH huérfano no pueble
+   * el signal por accidente (p. ej. una respuesta tardía después de logout).
+   */
+  setCurrentUserFromEPerson(eperson: EPerson): void {
+    if (!this.currentUser()) return;
+    this.currentUser.set(this.mapEPersonToUser(eperson));
   }
 
   /**

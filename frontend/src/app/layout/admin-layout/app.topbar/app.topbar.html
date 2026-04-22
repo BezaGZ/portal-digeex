@@ -1,9 +1,6 @@
 <div class="layout-topbar">
   <div class="layout-topbar-start">
-    <button
-      class="layout-menu-button layout-topbar-action"
-      (click)="layoutService.onMenuToggle()"
-    >
+    <button class="layout-menu-button layout-topbar-action" (click)="layoutService.onMenuToggle()">
       <i class="pi pi-bars"></i>
     </button>
     <app-breadcrumb></app-breadcrumb>
@@ -18,7 +15,11 @@
         title="Cambiar tema"
       >
         <i
-          [ngClass]="{ 'pi ': true, 'pi-moon': layoutService.isDarkTheme(), 'pi-sun': !layoutService.isDarkTheme() }"
+          [ngClass]="{
+            'pi ': true,
+            'pi-moon': layoutService.isDarkTheme(),
+            'pi-sun': !layoutService.isDarkTheme(),
+          }"
         ></i>
       </button>
     </div>
@@ -40,41 +41,26 @@
         <div class="layout-topbar-user" #userMenuWrap>
           <button
             type="button"
-            class="layout-topbar-action"
+            class="layout-topbar-action layout-topbar-user-toggle"
             (click)="toggleUserMenu($event)"
           >
             <i class="pi pi-user"></i>
-            <span>{{ userName }}</span>
+            <span>{{ userName() }}</span>
           </button>
-          <div
-            class="layout-topbar-user-panel"
-            *ngIf="isUserMenuOpen"
-          >
+          <div class="layout-topbar-user-panel" [class.is-open]="isUserMenuOpen">
             <div class="layout-topbar-user-header">
-              <div class="layout-topbar-user-name">{{ userName }}</div>
-              <div class="layout-topbar-user-email">{{ userEmail }}</div>
+              <div class="layout-topbar-user-name">{{ userName() }}</div>
+              <div class="layout-topbar-user-email">{{ userEmail() }}</div>
             </div>
-            <button
-              type="button"
-              class="layout-topbar-menu-item"
-              (click)="onProfileClick()"
-            >
+            <button type="button" class="layout-topbar-menu-item" (click)="onProfileClick()">
               <i class="pi pi-id-card"></i>
               <span>Perfil</span>
             </button>
-            <button
-              type="button"
-              class="layout-topbar-menu-item"
-              (click)="onUploadsClick()"
-            >
+            <button type="button" class="layout-topbar-menu-item" (click)="onUploadsClick()">
               <i class="pi pi-upload"></i>
               <span>Mis envios</span>
             </button>
-            <button
-              type="button"
-              class="layout-topbar-logout"
-              (click)="onLogout()"
-            >
+            <button type="button" class="layout-topbar-logout" (click)="onLogout()">
               <i class="pi pi-sign-out"></i>
               <span>Cerrar sesion</span>
             </button>

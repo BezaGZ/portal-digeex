@@ -7,13 +7,13 @@ import { vi } from 'vitest';
 import { errorInterceptor } from './error.interceptor';
 
 /**
- * Tests para errorInterceptor.
+ * Tests de `errorInterceptor`.
  *
- * Interceptor HTTP que maneja errores de forma centralizada.
- * Proporciona feedback consistente al usuario mediante redirecciones
- * y notificaciones toast según el tipo de error HTTP.
+ * Interceptor HTTP centralizado: redirige a /login en 401, muestra toast
+ * genérico en 500 y loguea en consola el resto. El 403 lo maneja cada
+ * componente que origina la petición para no duplicar toasts.
  *
- * Ciclo 3 TDD — Sprint 3
+ * Ciclo 3 TDD — Sprint 3. Ajustado en Ciclo 15.
  */
 describe('errorInterceptor', () => {
   let httpMock: HttpTestingController;
@@ -55,7 +55,7 @@ describe('errorInterceptor', () => {
 
   /** 401 Unauthorized */
 
-  /** Verifica que el interceptor redirija a /login cuando recibe un error 401. */
+  /** Verifica que el interceptor redirija a /login cuando la respuesta es 401. */
   it('should redirect to /login on 401 Unauthorized', async () => {
     const promise = new Promise((resolve, reject) => {
       httpClient.get('/server/api/test').subscribe({
@@ -79,19 +79,15 @@ describe('errorInterceptor', () => {
 
   /** 403 Forbidden */
 
-  /** Verifica que el interceptor muestre un toast de error cuando recibe un 403. */
-  it('should show toast error on 403 Forbidden', async () => {
+  /**
+   * Verifica que el interceptor no pinte toast en 403.
+   * Cada componente lo traduce a su propio mensaje (p. ej. "contraseña incorrecta").
+   */
+  it('should NOT show a toast on 403 Forbidden (delegated to component)', async () => {
     const promise = new Promise((resolve, reject) => {
       httpClient.get('/server/api/test').subscribe({
         next: resolve,
-        error: (error) => {
-          expect(messageService.add).toHaveBeenCalledWith({
-            severity: 'error',
-            summary: 'Acceso Denegado',
-            detail: 'No tienes permisos para realizar esta acción'
-          });
-          reject(error);
-        }
+        error: reject,
       });
     });
 
@@ -100,14 +96,14 @@ describe('errorInterceptor', () => {
 
     try {
       await promise;
-    } catch (error) {
-      expect(error).toBeDefined();
+    } catch {
+      expect(messageService.add).not.toHaveBeenCalled();
     }
   });
 
   /** 500 Server Error */
 
-  /** Verifica que el interceptor muestre un toast genérico para errores 500. */
+  /** Verifica que el interceptor muestre un toast genérico ante un 500. */
   it('should show generic error on 500 Server Error', async () => {
     const promise = new Promise((resolve, reject) => {
       httpClient.get('/server/api/test').subscribe({

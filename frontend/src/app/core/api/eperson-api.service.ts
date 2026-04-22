@@ -23,21 +23,39 @@ const REGISTRATION_TYPE = 'registration';
  * `/canLogin` en minúscula la 'i' es lo que espera EPersonLoginReplaceOperation.
  * Los de metadata apuntan solo a `/value` para editar el texto sin reenviar
  * los cuatro campos del entry (value, language, authority, confidence).
+ * `/password` es el path que espera EPersonPasswordReplaceOperation; va por
+ * `op: 'add'` para que el body lleve el objeto con `current_password` y
+ * `new_password`, no un string suelto.
  */
 const PATCH_PATH_CAN_LOGIN = '/canLogin';
 const PATCH_PATH_FIRSTNAME_VALUE = '/metadata/eperson.firstname/0/value';
 const PATCH_PATH_LASTNAME_VALUE = '/metadata/eperson.lastname/0/value';
 const PATCH_PATH_EMAIL = '/email';
+const PATCH_PATH_PASSWORD = '/password';
 
-/** Única operación de JSON Patch que usa este wrapper hoy. */
+/** Operaciones de JSON Patch que este wrapper sabe construir. */
 const PATCH_OP_REPLACE = 'replace';
+const PATCH_OP_ADD = 'add';
 
-/** Entrada del array de JSON Patch (RFC 6902) que acepta DSpace. */
+/** Replace: el patron habitual para editar metadatos planos del eperson. */
 type JsonPatchReplace = {
   op: typeof PATCH_OP_REPLACE;
   path: string;
   value: string | boolean;
 };
+
+/**
+ * Add: lo usa el cambio de contrasena, donde `value` es un objeto con
+ * `current_password` y `new_password` en lugar de un escalar.
+ */
+type JsonPatchAdd = {
+  op: typeof PATCH_OP_ADD;
+  path: string;
+  value: object;
+};
+
+/** Cualquier entrada que acepta el body PATCH de DSpace. */
+type JsonPatchEntry = JsonPatchReplace | JsonPatchAdd;
 
 /**
  * Construye una operación replace de JSON Patch.
@@ -46,6 +64,11 @@ type JsonPatchReplace = {
  */
 function replaceOp(path: string, value: string | boolean): JsonPatchReplace {
   return { op: PATCH_OP_REPLACE, path, value };
+}
+
+/** Construye una operación add con value de tipo objeto. */
+function addOp(path: string, value: object): JsonPatchAdd {
+  return { op: PATCH_OP_ADD, path, value };
 }
 
 /** Wrapper HTTP del recurso `/api/eperson/epersons` de DSpace. Solo habla con el backend, sin reglas de negocio. */
@@ -156,11 +179,30 @@ export class EPersonApiService {
   }
 
   /**
+   * Cambio de contraseña propio del usuario autenticado.
+   * DSpace 9.2 espera `op: 'add'` sobre `/password` con un objeto que
+   * lleva `current_password` y `new_password`. El backend valida la
+   * contraseña actual y la política de complejidad antes de aceptar.
+   */
+  changeOwnPassword(
+    uuid: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Observable<EPerson> {
+    return this.sendPatch(uuid, [
+      addOp(PATCH_PATH_PASSWORD, {
+        new_password: newPassword,
+        current_password: currentPassword,
+      }),
+    ]);
+  }
+
+  /**
    * Envía un JSON Patch al recurso /eperson/epersons/{uuid}.
    * Centraliza la construcción de la URL y la llamada HTTP para que
-   * update() y setActive() tengan un único punto de cambio.
+   * update(), setActive() y changeOwnPassword() tengan un único punto de cambio.
    */
-  private sendPatch(uuid: string, patch: JsonPatchReplace[]): Observable<EPerson> {
+  private sendPatch(uuid: string, patch: JsonPatchEntry[]): Observable<EPerson> {
     return this.http.patch<EPerson>(
       `${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}/${uuid}`,
       patch,
