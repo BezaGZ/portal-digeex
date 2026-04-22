@@ -1,0 +1,65 @@
+<p-dialog
+  [header]="'Modificar rol'"
+  [visible]="visible()"
+  [modal]="true"
+  [closable]="false"
+  (onHide)="onHide()"
+  [draggable]="false"
+  [resizable]="false"
+>
+  @if (target(); as t) {
+    <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
+      Estás cambiando el rol de <strong>{{ getFullName() }}</strong> ({{ t.email }}).
+    </p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    @if (errorMessage()) {
+      <p-message severity="error" [text]="errorMessage()!" styleClass="w-full mb-4" />
+    }
+
+    <div class="form-field">
+      <p-floatLabel>
+        <p-select
+          id="role"
+          formControlName="role"
+          [options]="roleOptions"
+          optionLabel="label"
+          optionValue="value"
+          [optionDisabled]="'disabled'"
+          appendTo="body"
+          class="w-full"
+        />
+        <label for="role">Nuevo rol *</label>
+      </p-floatLabel>
+    </div>
+
+    @if (showScopeSelector()) {
+      <app-scope-selector
+        [role]="currentRole()"
+        [initialSubdivisionUuid]="scopeInitialSubdivisionUuid()"
+        [initialCollectionUuids]="[]"
+        (scopeChange)="onScopeChange($event)"
+      />
+    }
+  </form>
+
+  <ng-template #footer>
+    <p-button
+      label="Cancelar"
+      severity="secondary"
+      styleClass="!font-medium"
+      (onClick)="onHide()"
+      [text]="true"
+      [rounded]="true"
+    />
+    <p-button
+      label="Guardar cambios"
+      severity="primary"
+      styleClass="!text-white !font-medium"
+      (onClick)="onSubmit()"
+      [disabled]="!canSubmit()"
+      [rounded]="true"
+    />
+  </ng-template>
+</p-dialog>

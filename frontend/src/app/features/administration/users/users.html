@@ -8,6 +8,7 @@
     (deactivateRequested)="onDeactivateRequested($event)"
     (reactivateRequested)="onReactivateRequested($event)"
     (resetPasswordRequested)="onResetPasswordRequested($event)"
+    (modifyRoleRequested)="onModifyRoleRequested($event)"
   />
 
   @if (showCreateDialog()) {
@@ -16,6 +17,15 @@
       [caller]="currentUser()"
       (visibleChange)="onDialogClosed()"
       (createSubmitted)="onCreateSubmitted($event)"
+    />
+  }
+
+  @if (showChangeRoleDialog()) {
+    <app-change-role-dialog
+      [visible]="showChangeRoleDialog()"
+      [target]="changeRoleTarget()"
+      (visibleChange)="onChangeRoleDialogClosed()"
+      (changeSubmitted)="onChangeRoleSubmitted($event)"
     />
   }
 </div>

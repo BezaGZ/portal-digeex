@@ -902,6 +902,68 @@ describe('UserManagementService — mutaciones (Ciclo 11)', () => {
       expect(addMemberToGroupFn).not.toHaveBeenCalled();
     });
 
+    /** RN-27: nadie puede cambiar su propio rol (reusa SELF_DEACTIVATE). */
+    it('should reject with BusinessRuleError SELF_DEACTIVATE when the caller targets its own uuid', async () => {
+      const promise = firstValueFrom(
+        service.changeUserRole$({
+          uuid: 'eperson-caller',
+          newRole: 'personal_delegado',
+          newSubdivisionCommunityUuid: 'community-educacion-basica',
+          newCollectionUuids: ['collection-peac'],
+        }),
+      );
+
+      await expect(promise).rejects.toBeInstanceOf(BusinessRuleError);
+      await expect(promise).rejects.toMatchObject({ code: 'SELF_DEACTIVATE' });
+      expect(removeMemberFromGroupFn).not.toHaveBeenCalled();
+      expect(addMemberToGroupFn).not.toHaveBeenCalled();
+    });
+
+    /** RN-28: democión del último superadmin activo (reusa LAST_SUPERADMIN). */
+    it('should reject with BusinessRuleError LAST_SUPERADMIN when demoting the last active superadmin', async () => {
+      const lonelySuper = buildEPerson({
+        uuid: 'lonely-super',
+        email: 'last@mineduc.gob.gt',
+        canLogIn: true,
+        groups: [administratorGroup],
+      });
+      getOneEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'eperson-caller') {
+          return of(
+            buildEPerson({
+              uuid: 'eperson-caller',
+              email: 'carlos.ramirez@mineduc.gob.gt',
+              groups: [administratorGroup],
+            }),
+          );
+        }
+        if (uuid === 'lonely-super') return of(lonelySuper);
+        return of(undefined);
+      });
+      // Solo un activo en Administrator: el target. La guarda corta.
+      getMembersOfGroupFn.mockReturnValue(
+        of(
+          paginated<EPerson>([
+            buildEPerson({ uuid: 'lonely-super', email: 'last@mineduc.gob.gt', canLogIn: true }),
+          ]),
+        ),
+      );
+
+      const promise = firstValueFrom(
+        service.changeUserRole$({
+          uuid: 'lonely-super',
+          newRole: 'personal_delegado',
+          newSubdivisionCommunityUuid: 'community-educacion-basica',
+          newCollectionUuids: ['collection-peac'],
+        }),
+      );
+
+      await expect(promise).rejects.toBeInstanceOf(BusinessRuleError);
+      await expect(promise).rejects.toMatchObject({ code: 'LAST_SUPERADMIN' });
+      expect(removeMemberFromGroupFn).not.toHaveBeenCalled();
+      expect(addMemberToGroupFn).not.toHaveBeenCalled();
+    });
+
     /** Happy path: caller superadmin mueve al target entre grupos. */
     it('should remove the target from its current group and add it to the new target group when the caller is superadmin', async () => {
       // Caller = superadmin (ya lo fija el beforeEach por defecto).

@@ -323,6 +323,16 @@ export class UserManagementService {
    * puede promover a nadie a su mismo nivel ni por encima, y el personal
    * delegado no cambia roles en absoluto. Se remueve de los grupos
    * relacionados con el rol anterior y se agrega a los del rol nuevo.
+   *
+   * Además protege RN-27 (no autocambio de rol) reusando SELF_DEACTIVATE,
+   * y RN-28 (no degradar al último superadmin activo) reusando
+   * LAST_SUPERADMIN: si target ya está en Administrator y el nuevo rol
+   * no es superadmin, se cuentan los miembros activos del grupo y se
+   * corta cuando solo queda uno. Es una guarda defensiva: en estado
+   * consistente el caller debería sumar como segundo activo, pero el
+   * check evita dejar el sistema sin superadmin si hay desviaciones
+   * (p. ej. migraciones que dejan epersons en Administrator con
+   * canLogIn=false).
    */
   changeUserRole$(input: ChangeUserRoleInput): Observable<EPerson> {
     return this.getCallerContext$().pipe(
@@ -337,27 +347,62 @@ export class UserManagementService {
           );
         }
 
+        if (caller.eperson.uuid === input.uuid) {
+          return throwError(
+            () => new BusinessRuleError('SELF_DEACTIVATE', 'No puedes cambiar tu propio rol.'),
+          );
+        }
+
         return this.epersonApi.getOne(input.uuid, { embed: EMBED_GROUPS }).pipe(
           switchMap((target) => {
-            const roleGroups = this.filterRoleRelatedGroups(this.extractEmbeddedGroups(target));
-            const removals$ =
-              roleGroups.length === 0
-                ? of([] as unknown[])
-                : forkJoin(
-                    roleGroups.map((group) =>
-                      this.groupApi.removeMemberFromGroup(group.uuid, input.uuid),
-                    ),
-                  );
+            const targetGroups = this.extractEmbeddedGroups(target);
+            const targetIsAdmin = targetGroups.some(
+              (group) => group.name === ADMINISTRATOR_GROUP_NAME,
+            );
+            const isDemotion = targetIsAdmin && input.newRole !== 'superadmin';
 
-            return removals$.pipe(
-              switchMap(() =>
-                this.assignToRoleGroups$(target, {
-                  role: input.newRole,
-                  subdivisionCommunityUuid: input.newSubdivisionCommunityUuid,
-                  collectionUuids: input.newCollectionUuids,
-                }),
-              ),
-              map(() => target),
+            const guard$: Observable<unknown> = isDemotion
+              ? this.groupApi.findAdministratorGroup().pipe(
+                  switchMap((admin) => this.groupApi.getMembersOfGroup(admin.uuid)),
+                  switchMap((members) => {
+                    const activeAdmins = members.items.filter((member) => member.canLogIn);
+                    if (activeAdmins.length <= 1) {
+                      return throwError(
+                        () =>
+                          new BusinessRuleError(
+                            'LAST_SUPERADMIN',
+                            'No se puede degradar al último superadministrador activo.',
+                          ),
+                      );
+                    }
+                    return of(undefined);
+                  }),
+                )
+              : of(undefined);
+
+            return guard$.pipe(
+              switchMap(() => {
+                const roleGroups = this.filterRoleRelatedGroups(targetGroups);
+                const removals$ =
+                  roleGroups.length === 0
+                    ? of([] as unknown[])
+                    : forkJoin(
+                        roleGroups.map((group) =>
+                          this.groupApi.removeMemberFromGroup(group.uuid, input.uuid),
+                        ),
+                      );
+
+                return removals$.pipe(
+                  switchMap(() =>
+                    this.assignToRoleGroups$(target, {
+                      role: input.newRole,
+                      subdivisionCommunityUuid: input.newSubdivisionCommunityUuid,
+                      collectionUuids: input.newCollectionUuids,
+                    }),
+                  ),
+                  map(() => target),
+                );
+              }),
             );
           }),
         );

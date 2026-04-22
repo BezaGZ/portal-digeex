@@ -23,14 +23,17 @@ import { map, takeUntil } from 'rxjs/operators';
 import { DSpaceApiService } from '../../../../../core/api/dspace-api.service';
 import { UserRole, RoleLabels, UserView } from '../../models/user-view.model';
 import { CreateUserInput } from '../../services/user-management.service';
+import { ScopeSelector } from '../scope-selector/scope-selector';
 
 /**
- * Diálogo de creación de usuario. Recibe al caller por input y poblamos
- * el selector de subdirección desde getCommunities(). Cuando el caller
- * es admin_subdireccion el selector de rol queda bloqueado en
- * personal_delegado y la subdirección se precarga con su propia
- * community, para no enviar un input que el facade rechazaría con
- * INSUFFICIENT_PRIVILEGES en runtime.
+ * Diálogo de creación de usuario. Recibe al caller por input y delega la
+ * elección de subdirección/colecciones al subcomponente ScopeSelector
+ * para que toda la lógica de "qué scope aplica a qué rol" viva en un
+ * solo lugar (también lo usa ChangeRoleDialog).
+ *
+ * Cuando el caller es admin_subdireccion, el rol queda fijo en
+ * personal_delegado y la subdivisión se precarga con la suya, para no
+ * mandarle al facade un input que rechazaría con INSUFFICIENT_PRIVILEGES.
  */
 @Component({
   selector: 'app-user-dialog',
@@ -43,6 +46,7 @@ import { CreateUserInput } from '../../services/user-management.service';
     FloatLabelModule,
     MessageModule,
     ReactiveFormsModule,
+    ScopeSelector,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './user-dialog.html',
@@ -78,33 +82,47 @@ export class UserDialog implements OnDestroy {
 
   errorMessage = signal<string | null>(null);
 
+  /**
+   * Estado actual del scope reportado por ScopeSelector. Se guarda como
+   * signal para que el computed `canSubmit` lo combine con la validez
+   * del form de identidad. El parent no inspecciona el form interno del
+   * subcomponente.
+   */
+  private scopeState = signal<{
+    subdivisionCommunityUuid: string | null;
+    collectionUuids: string[];
+    valid: boolean;
+  }>({ subdivisionCommunityUuid: null, collectionUuids: [], valid: false });
+
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
     role: ['personal_delegado' as UserRole, Validators.required],
-    subdivisionCommunityUuid: [null as string | null, Validators.required],
   });
 
   /**
-   * Listado de communities aplanado a {label, value} directamente desde
-   * DSpace. Se guarda también la proyección cruda para que el effect
-   * pueda mapear el nombre de subdirección del caller a su uuid sin
-   * tener que pelear con el shape final del select.
+   * Lista de communities solo para resolver el uuid de la subdirección
+   * del caller admin_subdireccion. El listado completo lo carga el
+   * propio ScopeSelector; acá solo se usa para precargar el initial.
    */
   private communities = toSignal(
     this.dspaceApi.getCommunities().pipe(map((response) => response._embedded['communities'])),
     { initialValue: [] },
   );
 
-  subdivisionOptions = computed(() =>
-    this.communities().map((community) => ({ label: community.name, value: community.uuid })),
-  );
+  scopeInitialSubdivisionUuid = computed<string | null>(() => {
+    const callerValue = this.caller();
+    if (callerValue?.role !== 'admin_subdireccion') return null;
+    const matched = this.communities().find((c) => c.name === callerValue.subdivision);
+    return matched?.uuid ?? null;
+  });
 
-  /**
-   * Rol del caller → si es admin_subdireccion, el selector queda
-   * bloqueado. El template lo lee para deshabilitar p-select.
-   */
+  scopeDisabledSubdivision = computed(() => this.caller()?.role === 'admin_subdireccion');
+
+  /** Rol actual del form, usado para indicarle a ScopeSelector qué mostrar. */
+  currentRole = signal<UserRole>('personal_delegado');
+
   roleSelectorDisabled = computed(() => this.caller()?.role === 'admin_subdireccion');
 
   allowedRoles = computed(() => {
@@ -136,54 +154,63 @@ export class UserDialog implements OnDestroy {
     return [];
   });
 
-  subdivisionFieldDisabled = computed(() => this.caller()?.role === 'admin_subdireccion');
+  showScopeSelector = computed(() => this.currentRole() !== 'superadmin');
 
-  showSubdivisionField = computed(() => this.form.get('role')?.value !== 'superadmin');
+  /**
+   * El submit se habilita cuando el form de identidad es válido y, si el
+   * rol pide scope, el ScopeSelector también marcó valid. Para superadmin
+   * el ScopeSelector ni se renderiza, así que basta el form de identidad.
+   *
+   * Importante leer currentRole y scopeState arriba: si el primer if cortara
+   * antes (form.invalid es un getter, no un signal), el computed se quedaría
+   * sin dependencias trackeadas y no se invalidaría cuando scopeState cambie.
+   */
+  canSubmit = computed(() => {
+    const role = this.currentRole();
+    const scope = this.scopeState();
+    if (this.form.invalid) return false;
+    if (role === 'superadmin') return true;
+    return scope.valid;
+  });
 
   constructor() {
     /**
-     * Cuando el caller es admin_subdireccion, precarga el formulario con
-     * personal_delegado y la community del propio caller. Depende de
-     * communities() porque hay que buscar el uuid que corresponde al
-     * nombre de subdivisión del caller; si aún no llegaron, queda en
-     * null y se reintenta al resolver.
+     * Cuando el caller es admin_subdireccion el rol queda fijo en
+     * personal_delegado. Sin esto el form arrancaría con el default y
+     * el ScopeSelector mostraría colecciones desde el primer render
+     * antes de que el usuario tocara nada.
      */
     effect(() => {
       const callerValue = this.caller();
-      const communitiesList = this.communities();
       if (callerValue?.role === 'admin_subdireccion') {
-        const matched = communitiesList.find((community) => community.name === callerValue.subdivision);
-        this.form.patchValue({
-          role: 'personal_delegado',
-          subdivisionCommunityUuid: matched?.uuid ?? null,
-        });
+        this.form.patchValue({ role: 'personal_delegado' }, { emitEvent: false });
+        this.currentRole.set('personal_delegado');
       }
     });
 
     /**
-     * Si el rol cambia a superadmin ya no se pide subdirección. Para
-     * cualquier otro rol se mantiene obligatoria.
+     * Mantener el signal currentRole sincronizado con el form, para que
+     * los computed que dependen de él reaccionen al cambio de selector.
      */
     this.form
       .get('role')
       ?.valueChanges.pipe(takeUntil(this.destroy$))
       .subscribe((role) => {
-        const subdivisionControl = this.form.get('subdivisionCommunityUuid');
-
-        if (role === 'superadmin') {
-          subdivisionControl?.clearValidators();
-          subdivisionControl?.setValue(null);
-        } else {
-          subdivisionControl?.setValidators(Validators.required);
-        }
-
-        subdivisionControl?.updateValueAndValidity();
+        if (role) this.currentRole.set(role);
       });
   }
 
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  onScopeChange(scope: {
+    subdivisionCommunityUuid: string | null;
+    collectionUuids: string[];
+    valid: boolean;
+  }) {
+    this.scopeState.set(scope);
   }
 
   onHide() {
@@ -197,26 +224,30 @@ export class UserDialog implements OnDestroy {
       firstName: '',
       lastName: '',
       role: 'personal_delegado',
-      subdivisionCommunityUuid: null,
     });
+    this.currentRole.set('personal_delegado');
     this.errorMessage.set(null);
+    this.scopeState.set({ subdivisionCommunityUuid: null, collectionUuids: [], valid: false });
   }
 
   onSubmit() {
     this.form.markAllAsTouched();
 
-    if (this.form.invalid) {
+    if (!this.canSubmit()) {
       this.errorMessage.set('Por favor completa todos los campos requeridos');
       return;
     }
 
     const formValue = this.form.value;
+    const scope = this.scopeState();
+    const role = formValue.role!;
     this.createSubmitted.emit({
       email: formValue.email!,
       firstName: formValue.firstName!,
       lastName: formValue.lastName!,
-      role: formValue.role!,
-      subdivisionCommunityUuid: formValue.subdivisionCommunityUuid ?? null,
+      role,
+      subdivisionCommunityUuid: role === 'superadmin' ? null : scope.subdivisionCommunityUuid,
+      collectionUuids: role === 'personal_delegado' ? scope.collectionUuids : undefined,
     });
   }
 

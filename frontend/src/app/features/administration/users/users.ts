@@ -1,12 +1,18 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs/operators';
+import { BehaviorSubject } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api'; // MessageService se consume desde la raíz de la app
 
 import { UserTable } from './components/user-table/user-table';
 import { UserDialog } from './components/user-dialog/user-dialog';
-import { UserManagementService, CreateUserInput } from './services/user-management.service';
+import { ChangeRoleDialog } from './components/change-role-dialog/change-role-dialog';
+import {
+  UserManagementService,
+  CreateUserInput,
+  ChangeUserRoleInput,
+} from './services/user-management.service';
 import { BusinessRuleError, BusinessRuleErrorCode } from './services/business-rule-error';
 import { UserView } from './models/user-view.model';
 
@@ -22,7 +28,7 @@ import { UserView } from './models/user-view.model';
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [ToastModule, UserTable, UserDialog],
+  imports: [ToastModule, UserTable, UserDialog, ChangeRoleDialog],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './users.html',
@@ -32,9 +38,23 @@ export class Users {
   private messageService = inject(MessageService);
 
   showCreateDialog = signal(false);
+  showChangeRoleDialog = signal(false);
+  changeRoleTarget = signal<UserView | null>(null);
+
+  /**
+   * Subject que dispara el refetch de la lista. El BehaviorSubject emite
+   * inmediatamente al suscribirse, así la carga inicial sigue ocurriendo
+   * en el OnInit implícito sin necesidad de startWith. Después de cada
+   * mutación que altera el listado, un next() fuerza que switchMap pida
+   * de nuevo a DSpace y el signal reciba la vista fresca.
+   */
+  private refresh$ = new BehaviorSubject<void>(undefined);
 
   visibleUsers = toSignal(
-    this.userService.getVisibleUsers$().pipe(map((paginated) => paginated.items)),
+    this.refresh$.pipe(
+      switchMap(() => this.userService.getVisibleUsers$()),
+      map((paginated) => paginated.items),
+    ),
     { initialValue: [] as UserView[] },
   );
 
@@ -51,6 +71,7 @@ export class Users {
   onDeactivateRequested(user: UserView) {
     this.userService.deactivateUser$(user.uuid).subscribe({
       next: () => {
+        this.refresh$.next();
         this.messageService.add({
           severity: 'success',
           summary: 'Usuario desactivado',
@@ -65,6 +86,7 @@ export class Users {
   onReactivateRequested(user: UserView) {
     this.userService.reactivateUser$(user.uuid).subscribe({
       next: () => {
+        this.refresh$.next();
         this.messageService.add({
           severity: 'success',
           summary: 'Usuario reactivado',
@@ -90,9 +112,37 @@ export class Users {
     });
   }
 
+  onModifyRoleRequested(user: UserView) {
+    this.changeRoleTarget.set(user);
+    this.showChangeRoleDialog.set(true);
+  }
+
+  onChangeRoleDialogClosed() {
+    this.showChangeRoleDialog.set(false);
+    this.changeRoleTarget.set(null);
+  }
+
+  onChangeRoleSubmitted(input: ChangeUserRoleInput) {
+    this.userService.changeUserRole$(input).subscribe({
+      next: () => {
+        this.refresh$.next();
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Rol actualizado',
+          detail: 'El rol del usuario fue actualizado correctamente',
+          life: 3000,
+        });
+        this.showChangeRoleDialog.set(false);
+        this.changeRoleTarget.set(null);
+      },
+      error: (err) => this.errorToToast(err),
+    });
+  }
+
   onCreateSubmitted(input: CreateUserInput) {
     this.userService.createUser$(input).subscribe({
       next: () => {
+        this.refresh$.next();
         this.messageService.add({
           severity: 'success',
           summary: 'Usuario creado',
