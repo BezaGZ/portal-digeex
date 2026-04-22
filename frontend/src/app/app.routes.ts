@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
 
@@ -57,6 +58,7 @@ export const routes: Routes = [
 
   {
     path: 'administrador',
+    canActivate: [authGuard],
     loadComponent: () => import('./layout/admin-layout/app.layout/app.layout').then(m => m.AppLayout),
     data: { breadcrumb: 'Administrador' },
     children: [
