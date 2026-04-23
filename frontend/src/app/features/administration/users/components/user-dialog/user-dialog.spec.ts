@@ -3,56 +3,40 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { outputToObservable } from '@angular/core/rxjs-interop';
 import { vi } from 'vitest';
-import { of } from 'rxjs';
+import { firstValueFrom, of } from 'rxjs';
 
-import { UserDialog } from './user-dialog';
-import { DSpaceApiService } from '../../../../../core/api/dspace-api.service';
+import { UserDialog, labelForGroup } from './user-dialog';
+import { UserManagementService } from '../../services/user-management.service';
 import { UserView } from '../../models/user-view.model';
-import { Community } from '../../../../../core/api/models/community.model';
-import { Collection } from '../../../../../core/api/models/collection.model';
-import { HalListResponse } from '../../../../../core/api/models/hal.model';
+import { Group } from '../../../../../core/api/models/group.model';
 
 /**
- * Tests del componente UserDialog.
+ * Tests de `UserDialog`.
  *
- * El diálogo recibe al caller por input y delega la elección de
- * subdirección/colecciones al subcomponente ScopeSelector. Cuando el
- * caller es admin_subdireccion, el selector de rol queda fijo en
- * personal_delegado y la subdivisión se preselecciona con la community
- * del propio caller.
+ * Diálogo de alta con un solo dropdown "Rol" poblado dinámicamente con los
+ * grupos reales del portal (Administrator, ADMIN_*, SUBMITTERS_*) que expone
+ * el facade. El caller admin_subdireccion solo ve `SUBMITTERS_{su sufijo}` y
+ * el control queda preseleccionado y deshabilitado.
  *
- * Ciclo 12 — Sprint 5.
+ * Ciclos 12, 17 TDD — Sprint 5.
  */
 describe('UserDialog', () => {
   let fixture: ComponentFixture<UserDialog>;
   let component: UserDialog;
-  let getCommunitiesFn: ReturnType<typeof vi.fn>;
-  let getCollectionsFn: ReturnType<typeof vi.fn>;
+  let getAssignableGroupsFn: ReturnType<typeof vi.fn>;
 
-  function buildCommunity(uuid: string, name: string): Community {
+  function buildGroup(uuid: string, name: string): Group {
     return {
       uuid,
       name,
-      handle: `123/${uuid}`,
-      metadata: {},
-      archivedItemsCount: 0,
-      type: 'community',
-    };
-  }
-
-  function buildCommunityList(items: Community[]): HalListResponse<Community> {
-    return {
-      _embedded: { communities: items },
-      _links: { self: { href: '/server/api/core/communities' } },
-      page: { size: items.length, totalElements: items.length, totalPages: 1, number: 0 },
-    };
-  }
-
-  function buildCollectionList(items: Collection[]): HalListResponse<Collection> {
-    return {
-      _embedded: { collections: items },
-      _links: { self: { href: '/server/api/core/communities/x/collections' } },
-      page: { size: items.length, totalElements: items.length, totalPages: 1, number: 0 },
+      permanent: name === 'Administrator',
+      type: 'group',
+      _links: {
+        self: { href: `/server/api/eperson/groups/${uuid}` },
+        object: { href: '' },
+        epersons: { href: `/server/api/eperson/groups/${uuid}/epersons` },
+        subgroups: { href: `/server/api/eperson/groups/${uuid}/subgroups` },
+      },
     };
   }
 
@@ -60,7 +44,7 @@ describe('UserDialog', () => {
     return {
       uuid: 'uuid-caller',
       email: 'caller@mineduc.gob.gt',
-      firstName: 'Caller',
+      firstName: 'Super',
       lastName: 'Admin',
       role: 'superadmin',
       subdivision: null,
@@ -71,24 +55,23 @@ describe('UserDialog', () => {
   }
 
   beforeEach(() => {
-    getCommunitiesFn = vi.fn().mockReturnValue(
-      of(
-        buildCommunityList([
-          buildCommunity('community-eb', 'Educación Básica'),
-          buildCommunity('community-tc', 'Educación para el Trabajo y la Cultura'),
-          buildCommunity('community-ipe', 'Investigación y Proyectos Educativos'),
-        ]),
-      ),
+    getAssignableGroupsFn = vi.fn().mockReturnValue(
+      of([
+        buildGroup('g-admin', 'Administrator'),
+        buildGroup('g-ae-basica', 'ADMIN_ED_BASICA'),
+        buildGroup('g-ae-trabajo', 'ADMIN_ED_TRABAJO'),
+        buildGroup('g-se-basica', 'SUBMITTERS_ED_BASICA'),
+        buildGroup('g-se-trabajo', 'SUBMITTERS_ED_TRABAJO'),
+      ]),
     );
-    getCollectionsFn = vi.fn().mockReturnValue(of(buildCollectionList([])));
 
     TestBed.configureTestingModule({
       imports: [UserDialog],
       providers: [
         provideNoopAnimations(),
         {
-          provide: DSpaceApiService,
-          useValue: { getCommunities: getCommunitiesFn, getCollections: getCollectionsFn },
+          provide: UserManagementService,
+          useValue: { getAssignableGroups$: getAssignableGroupsFn },
         },
       ],
     });
@@ -99,106 +82,87 @@ describe('UserDialog', () => {
     fixture.componentRef.setInput('caller', buildUserView());
   });
 
-  /** Acceso al componente como any para leer signals y outputs sin pelear con tipos. */
-  function asAny(value: unknown): any {
-    return value as any;
-  }
-
-  /**
-   * El UserDialog pide getCommunities al renderizar para resolver el uuid
-   * inicial cuando el caller es admin_subdireccion. La lista plana de
-   * opciones la consume directamente el ScopeSelector.
-   */
-  it('should request getCommunities() on init to resolve the caller subdivision uuid', () => {
+  /** Verifica que el diálogo pida la lista de grupos al facade al primer render. */
+  it('should request getAssignableGroups$ on init', () => {
     fixture.detectChanges();
-
-    expect(getCommunitiesFn).toHaveBeenCalled();
+    expect(getAssignableGroupsFn).toHaveBeenCalled();
   });
 
-  /**
-   * Caller superadmin: el selector de rol incluye los tres roles y no
-   * está deshabilitado. Lo dejamos chiquito (solo verifica el flag de
-   * disabled) porque la lista de roles ya la cubre el facade en su spec.
-   */
-  it('should NOT disable the role selector when caller is superadmin', () => {
-    fixture.componentRef.setInput('caller', buildUserView({ role: 'superadmin' }));
+  /** Verifica que superadmin vea todos los grupos asignables en el dropdown. */
+  it('should expose every assignable group as a dropdown option when caller is superadmin', () => {
     fixture.detectChanges();
-
-    expect(asAny(component).roleSelectorDisabled()).toBe(false);
+    const options = (component as any).roleOptions();
+    const names = options.map((o: any) => o.value.name);
+    expect(names).toEqual([
+      'Administrator',
+      'ADMIN_ED_BASICA',
+      'ADMIN_ED_TRABAJO',
+      'SUBMITTERS_ED_BASICA',
+      'SUBMITTERS_ED_TRABAJO',
+    ]);
   });
 
-  /** Decisión A del Ciclo 12: el rol queda visible pero deshabilitado. */
-  it('should disable the role selector when caller is admin_subdireccion', () => {
+  /** Verifica que admin_subdireccion solo vea el SUBMITTERS_{sufijo} de su propia subdivisión. */
+  it('should show only SUBMITTERS_{suffix} matching the admin_subdireccion caller subdivision', () => {
     fixture.componentRef.setInput(
       'caller',
-      buildUserView({
-        uuid: 'uuid-admin-eb',
-        role: 'admin_subdireccion',
-        subdivision: 'Educación Básica',
-      }),
+      buildUserView({ role: 'admin_subdireccion', subdivision: 'ED_BASICA' }),
     );
     fixture.detectChanges();
-
-    expect(asAny(component).roleSelectorDisabled()).toBe(true);
+    const options = (component as any).roleOptions();
+    expect(options).toHaveLength(1);
+    expect(options[0].value.name).toBe('SUBMITTERS_ED_BASICA');
   });
 
-  /**
-   * Cuando el caller es admin_subdireccion, el formulario arranca con
-   * personal_delegado fijo en role. La subdivisión la maneja el
-   * ScopeSelector vía scopeInitialSubdivisionUuid, que resuelve el uuid
-   * a partir del nombre de subdivisión del caller.
-   */
-  it('should preselect personal_delegado and resolve the caller community uuid when caller is admin_subdireccion', () => {
+  /** Verifica que el control se preseleccione y quede deshabilitado cuando el caller es admin_subdireccion. */
+  it('should preselect and disable the target group control when caller is admin_subdireccion', () => {
     fixture.componentRef.setInput(
       'caller',
-      buildUserView({
-        uuid: 'uuid-admin-eb',
-        role: 'admin_subdireccion',
-        subdivision: 'Educación Básica',
-      }),
+      buildUserView({ role: 'admin_subdireccion', subdivision: 'ED_BASICA' }),
     );
     fixture.detectChanges();
-
-    expect(component.form.value.role).toBe('personal_delegado');
-    expect(asAny(component).scopeInitialSubdivisionUuid()).toBe('community-eb');
-    expect(asAny(component).scopeDisabledSubdivision()).toBe(true);
+    const ctrl = (component as any).form.get('targetGroupUuid');
+    expect(ctrl.value).toBe('g-se-basica');
+    expect(ctrl.disabled).toBe(true);
   });
 
-  /**
-   * El submit emite el input listo para mandárselo al facade. El scope
-   * se simula vía onScopeChange porque en runtime es el ScopeSelector
-   * quien lo emite; en el test tomamos su lugar.
-   */
-  it('should emit createSubmitted with the form value when the form is valid and submitted', () => {
+  /** Verifica que superadmin mantenga el control habilitado y sin valor preseleccionado. */
+  it('should leave the target group control enabled and empty when caller is superadmin', () => {
     fixture.detectChanges();
+    const ctrl = (component as any).form.get('targetGroupUuid');
+    expect(ctrl.disabled).toBe(false);
+    expect(ctrl.value).toBeNull();
+  });
 
-    component.form.patchValue({
+  /** Verifica que el emit lleve uuid y name del grupo para que el facade valide alcance sin roundtrip. */
+  it('should emit createSubmitted with email, firstName, lastName and targetGroup {uuid, name}', async () => {
+    fixture.detectChanges();
+    (component as any).form.patchValue({
       email: 'nuevo@mineduc.gob.gt',
       firstName: 'Nuevo',
       lastName: 'Usuario',
-      role: 'personal_delegado',
-    } as any);
-    component.onScopeChange({
-      subdivisionCommunityUuid: 'community-eb',
-      collectionUuids: ['collection-peac'],
-      valid: true,
+      targetGroupUuid: 'g-se-basica',
     });
 
-    const emitted: any[] = [];
-    outputToObservable(component.createSubmitted).subscribe((value) => emitted.push(value));
+    const emitted = firstValueFrom(outputToObservable(component.createSubmitted));
+    (component as any).onSubmit();
+    const payload = await emitted;
 
-    component.onSubmit();
+    expect(payload).toEqual({
+      email: 'nuevo@mineduc.gob.gt',
+      firstName: 'Nuevo',
+      lastName: 'Usuario',
+      targetGroup: { uuid: 'g-se-basica', name: 'SUBMITTERS_ED_BASICA' },
+    });
+  });
 
-    expect(emitted.length).toBe(1);
-    expect(emitted[0]).toEqual(
-      expect.objectContaining({
-        email: 'nuevo@mineduc.gob.gt',
-        firstName: 'Nuevo',
-        lastName: 'Usuario',
-        role: 'personal_delegado',
-        subdivisionCommunityUuid: 'community-eb',
-        collectionUuids: ['collection-peac'],
-      }),
-    );
+  describe('labelForGroup', () => {
+    /** Verifica que el label del dropdown se derive del nombre del grupo sin tablas hardcoded. */
+    it('should derive a friendly label from the group name without hardcoded tables', () => {
+      expect(labelForGroup('Administrator')).toBe('Superadministrador del portal');
+      expect(labelForGroup('ADMIN_ED_BASICA')).toBe('Admin · ED BASICA');
+      expect(labelForGroup('SUBMITTERS_ED_TRABAJO')).toBe('Delegado · ED TRABAJO');
+      expect(labelForGroup('ADMIN_ALFABETIZACION')).toBe('Admin · ALFABETIZACION');
+    });
   });
 });

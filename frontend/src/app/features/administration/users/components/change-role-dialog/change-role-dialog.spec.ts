@@ -1,51 +1,42 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { outputToObservable } from '@angular/core/rxjs-interop';
 import { vi } from 'vitest';
-import { of } from 'rxjs';
+import { firstValueFrom, of } from 'rxjs';
 
 import { ChangeRoleDialog } from './change-role-dialog';
-import { DSpaceApiService } from '../../../../../core/api/dspace-api.service';
+import { UserManagementService } from '../../services/user-management.service';
 import { UserView } from '../../models/user-view.model';
-import { Community } from '../../../../../core/api/models/community.model';
-import { Collection } from '../../../../../core/api/models/collection.model';
-import { HalListResponse } from '../../../../../core/api/models/hal.model';
+import { Group } from '../../../../../core/api/models/group.model';
 
 /**
- * Tests del `ChangeRoleDialog`. Recibe al target por input, reusa `ScopeSelector` y siembra el
- * form con el rol actual del target para que el operador solo cambie lo que quiera.
+ * Tests de `ChangeRoleDialog`.
  *
- * Ciclo 12 TDD — Sprint 5. Ajustado en Ciclo 13.
+ * Diálogo para cambiar el grupo de rol de un usuario existente. Mismo dropdown
+ * dinámico que `UserDialog`, poblado con los grupos reales del portal. El emit
+ * lleva el uuid del target y el grupo nuevo (uuid + name) para que el facade
+ * agregue al nuevo y retire de los previos manteniendo la invariante atómica.
+ *
+ * Ciclos 12, 17 TDD — Sprint 5.
  */
 describe('ChangeRoleDialog', () => {
   let fixture: ComponentFixture<ChangeRoleDialog>;
   let component: ChangeRoleDialog;
-  let getCommunitiesFn: ReturnType<typeof vi.fn>;
-  let getCollectionsFn: ReturnType<typeof vi.fn>;
+  let getAssignableGroupsFn: ReturnType<typeof vi.fn>;
 
-  function buildCommunity(uuid: string, name: string): Community {
+  function buildGroup(uuid: string, name: string): Group {
     return {
       uuid,
       name,
-      handle: `123/${uuid}`,
-      metadata: {},
-      archivedItemsCount: 0,
-      type: 'community',
-    };
-  }
-
-  function buildCommunityList(items: Community[]): HalListResponse<Community> {
-    return {
-      _embedded: { communities: items },
-      _links: { self: { href: '/server/api/core/communities' } },
-      page: { size: items.length, totalElements: items.length, totalPages: 1, number: 0 },
-    };
-  }
-
-  function buildCollectionList(items: Collection[]): HalListResponse<Collection> {
-    return {
-      _embedded: { collections: items },
-      _links: { self: { href: '/server/api/core/communities/x/collections' } },
-      page: { size: items.length, totalElements: items.length, totalPages: 1, number: 0 },
+      permanent: name === 'Administrator',
+      type: 'group',
+      _links: {
+        self: { href: `/server/api/eperson/groups/${uuid}` },
+        object: { href: '' },
+        epersons: { href: `/server/api/eperson/groups/${uuid}/epersons` },
+        subgroups: { href: `/server/api/eperson/groups/${uuid}/subgroups` },
+      },
     };
   }
 
@@ -56,7 +47,7 @@ describe('ChangeRoleDialog', () => {
       firstName: 'Target',
       lastName: 'User',
       role: 'admin_subdireccion',
-      subdivision: 'Educación Básica',
+      subdivision: 'ED_BASICA',
       status: 'active',
       lastActive: null,
       ...overrides,
@@ -64,23 +55,22 @@ describe('ChangeRoleDialog', () => {
   }
 
   beforeEach(() => {
-    getCommunitiesFn = vi.fn().mockReturnValue(
-      of(
-        buildCommunityList([
-          buildCommunity('community-eb', 'Educación Básica'),
-          buildCommunity('community-tc', 'Educación para el Trabajo y la Cultura'),
-        ]),
-      ),
+    getAssignableGroupsFn = vi.fn().mockReturnValue(
+      of([
+        buildGroup('g-admin', 'Administrator'),
+        buildGroup('g-ae-basica', 'ADMIN_ED_BASICA'),
+        buildGroup('g-ae-trabajo', 'ADMIN_ED_TRABAJO'),
+        buildGroup('g-se-basica', 'SUBMITTERS_ED_BASICA'),
+      ]),
     );
-    getCollectionsFn = vi.fn().mockReturnValue(of(buildCollectionList([])));
 
     TestBed.configureTestingModule({
       imports: [ChangeRoleDialog],
       providers: [
         provideNoopAnimations(),
         {
-          provide: DSpaceApiService,
-          useValue: { getCommunities: getCommunitiesFn, getCollections: getCollectionsFn },
+          provide: UserManagementService,
+          useValue: { getAssignableGroups$: getAssignableGroupsFn },
         },
       ],
     });
@@ -88,19 +78,39 @@ describe('ChangeRoleDialog', () => {
     fixture = TestBed.createComponent(ChangeRoleDialog);
     component = fixture.componentInstance;
     fixture.componentRef.setInput('visible', true);
+    fixture.componentRef.setInput('target', buildUserView());
   });
 
-  /**
-   * Comportamiento normal: cuando el target trae un rol válido el form se
-   * siembra con ese rol para que el operador solo cambie lo que quiera.
-   */
-  it('should seed the role form with the target role when the target has a valid role', () => {
-    fixture.componentRef.setInput(
-      'target',
-      buildUserView({ role: 'admin_subdireccion', subdivision: 'Educación Básica' }),
-    );
+  /** Verifica que el diálogo pida la lista de grupos al facade al primer render. */
+  it('should request getAssignableGroups$ on init', () => {
     fixture.detectChanges();
+    expect(getAssignableGroupsFn).toHaveBeenCalled();
+  });
 
-    expect(component.form.value.role).toBe('admin_subdireccion');
+  /** Verifica que se rendericen todos los grupos asignables como opciones del dropdown. */
+  it('should render every assignable group as an option', () => {
+    fixture.detectChanges();
+    const names = (component as any).roleOptions().map((o: any) => o.value.name);
+    expect(names).toEqual([
+      'Administrator',
+      'ADMIN_ED_BASICA',
+      'ADMIN_ED_TRABAJO',
+      'SUBMITTERS_ED_BASICA',
+    ]);
+  });
+
+  /** Verifica que el emit lleve uuid del target y el grupo nuevo completo (uuid + name). */
+  it('should emit changeSubmitted with the target uuid and the selected group', async () => {
+    fixture.detectChanges();
+    (component as any).form.patchValue({ targetGroupUuid: 'g-ae-trabajo' });
+
+    const emitted = firstValueFrom(outputToObservable(component.changeSubmitted));
+    (component as any).onSubmit();
+    const payload = await emitted;
+
+    expect(payload).toEqual({
+      uuid: 'uuid-target',
+      newGroup: { uuid: 'g-ae-trabajo', name: 'ADMIN_ED_TRABAJO' },
+    });
   });
 });

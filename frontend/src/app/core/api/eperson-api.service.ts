@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, of, throwError } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { EPerson } from './models/eperson.model';
 import { HalListResponse, Paginated } from './models/hal.model';
 import {
@@ -95,6 +95,28 @@ export class EPersonApiService {
         params: httpParams,
       })
       .pipe(map((response) => mapHalList(response, EMBEDDED_KEY_EPERSONS)));
+  }
+
+  /**
+   * Busca un eperson por correo exacto; devuelve null si no existe. Usado
+   * para pre-validar alta sin depender del 500 genérico que DSpace responde
+   * cuando el POST choca con un correo ya registrado.
+   */
+  searchByEmail(email: string): Observable<EPerson | null> {
+    const url = `${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}/search/byEmail`;
+    const params = new HttpParams().set('email', email);
+    return this.http.get<EPerson>(url, { params }).pipe(
+      map((eperson) => eperson ?? null),
+      catchError((err: { status?: number }) => {
+        // 204/404: no existe. 403: el caller no tiene permiso de búsqueda global
+        // (admin_subdireccion), tratamos como "no sabemos" y dejamos que el POST
+        // posterior sea quien falle si había duplicado.
+        if (err?.status === 204 || err?.status === 404 || err?.status === 403) {
+          return of<EPerson | null>(null);
+        }
+        return throwError(() => err);
+      }),
+    );
   }
 
   /**

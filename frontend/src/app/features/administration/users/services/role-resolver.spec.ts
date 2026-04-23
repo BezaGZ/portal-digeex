@@ -1,139 +1,122 @@
 import { Group } from '../../../../core/api/models/group.model';
-import { resolveRoleFromGroups } from './role-resolver';
+import {
+  ADMINISTRATOR_GROUP_NAME,
+  extractSubdivisionSuffix,
+  isPortalRoleGroup,
+  resolveRoleFromGroups,
+} from './role-resolver';
 
 /**
- * Tests de resolveRoleFromGroups, función pura que deriva el rol del
- * sistema a partir de los grupos de DSpace a los que pertenece el eperson.
+ * Tests de `role-resolver`.
  *
- * Mapeo de reglas de negocio:
- *  - RN-07: grupo "Administrator"                   → superadmin
- *  - RN-08: _links.object.href → /core/communities/ → admin_subdireccion
- *  - RN-13: _links.object.href → /core/collections/ → personal_delegado
+ * Utilidades puras que derivan el rol del portal y la subdivisión a partir
+ * del nombre de los grupos de DSpace, porque `_links.object.href` devuelve
+ * vacío para grupos custom creados vía PUT al subrecurso. El setup del
+ * portal crea los grupos con los prefijos `ADMIN_` y `SUBMITTERS_`, y esta
+ * capa los traduce al dominio (superadmin, admin_subdireccion, personal_delegado).
  *
- * Orden de precedencia cuando varios aplican:
- *  superadmin > admin_subdireccion > personal_delegado
- *
- * Esto se alinea con el modelo de DSpace: un eperson puede estar en
- * varios grupos a la vez, pero el UI presenta un único rol efectivo.
- *
- * Ciclo 9 — Sprint 5.
+ * Ciclo 17 TDD — Sprint 5.
  */
-describe('resolveRoleFromGroups', () => {
-  const administratorGroup: Group = {
-    uuid: 'group-administrator',
-    name: 'Administrator',
-    permanent: true,
-    type: 'group',
-    _links: {
-      self: { href: '/server/api/eperson/groups/group-administrator' },
-      object: { href: '' },
-      epersons: { href: '/server/api/eperson/groups/group-administrator/epersons' },
-      subgroups: { href: '/server/api/eperson/groups/group-administrator/subgroups' },
-    },
-  };
+describe('role-resolver', () => {
+  function buildGroup(name: string): Group {
+    return {
+      uuid: `uuid-${name}`,
+      name,
+      permanent: false,
+      type: 'group',
+      _links: {
+        self: { href: `/server/api/eperson/groups/uuid-${name}` },
+        object: { href: '' },
+        epersons: { href: `/server/api/eperson/groups/uuid-${name}/epersons` },
+        subgroups: { href: `/server/api/eperson/groups/uuid-${name}/subgroups` },
+      },
+    };
+  }
 
-  const anonymousGroup: Group = {
-    uuid: 'group-anonymous',
-    name: 'Anonymous',
-    permanent: true,
-    type: 'group',
-    _links: {
-      self: { href: '/server/api/eperson/groups/group-anonymous' },
-      object: { href: '' },
-      epersons: { href: '/server/api/eperson/groups/group-anonymous/epersons' },
-      subgroups: { href: '/server/api/eperson/groups/group-anonymous/subgroups' },
-    },
-  };
-
-  const communityAdminGroup: Group = {
-    uuid: 'group-admin-educacion-basica',
-    name: 'COMMUNITY_educacion_basica_ADMIN',
-    permanent: false,
-    type: 'group',
-    _links: {
-      self: { href: '/server/api/eperson/groups/group-admin-educacion-basica' },
-      object: { href: '/server/api/core/communities/community-educacion-basica' },
-      epersons: { href: '/server/api/eperson/groups/group-admin-educacion-basica/epersons' },
-      subgroups: { href: '/server/api/eperson/groups/group-admin-educacion-basica/subgroups' },
-    },
-  };
-
-  const collectionSubmitterGroup: Group = {
-    uuid: 'group-submit-coleccion-lengua',
-    name: 'COLLECTION_coleccion_lengua_SUBMIT',
-    permanent: false,
-    type: 'group',
-    _links: {
-      self: { href: '/server/api/eperson/groups/group-submit-coleccion-lengua' },
-      object: { href: '/server/api/core/collections/collection-lengua' },
-      epersons: { href: '/server/api/eperson/groups/group-submit-coleccion-lengua/epersons' },
-      subgroups: { href: '/server/api/eperson/groups/group-submit-coleccion-lengua/subgroups' },
-    },
-  };
-
-  /**
-   * RN-07: miembro del grupo "Administrator" → superadmin.
-   * El nombre del grupo es el discriminador, no depende de _links.object.
-   */
-  it('should return "superadmin" when Administrator group is present', () => {
-    expect(resolveRoleFromGroups([administratorGroup])).toBe('superadmin');
+  /** Verifica que el grupo global Administrator resuelva a superadmin (RN-07). */
+  it('should resolve superadmin when the Administrator group is present', () => {
+    expect(resolveRoleFromGroups([buildGroup(ADMINISTRATOR_GROUP_NAME)])).toBe('superadmin');
   });
 
-  /**
-   * RN-08: grupo cuyo _links.object apunta a una community → admin_subdireccion.
-   * El nombre (COMMUNITY_*_ADMIN) es convención pero no se usa para decidir,
-   * porque DSpace no lo garantiza para todas las instalaciones.
-   */
-  it('should return "admin_subdireccion" when group links to a community', () => {
-    expect(resolveRoleFromGroups([communityAdminGroup])).toBe('admin_subdireccion');
+  /** Verifica que cualquier grupo con prefijo ADMIN_ resuelva a admin_subdireccion. */
+  it('should resolve admin_subdireccion when any group name starts with ADMIN_', () => {
+    expect(resolveRoleFromGroups([buildGroup('ADMIN_ED_BASICA')])).toBe('admin_subdireccion');
+    expect(resolveRoleFromGroups([buildGroup('ADMIN_ALFABETIZACION')])).toBe('admin_subdireccion');
   });
 
-  /**
-   * RN-13: grupo cuyo _links.object apunta a una collection → personal_delegado.
-   * Corresponde al submittersGroup de una colección.
-   */
-  it('should return "personal_delegado" when group links to a collection', () => {
-    expect(resolveRoleFromGroups([collectionSubmitterGroup])).toBe('personal_delegado');
+  /** Verifica que cualquier grupo con prefijo SUBMITTERS_ resuelva a personal_delegado. */
+  it('should resolve personal_delegado when any group name starts with SUBMITTERS_', () => {
+    expect(resolveRoleFromGroups([buildGroup('SUBMITTERS_ED_TRABAJO')])).toBe('personal_delegado');
+    expect(resolveRoleFromGroups([buildGroup('SUBMITTERS_NUEVA')])).toBe('personal_delegado');
   });
 
-  /**
-   * Sin grupos: el eperson no tiene rol asignado en el sistema.
-   * El facade decidirá más adelante si bloquea el acceso o lo trata
-   * como "sin permisos", pero la función pura responde null.
-   */
-  it('should return null when groups list is empty', () => {
+  /** Verifica que la lista vacía devuelva null para que el facade decida el bloqueo. */
+  it('should return null when the group list is empty', () => {
     expect(resolveRoleFromGroups([])).toBeNull();
   });
 
-  /**
-   * Solo grupos que no mapean a ningún rol (por ejemplo, Anonymous):
-   * la función debe devolver null, no caer en un rol por defecto.
-   */
-  it('should return null when only non-role groups are present (e.g. Anonymous)', () => {
-    expect(resolveRoleFromGroups([anonymousGroup])).toBeNull();
+  /** Verifica que Anonymous y los COMMUNITY_{uuid}_ADMIN auto-creados por DSpace no cuenten como rol. */
+  it('should return null for Anonymous and COMMUNITY_{uuid}_ADMIN auto-created by DSpace', () => {
+    expect(resolveRoleFromGroups([buildGroup('Anonymous')])).toBeNull();
+    expect(
+      resolveRoleFromGroups([buildGroup('COMMUNITY_47d05b9d-adc6-4a86-b382-b74fc3beff1b_ADMIN')]),
+    ).toBeNull();
   });
 
-  /**
-   * Precedencia: si el eperson está en "Administrator" y también en
-   * grupos de subdirección o colección, prevalece superadmin. Esto
-   * evita restringir accidentalmente a un admin global por heredar
-   * otros grupos de prueba.
-   */
-  it('should prefer "superadmin" when Administrator is present with other role groups', () => {
+  /** Verifica que superadmin prevalezca cuando el eperson también está en otros grupos de rol. */
+  it('should prefer superadmin over admin_subdireccion and personal_delegado', () => {
     expect(
-      resolveRoleFromGroups([communityAdminGroup, administratorGroup, collectionSubmitterGroup]),
+      resolveRoleFromGroups([
+        buildGroup('ADMIN_ED_BASICA'),
+        buildGroup(ADMINISTRATOR_GROUP_NAME),
+        buildGroup('SUBMITTERS_ED_BASICA'),
+      ]),
     ).toBe('superadmin');
   });
 
-  /**
-   * Precedencia: admin de community sobre submitter de collection.
-   * Un admin de subdirección normalmente puede subir en sus propias
-   * colecciones, así que heredar submitter no debe "degradarlo" a
-   * personal_delegado.
-   */
-  it('should prefer "admin_subdireccion" over "personal_delegado" when both are present', () => {
-    expect(resolveRoleFromGroups([communityAdminGroup, collectionSubmitterGroup])).toBe(
-      'admin_subdireccion',
-    );
+  /** Verifica que admin_subdireccion prevalezca sobre personal_delegado cuando coexisten. */
+  it('should prefer admin_subdireccion over personal_delegado when both prefixes are present', () => {
+    expect(
+      resolveRoleFromGroups([buildGroup('ADMIN_ED_BASICA'), buildGroup('SUBMITTERS_ED_BASICA')]),
+    ).toBe('admin_subdireccion');
+  });
+
+  describe('extractSubdivisionSuffix', () => {
+    /** Verifica que el sufijo del primer grupo ADMIN_ del eperson se devuelva tal cual. */
+    it('should return the suffix of the first ADMIN_ group', () => {
+      expect(extractSubdivisionSuffix([buildGroup('ADMIN_ED_BASICA')])).toBe('ED_BASICA');
+    });
+
+    /** Verifica que el sufijo venga del grupo SUBMITTERS_ cuando no hay ADMIN_. */
+    it('should return the suffix of a SUBMITTERS_ group when no ADMIN_ is present', () => {
+      expect(extractSubdivisionSuffix([buildGroup('SUBMITTERS_ED_TRABAJO')])).toBe('ED_TRABAJO');
+    });
+
+    /** Verifica que sin grupos de rol del portal devuelva null (superadmin global no tiene subdivisión). */
+    it('should return null when no ADMIN_ or SUBMITTERS_ group is present', () => {
+      expect(extractSubdivisionSuffix([buildGroup(ADMINISTRATOR_GROUP_NAME)])).toBeNull();
+      expect(extractSubdivisionSuffix([buildGroup('Anonymous')])).toBeNull();
+      expect(extractSubdivisionSuffix([])).toBeNull();
+    });
+  });
+
+  describe('isPortalRoleGroup', () => {
+    /** Verifica que Administrator, ADMIN_* y SUBMITTERS_* pasen como grupo de rol del portal. */
+    it('should accept Administrator, ADMIN_* and SUBMITTERS_*', () => {
+      expect(isPortalRoleGroup(buildGroup(ADMINISTRATOR_GROUP_NAME))).toBe(true);
+      expect(isPortalRoleGroup(buildGroup('ADMIN_ED_BASICA'))).toBe(true);
+      expect(isPortalRoleGroup(buildGroup('SUBMITTERS_ED_TRABAJO'))).toBe(true);
+    });
+
+    /** Verifica que Anonymous y los auto-creados por DSpace queden fuera del filtro. */
+    it('should reject Anonymous and COMMUNITY_/COLLECTION_ auto-created groups', () => {
+      expect(isPortalRoleGroup(buildGroup('Anonymous'))).toBe(false);
+      expect(
+        isPortalRoleGroup(buildGroup('COMMUNITY_47d05b9d-adc6-4a86-b382-b74fc3beff1b_ADMIN')),
+      ).toBe(false);
+      expect(
+        isPortalRoleGroup(buildGroup('COLLECTION_47d05b9d-adc6-4a86-b382-b74fc3beff1b_SUBMIT')),
+      ).toBe(false);
+    });
   });
 });

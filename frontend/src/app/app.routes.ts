@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { superadminGuard } from './features/administration/users/guards/superadmin.guard';
 
 export const routes: Routes = [
 
@@ -84,6 +85,7 @@ export const routes: Routes = [
       },
       {
         path: 'usuarios',
+        canActivate: [superadminGuard],
         loadComponent: () => import('./features/administration/users/users').then(m => m.Users),
         data: { breadcrumb: 'Usuarios' }
       },

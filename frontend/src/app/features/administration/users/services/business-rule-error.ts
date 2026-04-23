@@ -8,9 +8,11 @@
  *  - DUPLICATE_EMAIL         → RN-10 (una cuenta por correo)
  *  - EMAIL_INVALID           → RN-02 (correo institucional obligatorio)
  *  - LAST_SUPERADMIN         → RN-11 (proteger al último superadmin activo)
- *  - SELF_DEACTIVATE         → RN-12 (no autodesactivación)
+ *  - SELF_DEACTIVATE         → RN-12 y RN-27 (no autodesactivarse ni autocambiarse de rol)
+ *  - SELF_RESET              → RN-31 (no autoreset de contraseña desde el panel)
  *  - SUBDIVISION_REQUIRED    → RN-26 (subdirección obligatoria si el rol no es superadmin)
- *  - INSUFFICIENT_PRIVILEGES → RN-08 y RN-13 (el caller intenta actuar fuera de su ámbito o elevar permisos por encima de su propio rol)
+ *  - INSUFFICIENT_PRIVILEGES → RN-08 y RN-13 (actuar fuera del ámbito o elevar permisos por encima del propio rol)
+ *  - OUT_OF_SCOPE            → RN-32 (admin_subdireccion sobre un eperson de otra subdirección)
  *  - NOT_FOUND               → recurso no existe
  */
 export type BusinessRuleErrorCode =
@@ -18,41 +20,25 @@ export type BusinessRuleErrorCode =
   | 'EMAIL_INVALID'
   | 'LAST_SUPERADMIN'
   | 'SELF_DEACTIVATE'
+  | 'SELF_RESET'
   | 'SUBDIVISION_REQUIRED'
   | 'INSUFFICIENT_PRIVILEGES'
+  | 'OUT_OF_SCOPE'
   | 'NOT_FOUND';
 
 /**
- * Error de regla de negocio del panel de usuarios. Extiende Error para
- * que los operadores de RxJS (catchError) y los handlers globales lo
- * traten como un error nativo, y agrega un `code` tipado para que el
- * consumidor pueda decidir el mensaje a mostrar sin parsear strings.
- *
- * Ciclo 9  — Sprint 5.
+ * Error de regla de negocio del panel de usuarios. Extiende Error para que
+ * catchError y los handlers globales lo traten como error nativo, y expone
+ * un `code` tipado para que el consumidor mapee a toast sin parsear texto.
  */
 export class BusinessRuleError extends Error {
-  /**
-   * Código estable de la regla violada. Se mantiene como `readonly`
-   * porque una vez emitido el error no debe cambiar de identidad.
-   */
+  /** Código estable de la regla violada; una vez emitido no cambia de identidad. */
   readonly code: BusinessRuleErrorCode;
 
   constructor(code: BusinessRuleErrorCode, message: string) {
     super(message);
     this.code = code;
-    /**
-     * Forzar el name del prototipo. Por defecto Error.name queda como
-     * 'Error', y queremos que `err.name` y los logs muestren el tipo
-     * real para distinguir errores de dominio de los HTTP genéricos.
-     */
     this.name = 'BusinessRuleError';
-    /**
-     * Restaurar la cadena de prototipos. Es el patrón recomendado para
-     * subclases de Error en TypeScript: sin esta línea, dependiendo del
-     * target de compilación, `instanceof BusinessRuleError` puede
-     * devolver false porque el constructor de Error rompe la cadena.
-     * Ver https://github.com/microsoft/TypeScript-wiki/blob/main/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
-     */
     Object.setPrototypeOf(this, BusinessRuleError.prototype);
   }
 }

@@ -21,27 +21,17 @@
     <div class="form-field">
       <p-floatLabel>
         <p-select
-          id="role"
-          formControlName="role"
-          [options]="roleOptions"
+          id="targetGroupUuid"
+          formControlName="targetGroupUuid"
+          [options]="roleOptions()"
           optionLabel="label"
-          optionValue="value"
-          [optionDisabled]="'disabled'"
+          optionValue="value.uuid"
           appendTo="body"
           class="w-full"
         />
-        <label for="role">Nuevo rol *</label>
+        <label for="targetGroupUuid">Nuevo rol *</label>
       </p-floatLabel>
     </div>
-
-    @if (showScopeSelector()) {
-      <app-scope-selector
-        [role]="currentRole()"
-        [initialSubdivisionUuid]="scopeInitialSubdivisionUuid()"
-        [initialCollectionUuids]="[]"
-        (scopeChange)="onScopeChange($event)"
-      />
-    }
   </form>
 
   <ng-template #footer>

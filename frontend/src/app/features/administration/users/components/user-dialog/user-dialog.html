@@ -70,34 +70,24 @@
     <div class="form-field">
       <p-floatLabel>
         <p-select
-          id="role"
-          formControlName="role"
-          [options]="allowedRoles()"
+          id="targetGroupUuid"
+          formControlName="targetGroupUuid"
+          [options]="roleOptions()"
           optionLabel="label"
-          optionValue="value"
-          [optionDisabled]="'disabled'"
-          [disabled]="roleSelectorDisabled()"
+          optionValue="value.uuid"
           appendTo="body"
           class="w-full"
-          [class.ng-invalid]="hasError('role')"
-          [class.ng-dirty]="hasError('role')"
+          [class.ng-invalid]="hasError('targetGroupUuid')"
+          [class.ng-dirty]="hasError('targetGroupUuid')"
         />
-        <label for="role">Rol *</label>
+        <label for="targetGroupUuid">Rol *</label>
       </p-floatLabel>
-      @if (hasError('role')) {
-        <small style="color: var(--color-error)">{{ getErrorMessage('role') }}</small>
+      @if (hasError('targetGroupUuid')) {
+        <small style="color: var(--color-error)">
+          {{ getErrorMessage('targetGroupUuid') }}
+        </small>
       }
     </div>
-
-    @if (showScopeSelector()) {
-      <app-scope-selector
-        [role]="currentRole()"
-        [disabledSubdivision]="scopeDisabledSubdivision()"
-        [initialSubdivisionUuid]="scopeInitialSubdivisionUuid()"
-        [initialCollectionUuids]="[]"
-        (scopeChange)="onScopeChange($event)"
-      />
-    }
   </form>
 
   <ng-template #footer>

@@ -21,13 +21,8 @@ import { extractErrorDetail } from '../../../core/error/extract-error-detail';
 const UNEXPECTED_ERROR_FALLBACK = 'Ocurrió un error al procesar la solicitud. Intenta más tarde.';
 
 /**
- * Contenedor de la pantalla de gestión de usuarios.
- *
- * Se suscribe a getVisibleUsers$ y currentUserView$ del facade y delega
- * ahí todas las mutaciones. El trabajo propio del contenedor es mapear
- * los errores del facade a toasts: BusinessRuleError trae un code tipado
- * que se traduce a un copy en es-GT, y cualquier otro error cae al toast
- * genérico.
+ * Contenedor de gestión de usuarios. Consume los Observable del facade,
+ * delega las mutaciones y traduce BusinessRuleError a toasts en es-GT.
  */
 @Component({
   selector: 'app-users',
@@ -46,11 +41,8 @@ export class Users {
   changeRoleTarget = signal<UserView | null>(null);
 
   /**
-   * Subject que dispara el refetch de la lista. El BehaviorSubject emite
-   * inmediatamente al suscribirse, así la carga inicial sigue ocurriendo
-   * en el OnInit implícito sin necesidad de startWith. Después de cada
-   * mutación que altera el listado, un next() fuerza que switchMap pida
-   * de nuevo a DSpace y el signal reciba la vista fresca.
+   * Dispara el refetch del listado tras cada mutación. `BehaviorSubject`
+   * emite al suscribirse, así la carga inicial va sin `startWith`.
    */
   private refresh$ = new BehaviorSubject<void>(undefined);
 
@@ -103,7 +95,7 @@ export class Users {
   }
 
   onResetPasswordRequested(user: UserView) {
-    this.userService.resetPassword$(user.email).subscribe({
+    this.userService.resetPassword$({ uuid: user.uuid, email: user.email }).subscribe({
       next: () => {
         this.messageService.add({
           severity: 'success',
@@ -160,15 +152,17 @@ export class Users {
   }
 
   /**
-   * Traduce el error del facade a un toast. Las reglas bloqueantes del
-   * propio usuario (RN-11, RN-12) salen como warn porque no son fallas
-   * tecnicas, son cosas que el UI ya deberia prevenir. Cualquier otro error
-   * usa `extractErrorDetail` para revelar el mensaje del backend o del
-   * Error antes de caer al copy generico.
+   * Traduce el error del facade a un toast. Las reglas que bloquean al caller
+   * actuando sobre sí mismo o sobre el último superadmin (RN-11, RN-12, RN-31)
+   * salen como warn porque el UI ya debería prevenirlas. El resto usa
+   * extractErrorDetail para revelar el mensaje real antes del copy genérico.
    */
   private errorToToast(err: unknown) {
     if (err instanceof BusinessRuleError) {
-      const isWarning = err.code === 'LAST_SUPERADMIN' || err.code === 'SELF_DEACTIVATE';
+      const isWarning =
+        err.code === 'LAST_SUPERADMIN' ||
+        err.code === 'SELF_DEACTIVATE' ||
+        err.code === 'SELF_RESET';
       this.messageService.add({
         severity: isWarning ? 'warn' : 'error',
         summary: this.summaryForCode(err.code),
@@ -189,10 +183,12 @@ export class Users {
     const labels: Record<BusinessRuleErrorCode, string> = {
       LAST_SUPERADMIN: 'Operación no permitida',
       SELF_DEACTIVATE: 'Operación no permitida',
+      SELF_RESET: 'Operación no permitida',
       DUPLICATE_EMAIL: 'Correo duplicado',
       EMAIL_INVALID: 'Correo inválido',
       SUBDIVISION_REQUIRED: 'Subdirección requerida',
       INSUFFICIENT_PRIVILEGES: 'Permisos insuficientes',
+      OUT_OF_SCOPE: 'Fuera de tu subdirección',
       NOT_FOUND: 'No encontrado',
     };
     return labels[code];

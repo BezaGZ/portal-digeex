@@ -1,72 +1,58 @@
 import { Group } from '../../../../core/api/models/group.model';
-import { extractUuidFromHref } from '../../../../core/api/dspace-rest.util';
 import { UserRole } from '../models/user-view.model';
 
-/**
- * Nombre del grupo global de DSpace que otorga control total (RN-07).
- * Es una constante del producto: DSpace crea este grupo con ese nombre
- * exacto durante la instalación y no se renombra en nuestra instancia.
- * Se exporta para que el facade lo reuse al filtrar los grupos que
- * representan roles del portal sin volver a hardcodearlo.
- */
+/** Grupo global built-in de DSpace; control total del portal (RN-07). */
 export const ADMINISTRATOR_GROUP_NAME = 'Administrator';
 
 /**
- * Fragmentos del href de `_links.object` que identifican el tipo de DSO
- * dueño del grupo. Los usamos como discriminador en lugar del nombre
- * del grupo porque DSpace garantiza la forma del URL (/core/communities/
- * y /core/collections/), pero no impone un patrón de nombres para los
- * grupos de adminGroup y submittersGroup.
+ * Prefijos con los que el setup nombra los grupos del portal por subdirección.
+ * Cualquier grupo que empiece con estos prefijos se trata como rol del portal;
+ * el sufijo identifica la subdirección. Todo dinámico — una subdirección nueva
+ * aparece con solo crear `ADMIN_{SUFIJO}` y `SUBMITTERS_{SUFIJO}` en DSpace.
  */
-export const COMMUNITY_OBJECT_PATH = '/core/communities/';
-export const COLLECTION_OBJECT_PATH = '/core/collections/';
+export const ADMIN_GROUP_NAME_PREFIX = 'ADMIN_';
+export const SUBMITTERS_GROUP_NAME_PREFIX = 'SUBMITTERS_';
 
 /**
- * Deriva el rol del sistema a partir de los grupos de DSpace a los que
- * pertenece el eperson.
- *
- * Fuente de verdad: los grupos devueltos por GET /api/eperson/epersons/{uuid}/groups.
- * Esta función es pura — no habla con HTTP, recibe los grupos ya cargados.
- *
- * Reglas del mapeo y precedencia (RN-07, RN-08, RN-13):
- *  - Grupo global "Administrator"                   → superadmin
- *  - _links.object.href apunta a /core/communities/ → admin_subdireccion
- *  - _links.object.href apunta a /core/collections/ → personal_delegado
- *  - Ningún grupo aplica                            → null
- *
- * El orden de los chequeos implementa la precedencia declarada en el
- * spec: `superadmin` > `admin_subdireccion` > `personal_delegado`. En
- * cuanto un nivel aplica, los siguientes se saltan.
- *
- * Ciclo 9 — Sprint 5.
+ * Deriva el rol por nombre del grupo (precedencia superadmin > admin_subdireccion
+ * > personal_delegado). No usa `_links.object` porque está vacío en 9.2 para los
+ * grupos custom creados vía PUT al subrecurso.
  */
 export function resolveRoleFromGroups(groups: Group[]): UserRole | null {
-  if (groups.some((group) => group.name === ADMINISTRATOR_GROUP_NAME)) {
-    return 'superadmin';
-  }
-
-  if (groups.some((group) => group._links.object.href.includes(COMMUNITY_OBJECT_PATH))) {
-    return 'admin_subdireccion';
-  }
-
-  if (groups.some((group) => group._links.object.href.includes(COLLECTION_OBJECT_PATH))) {
+  if (groups.some((g) => g.name === ADMINISTRATOR_GROUP_NAME)) return 'superadmin';
+  if (groups.some((g) => g.name.startsWith(ADMIN_GROUP_NAME_PREFIX))) return 'admin_subdireccion';
+  if (groups.some((g) => g.name.startsWith(SUBMITTERS_GROUP_NAME_PREFIX))) {
     return 'personal_delegado';
   }
-
   return null;
 }
 
 /**
- * Devuelve el uuid de la community dueña del primer grupo con _links.object
- * apuntando a /core/communities/. Se usa junto con resolveRoleFromGroups
- * para mapear admin_subdireccion al nombre legible de la subdivisión.
+ * Sufijo de subdivisión del primer grupo ADMIN_* o SUBMITTERS_* del eperson.
+ * Ej: "ADMIN_ED_BASICA" → "ED_BASICA". Permite que `assertWithinScope$` compare
+ * alcance entre caller y target sin tablas hardcoded ni seguimiento de links.
  */
-export function extractOwningCommunityUuid(groups: Group[]): string | null {
-  for (const group of groups) {
-    const href = group._links?.object?.href;
-    if (href && href.includes(COMMUNITY_OBJECT_PATH)) {
-      return extractUuidFromHref(href);
+export function extractSubdivisionSuffix(groups: Group[]): string | null {
+  for (const g of groups) {
+    if (g.name.startsWith(ADMIN_GROUP_NAME_PREFIX)) {
+      return g.name.slice(ADMIN_GROUP_NAME_PREFIX.length);
+    }
+    if (g.name.startsWith(SUBMITTERS_GROUP_NAME_PREFIX)) {
+      return g.name.slice(SUBMITTERS_GROUP_NAME_PREFIX.length);
     }
   }
   return null;
+}
+
+/**
+ * True si el grupo representa un rol del portal. Usado por el dropdown de
+ * alta y por el resolver de rol para ignorar grupos nativos de DSpace
+ * (Anonymous, COMMUNITY_{uuid}_ADMIN, COLLECTION_{uuid}_SUBMIT, etc.).
+ */
+export function isPortalRoleGroup(group: Group): boolean {
+  return (
+    group.name === ADMINISTRATOR_GROUP_NAME ||
+    group.name.startsWith(ADMIN_GROUP_NAME_PREFIX) ||
+    group.name.startsWith(SUBMITTERS_GROUP_NAME_PREFIX)
+  );
 }

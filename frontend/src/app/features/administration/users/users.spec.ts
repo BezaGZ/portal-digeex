@@ -22,7 +22,7 @@ import { EPerson } from '../../../core/api/models/eperson.model';
  * mensaje específico por código, cualquier otro error cae al toast
  * genérico.
  *
- * Ciclo 12 — Sprint 5. Ajustado en Ciclo 16.
+ * Ciclo 12 TDD — Sprint 5. Ajustado en Ciclos 16, 17.
  */
 describe('Users (contenedor)', () => {
   let component: Users;
@@ -99,7 +99,7 @@ describe('Users (contenedor)', () => {
   }
 
   describe('lectura desde el facade', () => {
-    /** El contenedor pide la página al facade en vez de leer un signal local. */
+    /** Verifica que el contenedor pida la página al facade en vez de leer un signal local. */
     it('should request the visible users from facade.getVisibleUsers$ on init', () => {
       const fixture = TestBed.createComponent(Users);
       fixture.detectChanges();
@@ -109,7 +109,7 @@ describe('Users (contenedor)', () => {
   });
 
   describe('desactivar usuario', () => {
-    /** El handler que cuelga del output del table delega al facade con el uuid. */
+    /** Verifica que el handler colgado del output del table delegue al facade con el uuid. */
     it('should call facade.deactivateUser$ with the user uuid when the table emits deactivateRequested', () => {
       const target = buildUserView({ uuid: 'uuid-target' });
 
@@ -118,7 +118,7 @@ describe('Users (contenedor)', () => {
       expect(deactivateUserFn).toHaveBeenCalledWith('uuid-target');
     });
 
-    /** RN-11: LAST_SUPERADMIN se mapea a un toast warn con el copy en español. */
+    /** Verifica que LAST_SUPERADMIN (RN-11) se mapee a un toast warn con copy en español. */
     it('should show a warning toast in es-GT when error.code === LAST_SUPERADMIN', () => {
       deactivateUserFn.mockReturnValue(
         throwError(
@@ -140,7 +140,7 @@ describe('Users (contenedor)', () => {
       );
     });
 
-    /** RN-12: SELF_DEACTIVATE también es warn, no error. */
+    /** Verifica que SELF_DEACTIVATE (RN-12) también salga como warn y no como error. */
     it('should show a warning toast when error.code === SELF_DEACTIVATE', () => {
       deactivateUserFn.mockReturnValue(
         throwError(
@@ -158,7 +158,7 @@ describe('Users (contenedor)', () => {
       );
     });
 
-    /** Cualquier error que no sea BusinessRuleError cae al toast genérico. */
+    /** Verifica que cualquier error que no sea BusinessRuleError caiga al toast genérico. */
     it('should show a generic error toast when the thrown error is not a BusinessRuleError', () => {
       deactivateUserFn.mockReturnValue(throwError(() => new Error('boom HTTP 500')));
 
@@ -171,7 +171,7 @@ describe('Users (contenedor)', () => {
   });
 
   describe('reactivar usuario', () => {
-    /** Mismo patrón que desactivar, pero contra reactivateUser$. */
+    /** Verifica que el handler delegue a reactivateUser$ del facade con el uuid del target. */
     it('should call facade.reactivateUser$ with the user uuid when the table emits reactivateRequested', () => {
       const target = buildUserView({ uuid: 'uuid-reactivate', status: 'inactive' });
 
@@ -182,25 +182,30 @@ describe('Users (contenedor)', () => {
   });
 
   describe('restablecer contraseña', () => {
-    /** El facade recibe el correo, no el uuid (DSpace lo necesita así). */
-    it('should call facade.resetPassword$ with the user email when the table emits resetPasswordRequested', () => {
-      const target = buildUserView({ email: 'rosa.juarez@mineduc.gob.gt' });
+    /**
+     * Verifica que el contenedor delegue el reset al facade con uuid y email.
+     * El uuid viaja para que la guarda de RN-31 (autoreset) corra sin roundtrip.
+     */
+    it('should call facade.resetPassword$ with the user uuid and email when the table emits resetPasswordRequested', () => {
+      const target = buildUserView({ uuid: 'uuid-rosa', email: 'rosa.juarez@mineduc.gob.gt' });
 
       asAny(component).onResetPasswordRequested(target);
 
-      expect(resetPasswordFn).toHaveBeenCalledWith('rosa.juarez@mineduc.gob.gt');
+      expect(resetPasswordFn).toHaveBeenCalledWith({
+        uuid: 'uuid-rosa',
+        email: 'rosa.juarez@mineduc.gob.gt',
+      });
     });
   });
 
   describe('crear usuario', () => {
-    /** El input que se le pasa al facade es el mismo que sale del diálogo. */
+    /** Verifica que el contenedor reenvíe al facade el mismo input que emitió el diálogo. */
     it('should call facade.createUser$ with the form input emitted by the dialog', () => {
       const input = {
         email: 'nuevo@mineduc.gob.gt',
         firstName: 'Nuevo',
         lastName: 'Usuario',
-        role: 'personal_delegado' as const,
-        subdivisionCommunityUuid: 'community-eb',
+        targetGroup: { uuid: 'group-submitters-eb', name: 'SUBMITTERS_ED_BASICA' },
       };
 
       asAny(component).onCreateSubmitted(input);
@@ -256,7 +261,7 @@ describe('Users (contenedor)', () => {
       );
     });
 
-    /** Regresion: el detail del BusinessRuleError sigue siendo el mensaje del error, no el extraido del HTTP. */
+    /** Verifica que el detail del BusinessRuleError siga siendo su mensaje y no el extraído del HTTP (regresión). */
     it('should keep showing the BusinessRuleError detail untouched (regression)', () => {
       deactivateUserFn.mockReturnValue(
         throwError(

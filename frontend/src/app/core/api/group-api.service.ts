@@ -96,6 +96,18 @@ export class GroupApiService {
   }
 
   /**
+   * Lista paginada de grupos del recurso /api/eperson/groups. Usado por el
+   * diálogo de alta para poblar el dropdown de roles con los grupos reales
+   * que viven en DSpace, sin hardcodear nombres del lado cliente.
+   */
+  listGroups(params: { size?: number; page?: number } = {}): Observable<Paginated<Group>> {
+    const url = `${DSPACE_API_BASE}${GROUPS_COLLECTION_PATH}`;
+    return this.http
+      .get<HalListResponse<Group>>(url, { params: buildPaginationParams(params) })
+      .pipe(map((response) => mapHalList(response, EMBEDDED_KEY_GROUPS)));
+  }
+
+  /**
    * Resuelve el grupo global Administrator (RN-07) vía el endpoint nativo
    * de búsqueda por metadata. DSpace no expone un atajo tipo "getAdmin",
    * por eso se filtra por `dc.title=Administrator` y luego en memoria se

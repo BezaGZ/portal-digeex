@@ -7,88 +7,80 @@ import { UserView, UserRole } from '../models/user-view.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { EPersonApiService } from '../../../../core/api/eperson-api.service';
 import { GroupApiService } from '../../../../core/api/group-api.service';
-import { DSpaceApiService } from '../../../../core/api/dspace-api.service';
 import { EPerson } from '../../../../core/api/models/eperson.model';
 import { Group } from '../../../../core/api/models/group.model';
 import { Paginated } from '../../../../core/api/models/hal.model';
 import {
   ADMINISTRATOR_GROUP_NAME,
-  COLLECTION_OBJECT_PATH,
-  COMMUNITY_OBJECT_PATH,
-  extractOwningCommunityUuid,
+  extractSubdivisionSuffix,
+  isPortalRoleGroup,
   resolveRoleFromGroups,
 } from './role-resolver';
 import { BusinessRuleError } from './business-rule-error';
 
 /**
- * Entrada del facade para crear un usuario nuevo.
- * subdivisionCommunityUuid se exige para admin_subdireccion y personal_delegado.
- * collectionUuids solo aplica a personal_delegado: la lista que el UI ya
- * resolvió (una colección puntual o todas las de la subdirección).
+ * Entrada del alta. El UI pasa el grupo concreto al que va el eperson (uuid + name).
+ * El nombre viaja junto al uuid para que la guarda de scope lo compare sin pedir
+ * el grupo de nuevo al backend.
  */
 export interface CreateUserInput {
   email: string;
   firstName: string;
   lastName: string;
-  role: UserRole;
-  subdivisionCommunityUuid: string | null;
-  collectionUuids?: string[];
+  targetGroup: { uuid: string; name: string };
 }
 
 /**
- * Entrada del facade para cambiar el rol de un usuario existente.
- * Misma forma que CreateUserInput pero sin datos de identificación,
- * porque el eperson ya existe y solo se mueven sus grupos.
+ * Entrada del cambio de grupo. Mismo shape que en el alta, pero sobre un eperson
+ * que ya existe: el facade lo agrega al grupo nuevo y lo retira de los previos.
  */
 export interface ChangeUserRoleInput {
   uuid: string;
-  newRole: UserRole;
-  newSubdivisionCommunityUuid: string | null;
-  newCollectionUuids?: string[];
+  newGroup: { uuid: string; name: string };
 }
 
-/**
- * Proyección HAL `embed=groups` aplicable solo al listado paginado `/api/eperson/epersons`,
- * donde anida los grupos de cada item bajo su `_embedded`. Para un único eperson los grupos
- * se piden por el subrecurso `/eperson/epersons/{uuid}/groups` vía `GroupApiService`.
- */
+/** Proyección HAL `embed=groups` del listado paginado `/api/eperson/epersons`. */
 const EMBED_GROUPS = 'groups';
-
-/** Nombres fijos en HAL para anidar el grupo dueño dentro de community y collection. */
-const EMBED_ADMIN_GROUP = 'adminGroup';
-const EMBED_SUBMITTERS_GROUP = 'submittersGroup';
 
 /** Claves del metadata canónico de DSpace para primer y último nombre. */
 const METADATA_FIRSTNAME = 'eperson.firstname';
 const METADATA_LASTNAME = 'eperson.lastname';
 
-/** Dominio que RN-02 exige para los correos institucionales. */
+/** Dominio institucional exigido por RN-02. */
 const INSTITUTIONAL_EMAIL_DOMAIN = '@mineduc.gob.gt';
 
-/** Error que propaga `currentUserView$` cuando el eperson autenticado no pertenece a ningún grupo de rol del portal. */
+/**
+ * Tope por página al traer listas de DSpace. 100 es el máximo aceptado por el
+ * backend en una sola respuesta; los listados completos (epersons, groups) se
+ * arman pidiendo la primera página y después el resto en paralelo hasta cubrir
+ * `totalPages`.
+ */
+const LIST_PAGE_SIZE = 100;
+
+/** Error propagado por `currentUserView$` cuando el eperson autenticado no es de rol portal. */
 export const NO_ROLE_GROUP_ERROR =
   'El usuario autenticado no tiene un grupo de rol asignado.';
 
-/** Tupla interna con el rol y el community uuid resueltos desde los grupos del eperson. */
+/** Caller resuelto: rol + sufijo de subdivisión derivados del nombre de sus grupos. */
 interface ResolvedEPerson {
   readonly eperson: EPerson;
   readonly role: UserRole;
-  readonly communityUuid: string | null;
+  readonly subdivisionSuffix: string | null;
 }
 
 interface OrphanEPerson {
   readonly eperson: EPerson;
   readonly role: null;
-  readonly communityUuid: null;
+  readonly subdivisionSuffix: null;
 }
 
 type ResolvedEPersonOrOrphan = ResolvedEPerson | OrphanEPerson;
 
 /**
- * Facade del dominio de usuarios administrativos. Lee de DSpace vía EPerson/Group/Community API,
- * deriva el rol con `resolveRoleFromGroups` y encapsula las mutaciones manteniendo la invariante
- * "todo eperson del portal tiene grupo de rol": el alta deshace el `delete` si la asignación al
- * grupo falla y el cambio de rol agrega al grupo nuevo antes de retirar del anterior.
+ * Facade de usuarios administrativos alineado al patrón de `dspace-angular`:
+ * alta en tres pasos (eperson, uri-list al grupo, registrations) con rollback,
+ * cambio de rol add-before-remove, y rol derivado por nombre del grupo porque
+ * `_links.object` no apunta al DSO dueño en esta instancia de DSpace 9.2.
  */
 @Injectable({
   providedIn: 'root',
@@ -97,13 +89,8 @@ export class UserManagementService {
   private readonly authService = inject(AuthService);
   private readonly epersonApi = inject(EPersonApiService);
   private readonly groupApi = inject(GroupApiService);
-  private readonly dspaceApi = inject(DSpaceApiService);
 
-  /**
-   * Vista del usuario autenticado con el rol resuelto. Pide eperson y grupos por separado vía
-   * el subrecurso `/groups`, cachea con `shareReplay` y propaga error cuando el eperson no
-   * pertenece a ningún grupo de rol del portal.
-   */
+  /** Vista del usuario autenticado con rol y subdivisión resueltos por nombre de grupo. */
   readonly currentUserView$: Observable<UserView | null> = toObservable(
     this.authService.currentUser,
   ).pipe(
@@ -115,7 +102,7 @@ export class UserManagementService {
           if (resolved.role === null) {
             return throwError(() => new Error(NO_ROLE_GROUP_ERROR));
           }
-          return this.assembleSingleUserView$(resolved);
+          return of(this.assembleUserView(resolved));
         }),
       );
     }),
@@ -123,82 +110,68 @@ export class UserManagementService {
   );
 
   /**
-   * Listado paginado filtrado al alcance del caller. Aprovecha la
-   * proyección `?embed=groups` del endpoint de colección, que DSpace sí
-   * hidrata por item, evitando un GET por usuario. Los epersons sin
-   * grupo de rol se descartan del listado.
+   * Listado completo de epersons con su rol resuelto. Trae todas las páginas
+   * del backend en paralelo para que el `p-table` tenga el dataset entero y
+   * su paginación + filtrado cliente sigan funcionando a cualquier escala.
+   * Solo lo consume el panel reservado al site admin; `/api/eperson/epersons`
+   * exige `hasAuthority('ADMIN')` en DSpace 9.2.
    */
-  getVisibleUsers$(
-    params: { size?: number; page?: number } = {},
-  ): Observable<Paginated<UserView>> {
-    return this.currentUserView$.pipe(
-      switchMap((currentUser) =>
-        this.epersonApi
-          .list({ ...params, embed: EMBED_GROUPS })
-          .pipe(switchMap((paginatedResult) => this.mapPaginatedToUserViews(paginatedResult, currentUser))),
-      ),
-    );
+  getVisibleUsers$(): Observable<Paginated<UserView>> {
+    return this.epersonApi
+      .list({ size: LIST_PAGE_SIZE, page: 0, embed: EMBED_GROUPS })
+      .pipe(
+        switchMap((first) => {
+          if (first.totalPages <= 1) return of(first);
+          const remainingPages = Array.from(
+            { length: first.totalPages - 1 },
+            (_, i) => i + 1,
+          );
+          return forkJoin(
+            remainingPages.map((page) =>
+              this.epersonApi.list({ size: LIST_PAGE_SIZE, page, embed: EMBED_GROUPS }),
+            ),
+          ).pipe(
+            map((pages) => ({
+              ...first,
+              items: [...first.items, ...pages.flatMap((p) => p.items)],
+            })),
+          );
+        }),
+        map((combined) => this.mapPaginatedToUserViews(combined)),
+      );
   }
 
   /**
-   * Resuelve roles por eperson, descarta los que no tienen rol del portal y agrupa los
-   * community uuids únicos en un único forkJoin. Conserva la paginación del backend.
+   * Grupos asignables del portal. Pagina todas las páginas (mismo patrón que
+   * `getVisibleUsers$`) y filtra con `isPortalRoleGroup` para que el dropdown
+   * y el resolver de rol compartan el mismo criterio.
    */
-  private mapPaginatedToUserViews(
-    paginatedResult: Paginated<EPerson>,
-    currentUser: UserView | null,
-  ): Observable<Paginated<UserView>> {
-    const resolved = paginatedResult.items
-      .map((eperson) => this.resolveEPersonFromGroups(eperson, this.extractEmbeddedGroups(eperson)))
-      .filter((item): item is ResolvedEPerson => item.role !== null);
-
-    const uniqueCommunityUuids = Array.from(
-      new Set(
-        resolved
-          .map((item) => item.communityUuid)
-          .filter((uuid): uuid is string => uuid !== null),
-      ),
-    );
-
-    return this.fetchCommunityNames(uniqueCommunityUuids).pipe(
-      map((communityNames) => {
-        const views = resolved.map((item) =>
-          this.assembleUserView(
-            item.eperson,
-            item.role,
-            item.communityUuid ? communityNames.get(item.communityUuid) ?? null : null,
-          ),
+  getAssignableGroups$(): Observable<Group[]> {
+    return this.groupApi.listGroups({ size: LIST_PAGE_SIZE, page: 0 }).pipe(
+      switchMap((first) => {
+        if (first.totalPages <= 1) return of(first.items);
+        const remainingPages = Array.from(
+          { length: first.totalPages - 1 },
+          (_, i) => i + 1,
         );
-        return { ...paginatedResult, items: this.applyCallerScope(views, currentUser) };
+        return forkJoin(
+          remainingPages.map((page) =>
+            this.groupApi.listGroups({ size: LIST_PAGE_SIZE, page }),
+          ),
+        ).pipe(map((pages) => [...first.items, ...pages.flatMap((p) => p.items)]));
       }),
+      map((groups) => groups.filter(isPortalRoleGroup)),
     );
   }
 
-  /** Arma el UserView de un solo eperson resolviendo el nombre legible de la community cuando aplica. */
-  private assembleSingleUserView$(resolved: ResolvedEPerson): Observable<UserView> {
-    const uuids = resolved.communityUuid ? [resolved.communityUuid] : [];
-    return this.fetchCommunityNames(uuids).pipe(
-      map((communityNames) =>
-        this.assembleUserView(
-          resolved.eperson,
-          resolved.role,
-          resolved.communityUuid ? communityNames.get(resolved.communityUuid) ?? null : null,
-        ),
-      ),
-    );
+  private mapPaginatedToUserViews(paginatedResult: Paginated<EPerson>): Paginated<UserView> {
+    const items = paginatedResult.items
+      .map((eperson) => this.resolveEPersonFromGroups(eperson, this.extractEmbeddedGroups(eperson)))
+      .filter((item): item is ResolvedEPerson => item.role !== null)
+      .map((item) => this.assembleUserView(item));
+    return { ...paginatedResult, items };
   }
 
-  /** Mapa uuid→nombre legible de la community. Cortocircuita la lista vacía para evitar `forkJoin([])`. */
-  private fetchCommunityNames(uuids: string[]): Observable<Map<string, string>> {
-    if (uuids.length === 0) return of(new Map<string, string>());
-    return forkJoin(
-      uuids.map((uuid) =>
-        this.dspaceApi.getCommunity(uuid).pipe(map((community) => [uuid, community.name] as const)),
-      ),
-    ).pipe(map((entries) => new Map(entries)));
-  }
-
-  /** Pide el eperson y sus grupos en paralelo usando el subrecurso `/eperson/epersons/{uuid}/groups`. */
   private fetchEPersonWithGroups$(
     uuid: string,
   ): Observable<{ eperson: EPerson; groups: Group[] }> {
@@ -208,60 +181,39 @@ export class UserManagementService {
     });
   }
 
-  /**
-   * Proyecta rol y community uuid a partir del eperson y sus grupos.
-   * Devuelve role=null cuando el eperson no pertenece a ningún grupo de rol del portal.
-   */
   private resolveEPersonFromGroups(
     eperson: EPerson,
     groups: Group[],
   ): ResolvedEPersonOrOrphan {
     const role = resolveRoleFromGroups(groups);
     if (role === null) {
-      return { eperson, role: null, communityUuid: null };
+      return { eperson, role: null, subdivisionSuffix: null };
     }
-    const communityUuid =
-      role === 'admin_subdireccion' ? extractOwningCommunityUuid(groups) : null;
-    return { eperson, role, communityUuid };
+    return { eperson, role, subdivisionSuffix: extractSubdivisionSuffix(groups) };
   }
 
-  /** Lee los grupos bajo _embedded.groups._embedded.groups (forma HAL anidada). */
   private extractEmbeddedGroups(eperson: EPerson): Group[] {
     return eperson._embedded?.groups?._embedded?.[EMBED_GROUPS] ?? [];
   }
 
-  /** Arma el UserView final con metadata canónica y canLogIn → status. */
-  private assembleUserView(
-    eperson: EPerson,
-    role: UserRole,
-    subdivision: string | null,
-  ): UserView {
+  private assembleUserView(resolved: ResolvedEPerson): UserView {
+    const eperson = resolved.eperson;
     return {
       uuid: eperson.uuid,
       email: eperson.email,
       firstName: eperson.metadata[METADATA_FIRSTNAME]?.[0]?.value ?? '',
       lastName: eperson.metadata[METADATA_LASTNAME]?.[0]?.value ?? '',
-      role,
-      subdivision,
+      role: resolved.role,
+      subdivision: resolved.subdivisionSuffix,
       status: eperson.canLogIn ? 'active' : 'inactive',
       lastActive: eperson.lastActive,
     };
   }
 
-  /** RN-08: admin_subdireccion solo ve su subdivisión; superadmin ve todo. */
-  private applyCallerScope(userViews: UserView[], currentUser: UserView | null): UserView[] {
-    if (!currentUser) return [];
-    if (currentUser.role === 'superadmin') return userViews;
-    if (currentUser.role === 'admin_subdireccion') {
-      return userViews.filter((view) => view.subdivision === currentUser.subdivision);
-    }
-    return [];
-  }
-
   /**
-   * Crea un eperson, lo asigna al grupo de su rol y dispara el correo de fijación de contraseña.
-   * Si la asignación al grupo falla, deshace el alta con `delete(uuid)` para no dejar un eperson
-   * sin grupo de rol; un fallo del correo no revierte el alta. Aplica RN-02, RN-26 y RN-08/RN-13.
+   * Alta transaccional: POST eperson → POST uri-list al grupo destino → POST registrations.
+   * Si la asignación al grupo falla, rollback con delete(uuid) para no dejar cuenta huérfana.
+   * Un fallo del correo no revierte: la cuenta ya tiene rol y el reset se puede reenviar.
    */
   createUser$(input: CreateUserInput): Observable<EPerson> {
     if (!input.email.endsWith(INSTITUTIONAL_EMAIL_DOMAIN)) {
@@ -273,42 +225,50 @@ export class UserManagementService {
           ),
       );
     }
-    if (input.role !== 'superadmin' && !input.subdivisionCommunityUuid) {
-      return throwError(
-        () => new BusinessRuleError('SUBDIVISION_REQUIRED', 'Debes asignar una subdirección.'),
-      );
-    }
 
     return this.getCallerContext$().pipe(
       switchMap((caller) => {
         const scopeError = this.validateCreateScope(caller, input);
         if (scopeError) return throwError(() => scopeError);
 
-        return this.epersonApi
-          .create({ email: input.email, firstName: input.firstName, lastName: input.lastName })
-          .pipe(
-            switchMap((created) =>
-              this.assignToRoleGroups$(created, {
-                role: input.role,
-                subdivisionCommunityUuid: input.subdivisionCommunityUuid,
-                collectionUuids: input.collectionUuids,
-              }).pipe(
-                catchError((groupError: unknown) =>
-                  this.rollbackCreatedEPerson$(created.uuid, groupError),
+        return this.epersonApi.searchByEmail(input.email).pipe(
+          switchMap((existing) => {
+            if (existing) {
+              return throwError(
+                () =>
+                  new BusinessRuleError(
+                    'DUPLICATE_EMAIL',
+                    'Ya existe un usuario con ese correo.',
+                  ),
+              );
+            }
+            return this.epersonApi
+              .create({
+                email: input.email,
+                firstName: input.firstName,
+                lastName: input.lastName,
+              })
+              .pipe(
+                switchMap((created) =>
+                  this.groupApi.addMemberToGroup(input.targetGroup.uuid, created.uuid).pipe(
+                    catchError((groupError: unknown) =>
+                      this.rollbackCreatedEPerson$(created.uuid, groupError),
+                    ),
+                    switchMap(() =>
+                      this.epersonApi.resendRegistration(input.email).pipe(map(() => created)),
+                    ),
+                  ),
                 ),
-                switchMap(() =>
-                  this.epersonApi.resendRegistration(input.email).pipe(map(() => created)),
-                ),
-              ),
-            ),
-          );
+              );
+          }),
+        );
       }),
     );
   }
 
   /**
-   * Desactiva un usuario conmutando `canLogIn` a false.
-   * Protege RN-11 contra los miembros activos de Administrator y RN-12 comparando con el caller.
+   * Desactiva conmutando canLogIn a false. RN-11 (último superadmin), RN-12 (autodesactivación)
+   * y RN-32 (alcance del admin de subdirección) corren antes de pegar al backend.
    */
   deactivateUser$(uuid: string): Observable<EPerson> {
     const currentUuid = this.authService.currentUser()?.uuid ?? null;
@@ -318,7 +278,8 @@ export class UserManagementService {
       );
     }
 
-    return this.groupApi.findAdministratorGroup().pipe(
+    return this.assertWithinScope$(uuid).pipe(
+      switchMap(() => this.groupApi.findAdministratorGroup()),
       switchMap((admin) =>
         this.groupApi.getMembersOfGroup(admin.uuid).pipe(
           switchMap((members) => {
@@ -340,16 +301,17 @@ export class UserManagementService {
     );
   }
 
-  /** Reactiva un usuario poniendo `canLogIn=true`. RN-11 y RN-12 no aplican al reactivar. */
+  /** Reactiva poniendo canLogIn=true. RN-32 sigue aplicando para admin_subdireccion. */
   reactivateUser$(uuid: string): Observable<EPerson> {
-    return this.epersonApi.setActive(uuid, true);
+    return this.assertWithinScope$(uuid).pipe(
+      switchMap(() => this.epersonApi.setActive(uuid, true)),
+    );
   }
 
   /**
-   * Cambia el rol de un eperson moviéndolo entre grupos. Solo el superadmin lo ejecuta (RN-13).
-   * Para no dejar al target sin grupo de rol agrega al grupo nuevo antes de retirar del anterior:
-   * un fallo del add deja al target en el rol viejo en lugar de quedarlo sin rol.
-   * Aplica RN-27 (no autocambio) y RN-28 (no degradar al último superadmin activo).
+   * Cambio de grupo de un eperson existente. Solo superadmin (RN-13). Orden atómico:
+   * add al nuevo antes de remove de los previos, para que un fallo del add no deje
+   * al target sin grupo de rol. Protege RN-27 (autocambio) y RN-28 (último superadmin).
    */
   changeUserRole$(input: ChangeUserRoleInput): Observable<EPerson> {
     return this.getCallerContext$().pipe(
@@ -375,7 +337,8 @@ export class UserManagementService {
             const targetIsAdmin = targetGroups.some(
               (group) => group.name === ADMINISTRATOR_GROUP_NAME,
             );
-            const isDemotion = targetIsAdmin && input.newRole !== 'superadmin';
+            const isDemotion =
+              targetIsAdmin && input.newGroup.name !== ADMINISTRATOR_GROUP_NAME;
 
             const guard$: Observable<unknown> = isDemotion
               ? this.groupApi.findAdministratorGroup().pipe(
@@ -398,12 +361,8 @@ export class UserManagementService {
 
             return guard$.pipe(
               switchMap(() =>
-                this.assignToRoleGroups$(target, {
-                  role: input.newRole,
-                  subdivisionCommunityUuid: input.newSubdivisionCommunityUuid,
-                  collectionUuids: input.newCollectionUuids,
-                }).pipe(
-                  switchMap(() => this.removeFromPreviousRoleGroups$(target.uuid, targetGroups)),
+                this.groupApi.addMemberToGroup(input.newGroup.uuid, target.uuid).pipe(
+                  switchMap(() => this.removeFromPreviousRoleGroups$(target.uuid, targetGroups, input.newGroup.uuid)),
                   map(() => target),
                 ),
               ),
@@ -414,15 +373,72 @@ export class UserManagementService {
     );
   }
 
-  /** Reenvía el correo nativo de DSpace con token para que el usuario fije nueva contraseña. */
-  resetPassword$(email: string): Observable<unknown> {
-    return this.epersonApi.resendRegistration(email);
+  /**
+   * Reenvía el correo nativo de DSpace para que el target fije nueva contraseña.
+   * El uuid viaja para resolver RN-31 (SELF_RESET) y RN-32 sin roundtrip extra.
+   */
+  resetPassword$(input: { uuid: string; email: string }): Observable<unknown> {
+    const currentUuid = this.authService.currentUser()?.uuid ?? null;
+    if (currentUuid && input.uuid === currentUuid) {
+      return throwError(
+        () =>
+          new BusinessRuleError(
+            'SELF_RESET',
+            'Usa la opción "Olvidé mi contraseña" desde el login para restablecer la tuya.',
+          ),
+      );
+    }
+    return this.assertWithinScope$(input.uuid).pipe(
+      switchMap(() => this.epersonApi.resendRegistration(input.email)),
+    );
   }
 
   /**
-   * Resuelve rol y community uuid del caller autenticado leyendo su eperson y grupos.
-   * Devuelve null sin sesión o sin grupo de rol del portal; los callers lo traducen a INSUFFICIENT_PRIVILEGES.
+   * RN-32: admin_subdireccion no opera sobre usuarios de otra subdirección. Compara
+   * el sufijo de la subdivisión del caller con el del target (derivados del nombre
+   * del grupo). Superadmin pasa sin roundtrip.
    */
+  private assertWithinScope$(targetUuid: string): Observable<void> {
+    return this.getCallerContext$().pipe(
+      switchMap((caller) => {
+        if (!caller) {
+          return throwError(
+            () =>
+              new BusinessRuleError(
+                'INSUFFICIENT_PRIVILEGES',
+                'Sin permisos para operar sobre usuarios.',
+              ),
+          );
+        }
+        if (caller.role === 'superadmin') return of<void>(undefined);
+        if (caller.role === 'admin_subdireccion') {
+          return this.groupApi.getGroupsOfEPerson(targetUuid).pipe(
+            switchMap((page) => {
+              const targetSuffix = extractSubdivisionSuffix(page.items);
+              if (targetSuffix !== caller.subdivisionSuffix) {
+                return throwError(
+                  () =>
+                    new BusinessRuleError(
+                      'OUT_OF_SCOPE',
+                      'No puedes operar sobre usuarios fuera de tu subdirección.',
+                    ),
+                );
+              }
+              return of<void>(undefined);
+            }),
+          );
+        }
+        return throwError(
+          () =>
+            new BusinessRuleError(
+              'INSUFFICIENT_PRIVILEGES',
+              'Sin permisos para operar sobre usuarios.',
+            ),
+        );
+      }),
+    );
+  }
+
   private getCallerContext$(): Observable<ResolvedEPerson | null> {
     const authUser = this.authService.currentUser();
     if (!authUser) return of(null);
@@ -430,14 +446,19 @@ export class UserManagementService {
       map(({ eperson, groups }) => {
         const resolved = this.resolveEPersonFromGroups(eperson, groups);
         if (resolved.role === null) return null;
-        return { eperson: resolved.eperson, role: resolved.role, communityUuid: resolved.communityUuid };
+        return {
+          eperson: resolved.eperson,
+          role: resolved.role,
+          subdivisionSuffix: resolved.subdivisionSuffix,
+        };
       }),
     );
   }
 
   /**
-   * Aplica RN-08 y RN-13 al intento de crear: `admin_subdireccion` solo puede crear personal
-   * delegado dentro de su propia community; cualquier otro rol o community ajeno se corta.
+   * RN-08 + RN-13 al crear: admin_subdireccion solo puede crear personal delegado
+   * (grupos SUBMITTERS_*) dentro de su misma subdirección (mismo sufijo). Cualquier
+   * otro combo se corta con INSUFFICIENT_PRIVILEGES.
    */
   private validateCreateScope(
     caller: ResolvedEPerson | null,
@@ -448,13 +469,15 @@ export class UserManagementService {
     }
     if (caller.role === 'superadmin') return null;
     if (caller.role === 'admin_subdireccion') {
-      if (input.role !== 'personal_delegado') {
+      const targetName = input.targetGroup.name;
+      if (!targetName.startsWith('SUBMITTERS_')) {
         return new BusinessRuleError(
           'INSUFFICIENT_PRIVILEGES',
           'Un admin de subdirección solo puede crear personal delegado.',
         );
       }
-      if (input.subdivisionCommunityUuid !== caller.communityUuid) {
+      const targetSuffix = targetName.slice('SUBMITTERS_'.length);
+      if (targetSuffix !== caller.subdivisionSuffix) {
         return new BusinessRuleError(
           'INSUFFICIENT_PRIVILEGES',
           'Solo puedes crear usuarios dentro de tu subdirección.',
@@ -465,82 +488,6 @@ export class UserManagementService {
     return new BusinessRuleError('INSUFFICIENT_PRIVILEGES', 'Sin permisos para crear usuarios.');
   }
 
-  /**
-   * Resuelve los uuid de los grupos destino según el rol asignado:
-   * `superadmin` → `[Administrator.uuid]`; `admin_subdireccion` → `[community.adminGroup.uuid]`;
-   * `personal_delegado` → `collections.map(c => c.submittersGroup.uuid)`. Solo lectura.
-   */
-  private resolveTargetGroupUuids$(assignment: {
-    role: UserRole;
-    subdivisionCommunityUuid: string | null;
-    collectionUuids?: string[];
-  }): Observable<string[]> {
-    if (assignment.role === 'superadmin') {
-      return this.groupApi.findAdministratorGroup().pipe(map((admin) => [admin.uuid]));
-    }
-    if (assignment.role === 'admin_subdireccion') {
-      if (!assignment.subdivisionCommunityUuid) {
-        return throwError(
-          () =>
-            new BusinessRuleError(
-              'SUBDIVISION_REQUIRED',
-              'Falta la subdirección para asignar admin_subdireccion.',
-            ),
-        );
-      }
-      return this.dspaceApi
-        .getCommunity(assignment.subdivisionCommunityUuid, { embed: EMBED_ADMIN_GROUP })
-        .pipe(
-          map((community) => {
-            const adminGroup = community._embedded?.adminGroup;
-            if (!adminGroup) {
-              throw new Error(`Community ${community.uuid} no expone adminGroup.`);
-            }
-            return [adminGroup.uuid];
-          }),
-        );
-    }
-
-    const collectionUuids = assignment.collectionUuids ?? [];
-    if (collectionUuids.length === 0) return of([]);
-    return forkJoin(
-      collectionUuids.map((collectionUuid) =>
-        this.dspaceApi.getCollection(collectionUuid, { embed: EMBED_SUBMITTERS_GROUP }).pipe(
-          map((collection) => {
-            const submittersGroup = collection._embedded?.submittersGroup;
-            if (!submittersGroup) {
-              throw new Error(`Collection ${collection.uuid} no expone submittersGroup.`);
-            }
-            return submittersGroup.uuid;
-          }),
-        ),
-      ),
-    );
-  }
-
-  /** Agrega al eperson a cada grupo destino resuelto por `resolveTargetGroupUuids$`. */
-  private assignToRoleGroups$(
-    eperson: EPerson,
-    assignment: {
-      role: UserRole;
-      subdivisionCommunityUuid: string | null;
-      collectionUuids?: string[];
-    },
-  ): Observable<unknown> {
-    return this.resolveTargetGroupUuids$(assignment).pipe(
-      switchMap((groupUuids) => {
-        if (groupUuids.length === 0) return of(undefined);
-        return forkJoin(
-          groupUuids.map((groupUuid) => this.groupApi.addMemberToGroup(groupUuid, eperson.uuid)),
-        );
-      }),
-    );
-  }
-
-  /**
-   * Deshace el alta de un eperson recién creado cuando la asignación al grupo de rol falla.
-   * Si el `delete` también falla se ignora el error secundario y se propaga la causa original.
-   */
   private rollbackCreatedEPerson$(uuid: string, originalError: unknown): Observable<never> {
     return this.epersonApi.delete(uuid).pipe(
       catchError(() => of(undefined)),
@@ -549,30 +496,21 @@ export class UserManagementService {
   }
 
   /**
-   * Retira al eperson de los grupos de rol del portal a los que pertenecía.
-   * Filtra el snapshot recibido para no tocar grupos ajenos al rol y cortocircuita la lista vacía.
+   * Retira al eperson de los grupos de rol del portal que tenía antes del cambio,
+   * excluyendo el grupo nuevo (si lo tenía doble, no lo quitamos). Los grupos no-rol
+   * (Anonymous, COMMUNITY_*_ADMIN, etc.) no se tocan.
    */
   private removeFromPreviousRoleGroups$(
     epersonUuid: string,
     previousGroups: Group[],
+    keepGroupUuid: string,
   ): Observable<unknown> {
-    const roleGroups = this.filterRoleRelatedGroups(previousGroups);
-    if (roleGroups.length === 0) return of(undefined);
+    const toRemove = previousGroups.filter(
+      (group) => isPortalRoleGroup(group) && group.uuid !== keepGroupUuid,
+    );
+    if (toRemove.length === 0) return of(undefined);
     return forkJoin(
-      roleGroups.map((group) => this.groupApi.removeMemberFromGroup(group.uuid, epersonUuid)),
+      toRemove.map((group) => this.groupApi.removeMemberFromGroup(group.uuid, epersonUuid)),
     );
   }
-
-  /**
-   * Filtra los grupos que representan roles del portal (RN-07, RN-08, RN-13).
-   * Comparte criterios con `resolveRoleFromGroups` para no duplicar la definición de "grupo de rol".
-   */
-  private filterRoleRelatedGroups(groups: Group[]): Group[] {
-    return groups.filter((group) => {
-      if (group.name === ADMINISTRATOR_GROUP_NAME) return true;
-      const objectHref = group._links?.object?.href ?? '';
-      return objectHref.includes(COMMUNITY_OBJECT_PATH) || objectHref.includes(COLLECTION_OBJECT_PATH);
-    });
-  }
-
 }
