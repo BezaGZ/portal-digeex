@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { Observable, forkJoin, of, throwError } from 'rxjs';
-import { catchError, map, shareReplay, switchMap } from 'rxjs/operators';
+import { catchError, map, shareReplay, switchMap, take } from 'rxjs/operators';
 
 import { UserView, UserRole } from '../models/user-view.model';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -87,6 +87,17 @@ interface OrphanEPerson {
 type ResolvedEPersonOrOrphan = ResolvedEPerson | OrphanEPerson;
 
 /**
+ * Proyección mínima del caller que necesitan las mutaciones del facade
+ * (scope, rol, identidad). Se deriva de `currentUserView$` cacheado sin
+ * disparar HTTP adicional.
+ */
+interface CallerContext {
+  readonly uuid: string;
+  readonly role: UserRole;
+  readonly subdivisionSuffix: string | null;
+}
+
+/**
  * Facade de usuarios administrativos alineado al patrón de `dspace-angular`:
  * alta en tres pasos (eperson, uri-list al grupo, registrations) con rollback,
  * cambio de rol add-before-remove, y rol derivado por nombre del grupo porque
@@ -100,7 +111,13 @@ export class UserManagementService {
   private readonly epersonApi = inject(EPersonApiService);
   private readonly groupApi = inject(GroupApiService);
 
-  /** Vista del usuario autenticado con rol y subdivisión resueltos por nombre de grupo. */
+  /**
+   * Vista del usuario autenticado con rol y subdivisión resueltos por nombre
+   * de grupo. `refCount: false` mantiene la suscripción interna viva mientras
+   * viva el servicio (singleton), para que dos consumidores en momentos
+   * distintos de la app (login → Users container → mutación) compartan la
+   * misma emisión sin refetches.
+   */
   readonly currentUserView$: Observable<UserView | null> = toObservable(
     this.authService.currentUser,
   ).pipe(
@@ -116,7 +133,7 @@ export class UserManagementService {
         }),
       );
     }),
-    shareReplay({ bufferSize: 1, refCount: true }),
+    shareReplay({ bufferSize: 1, refCount: false }),
   );
 
   /**
@@ -336,7 +353,7 @@ export class UserManagementService {
           );
         }
 
-        if (caller.eperson.uuid === input.uuid) {
+        if (caller.uuid === input.uuid) {
           return throwError(
             () => new BusinessRuleError('SELF_DEACTIVATE', 'No puedes cambiar tu propio rol.'),
           );
@@ -522,19 +539,21 @@ export class UserManagementService {
     );
   }
 
-  private getCallerContext$(): Observable<ResolvedEPerson | null> {
-    const authUser = this.authService.currentUser();
-    if (!authUser) return of(null);
-    return this.fetchEPersonWithGroups$(authUser.uuid).pipe(
-      map(({ eperson, groups }) => {
-        const resolved = this.resolveEPersonFromGroups(eperson, groups);
-        if (resolved.role === null) return null;
-        return {
-          eperson: resolved.eperson,
-          role: resolved.role,
-          subdivisionSuffix: resolved.subdivisionSuffix,
-        };
-      }),
+  /**
+   * Lee el caller del cache compartido de `currentUserView$`. No dispara HTTP
+   * si ya hay un suscriptor vivo (la pantalla de admin, el topbar, el menú).
+   * Orfandad de rol se reduce a `null` para que los consumidores decidan el
+   * BusinessRuleError apropiado en cada mutación.
+   */
+  private getCallerContext$(): Observable<CallerContext | null> {
+    return this.currentUserView$.pipe(
+      take(1),
+      map((view) =>
+        view
+          ? { uuid: view.uuid, role: view.role, subdivisionSuffix: view.subdivision }
+          : null,
+      ),
+      catchError(() => of<CallerContext | null>(null)),
     );
   }
 
@@ -544,7 +563,7 @@ export class UserManagementService {
    * otro combo se corta con INSUFFICIENT_PRIVILEGES.
    */
   private validateCreateScope(
-    caller: ResolvedEPerson | null,
+    caller: CallerContext | null,
     input: CreateUserInput,
   ): BusinessRuleError | null {
     if (!caller) {
