@@ -506,6 +506,120 @@ describe('UserManagementService', () => {
       expect(removeMemberFromGroupFn).toHaveBeenCalledWith(adminBasica.uuid, 'uuid-t');
       expect(order.indexOf('add')).toBeLessThan(order.indexOf('remove'));
     });
+
+    /**
+     * Verifica que si una remove falla después del add exitoso, el facade
+     * compense quitando al target del grupo nuevo (rollback) para honrar la
+     * invariante add-before-remove atómico del Ciclo 13.
+     */
+    it('should rollback the add when a previous-group remove fails', async () => {
+      const target = buildEPerson({
+        uuid: 'uuid-t',
+        email: 't@mineduc.gob.gt',
+        groups: [adminBasica],
+      });
+      getOneEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'uuid-caller') {
+          return of(buildEPerson({ uuid: 'uuid-caller', email: 'c@mineduc.gob.gt' }));
+        }
+        return of(target);
+      });
+      getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'uuid-caller') return of(paginated([adminGlobal]));
+        return of(paginated([adminBasica]));
+      });
+      removeMemberFromGroupFn.mockImplementation((groupUuid: string) => {
+        if (groupUuid === adminBasica.uuid) return throwError(() => new Error('remove failed'));
+        return of(undefined);
+      });
+
+      await expect(
+        firstValueFrom(
+          service.changeUserRole$({
+            uuid: 'uuid-t',
+            newGroup: { uuid: adminTrabajo.uuid, name: adminTrabajo.name },
+          }),
+        ),
+      ).rejects.toMatchObject({ message: 'remove failed' });
+
+      expect(removeMemberFromGroupFn).toHaveBeenCalledWith(adminTrabajo.uuid, 'uuid-t');
+    });
+
+    /**
+     * Verifica que todas las removes se disparen en paralelo incluso si
+     * alguna falla, cerrando 9.2.8 (el forkJoin previo abortaba las demás
+     * ante el primer fallo, dejando estado indeterminado).
+     */
+    it('should attempt every previous-group remove even when one of them fails', async () => {
+      const secondOldGroup = buildGroup('ADMIN_ED_ALFABETIZACION', 'group-admin-alfa');
+      const target = buildEPerson({
+        uuid: 'uuid-t',
+        email: 't@mineduc.gob.gt',
+        groups: [adminBasica, secondOldGroup],
+      });
+      getOneEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'uuid-caller') {
+          return of(buildEPerson({ uuid: 'uuid-caller', email: 'c@mineduc.gob.gt' }));
+        }
+        return of(target);
+      });
+      getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'uuid-caller') return of(paginated([adminGlobal]));
+        return of(paginated([adminBasica, secondOldGroup]));
+      });
+      removeMemberFromGroupFn.mockImplementation((groupUuid: string) => {
+        if (groupUuid === adminBasica.uuid) return throwError(() => new Error('remove failed'));
+        return of(undefined);
+      });
+
+      await expect(
+        firstValueFrom(
+          service.changeUserRole$({
+            uuid: 'uuid-t',
+            newGroup: { uuid: adminTrabajo.uuid, name: adminTrabajo.name },
+          }),
+        ),
+      ).rejects.toMatchObject({ message: 'remove failed' });
+
+      expect(removeMemberFromGroupFn).toHaveBeenCalledWith(adminBasica.uuid, 'uuid-t');
+      expect(removeMemberFromGroupFn).toHaveBeenCalledWith(secondOldGroup.uuid, 'uuid-t');
+    });
+
+    /**
+     * Verifica que si el rollback del add también falla, el caller sigue viendo
+     * el error original de la remove fallida (no el error del rollback).
+     */
+    it('should propagate the original remove error when the rollback itself fails', async () => {
+      const target = buildEPerson({
+        uuid: 'uuid-t',
+        email: 't@mineduc.gob.gt',
+        groups: [adminBasica],
+      });
+      getOneEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'uuid-caller') {
+          return of(buildEPerson({ uuid: 'uuid-caller', email: 'c@mineduc.gob.gt' }));
+        }
+        return of(target);
+      });
+      getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === 'uuid-caller') return of(paginated([adminGlobal]));
+        return of(paginated([adminBasica]));
+      });
+      removeMemberFromGroupFn.mockImplementation((groupUuid: string) => {
+        if (groupUuid === adminBasica.uuid) return throwError(() => new Error('original remove failed'));
+        if (groupUuid === adminTrabajo.uuid) return throwError(() => new Error('rollback failed'));
+        return of(undefined);
+      });
+
+      await expect(
+        firstValueFrom(
+          service.changeUserRole$({
+            uuid: 'uuid-t',
+            newGroup: { uuid: adminTrabajo.uuid, name: adminTrabajo.name },
+          }),
+        ),
+      ).rejects.toMatchObject({ message: 'original remove failed' });
+    });
   });
 
   describe('resetPassword$()', () => {

@@ -389,7 +389,13 @@ export class UserManagementService {
             return guard$.pipe(
               switchMap(() =>
                 this.groupApi.addMemberToGroup(input.newGroup.uuid, target.uuid).pipe(
-                  switchMap(() => this.removeFromPreviousRoleGroups$(target.uuid, targetGroups, input.newGroup.uuid)),
+                  switchMap(() =>
+                    this.removeFromPreviousRoleGroups$(target.uuid, targetGroups, input.newGroup.uuid).pipe(
+                      catchError((removeErr: unknown) =>
+                        this.rollbackAddToGroup$(input.newGroup.uuid, target.uuid, removeErr),
+                      ),
+                    ),
+                  ),
                   map(() => target),
                 ),
               ),
@@ -598,9 +604,13 @@ export class UserManagementService {
   }
 
   /**
-   * Retira al eperson de los grupos de rol del portal que tenía antes del cambio,
-   * excluyendo el grupo nuevo (si lo tenía doble, no lo quitamos). Los grupos no-rol
-   * (Anonymous, COMMUNITY_*_ADMIN, etc.) no se tocan.
+   * Retira al eperson de los grupos de rol del portal que tenía antes del
+   * cambio, excluyendo el grupo nuevo. Dispara todas las removes en paralelo
+   * y espera a que todas completen (cada attempt captura su propio error
+   * como valor), para que ninguna quede cancelada a medio camino. Si alguna
+   * falla, re-emite el primer error como señal para el rollback en
+   * `changeUserRole$`; los grupos no-rol (Anonymous, COMMUNITY_*_ADMIN) no
+   * se tocan.
    */
   private removeFromPreviousRoleGroups$(
     epersonUuid: string,
@@ -611,8 +621,35 @@ export class UserManagementService {
       (group) => isPortalRoleGroup(group) && group.uuid !== keepGroupUuid,
     );
     if (toRemove.length === 0) return of(undefined);
-    return forkJoin(
-      toRemove.map((group) => this.groupApi.removeMemberFromGroup(group.uuid, epersonUuid)),
+    const attempts$ = toRemove.map((group) =>
+      this.groupApi.removeMemberFromGroup(group.uuid, epersonUuid).pipe(
+        map<unknown, unknown>(() => null),
+        catchError((err: unknown) => of(err)),
+      ),
+    );
+    return forkJoin(attempts$).pipe(
+      switchMap((results) => {
+        const firstError = results.find((r) => r !== null);
+        return firstError !== undefined ? throwError(() => firstError) : of(undefined);
+      }),
+    );
+  }
+
+  /**
+   * Compensa el `addMemberToGroup` del cambio de rol cuando una remove
+   * posterior falla: quita al target del grupo nuevo para volver al estado
+   * previo. El propio rollback corre con `catchError` best-effort para no
+   * ocultar el error original si el rollback también falla; en ese caso
+   * extremo el estado queda parcial pero el usuario ve el error relevante.
+   */
+  private rollbackAddToGroup$(
+    groupUuid: string,
+    epersonUuid: string,
+    originalError: unknown,
+  ): Observable<never> {
+    return this.groupApi.removeMemberFromGroup(groupUuid, epersonUuid).pipe(
+      catchError(() => of(undefined)),
+      switchMap(() => throwError(() => originalError)),
     );
   }
 }
