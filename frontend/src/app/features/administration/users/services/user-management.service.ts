@@ -39,6 +39,16 @@ export interface ChangeUserRoleInput {
   newGroup: { uuid: string; name: string };
 }
 
+/**
+ * Entrada de la edición de identidad (RN-30). El dialog arma el diff contra el
+ * snapshot del target y solo incluye los campos que cambiaron; el facade los
+ * traduce directo a JSON Patch sobre el eperson.
+ */
+export interface UpdateUserInput {
+  uuid: string;
+  changes: { firstName?: string; lastName?: string; email?: string };
+}
+
 /** Proyección HAL `embed=groups` del listado paginado `/api/eperson/epersons`. */
 const EMBED_GROUPS = 'groups';
 
@@ -374,6 +384,79 @@ export class UserManagementService {
   }
 
   /**
+   * Edición diff de identidad (RN-30). Valida dominio si el correo cambia,
+   * aplica `assertWithinScope$` como defensa, pre-verifica duplicado por
+   * `searchByEmail` y emite un PATCH con solo los campos del diff. Si DSpace
+   * aun así devuelve 422 por unicidad (carrera con otra edición concurrente,
+   * o admin_subdireccion sin permiso para el search), el post-check mapea el
+   * error a `DUPLICATE_EMAIL` para que el toast sea consistente entre roles.
+   * Si el correo cambió y el target nunca activó (`lastActive === null`),
+   * reenvía el registration al correo nuevo para que el link de fijación de
+   * contraseña llegue al buzón correcto.
+   */
+  updateUser$(input: UpdateUserInput): Observable<EPerson> {
+    const { uuid, changes } = input;
+
+    if (changes.email !== undefined && !changes.email.endsWith(INSTITUTIONAL_EMAIL_DOMAIN)) {
+      return throwError(
+        () =>
+          new BusinessRuleError(
+            'EMAIL_INVALID',
+            `El correo debe ser institucional (${INSTITUTIONAL_EMAIL_DOMAIN}).`,
+          ),
+      );
+    }
+
+    return this.assertWithinScope$(uuid).pipe(
+      switchMap(() => this.epersonApi.getOne(uuid)),
+      switchMap((target) => {
+        const emailChanging = changes.email !== undefined && changes.email !== target.email;
+        const precheck$: Observable<void> = emailChanging
+          ? this.epersonApi.searchByEmail(changes.email!).pipe(
+              switchMap((existing) => {
+                if (existing && existing.uuid !== uuid) {
+                  return throwError(
+                    () =>
+                      new BusinessRuleError(
+                        'DUPLICATE_EMAIL',
+                        'Ya existe un usuario con ese correo.',
+                      ),
+                  );
+                }
+                return of<void>(undefined);
+              }),
+            )
+          : of<void>(undefined);
+
+        return precheck$.pipe(
+          switchMap(() => this.epersonApi.update(uuid, changes)),
+          catchError((err: unknown) => {
+            if (err instanceof BusinessRuleError) return throwError(() => err);
+            if (isDuplicateEmailError(err)) {
+              return throwError(
+                () =>
+                  new BusinessRuleError(
+                    'DUPLICATE_EMAIL',
+                    'Ya existe un usuario con ese correo.',
+                  ),
+              );
+            }
+            return throwError(() => err);
+          }),
+          switchMap((updated) => {
+            const emailChanged = changes.email !== undefined;
+            const neverActivated = target.lastActive === null;
+            if (emailChanged && neverActivated) {
+              return this.epersonApi.resendRegistration(changes.email!).pipe(map(() => updated));
+            }
+            return of(updated);
+          }),
+        );
+      }),
+    );
+  }
+
+  /**
    * Reenvía el correo nativo de DSpace para que el target fije nueva contraseña.
    * El uuid viaja para resolver RN-31 (SELF_RESET) y RN-32 sin roundtrip extra.
    */
@@ -513,4 +596,19 @@ export class UserManagementService {
       toRemove.map((group) => this.groupApi.removeMemberFromGroup(group.uuid, epersonUuid)),
     );
   }
+}
+
+/**
+ * Heurística para detectar el 422 de DSpace cuando rechaza por unicidad del
+ * correo. Cubre el caso de carrera (otra edición concurrente creó un duplicado
+ * entre el pre-check y el PATCH) y el caso de admin_subdireccion cuyo
+ * `searchByEmail` devolvió null porque el 403 fue tragado.
+ */
+function isDuplicateEmailError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { status?: number; error?: { message?: string } | string };
+  if (e.status !== 422) return false;
+  const body = e.error;
+  const message = typeof body === 'string' ? body : (body?.message ?? '');
+  return /email/i.test(message);
 }

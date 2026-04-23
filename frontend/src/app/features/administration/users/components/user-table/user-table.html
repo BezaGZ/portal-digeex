@@ -124,6 +124,16 @@
           <div class="flex gap-2 justify-end">
             @if (user.status === 'active') {
               <p-button
+                icon="pi pi-pencil"
+                severity="secondary"
+                [text]="true"
+                [rounded]="true"
+                (onClick)="onEdit(user)"
+                pTooltip="Editar identidad"
+                tooltipPosition="top"
+              />
+
+              <p-button
                 icon="pi pi-key"
                 severity="secondary"
                 [text]="true"

@@ -143,4 +143,21 @@ describe('UserTable', () => {
 
     expect(emitted).toEqual([]);
   });
+
+  /**
+   * Output editRequested: el table no abre el diálogo, lo delega al contenedor.
+   * La validación de scope para admin_subdireccion la hace el facade.
+   */
+  it('should emit editRequested with the user when the edit action is invoked', () => {
+    const target = buildUserView({ uuid: 'uuid-edit' });
+    fixture.componentRef.setInput('users', [target]);
+    fixture.componentRef.setInput('currentUser', buildUserView({ uuid: 'uuid-caller', role: 'superadmin' }));
+
+    const emitted: UserView[] = [];
+    asAny(component).editRequested.subscribe((u: UserView) => emitted.push(u));
+
+    component.onEdit(target);
+
+    expect(emitted).toEqual([target]);
+  });
 });

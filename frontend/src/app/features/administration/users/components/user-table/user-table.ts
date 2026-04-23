@@ -55,6 +55,7 @@ export class UserTable {
   reactivateRequested = output<UserView>();
   resetPasswordRequested = output<UserView>();
   modifyRoleRequested = output<UserView>();
+  editRequested = output<UserView>();
 
   globalFilterValue = signal<string>('');
   selectedRole = signal<UserRole | null>(null);
@@ -149,6 +150,15 @@ export class UserTable {
 
   onModifyRole(user: UserView) {
     this.modifyRoleRequested.emit(user);
+  }
+
+  /**
+   * Abre el diálogo de edición de identidad (RN-30). El scope lo valida el
+   * facade; acá no se filtra la fila para mantener la tabla consistente con
+   * el resto de acciones (defensa en profundidad).
+   */
+  onEdit(user: UserView) {
+    this.editRequested.emit(user);
   }
 
   onDeactivate(user: UserView) {

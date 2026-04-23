@@ -32,6 +32,7 @@ describe('UserManagementService', () => {
   let createEPersonFn: ReturnType<typeof vi.fn>;
   let deleteEPersonFn: ReturnType<typeof vi.fn>;
   let setActiveEPersonFn: ReturnType<typeof vi.fn>;
+  let updateEPersonFn: ReturnType<typeof vi.fn>;
   let resendRegistrationFn: ReturnType<typeof vi.fn>;
   let searchByEmailFn: ReturnType<typeof vi.fn>;
   let getGroupsOfEPersonFn: ReturnType<typeof vi.fn>;
@@ -132,6 +133,7 @@ describe('UserManagementService', () => {
     createEPersonFn = vi.fn();
     deleteEPersonFn = vi.fn().mockReturnValue(of(undefined));
     setActiveEPersonFn = vi.fn();
+    updateEPersonFn = vi.fn();
     resendRegistrationFn = vi.fn().mockReturnValue(of(undefined));
     searchByEmailFn = vi.fn().mockReturnValue(of(null));
 
@@ -157,6 +159,7 @@ describe('UserManagementService', () => {
             create: createEPersonFn,
             delete: deleteEPersonFn,
             setActive: setActiveEPersonFn,
+            update: updateEPersonFn,
             resendRegistration: resendRegistrationFn,
             searchByEmail: searchByEmailFn,
           },
@@ -534,6 +537,175 @@ describe('UserManagementService', () => {
         service.resetPassword$({ uuid: 'uuid-t', email: 't@mineduc.gob.gt' }),
       );
       expect(resendRegistrationFn).toHaveBeenCalledWith('t@mineduc.gob.gt');
+    });
+  });
+
+  /**
+   * updateUser$ cubre RN-30: edición diff de firstName/lastName/email. Solo los
+   * campos que cambiaron se mandan al PATCH. Si el correo cambia y el target
+   * nunca activó (lastActive null), se reenvía el registration al correo nuevo
+   * para que el link llegue al buzón correcto. EMAIL_INVALID y DUPLICATE_EMAIL
+   * se gestionan como el resto de mutaciones del facade.
+   */
+  describe('updateUser$()', () => {
+    const targetUuid = 'uuid-target';
+
+    function targetEPerson(overrides: { lastActive?: string | null; canLogIn?: boolean } = {}): EPerson {
+      return {
+        ...buildEPerson({
+          uuid: targetUuid,
+          email: 'target@mineduc.gob.gt',
+          firstName: 'Rosa',
+          lastName: 'Juárez',
+          groups: [submitBasica],
+        }),
+        lastActive: overrides.lastActive !== undefined ? overrides.lastActive : null,
+        canLogIn: overrides.canLogIn ?? true,
+      };
+    }
+
+    /** Verifica que solo firstName en el diff dispare un PATCH con ese único campo. */
+    it('should call EPersonApi.update with only firstName when only firstName changed', async () => {
+      getOneEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === targetUuid) return of(targetEPerson({ lastActive: '2026-03-15' }));
+        return of(buildEPerson({ uuid: 'uuid-caller', email: 'caller@mineduc.gob.gt' }));
+      });
+      updateEPersonFn.mockReturnValue(of(targetEPerson({ lastActive: '2026-03-15' })));
+
+      await firstValueFrom(
+        service.updateUser$({ uuid: targetUuid, changes: { firstName: 'Rosa María' } }),
+      );
+
+      expect(updateEPersonFn).toHaveBeenCalledWith(targetUuid, { firstName: 'Rosa María' });
+      expect(resendRegistrationFn).not.toHaveBeenCalled();
+    });
+
+    /** Verifica que solo lastName en el diff dispare un PATCH con ese único campo. */
+    it('should call EPersonApi.update with only lastName when only lastName changed', async () => {
+      getOneEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === targetUuid) return of(targetEPerson({ lastActive: '2026-03-15' }));
+        return of(buildEPerson({ uuid: 'uuid-caller', email: 'caller@mineduc.gob.gt' }));
+      });
+      updateEPersonFn.mockReturnValue(of(targetEPerson({ lastActive: '2026-03-15' })));
+
+      await firstValueFrom(
+        service.updateUser$({ uuid: targetUuid, changes: { lastName: 'Juárez López' } }),
+      );
+
+      expect(updateEPersonFn).toHaveBeenCalledWith(targetUuid, { lastName: 'Juárez López' });
+      expect(resendRegistrationFn).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Verifica que cambiar el correo de un usuario que nunca activó dispare
+     * PATCH de email y acto seguido un resendRegistration al correo nuevo.
+     */
+    it('should call EPersonApi.update with email and trigger resendRegistration when target never activated', async () => {
+      getOneEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === targetUuid) return of(targetEPerson({ lastActive: null }));
+        return of(buildEPerson({ uuid: 'uuid-caller', email: 'caller@mineduc.gob.gt' }));
+      });
+      updateEPersonFn.mockReturnValue(of(targetEPerson({ lastActive: null })));
+
+      await firstValueFrom(
+        service.updateUser$({
+          uuid: targetUuid,
+          changes: { email: 'nuevo@mineduc.gob.gt' },
+        }),
+      );
+
+      expect(updateEPersonFn).toHaveBeenCalledWith(targetUuid, { email: 'nuevo@mineduc.gob.gt' });
+      expect(resendRegistrationFn).toHaveBeenCalledWith('nuevo@mineduc.gob.gt');
+    });
+
+    /**
+     * Verifica que cambiar el correo de un usuario que ya activó no dispare
+     * resendRegistration: el target ya tiene contraseña y no queremos resetearla.
+     */
+    it('should NOT trigger resendRegistration when email changes but target already activated', async () => {
+      getOneEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === targetUuid) return of(targetEPerson({ lastActive: '2026-03-15' }));
+        return of(buildEPerson({ uuid: 'uuid-caller', email: 'caller@mineduc.gob.gt' }));
+      });
+      updateEPersonFn.mockReturnValue(of(targetEPerson({ lastActive: '2026-03-15' })));
+
+      await firstValueFrom(
+        service.updateUser$({
+          uuid: targetUuid,
+          changes: { email: 'nuevo@mineduc.gob.gt' },
+        }),
+      );
+
+      expect(updateEPersonFn).toHaveBeenCalledWith(targetUuid, { email: 'nuevo@mineduc.gob.gt' });
+      expect(resendRegistrationFn).not.toHaveBeenCalled();
+    });
+
+    /** Verifica que un correo fuera del dominio institucional se corte con EMAIL_INVALID. */
+    it('should reject with EMAIL_INVALID when the new email does not end with @mineduc.gob.gt', async () => {
+      await expect(
+        firstValueFrom(
+          service.updateUser$({
+            uuid: targetUuid,
+            changes: { email: 'personal@gmail.com' },
+          }),
+        ),
+      ).rejects.toMatchObject({ code: 'EMAIL_INVALID' });
+
+      expect(updateEPersonFn).not.toHaveBeenCalled();
+      expect(resendRegistrationFn).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Verifica que el pre-check vía searchByEmail bloquee el PATCH cuando el
+     * correo nuevo ya pertenece a otro usuario. Evita el roundtrip innecesario
+     * al backend y deja al caller con un toast consistente.
+     */
+    it('should reject DUPLICATE_EMAIL from the searchByEmail pre-check without firing the PATCH', async () => {
+      getOneEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === targetUuid) return of(targetEPerson({ lastActive: '2026-03-15' }));
+        return of(buildEPerson({ uuid: 'uuid-caller', email: 'caller@mineduc.gob.gt' }));
+      });
+      searchByEmailFn.mockReturnValue(
+        of(buildEPerson({ uuid: 'uuid-other', email: 'duplicado@mineduc.gob.gt' })),
+      );
+
+      await expect(
+        firstValueFrom(
+          service.updateUser$({
+            uuid: targetUuid,
+            changes: { email: 'duplicado@mineduc.gob.gt' },
+          }),
+        ),
+      ).rejects.toMatchObject({ code: 'DUPLICATE_EMAIL' });
+
+      expect(searchByEmailFn).toHaveBeenCalledWith('duplicado@mineduc.gob.gt');
+      expect(updateEPersonFn).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Verifica que si el pre-check no pudo bloquear (p. ej. admin_subdireccion
+     * sin permiso sobre searchByEmail devuelve null y se traga el 403) y DSpace
+     * responde 422 por unicidad del correo, el post-check traduce el error a
+     * DUPLICATE_EMAIL para que el toast salga igual que en el alta.
+     */
+    it('should map a 422 duplicate-email response from DSpace to DUPLICATE_EMAIL', async () => {
+      getOneEPersonFn.mockImplementation((uuid: string) => {
+        if (uuid === targetUuid) return of(targetEPerson({ lastActive: '2026-03-15' }));
+        return of(buildEPerson({ uuid: 'uuid-caller', email: 'caller@mineduc.gob.gt' }));
+      });
+      searchByEmailFn.mockReturnValue(of(null));
+      updateEPersonFn.mockReturnValue(
+        throwError(() => ({ status: 422, error: { message: 'Email already taken' } })),
+      );
+
+      await expect(
+        firstValueFrom(
+          service.updateUser$({
+            uuid: targetUuid,
+            changes: { email: 'duplicado@mineduc.gob.gt' },
+          }),
+        ),
+      ).rejects.toMatchObject({ code: 'DUPLICATE_EMAIL' });
     });
   });
 });

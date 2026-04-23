@@ -14,10 +14,12 @@ import { ConfirmationService, MessageService } from 'primeng/api'; // MessageSer
 import { UserTable } from './components/user-table/user-table';
 import { UserDialog } from './components/user-dialog/user-dialog';
 import { ChangeRoleDialog } from './components/change-role-dialog/change-role-dialog';
+import { EditUserDialog } from './components/edit-user-dialog/edit-user-dialog';
 import {
   UserManagementService,
   CreateUserInput,
   ChangeUserRoleInput,
+  UpdateUserInput,
 } from './services/user-management.service';
 import { BusinessRuleError, BusinessRuleErrorCode } from './services/business-rule-error';
 import { UserView } from './models/user-view.model';
@@ -34,7 +36,7 @@ const UNEXPECTED_ERROR_FALLBACK = 'Ocurrió un error al procesar la solicitud. I
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [ToastModule, UserTable, UserDialog, ChangeRoleDialog],
+  imports: [ToastModule, UserTable, UserDialog, ChangeRoleDialog, EditUserDialog],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './users.html',
@@ -47,6 +49,8 @@ export class Users {
   showCreateDialog = signal(false);
   showChangeRoleDialog = signal(false);
   changeRoleTarget = signal<UserView | null>(null);
+  showEditDialog = signal(false);
+  editTarget = signal<UserView | null>(null);
 
   /**
    * Dispara el refetch del listado tras cada mutación. `BehaviorSubject`
@@ -178,6 +182,36 @@ export class Users {
             life: 3000,
           });
           this.showCreateDialog.set(false);
+        },
+        error: (err) => this.errorToToast(err),
+      });
+  }
+
+  onEditRequested(user: UserView) {
+    this.editTarget.set(user);
+    this.showEditDialog.set(true);
+  }
+
+  onEditDialogClosed() {
+    this.showEditDialog.set(false);
+    this.editTarget.set(null);
+  }
+
+  onEditSubmitted(input: UpdateUserInput) {
+    this.userService
+      .updateUser$(input)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.refresh$.next();
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Usuario actualizado',
+            detail: 'Los datos del usuario se guardaron correctamente.',
+            life: 3000,
+          });
+          this.showEditDialog.set(false);
+          this.editTarget.set(null);
         },
         error: (err) => this.errorToToast(err),
       });

@@ -9,6 +9,7 @@
     (reactivateRequested)="onReactivateRequested($event)"
     (resetPasswordRequested)="onResetPasswordRequested($event)"
     (modifyRoleRequested)="onModifyRoleRequested($event)"
+    (editRequested)="onEditRequested($event)"
   />
 
   @if (showCreateDialog()) {
@@ -28,6 +29,15 @@
       [assignableGroups]="assignableGroups()"
       (visibleChange)="onChangeRoleDialogClosed()"
       (changeSubmitted)="onChangeRoleSubmitted($event)"
+    />
+  }
+
+  @if (showEditDialog() && editTarget()) {
+    <app-edit-user-dialog
+      [visible]="showEditDialog()"
+      [target]="editTarget()!"
+      (visibleChange)="onEditDialogClosed()"
+      (editSubmitted)="onEditSubmitted($event)"
     />
   }
 </div>

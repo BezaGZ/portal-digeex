@@ -33,6 +33,7 @@ describe('Users (contenedor)', () => {
   let reactivateUserFn: ReturnType<typeof vi.fn>;
   let resetPasswordFn: ReturnType<typeof vi.fn>;
   let createUserFn: ReturnType<typeof vi.fn>;
+  let updateUserFn: ReturnType<typeof vi.fn>;
   let messageAddFn: ReturnType<typeof vi.fn>;
 
   /** UserView mínimo para alimentar al facade en los tests. */
@@ -68,6 +69,7 @@ describe('Users (contenedor)', () => {
     reactivateUserFn = vi.fn().mockReturnValue(of({} as EPerson));
     resetPasswordFn = vi.fn().mockReturnValue(of(undefined));
     createUserFn = vi.fn().mockReturnValue(of({} as EPerson));
+    updateUserFn = vi.fn().mockReturnValue(of({} as EPerson));
     messageAddFn = vi.fn();
 
     const userServiceStub: Partial<UserManagementService> = {
@@ -78,6 +80,7 @@ describe('Users (contenedor)', () => {
       reactivateUser$: reactivateUserFn,
       resetPassword$: resetPasswordFn,
       createUser$: createUserFn,
+      updateUser$: updateUserFn,
     } as unknown as Partial<UserManagementService>;
 
     TestBed.configureTestingModule({
@@ -226,6 +229,30 @@ describe('Users (contenedor)', () => {
       asAny(component).onCreateSubmitted(input);
 
       expect(createUserFn).toHaveBeenCalledWith(input);
+    });
+  });
+
+  describe('editar usuario', () => {
+    /** Verifica que onEditRequested abra el diálogo y guarde el target para el emit del diff. */
+    it('should open the edit dialog and store the target when editRequested fires', () => {
+      const target = buildUserView({ uuid: 'uuid-edit', firstName: 'Rosa' });
+
+      asAny(component).onEditRequested(target);
+
+      expect(asAny(component).showEditDialog()).toBe(true);
+      expect(asAny(component).editTarget()).toEqual(target);
+    });
+
+    /** Verifica que el contenedor reenvíe al facade el diff emitido por EditUserDialog. */
+    it('should call facade.updateUser$ with the diff payload emitted by the dialog', () => {
+      const input = {
+        uuid: 'uuid-target',
+        changes: { firstName: 'Rosa María', email: 'nuevo@mineduc.gob.gt' },
+      };
+
+      asAny(component).onEditSubmitted(input);
+
+      expect(updateUserFn).toHaveBeenCalledWith(input);
     });
   });
 
