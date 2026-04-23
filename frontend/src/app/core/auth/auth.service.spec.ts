@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { vi } from 'vitest';
 import Cookies from 'js-cookie';
 import { AuthService } from './auth.service';
 import { AuthStatus } from './models/auth-session.model';
+import { environment } from '../../../environments/environment';
 
 /**
  * Tests para AuthService.
@@ -83,7 +85,9 @@ describe('AuthService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    Cookies.remove('dsAuthInfo', { path: '/' });
     Cookies.remove('dsAuthInfo');
+    vi.restoreAllMocks();
   });
 
   /** Verifica que el servicio se instancie vía DI. */
@@ -290,6 +294,44 @@ describe('AuthService', () => {
       const parsed = JSON.parse(raw!);
       expect(parsed.accessToken).toBe('new-refreshed-token-456');
     });
+
+    /**
+     * Verifica que la cookie se grabe con path: '/', sameSite: 'lax' y secure
+     * alineado al environment. El navegador descarta cookies `Secure` en HTTP
+     * (dev), así que el flag solo se activa cuando environment.production.
+     */
+    it('should write dsAuthInfo with path, sameSite and secure flags tied to environment', async () => {
+      const setSpy = vi.spyOn(Cookies, 'set');
+
+      await performLogin();
+
+      const call = setSpy.mock.calls.find(([name]) => name === 'dsAuthInfo');
+      expect(call).toBeTruthy();
+      const options = call![2] as { path?: string; sameSite?: string; secure?: boolean };
+      expect(options.path).toBe('/');
+      expect(options.sameSite).toBe('lax');
+      expect(options.secure).toBe(environment.production);
+    });
+
+    /**
+     * Verifica que logout() borre la cookie con path: '/'. js-cookie exige que
+     * el path del remove coincida con el del set; sin esto la cookie
+     * persistiría en navegadores estrictos.
+     */
+    it('should remove dsAuthInfo with path: "/" on logout', async () => {
+      await performLogin();
+      const removeSpy = vi.spyOn(Cookies, 'remove');
+
+      const logoutPromise = new Promise<void>((resolve, reject) => {
+        service.logout().subscribe({ next: () => resolve(), error: reject });
+      });
+      httpMock.expectOne('/server/api/authn/logout').flush(null, { status: 204, statusText: 'No Content' });
+      await logoutPromise;
+
+      const call = removeSpy.mock.calls.find(([name]) => name === 'dsAuthInfo');
+      expect(call).toBeTruthy();
+      expect(call![1]).toEqual({ path: '/' });
+    });
   });
 
   /** Restore Session */
@@ -397,6 +439,34 @@ describe('AuthService', () => {
       service.setCurrentUserFromEPerson(mockEPerson);
 
       expect(service.currentUser()).toBeNull();
+    });
+  });
+
+  /**
+   * storeRotatedToken persiste el JWT que el `jwtInterceptor` captura del
+   * header `Authorization` en responses autenticadas. Es idempotente cuando
+   * el token coincide con el actual para evitar reescribir la cookie en cada
+   * response.
+   */
+  describe('storeRotatedToken()', () => {
+    /** Verifica que un token distinto al actual se escriba en la cookie. */
+    it('should write the new token to dsAuthInfo when it differs from the current one', async () => {
+      await performLogin();
+      expect(service.getToken()).toBe('fake-jwt-token-123');
+
+      service.storeRotatedToken('rotated-token-abc');
+
+      expect(service.getToken()).toBe('rotated-token-abc');
+    });
+
+    /** Verifica que un token idéntico al actual no gatille un set de cookie. */
+    it('should be a no-op when the token equals the current one', async () => {
+      await performLogin();
+      const setSpy = vi.spyOn(Cookies, 'set');
+
+      service.storeRotatedToken('fake-jwt-token-123');
+
+      expect(setSpy).not.toHaveBeenCalled();
     });
   });
 });

@@ -131,28 +131,32 @@ describe('errorInterceptor', () => {
 
   /** Console Logging */
 
-  /** Verifica que el interceptor registre todos los errores HTTP en consola. */
-  it('should log errors to console', async () => {
+  /**
+   * El log reduce lo visible a status y url para no filtrar bodies con datos
+   * sensibles (p. ej. `current_password` reflejado en un 4xx). El objeto
+   * completo solo sale por console.debug en dev y se descarta en prod.
+   */
+  it('should log only status and url on console.error (never the full error body)', async () => {
+    const interceptorCalls: unknown[][] = [];
+    consoleErrorSpy.mockImplementation((...args: unknown[]) => {
+      if (args[0] === '[HTTP Error]') interceptorCalls.push(args);
+    });
+
     const promise = new Promise((resolve, reject) => {
       httpClient.get('/server/api/test').subscribe({
         next: resolve,
-        error: reject
+        error: reject,
       });
     });
 
     const req = httpMock.expectOne('/server/api/test');
-    req.flush('Not Found', { status: 404, statusText: 'Not Found' });
+    req.flush({ current_password: 'secreto-reflejado' }, { status: 422, statusText: 'Unprocessable Entity' });
 
     try {
       await promise;
     } catch {
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[HTTP Error]',
-        expect.objectContaining({
-          status: 404,
-          statusText: 'Not Found'
-        })
-      );
+      expect(interceptorCalls).toHaveLength(1);
+      expect(interceptorCalls[0]).toEqual(['[HTTP Error]', 422, '/server/api/test']);
     }
   });
 

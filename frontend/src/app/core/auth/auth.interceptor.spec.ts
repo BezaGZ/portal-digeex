@@ -276,4 +276,68 @@ describe('jwtInterceptor', () => {
       expect(router.navigate).not.toHaveBeenCalled();
     });
   });
+
+  /**
+   * DSpace 9.2 rota el JWT en cada response autenticada; el interceptor lee
+   * el header Authorization del HttpResponse y lo persiste vía
+   * storeRotatedToken. Esto evita relogin innecesario en sesiones largas.
+   */
+  describe('captura de JWT rotado', () => {
+    /** Verifica que un Authorization en el response persista el token rotado. */
+    it('should call storeRotatedToken with the new token when response brings an Authorization header', async () => {
+      vi.spyOn(authService, 'getToken').mockReturnValue('current-token');
+      const storeRotatedSpy = vi.spyOn(authService, 'storeRotatedToken');
+
+      const promise = new Promise((resolve, reject) => {
+        httpClient.get('/server/api/core/communities').subscribe({
+          next: resolve,
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne('/server/api/core/communities');
+      req.flush({}, { headers: { Authorization: 'Bearer rotated-token-xyz' } });
+
+      await promise;
+      expect(storeRotatedSpy).toHaveBeenCalledWith('rotated-token-xyz');
+    });
+
+    /** Verifica que sin Authorization en el response no se toque el token. */
+    it('should NOT call storeRotatedToken when response has no Authorization header', async () => {
+      vi.spyOn(authService, 'getToken').mockReturnValue('current-token');
+      const storeRotatedSpy = vi.spyOn(authService, 'storeRotatedToken');
+
+      const promise = new Promise((resolve, reject) => {
+        httpClient.get('/server/api/core/communities').subscribe({
+          next: resolve,
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne('/server/api/core/communities');
+      req.flush({});
+
+      await promise;
+      expect(storeRotatedSpy).not.toHaveBeenCalled();
+    });
+
+    /** Verifica que un Authorization mal formado (sin prefijo Bearer) se ignora. */
+    it('should NOT call storeRotatedToken when the Authorization header is malformed', async () => {
+      vi.spyOn(authService, 'getToken').mockReturnValue('current-token');
+      const storeRotatedSpy = vi.spyOn(authService, 'storeRotatedToken');
+
+      const promise = new Promise((resolve, reject) => {
+        httpClient.get('/server/api/core/communities').subscribe({
+          next: resolve,
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne('/server/api/core/communities');
+      req.flush({}, { headers: { Authorization: 'NotBearer garbage' } });
+
+      await promise;
+      expect(storeRotatedSpy).not.toHaveBeenCalled();
+    });
+  });
 });

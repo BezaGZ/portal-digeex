@@ -5,6 +5,7 @@ import Cookies from 'js-cookie';
 import { AuthStatus, AuthUser } from './models/auth-session.model';
 import { EPerson } from '../api/models';
 import { resetCsrfToken } from '../csrf/csrf.interceptor';
+import { environment } from '../../../environments/environment';
 
 /**
  * Nombre de la cookie donde se guarda el JWT entre recargas. Se mantiene
@@ -212,9 +213,11 @@ export class AuthService {
 
   /**
    * Persiste el JWT en la cookie `dsAuthInfo` con vencimiento de 24h.
-   * Replica el patrón de dspace-angular: cookie sin `Secure` ni `SameSite`
-   * para que el navegador la mande también desde http://localhost durante
-   * el desarrollo.
+   * `path: '/'` garantiza que la cookie viaje a todas las rutas del portal
+   * independientemente de dónde se haya creado. `sameSite: 'lax'` permite
+   * el flujo de reset-password que navega al portal desde el enlace del
+   * correo. `secure` se activa en HTTPS (prod) y se deja apagado en HTTP
+   * local (dev) porque el navegador descarta cookies `Secure` en HTTP.
    */
   private storeToken(accessToken: string): void {
     const tokenInfo: AuthTokenInfo = {
@@ -223,14 +226,18 @@ export class AuthService {
     };
     Cookies.set(TOKENITEM, JSON.stringify(tokenInfo), {
       expires: new Date(tokenInfo.expires),
+      path: '/',
+      sameSite: 'lax',
+      secure: environment.production,
     });
   }
 
   /**
    * Borra la cookie `dsAuthInfo` para que un próximo reload arranque sin sesión.
+   * Requiere `path: '/'` idéntico al del `set`; si no, `js-cookie` no la elimina.
    */
   private removeToken(): void {
-    Cookies.remove(TOKENITEM);
+    Cookies.remove(TOKENITEM, { path: '/' });
   }
 
   /**
@@ -263,6 +270,18 @@ export class AuthService {
   setCurrentUserFromEPerson(eperson: EPerson): void {
     if (!this.currentUser()) return;
     this.currentUser.set(this.mapEPersonToUser(eperson));
+  }
+
+  /**
+   * Persiste un JWT rotado capturado por el `jwtInterceptor` desde el header
+   * `Authorization` de una response. DSpace rota el token en cada request
+   * autenticada; persistirlo evita relogin cuando el token en memoria vence.
+   * No-op si el token es idéntico al actual, para no reescribir la cookie
+   * en cada response.
+   */
+  storeRotatedToken(accessToken: string): void {
+    if (accessToken === this.getToken()) return;
+    this.storeToken(accessToken);
   }
 
   /**

@@ -1,5 +1,5 @@
 import { inject } from '@angular/core';
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpEvent, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, OperatorFunction, catchError, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
@@ -49,7 +49,7 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
         const authReq = req.clone({
           setHeaders: { Authorization: `Bearer ${freshToken}` },
         });
-        return next(authReq);
+        return next(authReq).pipe(captureRotatedJwt(authService));
       }),
       redirectOn401(router),
     );
@@ -58,8 +58,24 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const authReq = req.clone({
     setHeaders: { Authorization: `Bearer ${token}` },
   });
-  return next(authReq).pipe(redirectOn401(router));
+  return next(authReq).pipe(captureRotatedJwt(authService), redirectOn401(router));
 };
+
+/**
+ * DSpace 9.2 rota el JWT en cada response autenticada y lo devuelve en el
+ * header `Authorization`. El operador lee ese header cuando llega un
+ * `HttpResponse` y delega a `authService.storeRotatedToken`, que es idempotente
+ * si el token coincide con el actual.
+ */
+function captureRotatedJwt<T>(authService: AuthService): OperatorFunction<HttpEvent<T>, HttpEvent<T>> {
+  return tap((event) => {
+    if (!(event instanceof HttpResponse)) return;
+    const header = event.headers.get('Authorization');
+    if (header?.startsWith('Bearer ')) {
+      authService.storeRotatedToken(header.substring(7));
+    }
+  });
+}
 
 /**
  * Operador que intercepta respuestas 401 (Unauthorized)
