@@ -27,6 +27,7 @@ import { EPerson } from '../../../core/api/models/eperson.model';
 describe('Users (contenedor)', () => {
   let component: Users;
   let getVisibleUsersFn: ReturnType<typeof vi.fn>;
+  let getAssignableGroupsFn: ReturnType<typeof vi.fn>;
   let currentUserViewObservable: ReturnType<typeof of>;
   let deactivateUserFn: ReturnType<typeof vi.fn>;
   let reactivateUserFn: ReturnType<typeof vi.fn>;
@@ -61,6 +62,7 @@ describe('Users (contenedor)', () => {
 
   beforeEach(() => {
     getVisibleUsersFn = vi.fn().mockReturnValue(of(buildPaginated([])));
+    getAssignableGroupsFn = vi.fn().mockReturnValue(of([]));
     currentUserViewObservable = of(null);
     deactivateUserFn = vi.fn().mockReturnValue(of({} as EPerson));
     reactivateUserFn = vi.fn().mockReturnValue(of({} as EPerson));
@@ -70,6 +72,7 @@ describe('Users (contenedor)', () => {
 
     const userServiceStub: Partial<UserManagementService> = {
       getVisibleUsers$: getVisibleUsersFn,
+      getAssignableGroups$: getAssignableGroupsFn,
       currentUserView$: currentUserViewObservable,
       deactivateUser$: deactivateUserFn,
       reactivateUser$: reactivateUserFn,
@@ -105,6 +108,18 @@ describe('Users (contenedor)', () => {
       fixture.detectChanges();
 
       expect(getVisibleUsersFn).toHaveBeenCalled();
+    });
+
+    /**
+     * Verifica que el contenedor pida los grupos asignables al facade en el
+     * mount, para que los diálogos los reciban por input sin disparar una
+     * request por apertura.
+     */
+    it('should request the assignable groups from facade.getAssignableGroups$ on init', () => {
+      const fixture = TestBed.createComponent(Users);
+      fixture.detectChanges();
+
+      expect(getAssignableGroupsFn).toHaveBeenCalled();
     });
   });
 

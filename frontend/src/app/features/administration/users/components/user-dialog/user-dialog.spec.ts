@@ -2,28 +2,24 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { outputToObservable } from '@angular/core/rxjs-interop';
-import { vi } from 'vitest';
-import { firstValueFrom, of } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
 import { UserDialog, labelForGroup } from './user-dialog';
-import { UserManagementService } from '../../services/user-management.service';
 import { UserView } from '../../models/user-view.model';
 import { Group } from '../../../../../core/api/models/group.model';
 
 /**
  * Tests de `UserDialog`.
  *
- * Diálogo de alta con un solo dropdown "Rol" poblado dinámicamente con los
- * grupos reales del portal (Administrator, ADMIN_*, SUBMITTERS_*) que expone
- * el facade. El caller admin_subdireccion solo ve `SUBMITTERS_{su sufijo}` y
- * el control queda preseleccionado y deshabilitado.
+ * Diálogo de alta puramente presentacional. El contenedor le pasa los grupos
+ * asignables por input; aquí solo se valida el filtrado por rol del caller,
+ * la preselección para admin_subdireccion y el payload del emit.
  *
  * Ciclos 12, 17 TDD — Sprint 5.
  */
 describe('UserDialog', () => {
   let fixture: ComponentFixture<UserDialog>;
   let component: UserDialog;
-  let getAssignableGroupsFn: ReturnType<typeof vi.fn>;
 
   function buildGroup(uuid: string, name: string): Group {
     return {
@@ -54,38 +50,25 @@ describe('UserDialog', () => {
     };
   }
 
-  beforeEach(() => {
-    getAssignableGroupsFn = vi.fn().mockReturnValue(
-      of([
-        buildGroup('g-admin', 'Administrator'),
-        buildGroup('g-ae-basica', 'ADMIN_ED_BASICA'),
-        buildGroup('g-ae-trabajo', 'ADMIN_ED_TRABAJO'),
-        buildGroup('g-se-basica', 'SUBMITTERS_ED_BASICA'),
-        buildGroup('g-se-trabajo', 'SUBMITTERS_ED_TRABAJO'),
-      ]),
-    );
+  const assignableGroups: Group[] = [
+    buildGroup('g-admin', 'Administrator'),
+    buildGroup('g-ae-basica', 'ADMIN_ED_BASICA'),
+    buildGroup('g-ae-trabajo', 'ADMIN_ED_TRABAJO'),
+    buildGroup('g-se-basica', 'SUBMITTERS_ED_BASICA'),
+    buildGroup('g-se-trabajo', 'SUBMITTERS_ED_TRABAJO'),
+  ];
 
+  beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [UserDialog],
-      providers: [
-        provideNoopAnimations(),
-        {
-          provide: UserManagementService,
-          useValue: { getAssignableGroups$: getAssignableGroupsFn },
-        },
-      ],
+      providers: [provideNoopAnimations()],
     });
 
     fixture = TestBed.createComponent(UserDialog);
     component = fixture.componentInstance;
     fixture.componentRef.setInput('visible', true);
     fixture.componentRef.setInput('caller', buildUserView());
-  });
-
-  /** Verifica que el diálogo pida la lista de grupos al facade al primer render. */
-  it('should request getAssignableGroups$ on init', () => {
-    fixture.detectChanges();
-    expect(getAssignableGroupsFn).toHaveBeenCalled();
+    fixture.componentRef.setInput('assignableGroups', assignableGroups);
   });
 
   /** Verifica que superadmin vea todos los grupos asignables en el dropdown. */

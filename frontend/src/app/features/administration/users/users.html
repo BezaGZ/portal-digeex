@@ -15,6 +15,7 @@
     <app-user-dialog
       [visible]="showCreateDialog()"
       [caller]="currentUser()"
+      [assignableGroups]="assignableGroups()"
       (visibleChange)="onDialogClosed()"
       (createSubmitted)="onCreateSubmitted($event)"
     />
@@ -24,6 +25,7 @@
     <app-change-role-dialog
       [visible]="showChangeRoleDialog()"
       [target]="changeRoleTarget()"
+      [assignableGroups]="assignableGroups()"
       (visibleChange)="onChangeRoleDialogClosed()"
       (changeSubmitted)="onChangeRoleSubmitted($event)"
     />

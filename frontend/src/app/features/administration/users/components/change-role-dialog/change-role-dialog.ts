@@ -1,16 +1,13 @@
 import {
   Component,
   ChangeDetectionStrategy,
-  OnDestroy,
   inject,
   input,
   output,
   signal,
   computed,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Subject } from 'rxjs';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { Select } from 'primeng/select';
@@ -19,10 +16,7 @@ import { MessageModule } from 'primeng/message';
 
 import { Group } from '../../../../../core/api/models/group.model';
 import { UserView } from '../../models/user-view.model';
-import {
-  ChangeUserRoleInput,
-  UserManagementService,
-} from '../../services/user-management.service';
+import { ChangeUserRoleInput } from '../../services/user-management.service';
 import { labelForGroup } from '../user-dialog/user-dialog';
 
 /** Opción renderizada en el dropdown de cambio de rol. */
@@ -67,13 +61,14 @@ interface RoleOption {
     `,
   ],
 })
-export class ChangeRoleDialog implements OnDestroy {
+export class ChangeRoleDialog {
   private fb = inject(FormBuilder);
-  private userService = inject(UserManagementService);
-  private destroy$ = new Subject<void>();
 
   visible = input.required<boolean>();
   target = input<UserView | null>(null);
+  /** Grupos asignables provistos por el contenedor; el diálogo es
+   *  puramente presentacional. */
+  assignableGroups = input.required<Group[]>();
 
   visibleChange = output<boolean>();
   changeSubmitted = output<ChangeUserRoleInput>();
@@ -82,10 +77,6 @@ export class ChangeRoleDialog implements OnDestroy {
 
   form = this.fb.group({
     targetGroupUuid: [null as string | null, Validators.required],
-  });
-
-  private assignableGroups = toSignal(this.userService.getAssignableGroups$(), {
-    initialValue: [] as Group[],
   });
 
   roleOptions = computed<RoleOption[]>(() =>
@@ -103,11 +94,6 @@ export class ChangeRoleDialog implements OnDestroy {
 
   canSubmit(): boolean {
     return this.form.valid && this.target() !== null;
-  }
-
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   onHide() {

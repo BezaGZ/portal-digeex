@@ -1,6 +1,5 @@
 import {
   Component,
-  OnDestroy,
   input,
   output,
   inject,
@@ -9,7 +8,6 @@ import {
   effect,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
@@ -17,14 +15,10 @@ import { InputTextModule } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { FloatLabelModule } from 'primeng/floatlabel';
 import { MessageModule } from 'primeng/message';
-import { Subject } from 'rxjs';
 
 import { Group } from '../../../../../core/api/models/group.model';
 import { UserView } from '../../models/user-view.model';
-import {
-  CreateUserInput,
-  UserManagementService,
-} from '../../services/user-management.service';
+import { CreateUserInput } from '../../services/user-management.service';
 import {
   ADMIN_GROUP_NAME_PREFIX,
   ADMINISTRATOR_GROUP_NAME,
@@ -74,13 +68,14 @@ interface RoleOption {
     `,
   ],
 })
-export class UserDialog implements OnDestroy {
+export class UserDialog {
   private fb = inject(FormBuilder);
-  private userService = inject(UserManagementService);
-  private destroy$ = new Subject<void>();
 
   visible = input.required<boolean>();
   caller = input<UserView | null>(null);
+  /** Grupos asignables provistos por el contenedor; el diálogo es
+   *  puramente presentacional. */
+  assignableGroups = input.required<Group[]>();
 
   visibleChange = output<boolean>();
   createSubmitted = output<CreateUserInput>();
@@ -92,11 +87,6 @@ export class UserDialog implements OnDestroy {
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
     targetGroupUuid: [null as string | null, Validators.required],
-  });
-
-  /** Grupos asignables leídos del facade. El facade ya filtra nativos (Anonymous, COMMUNITY_*_ADMIN). */
-  private assignableGroups = toSignal(this.userService.getAssignableGroups$(), {
-    initialValue: [] as Group[],
   });
 
   /** Opciones filtradas: superadmin ve todas; admin_subdireccion solo SUBMITTERS_{sufijo}. */
@@ -140,11 +130,6 @@ export class UserDialog implements OnDestroy {
   // form.valid no es signal; leer fresco en cada CD y en onSubmit.
   canSubmit(): boolean {
     return this.form.valid;
-  }
-
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   onHide() {

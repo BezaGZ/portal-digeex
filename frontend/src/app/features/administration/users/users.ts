@@ -1,5 +1,11 @@
-import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import {
+  Component,
+  DestroyRef,
+  inject,
+  signal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { BehaviorSubject } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { ToastModule } from 'primeng/toast';
@@ -15,6 +21,7 @@ import {
 } from './services/user-management.service';
 import { BusinessRuleError, BusinessRuleErrorCode } from './services/business-rule-error';
 import { UserView } from './models/user-view.model';
+import { Group } from '../../../core/api/models/group.model';
 import { extractErrorDetail } from '../../../core/error/extract-error-detail';
 
 /** Fallback del detail cuando el error no trae ningun texto util. */
@@ -35,6 +42,7 @@ const UNEXPECTED_ERROR_FALLBACK = 'Ocurrió un error al procesar la solicitud. I
 export class Users {
   private userService = inject(UserManagementService);
   private messageService = inject(MessageService);
+  private destroyRef = inject(DestroyRef);
 
   showCreateDialog = signal(false);
   showChangeRoleDialog = signal(false);
@@ -56,6 +64,15 @@ export class Users {
 
   currentUser = toSignal(this.userService.currentUserView$, { initialValue: null });
 
+  /**
+   * Grupos asignables del portal. Fuente única para los diálogos de alta y
+   * cambio de rol: una request al montar el contenedor, reutilizada en cada
+   * apertura vía input.
+   */
+  assignableGroups = toSignal(this.userService.getAssignableGroups$(), {
+    initialValue: [] as Group[],
+  });
+
   onCreateUserRequested() {
     this.showCreateDialog.set(true);
   }
@@ -65,47 +82,56 @@ export class Users {
   }
 
   onDeactivateRequested(user: UserView) {
-    this.userService.deactivateUser$(user.uuid).subscribe({
-      next: () => {
-        this.refresh$.next();
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Usuario desactivado',
-          detail: `${user.firstName} ${user.lastName} ha sido desactivado`,
-          life: 3000,
-        });
-      },
-      error: (err) => this.errorToToast(err),
-    });
+    this.userService
+      .deactivateUser$(user.uuid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.refresh$.next();
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Usuario desactivado',
+            detail: `${user.firstName} ${user.lastName} ha sido desactivado`,
+            life: 3000,
+          });
+        },
+        error: (err) => this.errorToToast(err),
+      });
   }
 
   onReactivateRequested(user: UserView) {
-    this.userService.reactivateUser$(user.uuid).subscribe({
-      next: () => {
-        this.refresh$.next();
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Usuario reactivado',
-          detail: `${user.firstName} ${user.lastName} ha sido reactivado`,
-          life: 3000,
-        });
-      },
-      error: (err) => this.errorToToast(err),
-    });
+    this.userService
+      .reactivateUser$(user.uuid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.refresh$.next();
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Usuario reactivado',
+            detail: `${user.firstName} ${user.lastName} ha sido reactivado`,
+            life: 3000,
+          });
+        },
+        error: (err) => this.errorToToast(err),
+      });
   }
 
   onResetPasswordRequested(user: UserView) {
-    this.userService.resetPassword$({ uuid: user.uuid, email: user.email }).subscribe({
-      next: () => {
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Contraseña restablecida',
-          detail: 'Se ha enviado un correo con las instrucciones para restablecer la contraseña',
-          life: 3000,
-        });
-      },
-      error: (err) => this.errorToToast(err),
-    });
+    this.userService
+      .resetPassword$({ uuid: user.uuid, email: user.email })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Contraseña restablecida',
+            detail: 'Se ha enviado un correo con las instrucciones para restablecer la contraseña',
+            life: 3000,
+          });
+        },
+        error: (err) => this.errorToToast(err),
+      });
   }
 
   onModifyRoleRequested(user: UserView) {
@@ -119,36 +145,42 @@ export class Users {
   }
 
   onChangeRoleSubmitted(input: ChangeUserRoleInput) {
-    this.userService.changeUserRole$(input).subscribe({
-      next: () => {
-        this.refresh$.next();
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Rol actualizado',
-          detail: 'El rol del usuario fue actualizado correctamente',
-          life: 3000,
-        });
-        this.showChangeRoleDialog.set(false);
-        this.changeRoleTarget.set(null);
-      },
-      error: (err) => this.errorToToast(err),
-    });
+    this.userService
+      .changeUserRole$(input)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.refresh$.next();
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Rol actualizado',
+            detail: 'El rol del usuario fue actualizado correctamente',
+            life: 3000,
+          });
+          this.showChangeRoleDialog.set(false);
+          this.changeRoleTarget.set(null);
+        },
+        error: (err) => this.errorToToast(err),
+      });
   }
 
   onCreateSubmitted(input: CreateUserInput) {
-    this.userService.createUser$(input).subscribe({
-      next: () => {
-        this.refresh$.next();
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Usuario creado',
-          detail: `${input.firstName} ${input.lastName} ha sido creado`,
-          life: 3000,
-        });
-        this.showCreateDialog.set(false);
-      },
-      error: (err) => this.errorToToast(err),
-    });
+    this.userService
+      .createUser$(input)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.refresh$.next();
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Usuario creado',
+            detail: `${input.firstName} ${input.lastName} ha sido creado`,
+            life: 3000,
+          });
+          this.showCreateDialog.set(false);
+        },
+        error: (err) => this.errorToToast(err),
+      });
   }
 
   /**
