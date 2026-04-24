@@ -204,47 +204,83 @@ describe('UserManagementService', () => {
     });
   });
 
-  describe('getVisibleUsers$()', () => {
-    /** Verifica que el listado pida epersons con embed=groups y page 0 al tope de USERS_PAGE_SIZE. */
-    it('should call EPersonApi.list with embed=groups on the first page', async () => {
-      await firstValueFrom(service.getVisibleUsers$());
-      expect(listEPersonsFn).toHaveBeenCalledWith({ size: 100, page: 0, embed: 'groups' });
+  /**
+   * searchUsers$ alinea al patrón `EPeopleRegistryComponent` de dspace-angular:
+   * la decisión de endpoint depende del scope (`metadata` | `email`) y de si
+   * la query está vacía. El container consume la misma forma paginada para
+   * alimentar el `p-table` en modo lazy.
+   */
+  describe('searchUsers$()', () => {
+    /** Verifica que query vacía siempre caiga al listado base, sin tocar search/byMetadata. */
+    it('should call EPersonApi.list with page, size and embed=groups when the query is empty', async () => {
+      await firstValueFrom(
+        service.searchUsers$({ scope: 'metadata', query: '', page: 2, size: 25 }),
+      );
+      expect(listEPersonsFn).toHaveBeenCalledWith({ page: 2, size: 25, embed: 'groups' });
+    });
+
+    /** Verifica que scope=metadata con query no vacía pegue a search/byMetadata preservando página y size. */
+    it('should call EPersonApi.searchByMetadata when scope=metadata and query is not empty', async () => {
+      const searchByMetadataFn = vi.fn().mockReturnValue(of(empty<EPerson>()));
+      (service['epersonApi'] as unknown as { searchByMetadata: typeof searchByMetadataFn }).searchByMetadata =
+        searchByMetadataFn;
+
+      await firstValueFrom(
+        service.searchUsers$({ scope: 'metadata', query: 'carlos', page: 1, size: 10 }),
+      );
+
+      expect(searchByMetadataFn).toHaveBeenCalledWith({
+        query: 'carlos',
+        page: 1,
+        size: 10,
+        embed: 'groups',
+      });
+    });
+
+    /** Verifica que query con espacios alrededor se trimee antes de decidir branch. */
+    it('should trim the query and fall back to list when it is whitespace-only', async () => {
+      await firstValueFrom(
+        service.searchUsers$({ scope: 'metadata', query: '   ', page: 0, size: 10 }),
+      );
+      expect(listEPersonsFn).toHaveBeenCalledWith({ page: 0, size: 10, embed: 'groups' });
     });
 
     /**
-     * Verifica que al haber más páginas el facade pida todas en paralelo y
-     * concatene resultados; el techo del page size es el máximo del backend,
-     * no del dataset visible.
+     * Verifica que scope=email con query pegue a search/byEmail con embed y
+     * envuelva el eperson solitario como un Paginated de un elemento para
+     * que el p-table consuma siempre la misma forma.
      */
-    it('should fetch every page in parallel when totalPages > 1 and concatenate items', async () => {
-      const firstPage = {
-        items: [buildEPerson({ uuid: 'uuid-p0', email: 'p0@mineduc.gob.gt', groups: [adminGlobal] })],
-        totalElements: 2,
-        totalPages: 2,
-        size: 1,
-        page: 0,
-      };
-      const secondPage = {
-        items: [buildEPerson({ uuid: 'uuid-p1', email: 'p1@mineduc.gob.gt', groups: [adminGlobal] })],
-        totalElements: 2,
-        totalPages: 2,
-        size: 1,
-        page: 1,
-      };
-      listEPersonsFn.mockImplementation((opts: { page?: number }) => {
-        if (opts?.page === 0) return of(firstPage);
-        if (opts?.page === 1) return of(secondPage);
-        return of(empty<EPerson>());
+    it('should call EPersonApi.searchByEmail and wrap the result as a single-item Paginated when scope=email', async () => {
+      const eperson = buildEPerson({
+        uuid: 'uuid-found',
+        email: 'encontrado@mineduc.gob.gt',
+        groups: [submitBasica],
       });
+      searchByEmailFn.mockReturnValue(of(eperson));
 
-      const result = await firstValueFrom(service.getVisibleUsers$());
+      const result = await firstValueFrom(
+        service.searchUsers$({ scope: 'email', query: 'encontrado@mineduc.gob.gt', page: 0, size: 10 }),
+      );
 
-      expect(listEPersonsFn).toHaveBeenCalledWith({ size: 100, page: 0, embed: 'groups' });
-      expect(listEPersonsFn).toHaveBeenCalledWith({ size: 100, page: 1, embed: 'groups' });
-      const uuids = result.items.map((v) => v.uuid).sort();
-      expect(uuids).toEqual(['uuid-p0', 'uuid-p1']);
+      expect(searchByEmailFn).toHaveBeenCalledWith('encontrado@mineduc.gob.gt', { embed: 'groups' });
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].uuid).toBe('uuid-found');
+      expect(result.totalElements).toBe(1);
+      expect(result.totalPages).toBe(1);
     });
 
+    /** Verifica que scope=email sin match devuelva un Paginated vacío (no error). */
+    it('should return an empty Paginated when scope=email and no match is found', async () => {
+      searchByEmailFn.mockReturnValue(of(null));
+
+      const result = await firstValueFrom(
+        service.searchUsers$({ scope: 'email', query: 'inexistente@mineduc.gob.gt', page: 0, size: 10 }),
+      );
+
+      expect(result.items).toEqual([]);
+      expect(result.totalElements).toBe(0);
+      expect(result.totalPages).toBe(0);
+    });
   });
 
   describe('getAssignableGroups$()', () => {

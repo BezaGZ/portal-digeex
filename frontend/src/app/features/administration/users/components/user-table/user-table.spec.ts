@@ -160,4 +160,25 @@ describe('UserTable', () => {
 
     expect(emitted).toEqual([target]);
   });
+
+  /**
+   * Output lazyLoad: el p-table en modo lazy emite `onLazyLoad` con
+   * `first`, `rows`, `sortField`, `sortOrder`; el componente reemite el
+   * evento intacto para que el container lo traduzca a page/size del
+   * facade.
+   */
+  it('should re-emit the PrimeNG onLazyLoad event payload on lazyLoad output', () => {
+    fixture.componentRef.setInput('users', []);
+    fixture.componentRef.setInput('totalRecords', 42);
+    fixture.componentRef.setInput('pageSize', 25);
+    fixture.detectChanges();
+
+    const emitted: unknown[] = [];
+    asAny(component).lazyLoad.subscribe((evt: unknown) => emitted.push(evt));
+
+    const lazyEvent = { first: 25, rows: 25, sortField: 'email', sortOrder: 1 };
+    asAny(component).lazyLoad.emit(lazyEvent);
+
+    expect(emitted).toEqual([lazyEvent]);
+  });
 });

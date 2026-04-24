@@ -101,12 +101,22 @@ export class EPersonApiService {
 
   /**
    * Busca un eperson por correo exacto; devuelve null si no existe. Usado
-   * para pre-validar alta sin depender del 500 genérico que DSpace responde
-   * cuando el POST choca con un correo ya registrado.
+   * tanto para pre-validar alta (sin depender del 500 genérico cuando el POST
+   * choca con un correo ya registrado) como para resolver un eperson por
+   * correo en el listado administrativo cuando el admin busca con scope
+   * `email`. El parámetro `embed` permite traer subrecursos en la misma
+   * respuesta (por ejemplo `embed=groups` para armar el `UserView` sin
+   * segunda request).
    */
-  searchByEmail(email: string): Observable<EPerson | null> {
+  searchByEmail(
+    email: string,
+    options: { embed?: string } = {},
+  ): Observable<EPerson | null> {
     const url = `${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}/search/byEmail`;
-    const params = new HttpParams().set('email', email);
+    let params = new HttpParams().set('email', email);
+    if (options.embed) {
+      params = params.set('embed', options.embed);
+    }
     return this.http.get<EPerson>(url, { params }).pipe(
       map((eperson) => eperson ?? null),
       catchError((err: { status?: number }) => {
@@ -119,6 +129,25 @@ export class EPersonApiService {
         return throwError(() => err);
       }),
     );
+  }
+
+  /**
+   * Búsqueda parcial case-insensitive sobre `firstname`, `lastname` y `email`
+   * del eperson. Es el endpoint nativo que DSpace 9.2 expone para el listado
+   * administrativo con filtro por texto libre; acepta paginación server-side
+   * (`page`, `size`) y embed para incluir subrecursos.
+   */
+  searchByMetadata(
+    params: { query: string; size?: number; page?: number; embed?: string },
+  ): Observable<Paginated<EPerson>> {
+    const url = `${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}/search/byMetadata`;
+    let httpParams = buildPaginationParams(params).set('query', params.query);
+    if (params.embed) {
+      httpParams = httpParams.set('embed', params.embed);
+    }
+    return this.http
+      .get<HalListResponse<EPerson>>(url, { params: httpParams })
+      .pipe(map((response) => mapHalList(response, EMBEDDED_KEY_EPERSONS)));
   }
 
   /**

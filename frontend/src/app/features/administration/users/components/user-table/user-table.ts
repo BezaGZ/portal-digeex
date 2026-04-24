@@ -3,38 +3,32 @@ import {
   input,
   output,
   inject,
-  signal,
-  computed,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { Table, TableModule } from 'primeng/table';
+import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { Select } from 'primeng/select';
 import { TooltipModule } from 'primeng/tooltip';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { CardModule } from 'primeng/card';
 import { ConfirmationService, MessageService } from 'primeng/api';
-import { UserView, UserRole, UserStatus, RoleLabels } from '../../models/user-view.model';
+import { UserView, UserRole, RoleLabels } from '../../models/user-view.model';
 import { UserStatusBadge } from '../user-status-badge/user-status-badge';
 
 /**
- * Componente presentacional: recibe la lista y el caller por input y
- * emite outputs cuando el usuario pide una acción. El contenedor decide
- * qué hacer contra el facade y maneja los toasts de resultado.
+ * Tabla de usuarios con paginación server-side. El componente es pura
+ * presentación: recibe la página actual por input, emite eventos lazy al
+ * container (que traduce a page/size del facade), y delega acciones
+ * fila-por-fila como outputs. Filtrado y búsqueda viven en el container
+ * porque dependen del scope y del endpoint elegido.
  */
 @Component({
   selector: 'app-user-table',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     TableModule,
     ButtonModule,
-    InputTextModule,
-    Select,
     TooltipModule,
     ConfirmDialogModule,
     CardModule,
@@ -49,62 +43,15 @@ export class UserTable {
 
   users = input.required<UserView[]>();
   currentUser = input<UserView | null>(null);
+  totalRecords = input<number>(0);
+  pageSize = input<number>(10);
 
-  createUserRequested = output<void>();
   deactivateRequested = output<UserView>();
   reactivateRequested = output<UserView>();
   resetPasswordRequested = output<UserView>();
   modifyRoleRequested = output<UserView>();
   editRequested = output<UserView>();
-
-  globalFilterValue = signal<string>('');
-  selectedRole = signal<UserRole | null>(null);
-  selectedStatus = signal<UserStatus | null>(null);
-  selectedSubdivision = signal<string | null>(null);
-
-  roleOptions = [
-    { label: 'Todos los roles', value: null },
-    { label: RoleLabels.superadmin, value: 'superadmin' as UserRole },
-    { label: RoleLabels.admin_subdireccion, value: 'admin_subdireccion' as UserRole },
-    { label: RoleLabels.personal_delegado, value: 'personal_delegado' as UserRole },
-  ];
-
-  statusOptions = [
-    { label: 'Todos los estados', value: null },
-    { label: 'Activo', value: 'active' as UserStatus },
-    { label: 'Desactivado', value: 'inactive' as UserStatus },
-  ];
-
-  subdivisionOptions = computed(() => {
-    const subdivisions = new Set(
-      this.users()
-        .map((u) => u.subdivision)
-        .filter((s) => s !== null),
-    );
-
-    return [
-      { label: 'Todas las subdirecciones', value: null },
-      ...Array.from(subdivisions).map((s) => ({ label: s!, value: s! })),
-    ];
-  });
-
-  filteredUsers = computed(() => {
-    let filtered = this.users();
-
-    if (this.selectedRole()) {
-      filtered = filtered.filter((u) => u.role === this.selectedRole());
-    }
-
-    if (this.selectedStatus()) {
-      filtered = filtered.filter((u) => u.status === this.selectedStatus());
-    }
-
-    if (this.selectedSubdivision()) {
-      filtered = filtered.filter((u) => u.subdivision === this.selectedSubdivision());
-    }
-
-    return filtered;
-  });
+  lazyLoad = output<TableLazyLoadEvent>();
 
   getRoleLabel(role: UserRole): string {
     return RoleLabels[role];
@@ -129,10 +76,6 @@ export class UserTable {
 
   canModifyRoles(): boolean {
     return this.currentUser()?.role === 'superadmin';
-  }
-
-  onCreateUser() {
-    this.createUserRequested.emit();
   }
 
   onResetPassword(user: UserView) {
@@ -199,10 +142,5 @@ export class UserTable {
         this.reactivateRequested.emit(user);
       },
     });
-  }
-
-  clearGlobalFilter(table: Table) {
-    this.globalFilterValue.set('');
-    table.clear();
   }
 }

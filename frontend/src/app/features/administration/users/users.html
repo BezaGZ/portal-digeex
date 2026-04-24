@@ -1,15 +1,67 @@
 <div class="p-6">
   <p-toast position="top-right" />
 
+  <div class="mb-6">
+    <div class="flex justify-between items-center">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Gestión de Usuarios</h1>
+        <p class="text-gray-600 dark:text-gray-400">Administra los usuarios y permisos del sistema</p>
+      </div>
+      <p-button
+        label="Crear Usuario"
+        icon="pi pi-plus"
+        severity="success"
+        styleClass="!text-white !font-medium"
+        [rounded]="true"
+        (onClick)="onCreateUserRequested()"
+      />
+    </div>
+  </div>
+
+  <p-card class="mb-6 shadow-sm">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+          Buscar por
+        </label>
+        <p-select
+          [options]="scopeOptions"
+          [ngModel]="scope()"
+          (ngModelChange)="onScopeChange($event)"
+          optionLabel="label"
+          optionValue="value"
+          [style]="{ width: '100%' }"
+        />
+      </div>
+      <div class="md:col-span-2">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+          Texto de búsqueda
+        </label>
+        <span class="p-input-icon-left w-full">
+          <input
+            pInputText
+            type="text"
+            [ngModel]="queryRaw()"
+            (ngModelChange)="onSearchInput($event)"
+            [placeholder]="scope() === 'email' ? 'correo@mineduc.gob.gt' : 'Nombre, apellido o correo...'"
+            class="w-full"
+          />
+        </span>
+      </div>
+    </div>
+  </p-card>
+
   <app-user-table
     [users]="visibleUsers()"
+    [totalRecords]="totalRecords()"
+    [pageSize]="pageSize()"
     [currentUser]="currentUser()"
-    (createUserRequested)="onCreateUserRequested()"
     (deactivateRequested)="onDeactivateRequested($event)"
     (reactivateRequested)="onReactivateRequested($event)"
     (resetPasswordRequested)="onResetPasswordRequested($event)"
     (modifyRoleRequested)="onModifyRoleRequested($event)"
     (editRequested)="onEditRequested($event)"
+    (lazyLoad)="onLazyLoad($event)"
   />
 
   @if (showCreateDialog()) {

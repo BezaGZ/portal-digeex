@@ -193,6 +193,99 @@ describe('EPersonApiService', () => {
     });
   });
 
+  /**
+   * searchByMetadata(): GET /api/eperson/epersons/search/byMetadata con query
+   * libre + paginación server-side. Backing del scope `nombre` del listado
+   * administrativo — busca parcial case-insensitive en firstname, lastname
+   * y email.
+   */
+  describe('searchByMetadata()', () => {
+    /** Verifica que mande GET al endpoint nativo con query, size, page y embed. */
+    it('should GET /search/byMetadata with query, page, size and embed params', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service
+          .searchByMetadata({ query: 'carlos', size: 10, page: 0, embed: 'groups' })
+          .subscribe({ next: () => resolve(), error: reject });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/epersons/search/byMetadata' &&
+          r.params.get('query') === 'carlos' &&
+          r.params.get('size') === '10' &&
+          r.params.get('page') === '0' &&
+          r.params.get('embed') === 'groups',
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush(mockEPersonsResponse);
+
+      await promise;
+    });
+
+    /** Verifica que sin embed no se envíe el param (no manda embed=undefined). */
+    it('should NOT include embed param when not provided', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service.searchByMetadata({ query: 'ana', size: 5, page: 1 }).subscribe({
+          next: () => resolve(),
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne(
+        (r) => r.url === '/server/api/eperson/epersons/search/byMetadata',
+      );
+      expect(req.request.params.has('embed')).toBe(false);
+      req.flush(mockEPersonsResponse);
+
+      await promise;
+    });
+  });
+
+  /**
+   * searchByEmail(email, { embed? }): GET /api/eperson/epersons/search/byEmail.
+   * Doble uso: pre-check de duplicado en alta (Ciclo 17) y resolución
+   * directa por correo en el listado (Ciclo 19, scope `correo`).
+   */
+  describe('searchByEmail()', () => {
+    /** Verifica que reenvíe el param embed cuando se lo pasan. */
+    it('should forward embed param to DSpace when provided', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service
+          .searchByEmail('c@mineduc.gob.gt', { embed: 'groups' })
+          .subscribe({ next: () => resolve(), error: reject });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/epersons/search/byEmail' &&
+          r.params.get('email') === 'c@mineduc.gob.gt' &&
+          r.params.get('embed') === 'groups',
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      await promise;
+    });
+
+    /** Verifica que sin options el request no incluya embed (backward compat). */
+    it('should NOT include embed param when options are omitted', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service.searchByEmail('c@mineduc.gob.gt').subscribe({
+          next: () => resolve(),
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne(
+        (r) => r.url === '/server/api/eperson/epersons/search/byEmail',
+      );
+      expect(req.request.params.has('embed')).toBe(false);
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      await promise;
+    });
+  });
+
   /** getOne(): GET /api/eperson/epersons/{uuid}, opcionalmente con embed. */
   describe('getOne()', () => {
     const mockEPerson = {

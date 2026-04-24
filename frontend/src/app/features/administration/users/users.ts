@@ -1,13 +1,21 @@
 import {
   Component,
   DestroyRef,
+  computed,
+  effect,
   inject,
   signal,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { BehaviorSubject } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { BehaviorSubject, combineLatest } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { InputTextModule } from 'primeng/inputtext';
+import { Select } from 'primeng/select';
+import { TableLazyLoadEvent } from 'primeng/table';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api'; // MessageService se consume desde la raíz de la app
 
@@ -23,8 +31,24 @@ import {
 } from './services/user-management.service';
 import { BusinessRuleError, BusinessRuleErrorCode } from './services/business-rule-error';
 import { UserView } from './models/user-view.model';
+import { Paginated } from '../../../core/api/models/hal.model';
 import { Group } from '../../../core/api/models/group.model';
 import { extractErrorDetail } from '../../../core/error/extract-error-detail';
+
+/** Scope de búsqueda del listado: alineado al patrón `EPeopleRegistryComponent`. */
+export type UserSearchScope = 'metadata' | 'email';
+
+interface TablePageState {
+  readonly page: number;
+  readonly size: number;
+}
+
+const INITIAL_PAGE_STATE: TablePageState = { page: 0, size: 10 };
+const SEARCH_DEBOUNCE_MS = 300;
+
+function emptyPaginatedView(size: number): Paginated<UserView> {
+  return { items: [], totalElements: 0, totalPages: 0, size, page: 0 };
+}
 
 /** Fallback del detail cuando el error no trae ningun texto util. */
 const UNEXPECTED_ERROR_FALLBACK = 'Ocurrió un error al procesar la solicitud. Intenta más tarde.';
@@ -36,7 +60,18 @@ const UNEXPECTED_ERROR_FALLBACK = 'Ocurrió un error al procesar la solicitud. I
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [ToastModule, UserTable, UserDialog, ChangeRoleDialog, EditUserDialog],
+  imports: [
+    FormsModule,
+    ButtonModule,
+    CardModule,
+    InputTextModule,
+    Select,
+    ToastModule,
+    UserTable,
+    UserDialog,
+    ChangeRoleDialog,
+    EditUserDialog,
+  ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './users.html',
@@ -52,19 +87,53 @@ export class Users {
   showEditDialog = signal(false);
   editTarget = signal<UserView | null>(null);
 
+  /** Texto crudo del input de búsqueda; viaja a `queryDebounced` tras 300ms. */
+  queryRaw = signal<string>('');
+
+  /** Scope bound al p-select: `metadata` busca parcial en campos, `email` exacto. */
+  scope = signal<UserSearchScope>('metadata');
+
+  /** Estado paginado del p-table. Se actualiza desde `onLazyLoad`. */
+  private tableState = signal<TablePageState>(INITIAL_PAGE_STATE);
+
+  /** Opciones del dropdown de scope. Array mutable para que PrimeNG p-select lo acepte. */
+  readonly scopeOptions: { label: string; value: UserSearchScope }[] = [
+    { label: 'Nombre o apellido', value: 'metadata' },
+    { label: 'Correo', value: 'email' },
+  ];
+
+  /** Versión debounced del queryRaw para evitar una request por cada tecla. */
+  private queryDebounced = toSignal(
+    toObservable(this.queryRaw).pipe(
+      debounceTime(SEARCH_DEBOUNCE_MS),
+      distinctUntilChanged(),
+    ),
+    { initialValue: '' },
+  );
+
   /**
    * Dispara el refetch del listado tras cada mutación. `BehaviorSubject`
    * emite al suscribirse, así la carga inicial va sin `startWith`.
    */
   private refresh$ = new BehaviorSubject<void>(undefined);
 
-  visibleUsers = toSignal(
-    this.refresh$.pipe(
-      switchMap(() => this.userService.getVisibleUsers$()),
-      map((paginated) => paginated.items),
+  private visibleUsersPaginated = toSignal(
+    combineLatest([
+      toObservable(this.queryDebounced),
+      toObservable(this.scope),
+      toObservable(this.tableState),
+      this.refresh$,
+    ]).pipe(
+      switchMap(([query, scope, state]) =>
+        this.userService.searchUsers$({ scope, query, page: state.page, size: state.size }),
+      ),
     ),
-    { initialValue: [] as UserView[] },
+    { initialValue: emptyPaginatedView(INITIAL_PAGE_STATE.size) },
   );
+
+  visibleUsers = computed(() => this.visibleUsersPaginated().items);
+  totalRecords = computed(() => this.visibleUsersPaginated().totalElements);
+  pageSize = computed(() => this.tableState().size);
 
   currentUser = toSignal(this.userService.currentUserView$, { initialValue: null });
 
@@ -76,6 +145,42 @@ export class Users {
   assignableGroups = toSignal(this.userService.getAssignableGroups$(), {
     initialValue: [] as Group[],
   });
+
+  constructor() {
+    /**
+     * Al cambiar el texto debounced o el scope, reiniciamos a página 0 para
+     * que el usuario no se quede viendo una página vacía cuando la búsqueda
+     * nueva tiene menos resultados.
+     */
+    effect(() => {
+      this.queryDebounced();
+      this.scope();
+      this.tableState.update((state) => (state.page === 0 ? state : { ...state, page: 0 }));
+    });
+  }
+
+  /** Bind desde el input de búsqueda (`ngModelChange`). */
+  onSearchInput(value: string) {
+    this.queryRaw.set(value);
+  }
+
+  /** Bind desde el p-select de scope. */
+  onScopeChange(value: UserSearchScope) {
+    this.scope.set(value);
+  }
+
+  /**
+   * Bind a `(onLazyLoad)` del p-table. PrimeNG emite `first` (offset) y
+   * `rows` (tamaño de página, potencialmente null en el primer evento).
+   * Los traducimos a `{page, size}` y disparamos el refetch vía la
+   * suscripción reactiva del container.
+   */
+  onLazyLoad(event: TableLazyLoadEvent) {
+    const rows = event.rows ?? INITIAL_PAGE_STATE.size;
+    const first = event.first ?? 0;
+    const page = rows > 0 ? Math.floor(first / rows) : 0;
+    this.tableState.set({ page, size: rows });
+  }
 
   onCreateUserRequested() {
     this.showCreateDialog.set(true);

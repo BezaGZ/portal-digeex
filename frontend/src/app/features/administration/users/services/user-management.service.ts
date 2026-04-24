@@ -49,6 +49,19 @@ export interface UpdateUserInput {
   changes: { firstName?: string; lastName?: string; email?: string };
 }
 
+/**
+ * Parámetros del listado paginado con búsqueda server-side. `scope` alinea
+ * al patrón de `EPeopleRegistryComponent` de `dspace-angular`: `metadata`
+ * busca parcial en firstname/lastname/email, `email` busca exacto. Query
+ * vacía siempre cae al listado base sin filtro.
+ */
+export interface SearchUsersParams {
+  scope: 'metadata' | 'email';
+  query: string;
+  page: number;
+  size: number;
+}
+
 /** Proyección HAL `embed=groups` del listado paginado `/api/eperson/epersons`. */
 const EMBED_GROUPS = 'groups';
 
@@ -60,10 +73,11 @@ const METADATA_LASTNAME = 'eperson.lastname';
 const INSTITUTIONAL_EMAIL_DOMAIN = '@mineduc.gob.gt';
 
 /**
- * Tope por página al traer listas de DSpace. 100 es el máximo aceptado por el
- * backend en una sola respuesta; los listados completos (epersons, groups) se
- * arman pidiendo la primera página y después el resto en paralelo hasta cubrir
- * `totalPages`.
+ * Tope por página al traer el listado completo de grupos asignables. 100 es
+ * el máximo aceptado por DSpace en una sola respuesta; `getAssignableGroups$`
+ * pide la primera página y después el resto en paralelo para llenar el
+ * dropdown sin techo arbitrario. El listado de epersons pasó a paginación
+ * server-side lazy desde Ciclo 19 y no usa esta constante.
  */
 const LIST_PAGE_SIZE = 100;
 
@@ -137,35 +151,55 @@ export class UserManagementService {
   );
 
   /**
-   * Listado completo de epersons con su rol resuelto. Trae todas las páginas
-   * del backend en paralelo para que el `p-table` tenga el dataset entero y
-   * su paginación + filtrado cliente sigan funcionando a cualquier escala.
-   * Solo lo consume el panel reservado al site admin; `/api/eperson/epersons`
-   * exige `hasAuthority('ADMIN')` en DSpace 9.2.
+   * Listado paginado con búsqueda server-side alineado al patrón
+   * `EPeopleRegistryComponent` de `dspace-angular`. Query vacía cae al
+   * listado base (`/epersons?page&size&embed=groups`). Scope `metadata` con
+   * query usa `search/byMetadata` (parcial sobre firstname/lastname/email).
+   * Scope `email` con query usa `search/byEmail` y envuelve el único
+   * resultado (o ninguno) en un `Paginated<UserView>` de un solo elemento
+   * para que el `p-table` en modo lazy consuma siempre la misma forma.
    */
-  getVisibleUsers$(): Observable<Paginated<UserView>> {
-    return this.epersonApi
-      .list({ size: LIST_PAGE_SIZE, page: 0, embed: EMBED_GROUPS })
-      .pipe(
-        switchMap((first) => {
-          if (first.totalPages <= 1) return of(first);
-          const remainingPages = Array.from(
-            { length: first.totalPages - 1 },
-            (_, i) => i + 1,
-          );
-          return forkJoin(
-            remainingPages.map((page) =>
-              this.epersonApi.list({ size: LIST_PAGE_SIZE, page, embed: EMBED_GROUPS }),
-            ),
-          ).pipe(
-            map((pages) => ({
-              ...first,
-              items: [...first.items, ...pages.flatMap((p) => p.items)],
-            })),
-          );
-        }),
-        map((combined) => this.mapPaginatedToUserViews(combined)),
+  searchUsers$(params: SearchUsersParams): Observable<Paginated<UserView>> {
+    const trimmed = params.query.trim();
+    if (trimmed.length === 0) {
+      return this.epersonApi
+        .list({ page: params.page, size: params.size, embed: EMBED_GROUPS })
+        .pipe(map((paginated) => this.mapPaginatedToUserViews(paginated)));
+    }
+    if (params.scope === 'email') {
+      return this.epersonApi.searchByEmail(trimmed, { embed: EMBED_GROUPS }).pipe(
+        map((eperson) => this.wrapSingleAsPaginated(eperson, params.size)),
+        map((paginated) => this.mapPaginatedToUserViews(paginated)),
       );
+    }
+    return this.epersonApi
+      .searchByMetadata({
+        query: trimmed,
+        page: params.page,
+        size: params.size,
+        embed: EMBED_GROUPS,
+      })
+      .pipe(map((paginated) => this.mapPaginatedToUserViews(paginated)));
+  }
+
+  /**
+   * Envuelve un eperson único (o null) como `Paginated<EPerson>` para que
+   * el listado con `scope=email` devuelva la misma forma que los otros
+   * scopes. `size` se preserva del caller para que el paginador del
+   * `p-table` muestre el mismo tamaño de página.
+   */
+  private wrapSingleAsPaginated(
+    eperson: EPerson | null,
+    size: number,
+  ): Paginated<EPerson> {
+    const items = eperson ? [eperson] : [];
+    return {
+      items,
+      totalElements: items.length,
+      totalPages: items.length === 0 ? 0 : 1,
+      size,
+      page: 0,
+    };
   }
 
   /**

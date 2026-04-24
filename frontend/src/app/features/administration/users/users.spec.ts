@@ -26,7 +26,7 @@ import { EPerson } from '../../../core/api/models/eperson.model';
  */
 describe('Users (contenedor)', () => {
   let component: Users;
-  let getVisibleUsersFn: ReturnType<typeof vi.fn>;
+  let searchUsersFn: ReturnType<typeof vi.fn>;
   let getAssignableGroupsFn: ReturnType<typeof vi.fn>;
   let currentUserViewObservable: ReturnType<typeof of>;
   let deactivateUserFn: ReturnType<typeof vi.fn>;
@@ -62,7 +62,7 @@ describe('Users (contenedor)', () => {
   }
 
   beforeEach(() => {
-    getVisibleUsersFn = vi.fn().mockReturnValue(of(buildPaginated([])));
+    searchUsersFn = vi.fn().mockReturnValue(of(buildPaginated([])));
     getAssignableGroupsFn = vi.fn().mockReturnValue(of([]));
     currentUserViewObservable = of(null);
     deactivateUserFn = vi.fn().mockReturnValue(of({} as EPerson));
@@ -73,7 +73,7 @@ describe('Users (contenedor)', () => {
     messageAddFn = vi.fn();
 
     const userServiceStub: Partial<UserManagementService> = {
-      getVisibleUsers$: getVisibleUsersFn,
+      searchUsers$: searchUsersFn,
       getAssignableGroups$: getAssignableGroupsFn,
       currentUserView$: currentUserViewObservable,
       deactivateUser$: deactivateUserFn,
@@ -105,12 +105,18 @@ describe('Users (contenedor)', () => {
   }
 
   describe('lectura desde el facade', () => {
-    /** Verifica que el contenedor pida la página al facade en vez de leer un signal local. */
-    it('should request the visible users from facade.getVisibleUsers$ on init', () => {
+    /**
+     * Verifica que en el mount el contenedor pida a `searchUsers$` con
+     * scope por defecto, query vacía y página 0, alineado al arranque del
+     * `EPeopleRegistryComponent` de dspace-angular.
+     */
+    it('should request searchUsers$ on init with scope=metadata, empty query and page 0', () => {
       const fixture = TestBed.createComponent(Users);
       fixture.detectChanges();
 
-      expect(getVisibleUsersFn).toHaveBeenCalled();
+      expect(searchUsersFn).toHaveBeenCalledWith(
+        expect.objectContaining({ scope: 'metadata', query: '', page: 0 }),
+      );
     });
 
     /**
@@ -123,6 +129,52 @@ describe('Users (contenedor)', () => {
       fixture.detectChanges();
 
       expect(getAssignableGroupsFn).toHaveBeenCalled();
+    });
+
+    /**
+     * Verifica que `onLazyLoad` del p-table actualice el estado y dispare un
+     * nuevo fetch con la página y tamaño correctos. PrimeNG emite `first`
+     * (offset) y `rows` (size); el container los traduce a page/size.
+     */
+    it('should refetch searchUsers$ with updated page and size when onLazyLoad fires', async () => {
+      const fixture = TestBed.createComponent(Users);
+      const instance = fixture.componentInstance;
+      fixture.detectChanges();
+      await fixture.whenStable();
+      searchUsersFn.mockClear();
+
+      asAny(instance).onLazyLoad({ first: 25, rows: 25 });
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(searchUsersFn).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1, size: 25 }),
+      );
+    });
+
+    /**
+     * Verifica que al cambiar el scope via handler se refetche con el scope
+     * nuevo y la página reiniciada a 0 (UX estándar: cada búsqueda nueva
+     * vuelve al inicio).
+     */
+    it('should reset page to 0 and refetch when scope changes', async () => {
+      const fixture = TestBed.createComponent(Users);
+      const instance = fixture.componentInstance;
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      asAny(instance).onLazyLoad({ first: 30, rows: 10 });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      searchUsersFn.mockClear();
+
+      asAny(instance).onScopeChange('email');
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(searchUsersFn).toHaveBeenCalledWith(
+        expect.objectContaining({ scope: 'email', page: 0 }),
+      );
     });
   });
 
