@@ -16,22 +16,21 @@ const REFRESH_THRESHOLD_SECONDS = 300;
 let refreshInProgress$: Observable<void> | null = null;
 
 /**
- * Interceptor que adjunta el JWT en el header Authorization,
- * dispara refresh automático cuando el token está próximo a expirar
- * y redirige al login si DSpace responde 401.
+ * Interceptor que adjunta el JWT en el header Authorization, dispara refresh
+ * automático cuando el token está próximo a expirar, captura la rotación del
+ * JWT que DSpace devuelve en cada response autenticada, y redirige al login
+ * si DSpace responde 401.
  *
- * Flujo con token próximo a expirar:
- * 1. Detecta que faltan menos de 5 minutos (claim `exp`)
- * 2. Espera a que el refresh complete (POST /api/authn/login con Bearer)
- * 3. Reenvía la petición original con el token renovado
- *
- * Flujo con token vigente:
- * 1. Adjunta Authorization: Bearer en la petición
- * 2. Si DSpace responde 401, redirige a /login
+ * Las peticiones a `/authn/*` (login, status, logout, refresh) siguen
+ * recibiendo el Bearer y la captura de rotación, pero no disparan la rama
+ * de refresh ni el `redirectOn401`. Esto evita dos bugs: la recursión
+ * cuando el POST del refresh entra al interceptor y dispararía otro refresh
+ * sobre sí mismo, y el doble navigate a /login cuando un 401 del refresh
+ * propaga también al wrapper externo. El AuthService dueño de esas llamadas
+ * maneja sus propios errores (credenciales en login, refresh fallido en
+ * refreshToken, 401 en status durante restoreSession).
  *
  * Sin token, las peticiones pasan sin modificar.
- *
- * Ciclo 2 TDD — Sprint 5
  */
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
@@ -42,22 +41,27 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
+  const authReq = req.clone({
+    setHeaders: { Authorization: `Bearer ${token}` },
+  });
+
+  if (req.url.includes('/authn/')) {
+    return next(authReq).pipe(captureRotatedJwt(authService));
+  }
+
   if (isTokenExpiringSoon(token)) {
     return getRefresh$(authService).pipe(
       switchMap(() => {
         const freshToken = authService.getToken() ?? token;
-        const authReq = req.clone({
+        const refreshedReq = req.clone({
           setHeaders: { Authorization: `Bearer ${freshToken}` },
         });
-        return next(authReq).pipe(captureRotatedJwt(authService));
+        return next(refreshedReq).pipe(captureRotatedJwt(authService));
       }),
       redirectOn401(router),
     );
   }
 
-  const authReq = req.clone({
-    setHeaders: { Authorization: `Bearer ${token}` },
-  });
   return next(authReq).pipe(captureRotatedJwt(authService), redirectOn401(router));
 };
 

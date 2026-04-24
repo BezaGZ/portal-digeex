@@ -340,4 +340,66 @@ describe('jwtInterceptor', () => {
       expect(storeRotatedSpy).not.toHaveBeenCalled();
     });
   });
+
+  /**
+   * Endpoints de `/authn/*` reciben el Bearer pero se saltan la rama de
+   * refresh y el `redirectOn401`. Esto evita la recursión del refresh sobre
+   * sí mismo y el doble navigate cuando un refresh falla con 401. El
+   * AuthService dueño de esas llamadas gestiona sus propios errores.
+   */
+  describe('endpoints de /authn/*', () => {
+    function fakeJwt(expTimestamp: number): string {
+      const header = btoa(JSON.stringify({ alg: 'HS256' }));
+      const payload = btoa(JSON.stringify({ eid: 'user-001', exp: expTimestamp }));
+      return `${header}.${payload}.fake-signature`;
+    }
+
+    /**
+     * Verifica que un GET a /authn/status con token próximo a expirar
+     * NO dispare la rama de refresh. Si lo hiciera, el refresh terminaría
+     * llamando al mismo interceptor y entraría en loop.
+     */
+    it('should attach Bearer to /authn/* requests but NOT trigger refresh even when token is expiring soon', async () => {
+      const expiringSoon = Math.floor(Date.now() / 1000) + 120;
+      vi.spyOn(authService, 'getToken').mockReturnValue(fakeJwt(expiringSoon));
+      const refreshSpy = vi.spyOn(authService, 'refreshToken');
+
+      const promise = new Promise((resolve, reject) => {
+        httpClient.get('/server/api/authn/status').subscribe({
+          next: resolve,
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne('/server/api/authn/status');
+      expect(req.request.headers.get('Authorization')).toBe(`Bearer ${fakeJwt(expiringSoon)}`);
+      req.flush({ authenticated: true });
+
+      await promise;
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Verifica que un 401 en una response de /authn/* NO navegue a /login
+     * desde el interceptor. El caller del AuthService (login, refreshToken,
+     * restoreSession) maneja el error por su cuenta.
+     */
+    it('should NOT redirect to /login when /authn/* responds 401', async () => {
+      vi.spyOn(authService, 'getToken').mockReturnValue('valid-token');
+      const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+      const promise = new Promise<void>((resolve) => {
+        httpClient.post('/server/api/authn/login', null).subscribe({
+          next: () => resolve(),
+          error: () => resolve(),
+        });
+      });
+
+      const req = httpMock.expectOne('/server/api/authn/login');
+      req.flush(null, { status: 401, statusText: 'Unauthorized' });
+
+      await promise;
+      expect(navigateSpy).not.toHaveBeenCalled();
+    });
+  });
 });
