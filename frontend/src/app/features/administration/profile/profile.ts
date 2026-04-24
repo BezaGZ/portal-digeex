@@ -27,10 +27,15 @@ const DSPACE_PASSWORD_MIN_LENGTH_PATTERN = /at least (\d+) characters/i;
 const PASSWORD_CHANGE_SUCCESS_SUMMARY = 'Contraseña actualizada';
 const PASSWORD_CHANGE_SUCCESS_DETAIL = 'La nueva contraseña ya está activa.';
 
-/** Copys del cambio de identidad (firstName / lastName). Mismo criterio que los de contrasena. */
-const IDENTITY_UPDATE_SUCCESS_SUMMARY = 'Perfil actualizado';
-const IDENTITY_UPDATE_SUCCESS_DETAIL = 'Los cambios ya fueron guardados.';
-const IDENTITY_UPDATE_ERROR_SUMMARY = 'No se pudo actualizar el perfil';
+/**
+ * Copys del cambio de identidad (firstName / lastName). El summary se limita
+ * al ámbito real del PATCH para no sugerir éxito global: si el usuario
+ * guarda identidad + password a la vez y el password falla, el toast verde
+ * de identidad no debe insinuar que todo quedó guardado.
+ */
+const IDENTITY_UPDATE_SUCCESS_SUMMARY = 'Nombre actualizado';
+const IDENTITY_UPDATE_SUCCESS_DETAIL = 'Tu nombre y apellido quedaron guardados.';
+const IDENTITY_UPDATE_ERROR_SUMMARY = 'No se pudo actualizar el nombre';
 const IDENTITY_UPDATE_ERROR_FALLBACK = 'Ocurrió un error al guardar los cambios';
 
 /**

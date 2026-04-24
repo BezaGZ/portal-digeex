@@ -288,7 +288,7 @@ describe('Profile', () => {
       expect(messageAddFn).toHaveBeenCalledWith(
         expect.objectContaining({
           severity: 'success',
-          summary: 'Perfil actualizado',
+          summary: 'Nombre actualizado',
         }),
       );
 
@@ -297,7 +297,7 @@ describe('Profile', () => {
     });
 
     /** Verifica que un error con mensaje del backend use ese texto en el detail del toast. */
-    it('should show summary "No se pudo actualizar el perfil" with detail from error.error.message when update fails with a backend message', () => {
+    it('should show summary "No se pudo actualizar el nombre" with detail from error.error.message when update fails with a backend message', () => {
       configure();
       fixture.detectChanges();
 
@@ -319,7 +319,7 @@ describe('Profile', () => {
       expect(messageAddFn).toHaveBeenCalledWith(
         expect.objectContaining({
           severity: 'error',
-          summary: 'No se pudo actualizar el perfil',
+          summary: 'No se pudo actualizar el nombre',
           detail: 'El nombre no puede estar vacío',
         }),
       );
