@@ -86,7 +86,7 @@ export class AuthService {
             map(() => authStatus),
           );
         }
-        return [authStatus];
+        return of(authStatus);
       }),
     );
   }

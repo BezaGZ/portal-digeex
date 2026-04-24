@@ -429,13 +429,14 @@ describe('EPersonApiService', () => {
   });
 
   /**
-   * setActive(): PATCH /api/eperson/epersons/{uuid} con replace de /canLogin.
+   * setActive(): PATCH /api/eperson/epersons/{uuid} con replace de /canLogIn.
    * Activa o desactiva la capacidad de login sin borrar el eperson, que es
    * lo que RN-11 exige para preservar trazabilidad histórica.
-   * El path /canLogin sigue el contrato DSpace 9.2 (ver EPersonLoginReplaceOperation).
+   * El path /canLogIn con 'I' mayúscula es el canónico de DSpace 9.2
+   * (EPersonLoginReplaceOperation.java) y el mismo que usa `dspace-angular`.
    */
   describe('setActive()', () => {
-    /** Verifica que desactivar mande PATCH replace /canLogin=false. */
+    /** Verifica que desactivar mande PATCH replace /canLogIn=false. */
     it('should PATCH eperson.canLogIn=false on deactivate', async () => {
       const promise = new Promise((resolve, reject) => {
         service
@@ -447,13 +448,13 @@ describe('EPersonApiService', () => {
         (r) =>
           r.url === '/server/api/eperson/epersons/eperson-uuid-001' && r.method === 'PATCH',
       );
-      expect(req.request.body).toEqual([{ op: 'replace', path: '/canLogin', value: false }]);
+      expect(req.request.body).toEqual([{ op: 'replace', path: '/canLogIn', value: false }]);
       req.flush({});
 
       await promise;
     });
 
-    /** Verifica que reactivar mande PATCH replace /canLogin=true. */
+    /** Verifica que reactivar mande PATCH replace /canLogIn=true. */
     it('should PATCH eperson.canLogIn=true on activate', async () => {
       const promise = new Promise((resolve, reject) => {
         service
@@ -465,7 +466,7 @@ describe('EPersonApiService', () => {
         (r) =>
           r.url === '/server/api/eperson/epersons/eperson-uuid-001' && r.method === 'PATCH',
       );
-      expect(req.request.body).toEqual([{ op: 'replace', path: '/canLogin', value: true }]);
+      expect(req.request.body).toEqual([{ op: 'replace', path: '/canLogIn', value: true }]);
       req.flush({});
 
       await promise;

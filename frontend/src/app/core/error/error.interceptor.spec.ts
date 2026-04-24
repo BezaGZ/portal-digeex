@@ -9,9 +9,10 @@ import { errorInterceptor } from './error.interceptor';
 /**
  * Tests de `errorInterceptor`.
  *
- * Interceptor HTTP centralizado: redirige a /login en 401, muestra toast
- * genérico en 500 y loguea en consola el resto. El 403 lo maneja cada
- * componente que origina la petición para no duplicar toasts.
+ * Interceptor HTTP centralizado: muestra toast genérico en 500 y loguea
+ * status/url para el resto. El 401 lo resuelve el `jwtInterceptor` (fuente
+ * única de redirección al login). El 403 lo maneja cada componente que
+ * origina la petición para no duplicar toasts.
  *
  * Ciclo 3 TDD — Sprint 3. Ajustado en Ciclo 15.
  */
@@ -55,15 +56,15 @@ describe('errorInterceptor', () => {
 
   /** 401 Unauthorized */
 
-  /** Verifica que el interceptor redirija a /login cuando la respuesta es 401. */
-  it('should redirect to /login on 401 Unauthorized', async () => {
+  /**
+   * El 401 lo resuelve `jwtInterceptor` redirigiendo a /login. El
+   * `errorInterceptor` no navega en 401 para evitar un doble redirect.
+   */
+  it('should NOT redirect on 401 Unauthorized (handled by jwtInterceptor)', async () => {
     const promise = new Promise((resolve, reject) => {
       httpClient.get('/server/api/test').subscribe({
         next: resolve,
-        error: (error) => {
-          expect(router.navigate).toHaveBeenCalledWith(['/login']);
-          reject(error);
-        }
+        error: reject,
       });
     });
 
@@ -72,8 +73,8 @@ describe('errorInterceptor', () => {
 
     try {
       await promise;
-    } catch (error) {
-      expect(error).toBeDefined();
+    } catch {
+      expect(router.navigate).not.toHaveBeenCalled();
     }
   });
 

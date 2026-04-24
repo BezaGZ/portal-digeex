@@ -20,14 +20,16 @@ const REGISTRATION_TYPE = 'registration';
 
 /**
  * Paths de JSON Patch sobre el recurso eperson (contrato DSpace 9.2).
- * `/canLogin` en minúscula la 'i' es lo que espera EPersonLoginReplaceOperation.
- * Los de metadata apuntan solo a `/value` para editar el texto sin reenviar
- * los cuatro campos del entry (value, language, authority, confidence).
- * `/password` es el path que espera EPersonPasswordReplaceOperation; va por
- * `op: 'add'` para que el body lleve el objeto con `current_password` y
- * `new_password`, no un string suelto.
+ * `/canLogIn` con 'I' mayúscula es el path canónico que espera
+ * `EPersonLoginReplaceOperation.java` y el mismo que usa `dspace-angular`
+ * en su `group-data.service.ts`. Los de metadata apuntan solo a `/value`
+ * para editar el texto sin reenviar los cuatro campos del entry (value,
+ * language, authority, confidence). `/password` es el path que espera
+ * EPersonPasswordReplaceOperation; va por `op: 'add'` para que el body
+ * lleve el objeto con `current_password` y `new_password`, no un string
+ * suelto.
  */
-const PATCH_PATH_CAN_LOGIN = '/canLogin';
+const PATCH_PATH_CAN_LOGIN = '/canLogIn';
 const PATCH_PATH_FIRSTNAME_VALUE = '/metadata/eperson.firstname/0/value';
 const PATCH_PATH_LASTNAME_VALUE = '/metadata/eperson.lastname/0/value';
 const PATCH_PATH_EMAIL = '/email';

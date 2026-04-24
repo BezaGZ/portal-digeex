@@ -20,11 +20,3 @@ export const RoleLabels: Record<UserRole, string> = {
   admin_subdireccion: 'Admin. Subdirección',
   personal_delegado: 'Personal Delegado',
 };
-
-export const Subdivisions = [
-  'Educación Básica',
-  'Educación para el Trabajo y la Cultura',
-  'Investigación y Proyectos Educativos',
-] as const;
-
-export type Subdivision = (typeof Subdivisions)[number];
