@@ -173,13 +173,19 @@ export class Users {
    * Bind a `(onLazyLoad)` del p-table. PrimeNG emite `first` (offset) y
    * `rows` (tamaño de página, potencialmente null en el primer evento).
    * Los traducimos a `{page, size}` y disparamos el refetch vía la
-   * suscripción reactiva del container.
+   * suscripción reactiva del container. El `set` solo se ejecuta si cambió
+   * page o size: PrimeNG emite un `onLazyLoad` al montar la tabla con los
+   * valores iniciales, y sin este guard el `combineLatest` del pipe
+   * re-emitiría por referencia y cancelaría la request en curso.
    */
   onLazyLoad(event: TableLazyLoadEvent) {
     const rows = event.rows ?? INITIAL_PAGE_STATE.size;
     const first = event.first ?? 0;
     const page = rows > 0 ? Math.floor(first / rows) : 0;
-    this.tableState.set({ page, size: rows });
+    const current = this.tableState();
+    if (current.page !== page || current.size !== rows) {
+      this.tableState.set({ page, size: rows });
+    }
   }
 
   onCreateUserRequested() {

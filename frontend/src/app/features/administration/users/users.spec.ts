@@ -132,6 +132,28 @@ describe('Users (contenedor)', () => {
     });
 
     /**
+     * Verifica que un `onLazyLoad` con valores equivalentes al estado
+     * inicial no dispare un segundo fetch. PrimeNG emite `onLazyLoad` al
+     * inicializar la `p-table`; si el handler setea el signal con una
+     * referencia nueva, el `combineLatest` del container re-emite y el
+     * `switchMap` cancela la primera petición, dejando el Network tab con
+     * una request "(canceled)" inútil.
+     */
+    it('should NOT refetch when onLazyLoad fires with values equivalent to the initial state', async () => {
+      const fixture = TestBed.createComponent(Users);
+      const instance = fixture.componentInstance;
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(searchUsersFn).toHaveBeenCalledTimes(1);
+
+      asAny(instance).onLazyLoad({ first: 0, rows: 10 });
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(searchUsersFn).toHaveBeenCalledTimes(1);
+    });
+
+    /**
      * Verifica que `onLazyLoad` del p-table actualice el estado y dispare un
      * nuevo fetch con la página y tamaño correctos. PrimeNG emite `first`
      * (offset) y `rows` (size); el container los traduce a page/size.

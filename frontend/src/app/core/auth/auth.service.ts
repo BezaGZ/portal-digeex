@@ -272,11 +272,13 @@ export class AuthService {
   }
 
   /**
-   * Rehidrata el signal `currentUser` con el EPerson devuelto por un PATCH de
-   * identidad, reusando el mismo mapper que `login()` y `restoreSession()`
-   * para que la forma del AuthUser sea idéntica sin importar el origen.
-   * Es no-op cuando no hay sesión activa para que un PATCH huérfano no pueble
-   * el signal por accidente (p. ej. una respuesta tardía después de logout).
+   * Rehidrata `currentUser` y `currentEPerson` con el EPerson devuelto por un
+   * PATCH de identidad, reusando el mapper de `login()` y `restoreSession()`
+   * para que la forma del AuthUser sea idéntica sin importar el origen. El
+   * PATCH no pide `?embed=groups`, así que `currentEPerson` se pobla con
+   * `mergeEmbeddedGroups`: preserva los grupos del snapshot previo (el rol
+   * no cambia por un edit de nombre). Es no-op sin sesión activa para que
+   * una respuesta tardía post-logout no pueble los signals por accidente.
    */
   setCurrentUserFromEPerson(eperson: EPerson): void {
     if (!this.currentUser()) return;
