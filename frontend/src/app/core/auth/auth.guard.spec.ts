@@ -72,6 +72,18 @@ describe('authGuard', () => {
       expect(result).not.toBe(true);
       expect(result.toString()).toContain('/login');
     });
+
+    /** Verifica que preserve la URL destino en el queryParam returnUrl
+     *  para que el login sepa a dónde devolver al usuario tras autenticar. */
+    it('should preserve the attempted URL in the returnUrl queryParam', () => {
+      authService.isAuthenticated.set(false);
+
+      const result = TestBed.runInInjectionContext(() =>
+        authGuard({} as any, { url: '/administrador/usuarios' } as any)
+      );
+
+      expect(result.toString()).toBe('/login?returnUrl=%2Fadministrador%2Fusuarios');
+    });
   });
 
   /** Sesión restaurada desde cookie */

@@ -8,7 +8,14 @@ import {
   effect,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -29,6 +36,24 @@ import {
 interface RoleOption {
   value: { uuid: string; name: string };
   label: string;
+}
+
+/** Dominio institucional exigido por RN-02 y validado también server-side en UserManagementService. */
+const INSTITUTIONAL_EMAIL_DOMAIN = '@mineduc.gob.gt';
+
+/**
+ * Validador que exige que el correo termine con el dominio institucional.
+ * Duplica en cliente la regla que ya aplica el servicio para evitar un
+ * roundtrip al backend cuando el error es obvio desde el formulario.
+ */
+export function institutionalEmailDomainValidator(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const value = (control.value ?? '').toString().trim().toLowerCase();
+    if (!value) return null;
+    return value.endsWith(INSTITUTIONAL_EMAIL_DOMAIN)
+      ? null
+      : { institutionalDomain: { requiredDomain: INSTITUTIONAL_EMAIL_DOMAIN } };
+  };
 }
 
 /**
@@ -83,7 +108,10 @@ export class UserDialog {
   errorMessage = signal<string | null>(null);
 
   form = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
+    email: [
+      '',
+      [Validators.required, Validators.email, institutionalEmailDomainValidator()],
+    ],
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
     targetGroupUuid: [null as string | null, Validators.required],
@@ -178,6 +206,10 @@ export class UserDialog {
     if (!field || !field.errors) return '';
     if (field.errors['required']) return 'Este campo es requerido';
     if (field.errors['email']) return 'Email inválido';
+    if (field.errors['institutionalDomain']) {
+      const required = field.errors['institutionalDomain'].requiredDomain;
+      return `El correo debe terminar en ${required}`;
+    }
     if (field.errors['minlength']) {
       const minLength = field.errors['minlength'].requiredLength;
       return `Debe tener al menos ${minLength} caracteres`;

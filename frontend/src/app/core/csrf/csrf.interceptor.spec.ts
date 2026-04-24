@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient, withInterceptors, HttpClient } from '@angular/common/http';
-import { csrfInterceptor } from './csrf.interceptor';
+import { csrfInterceptor, resetCsrfToken } from './csrf.interceptor';
 
 /**
  * Tests para csrfInterceptor.
@@ -22,6 +22,12 @@ describe('csrfInterceptor', () => {
   /** Setup */
 
   beforeEach(() => {
+    /** Token en memoria del módulo entre tests: aislar para que un
+     *  test que rota el token no dispare el retry del siguiente. */
+    resetCsrfToken();
+    document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+    document.cookie = 'DSPACE-XSRF-COOKIE=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([csrfInterceptor])),
@@ -35,6 +41,7 @@ describe('csrfInterceptor', () => {
 
   afterEach(() => {
     httpMock.verify();
+    resetCsrfToken();
     document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
     document.cookie = 'DSPACE-XSRF-COOKIE=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
   });
@@ -179,21 +186,92 @@ describe('csrfInterceptor', () => {
 
   /** Extracción de token desde respuestas con error */
 
-  /** Verifica que extraiga el token del header DSPACE-XSRF-TOKEN incluso en errores. */
+  /**
+   * Verifica que el token nuevo del header DSPACE-XSRF-TOKEN se guarde
+   * también cuando llega en una respuesta de error, no solo en éxito.
+   * Se usa un 401 para aislar la extracción del retry específico de 403.
+   */
   it('should save XSRF token from error response header', async () => {
+    document.cookie = 'XSRF-TOKEN=stale-token; path=/';
+
     const promise = new Promise((resolve, reject) => {
       httpClient.post('/server/api/test', {}).subscribe({ next: resolve, error: () => reject() });
     });
 
     const req = httpMock.expectOne('/server/api/test');
     req.flush(null, {
-      status: 403,
-      statusText: 'Forbidden',
-      headers: { 'DSPACE-XSRF-TOKEN': 'fresh-token-after-403' },
+      status: 401,
+      statusText: 'Unauthorized',
+      headers: { 'DSPACE-XSRF-TOKEN': 'fresh-token-after-error' },
     });
 
     await promise.catch(() => {});
 
-    expect(document.cookie).toContain('XSRF-TOKEN=fresh-token-after-403');
+    expect(document.cookie).toContain('XSRF-TOKEN=fresh-token-after-error');
+  });
+
+  /** Reintento automático en 403 con token rotado */
+
+  /**
+   * Verifica que si DSpace responde 403 con un token nuevo en el header
+   * DSPACE-XSRF-TOKEN, el interceptor reintente la petición original con
+   * ese token rotado y entregue la respuesta exitosa del reintento.
+   */
+  it('should retry the original mutating request once with the rotated token on 403', async () => {
+    document.cookie = 'XSRF-TOKEN=stale-token; path=/';
+
+    const result: { value?: unknown } = {};
+    const promise = new Promise<void>((resolve, reject) => {
+      httpClient.post('/server/api/test', { payload: 1 }).subscribe({
+        next: (v) => {
+          result.value = v;
+          resolve();
+        },
+        error: reject,
+      });
+    });
+
+    const first = httpMock.expectOne('/server/api/test');
+    expect(first.request.headers.get('X-XSRF-TOKEN')).toBe('stale-token');
+    first.flush(null, {
+      status: 403,
+      statusText: 'Forbidden',
+      headers: { 'DSPACE-XSRF-TOKEN': 'rotated-token' },
+    });
+
+    const retry = httpMock.expectOne('/server/api/test');
+    expect(retry.request.headers.get('X-XSRF-TOKEN')).toBe('rotated-token');
+    expect(retry.request.body).toEqual({ payload: 1 });
+    retry.flush({ ok: true });
+
+    await promise;
+
+    expect(result.value).toEqual({ ok: true });
+  });
+
+  /**
+   * Verifica que un 403 sin token rotado (mismo token o header ausente)
+   * no dispare reintento y el error se propague al suscriptor.
+   */
+  it('should not retry on 403 when no rotated token is present in the response', async () => {
+    document.cookie = 'XSRF-TOKEN=same-token; path=/';
+
+    let capturedStatus: number | null = null;
+    const promise = new Promise<void>((resolve) => {
+      httpClient.post('/server/api/test', {}).subscribe({
+        next: () => resolve(),
+        error: (err) => {
+          capturedStatus = err.status;
+          resolve();
+        },
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/test');
+    req.flush(null, { status: 403, statusText: 'Forbidden' });
+
+    await promise;
+    httpMock.expectNone('/server/api/test');
+    expect(capturedStatus).toBe(403);
   });
 });

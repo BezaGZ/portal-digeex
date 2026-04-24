@@ -112,6 +112,12 @@ export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
 /**
  * Clona la petición adjuntando el header X-XSRF-TOKEN
  * y extrae el token actualizado de la respuesta (éxito o error).
+ *
+ * Si DSpace responde 403 y en ese mismo header viaja un token
+ * nuevo, reintenta la petición original una sola vez con el
+ * token rotado. Replica el patrón de dspace-angular para
+ * tolerar expiraciones de token en vuelo sin forzar un reload
+ * al usuario.
  */
 function sendWithToken(
   req: Parameters<HttpInterceptorFn>[0],
@@ -126,9 +132,37 @@ function sendWithToken(
     tap((event) => extractTokenFromResponse(event)),
     catchError((error: unknown) => {
       extractTokenFromError(error);
+
+      if (shouldRetryWithRotatedToken(error, token)) {
+        const retryReq = req.clone({
+          headers: req.headers.set(XSRF_REQUEST_HEADER, csrfToken!),
+        });
+        return next(retryReq).pipe(
+          tap((event) => extractTokenFromResponse(event)),
+          catchError((retryError: unknown) => {
+            extractTokenFromError(retryError);
+            return throwError(() => retryError);
+          }),
+        );
+      }
+
       return throwError(() => error);
     }),
   );
+}
+
+/**
+ * Determina si el 403 amerita reintento: solo cuando DSpace rotó
+ * el token en la respuesta de error (csrfToken actualizado difiere
+ * del que acompañó la request original). Si el backend respondió
+ * con el mismo token o sin token nuevo, no hay nada que reintentar
+ * y el error se propaga intacto.
+ */
+function shouldRetryWithRotatedToken(error: unknown, sentToken: string | null): boolean {
+  if (!(error instanceof HttpErrorResponse) || error.status !== 403) {
+    return false;
+  }
+  return csrfToken !== null && csrfToken !== sentToken;
 }
 
 /**
