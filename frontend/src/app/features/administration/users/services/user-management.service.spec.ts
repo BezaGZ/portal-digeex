@@ -27,6 +27,7 @@ import { HalListResponse, Paginated } from '../../../../core/api/models/hal.mode
 describe('UserManagementService', () => {
   let service: UserManagementService;
   let currentAuthUser: WritableSignal<AuthUser | null>;
+  let currentEPersonSignal: WritableSignal<EPerson | null>;
   let listEPersonsFn: ReturnType<typeof vi.fn>;
   let getOneEPersonFn: ReturnType<typeof vi.fn>;
   let createEPersonFn: ReturnType<typeof vi.fn>;
@@ -115,6 +116,21 @@ describe('UserManagementService', () => {
     return { items: [], totalElements: 0, totalPages: 0, size: 0, page: 0 };
   }
 
+  /**
+   * Construye el EPerson del caller con los grupos embebidos que el facade
+   * espera leer desde `AuthService.currentEPerson`. Centraliza el shape
+   * para que los tests que cambian el rol del caller solo cambien los grupos.
+   */
+  function buildCallerEPerson(groups: Group[] = [adminGlobal]): EPerson {
+    return buildEPerson({
+      uuid: 'uuid-caller',
+      email: 'caller@mineduc.gob.gt',
+      firstName: 'Carlos',
+      lastName: 'Ramírez',
+      groups,
+    });
+  }
+
   beforeEach(() => {
     currentAuthUser = signal<AuthUser | null>({
       uuid: 'uuid-caller',
@@ -122,12 +138,10 @@ describe('UserManagementService', () => {
       firstName: 'Carlos',
       lastName: 'Ramírez',
     });
+    currentEPersonSignal = signal<EPerson | null>(buildCallerEPerson());
 
-    // Por defecto el caller es superadmin.
-    getOneEPersonFn = vi.fn().mockReturnValue(
-      of(buildEPerson({ uuid: 'uuid-caller', email: 'caller@mineduc.gob.gt' })),
-    );
-    getGroupsOfEPersonFn = vi.fn().mockReturnValue(of(paginated([adminGlobal])));
+    getOneEPersonFn = vi.fn();
+    getGroupsOfEPersonFn = vi.fn().mockReturnValue(of(empty<Group>()));
 
     listEPersonsFn = vi.fn().mockReturnValue(of(empty<EPerson>()));
     createEPersonFn = vi.fn();
@@ -150,7 +164,10 @@ describe('UserManagementService', () => {
     TestBed.configureTestingModule({
       providers: [
         UserManagementService,
-        { provide: AuthService, useValue: { currentUser: currentAuthUser } },
+        {
+          provide: AuthService,
+          useValue: { currentUser: currentAuthUser, currentEPerson: currentEPersonSignal },
+        },
         {
           provide: EPersonApiService,
           useValue: {
@@ -182,9 +199,9 @@ describe('UserManagementService', () => {
   });
 
   describe('currentUserView$', () => {
-    /** Verifica que sin sesión el observable emita null. */
-    it('should emit null when the auth user is null', async () => {
-      currentAuthUser.set(null);
+    /** Verifica que sin EPerson cacheado el observable emita null. */
+    it('should emit null when the cached EPerson is null', async () => {
+      currentEPersonSignal.set(null);
       expect(await firstValueFrom(service.currentUserView$)).toBeNull();
     });
 
@@ -197,10 +214,21 @@ describe('UserManagementService', () => {
 
     /** Verifica que un caller miembro de ADMIN_ED_BASICA reporte admin_subdireccion con subdivision=ED_BASICA. */
     it('should emit a UserView with role=admin_subdireccion and the suffix as subdivision', async () => {
-      getGroupsOfEPersonFn.mockReturnValue(of(paginated([adminBasica])));
+      currentEPersonSignal.set(buildCallerEPerson([adminBasica]));
       const view = await firstValueFrom(service.currentUserView$);
       expect(view?.role).toBe('admin_subdireccion');
       expect(view?.subdivision).toBe('ED_BASICA');
+    });
+
+    /**
+     * Asegura la optimización que motivó este refactor: `currentUserView$`
+     * resuelve sin pegarle a `EPersonApi.getOne` ni a `GroupApi.getGroupsOfEPerson`
+     * porque el EPerson con grupos ya viene cacheado por `AuthService`.
+     */
+    it('should not call EPersonApi.getOne or GroupApi.getGroupsOfEPerson when resolving the caller view', async () => {
+      await firstValueFrom(service.currentUserView$);
+      expect(getOneEPersonFn).not.toHaveBeenCalled();
+      expect(getGroupsOfEPersonFn).not.toHaveBeenCalled();
     });
   });
 
@@ -396,7 +424,7 @@ describe('UserManagementService', () => {
 
     /** Verifica que admin_subdireccion no pueda crear usuarios en otra subdivisión (RN-08). */
     it('should reject INSUFFICIENT_PRIVILEGES when admin_subdireccion targets a group outside its subdivision', async () => {
-      getGroupsOfEPersonFn.mockReturnValue(of(paginated([adminBasica])));
+      currentEPersonSignal.set(buildCallerEPerson([adminBasica]));
       const input = {
         ...baseInput,
         targetGroup: { uuid: 'uuid-otro', name: 'SUBMITTERS_ED_TRABAJO' },
@@ -410,7 +438,7 @@ describe('UserManagementService', () => {
 
     /** Verifica que admin_subdireccion solo pueda asignar grupos SUBMITTERS_* (RN-13). */
     it('should reject INSUFFICIENT_PRIVILEGES when admin_subdireccion targets a non-SUBMITTERS_ group', async () => {
-      getGroupsOfEPersonFn.mockReturnValue(of(paginated([adminBasica])));
+      currentEPersonSignal.set(buildCallerEPerson([adminBasica]));
       const input = {
         ...baseInput,
         targetGroup: { uuid: adminBasica.uuid, name: 'ADMIN_ED_BASICA' },
@@ -446,8 +474,8 @@ describe('UserManagementService', () => {
 
     /** Verifica que admin_subdireccion no pueda desactivar usuarios de otra subdivisión (RN-32). */
     it('should reject OUT_OF_SCOPE when caller is admin_subdireccion and target is in another subdivision', async () => {
+      currentEPersonSignal.set(buildCallerEPerson([adminBasica]));
       getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
-        if (uuid === 'uuid-caller') return of(paginated([adminBasica]));
         if (uuid === 'uuid-other') return of(paginated([adminTrabajo]));
         return of(empty<Group>());
       });
@@ -481,7 +509,7 @@ describe('UserManagementService', () => {
   describe('changeUserRole$()', () => {
     /** Verifica que solo superadmin pueda cambiar roles (RN-13). */
     it('should reject INSUFFICIENT_PRIVILEGES when the caller is not superadmin', async () => {
-      getGroupsOfEPersonFn.mockReturnValue(of(paginated([adminBasica])));
+      currentEPersonSignal.set(buildCallerEPerson([adminBasica]));
       await expect(
         firstValueFrom(
           service.changeUserRole$({
@@ -670,10 +698,8 @@ describe('UserManagementService', () => {
 
     /** Verifica que admin_subdireccion no pueda resetear contraseña fuera de su subdivisión (RN-32). */
     it('should reject OUT_OF_SCOPE when admin_subdireccion targets another subdivision', async () => {
-      getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
-        if (uuid === 'uuid-caller') return of(paginated([adminBasica]));
-        return of(paginated([adminTrabajo]));
-      });
+      currentEPersonSignal.set(buildCallerEPerson([adminBasica]));
+      getGroupsOfEPersonFn.mockReturnValue(of(paginated([adminTrabajo])));
 
       await expect(
         firstValueFrom(service.resetPassword$({ uuid: 'uuid-t', email: 't@mineduc.gob.gt' })),

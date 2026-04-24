@@ -127,25 +127,24 @@ export class UserManagementService {
 
   /**
    * Vista del usuario autenticado con rol y subdivisión resueltos por nombre
-   * de grupo. `refCount: false` mantiene la suscripción interna viva mientras
-   * viva el servicio (singleton), para que dos consumidores en momentos
-   * distintos de la app (login → Users container → mutación) compartan la
-   * misma emisión sin refetches.
+   * de grupo. Lee el EPerson con `_embedded.groups` que `AuthService` cacheó
+   * tras `login()`/`restoreSession()`; no dispara HTTP propio. `refCount: false`
+   * mantiene la suscripción interna viva mientras viva el servicio (singleton),
+   * para que topbar, menú y Users container compartan la misma emisión.
    */
   readonly currentUserView$: Observable<UserView | null> = toObservable(
-    this.authService.currentUser,
+    this.authService.currentEPerson,
   ).pipe(
-    switchMap((authUser) => {
-      if (!authUser) return of<UserView | null>(null);
-      return this.fetchEPersonWithGroups$(authUser.uuid).pipe(
-        switchMap(({ eperson, groups }) => {
-          const resolved = this.resolveEPersonFromGroups(eperson, groups);
-          if (resolved.role === null) {
-            return throwError(() => new Error(NO_ROLE_GROUP_ERROR));
-          }
-          return of(this.assembleUserView(resolved));
-        }),
+    switchMap((eperson) => {
+      if (!eperson) return of<UserView | null>(null);
+      const resolved = this.resolveEPersonFromGroups(
+        eperson,
+        this.extractEmbeddedGroups(eperson),
       );
+      if (resolved.role === null) {
+        return throwError(() => new Error(NO_ROLE_GROUP_ERROR));
+      }
+      return of(this.assembleUserView(resolved));
     }),
     shareReplay({ bufferSize: 1, refCount: false }),
   );
@@ -233,6 +232,11 @@ export class UserManagementService {
     return { ...paginatedResult, items };
   }
 
+  /**
+   * Carga un target con sus grupos en paralelo. Se usa para los flujos que
+   * inspeccionan el rol del target (cambio de rol, defensa en profundidad)
+   * y necesitan un snapshot fresco, sin el cache del signal del caller.
+   */
   private fetchEPersonWithGroups$(
     uuid: string,
   ): Observable<{ eperson: EPerson; groups: Group[] }> {

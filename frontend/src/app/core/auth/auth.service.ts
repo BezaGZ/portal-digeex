@@ -46,6 +46,15 @@ export class AuthService {
   readonly isAuthenticated = signal(false);
   readonly currentUser = signal<AuthUser | null>(null);
 
+  /**
+   * EPerson bruto del caller con `_embedded.groups` incluidos, tal como
+   * DSpace lo devuelve ante `GET /epersons/{uuid}?embed=groups`. Fuente
+   * única de rol y subdivisión para el facade de usuarios: con este
+   * signal cacheado, `currentUserView$` resuelve el rol sin disparar
+   * un roundtrip adicional al backend.
+   */
+  readonly currentEPerson = signal<EPerson | null>(null);
+
   constructor(private readonly http: HttpClient) {}
 
   /**
@@ -78,10 +87,10 @@ export class AuthService {
       switchMap((authStatus: AuthStatus) => {
         const epersonHref = authStatus._links?.eperson?.href;
         if (authStatus.authenticated && epersonHref) {
-          const relativeUrl = epersonHref.replace(/^https?:\/\/[^/]+/, '');
-          return this.http.get<EPerson>(relativeUrl).pipe(
+          return this.fetchEPersonWithGroups(epersonHref).pipe(
             tap((eperson: EPerson) => {
               this.currentUser.set(this.mapEPersonToUser(eperson));
+              this.currentEPerson.set(eperson);
             }),
             map(() => authStatus),
           );
@@ -103,6 +112,7 @@ export class AuthService {
         this.removeToken();
         this.isAuthenticated.set(false);
         this.currentUser.set(null);
+        this.currentEPerson.set(null);
         resetCsrfToken();
       }),
     );
@@ -132,6 +142,7 @@ export class AuthService {
         if (!authStatus.authenticated) {
           this.isAuthenticated.set(false);
           this.currentUser.set(null);
+          this.currentEPerson.set(null);
           return of(authStatus);
         }
 
@@ -139,10 +150,10 @@ export class AuthService {
 
         const epersonHref = authStatus._links?.eperson?.href;
         if (epersonHref) {
-          const relativeUrl = epersonHref.replace(/^https?:\/\/[^/]+/, '');
-          return this.http.get<EPerson>(relativeUrl).pipe(
+          return this.fetchEPersonWithGroups(epersonHref).pipe(
             tap((eperson: EPerson) => {
               this.currentUser.set(this.mapEPersonToUser(eperson));
+              this.currentEPerson.set(eperson);
             }),
             map(() => authStatus),
           );
@@ -270,6 +281,36 @@ export class AuthService {
   setCurrentUserFromEPerson(eperson: EPerson): void {
     if (!this.currentUser()) return;
     this.currentUser.set(this.mapEPersonToUser(eperson));
+    this.currentEPerson.set(this.mergeEmbeddedGroups(eperson));
+  }
+
+  /**
+   * GET al eperson con `?embed=groups`. Obtiene identidad y membresía en
+   * un solo roundtrip para que el facade de usuarios resuelva rol desde
+   * el signal cacheado sin pegarle otra vez al backend. El href viene
+   * absoluto en el status, así que se recorta al path relativo antes
+   * de emitirlo (el interceptor JWT espera rutas del dominio del portal).
+   */
+  private fetchEPersonWithGroups(epersonHref: string): Observable<EPerson> {
+    const relativeUrl = epersonHref.replace(/^https?:\/\/[^/]+/, '');
+    const urlWithEmbed = relativeUrl.includes('?')
+      ? `${relativeUrl}&embed=groups`
+      : `${relativeUrl}?embed=groups`;
+    return this.http.get<EPerson>(urlWithEmbed);
+  }
+
+  /**
+   * Si el EPerson recibido carece de `_embedded.groups` (caso típico de un
+   * PATCH de identidad que no pide embed), preserva los del snapshot previo.
+   * La membresía no cambia por un edit de nombre y descartarla forzaría al
+   * facade a refetch del rol. Devuelve el EPerson tal cual si ya trae embed
+   * o si no hay snapshot previo del cual heredar.
+   */
+  private mergeEmbeddedGroups(eperson: EPerson): EPerson {
+    if (eperson._embedded?.groups) return eperson;
+    const priorGroups = this.currentEPerson()?._embedded?.groups;
+    if (!priorGroups) return eperson;
+    return { ...eperson, _embedded: { ...eperson._embedded, groups: priorGroups } };
   }
 
   /**

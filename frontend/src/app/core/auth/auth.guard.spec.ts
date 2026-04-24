@@ -112,7 +112,7 @@ describe('authGuard', () => {
           },
         },
       });
-      httpMock.expectOne('/server/api/eperson/epersons/eperson-001').flush({
+      httpMock.expectOne('/server/api/eperson/epersons/eperson-001?embed=groups').flush({
         uuid: 'eperson-001',
         name: 'Juan Pérez',
         handle: null,
@@ -127,6 +127,13 @@ describe('authGuard', () => {
         requireCertificate: false,
         selfRegistered: false,
         type: 'eperson',
+        _embedded: {
+          groups: {
+            _embedded: { groups: [] },
+            _links: { self: { href: '/server/api/eperson/epersons/eperson-001/groups' } },
+            page: { size: 20, totalElements: 0, totalPages: 0, number: 0 },
+          },
+        },
       });
 
       await restorePromise;

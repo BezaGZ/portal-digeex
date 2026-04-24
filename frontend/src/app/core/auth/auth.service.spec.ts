@@ -32,6 +32,23 @@ describe('AuthService', () => {
     },
   };
 
+  const mockAdministratorGroup = {
+    uuid: 'group-administrator',
+    name: 'Administrator',
+    permanent: true,
+    type: 'group',
+    _links: {
+      self: { href: '/server/api/eperson/groups/group-administrator' },
+      object: { href: '' },
+      epersons: { href: '/server/api/eperson/groups/group-administrator/epersons' },
+      subgroups: { href: '/server/api/eperson/groups/group-administrator/subgroups' },
+    },
+  };
+
+  /**
+   * EPerson base sin embed. Se usa en `setCurrentUserFromEPerson()` donde
+   * el caller (por ejemplo el PATCH de identidad) no trae `_embedded.groups`.
+   */
   const mockEPerson = {
     uuid: 'eperson-001',
     name: 'Juan Pérez',
@@ -49,6 +66,22 @@ describe('AuthService', () => {
     type: 'eperson',
   };
 
+  /**
+   * EPerson con grupos embebidos, la forma que devuelve DSpace cuando la
+   * petición usa `?embed=groups`. Es lo que `login()` y `restoreSession()`
+   * deben consumir para que el facade resuelva rol sin un roundtrip adicional.
+   */
+  const mockEPersonWithGroups = {
+    ...mockEPerson,
+    _embedded: {
+      groups: {
+        _embedded: { groups: [mockAdministratorGroup] },
+        _links: { self: { href: '/server/api/eperson/epersons/eperson-001/groups' } },
+        page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+      },
+    },
+  };
+
   /** Helpers */
 
   function performLogin(): Promise<void> {
@@ -63,7 +96,9 @@ describe('AuthService', () => {
       headers: { Authorization: 'Bearer fake-jwt-token-123' },
     });
     httpMock.expectOne('/server/api/authn/status').flush(mockAuthStatusAuthenticated);
-    httpMock.expectOne('/server/api/eperson/epersons/eperson-001').flush(mockEPerson);
+    httpMock
+      .expectOne('/server/api/eperson/epersons/eperson-001?embed=groups')
+      .flush(mockEPersonWithGroups);
 
     return promise;
   }
@@ -103,6 +138,11 @@ describe('AuthService', () => {
       expect(service.isAuthenticated()).toBe(false);
       expect(service.currentUser()).toBeNull();
     });
+
+    /** Verifica que `currentEPerson` empiece en null antes de cualquier sesión. */
+    it('should start with currentEPerson null', () => {
+      expect(service.currentEPerson()).toBeNull();
+    });
   });
 
   /** Login */
@@ -129,9 +169,11 @@ describe('AuthService', () => {
       expect(statusReq.request.method).toBe('GET');
       statusReq.flush(mockAuthStatusAuthenticated);
 
-      const epersonReq = httpMock.expectOne('/server/api/eperson/epersons/eperson-001');
+      const epersonReq = httpMock.expectOne(
+        '/server/api/eperson/epersons/eperson-001?embed=groups',
+      );
       expect(epersonReq.request.method).toBe('GET');
-      epersonReq.flush(mockEPerson);
+      epersonReq.flush(mockEPersonWithGroups);
 
       await promise;
     });
@@ -145,6 +187,21 @@ describe('AuthService', () => {
       expect(service.isAuthenticated()).toBe(true);
       expect(service.currentUser()).toBeTruthy();
       expect(service.currentUser()!.email).toBe('juan@mineduc.gob.gt');
+    });
+
+    /**
+     * Verifica que tras login el signal `currentEPerson` quede con el
+     * EPerson bruto incluyendo `_embedded.groups`, para que el facade de
+     * usuarios resuelva el rol sin hacer un GET adicional.
+     */
+    it('should populate currentEPerson with embedded groups after login', async () => {
+      await performLogin();
+
+      const eperson = service.currentEPerson();
+      expect(eperson).toBeTruthy();
+      expect(eperson!.uuid).toBe('eperson-001');
+      const embedded = eperson!._embedded?.groups?._embedded?.['groups'] ?? [];
+      expect(embedded.map((g) => g.name)).toEqual(['Administrator']);
     });
   });
 
@@ -171,6 +228,7 @@ describe('AuthService', () => {
 
       expect(service.isAuthenticated()).toBe(false);
       expect(service.currentUser()).toBeNull();
+      expect(service.currentEPerson()).toBeNull();
     });
   });
 
@@ -439,6 +497,37 @@ describe('AuthService', () => {
       service.setCurrentUserFromEPerson(mockEPerson);
 
       expect(service.currentUser()).toBeNull();
+      expect(service.currentEPerson()).toBeNull();
+    });
+
+    /**
+     * El PATCH de identidad devuelve un EPerson sin `_embedded.groups`.
+     * `currentEPerson` debe quedar con la identidad nueva del PATCH pero
+     * preservando los grupos del snapshot previo: el rol no cambia por un
+     * edit de nombre y no queremos invalidar el cache del facade.
+     */
+    it('should preserve embedded groups from the prior snapshot when patched EPerson lacks them', async () => {
+      await performLogin();
+      const priorGroups = service.currentEPerson()!._embedded?.groups;
+      expect(priorGroups).toBeTruthy();
+
+      const patched = {
+        ...mockEPerson,
+        metadata: {
+          'eperson.firstname': [
+            { value: 'Juana', language: null, authority: null, confidence: -1, place: 0 },
+          ],
+          'eperson.lastname': [
+            { value: 'Pérez García', language: null, authority: null, confidence: -1, place: 0 },
+          ],
+        },
+      };
+
+      service.setCurrentUserFromEPerson(patched);
+
+      const merged = service.currentEPerson()!;
+      expect(merged.metadata['eperson.firstname'][0].value).toBe('Juana');
+      expect(merged._embedded?.groups).toEqual(priorGroups);
     });
   });
 
