@@ -65,19 +65,19 @@ export class CollectionCacheService {
   }
 
   /**
-   * Busca una colección por su valor de digeex.renderType y devuelve su UUID.
+   * Busca una colección por su valor de dspace.entity.type y devuelve su UUID.
    * Lanza error si no encuentra ninguna coincidencia.
-   * @param format - Valor de digeex.renderType a buscar (ej: 'galeria', 'estadistica')
+   * @param format - Valor de dspace.entity.type a buscar (ej: 'galeria', 'estadistica')
    * @returns Observable con el UUID de la colección encontrada
    */
   findByFormat(format: string): Observable<string> {
     return this.getAll().pipe(
       map((collections) => {
         const found = collections.find(
-          (c) => c.metadata?.['digeex.renderType']?.[0]?.value === format
+          (c) => c.metadata?.['dspace.entity.type']?.[0]?.value === format
         );
         if (!found) {
-          throw new Error(`No se encontró colección con digeex.renderType = "${format}"`);
+          throw new Error(`No se encontró colección con dspace.entity.type = "${format}"`);
         }
         return found.uuid;
       })

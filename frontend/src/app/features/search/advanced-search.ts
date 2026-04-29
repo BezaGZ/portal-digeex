@@ -13,7 +13,7 @@ import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { DocumentCardComponent, SkeletonCardComponent, EmptyStateComponent } from '../../shared';
 import { SearchFiltersComponent } from './components/search-filters/search-filters';
 import { SearchFilters, ScopeOption } from './models/search-filters.model';
-import { CONTENT_TYPE, RENDER_TYPE } from '../../core/config/digeex-values.config';
+import { ENTITY_TYPE } from '../../core/config/digeex-values.config';
 
 @Component({
   selector: 'app-advanced-search',
@@ -142,8 +142,8 @@ export class AdvancedSearch implements OnInit {
           this.dspaceApi.getCollections(sub.uuid, 0, 20).subscribe((colResponse) => {
             const collections = colResponse._embedded?.['collections'] || [];
             for (const col of collections) {
-              const format = col.metadata?.['digeex.renderType']?.[0]?.value;
-              if (format === RENDER_TYPE.DOCUMENTO) {
+              const format = col.metadata?.['dspace.entity.type']?.[0]?.value;
+              if (format === ENTITY_TYPE.DOCUMENTO) {
                 options.push({
                   label: col.metadata?.['dc.title']?.[0]?.value || col.name,
                   value: col.uuid,
@@ -171,7 +171,7 @@ export class AdvancedSearch implements OnInit {
 
     const facetFilters: FacetFilter[] = [];
     if (this.currentScopeType === 'community') {
-      facetFilters.push({ name: 'contentType', value: CONTENT_TYPE.DOCUMENTO, operator: 'equals' });
+      facetFilters.push({ name: 'entityType', value: ENTITY_TYPE.DOCUMENTO, operator: 'equals' });
     }
 
     this.discoveryService.search({
@@ -234,7 +234,7 @@ export class AdvancedSearch implements OnInit {
      * para no mezclar álbumes de galería ni estadísticas en los resultados.
      */
     if (this.currentScopeType === 'community') {
-      facets.push({ name: 'contentType', value: CONTENT_TYPE.DOCUMENTO, operator: 'equals' });
+      facets.push({ name: 'entityType', value: ENTITY_TYPE.DOCUMENTO, operator: 'equals' });
     }
 
     if (!filters) return facets;

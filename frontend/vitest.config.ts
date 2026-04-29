@@ -28,6 +28,26 @@ export default defineConfig({
 
         /** Home */
         'src/app/features/home/**/*.ts',
+
+        /** Sprint 5 — Auth, sesión e interceptors */
+        'src/app/core/auth/**/*.ts',
+        'src/app/core/csrf/**/*.ts',
+        'src/app/core/error/**/*.ts',
+
+        /** Sprint 5 — Wrappers HTTP para gestión de usuarios */
+        'src/app/core/api/eperson-api.service.ts',
+        'src/app/core/api/group-api.service.ts',
+
+        /** Sprint 5 — Panel administrativo y login */
+        'src/app/features/administration/**/*.ts',
+        'src/app/features/auth/**/*.ts',
+
+        /** Sprint 5 — Shell admin tocado puntualmente */
+        'src/app/layout/admin-layout/app.menu/app.menu.ts',
+        'src/app/layout/admin-layout/app.topbar/app.topbar.ts',
+
+        /** Sprint 5 — Modal de aviso de inactividad */
+        'src/app/shared/components/session-warning-modal/**/*.ts',
       ],
       exclude: [
         'node_modules/',

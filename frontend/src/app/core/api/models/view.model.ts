@@ -12,7 +12,7 @@ export interface CollectionView {
   name: string;
   description: string;
   type: 'collection' | 'community';
-  /** Valor de digeex.renderType de la colección en DSpace (ej: documento, galeria, estadistica) */
+  /** Valor de dspace.entity.type de la colección en DSpace (ej: documento, galeria, estadistica) */
   format?: string;
 }
 

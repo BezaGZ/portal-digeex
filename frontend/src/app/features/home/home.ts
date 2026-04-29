@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { CollectionCacheService } from '../../core/api/collection-cache.service';
 import { CollectionView, ItemView } from '../../core/api/models';
 import { getCollectionRoute } from '../../core/config/collection-format.config';
-import { NAV_LOCATION, RENDER_TYPE } from '../../core/config/digeex-values.config';
+import { NAV_LOCATION, ENTITY_TYPE } from '../../core/config/digeex-values.config';
 import { SkeletonCardComponent, EmptyStateComponent } from '../../shared';
 
 @Component({
@@ -40,7 +40,7 @@ export class Home implements OnInit {
           name: collection.metadata?.['dc.subject']?.[0]?.value || collection.name,
           description: collection.metadata?.['dc.title']?.[0]?.value || '',
           type: 'collection',
-          format: collection.metadata?.['digeex.renderType']?.[0]?.value || RENDER_TYPE.DOCUMENTO,
+          format: collection.metadata?.['dspace.entity.type']?.[0]?.value || ENTITY_TYPE.DOCUMENTO,
         }));
 
         this.items = [];
@@ -56,7 +56,7 @@ export class Home implements OnInit {
   }
 
   navigateToChild(child: CollectionView) {
-    this.router.navigateByUrl(getCollectionRoute(child.format || RENDER_TYPE.DOCUMENTO, child.id));
+    this.router.navigateByUrl(getCollectionRoute(child.format || ENTITY_TYPE.DOCUMENTO, child.id));
   }
 
   navigateToDocument(item: ItemView) {

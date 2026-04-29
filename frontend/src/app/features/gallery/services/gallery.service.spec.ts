@@ -5,13 +5,13 @@ import { GalleryService } from './gallery.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { DiscoveryService } from '../../../core/api/discovery.service';
 import { CollectionCacheService } from '../../../core/api/collection-cache.service';
-import { RENDER_TYPE } from '../../../core/config/digeex-values.config';
+import { ENTITY_TYPE } from '../../../core/config/digeex-values.config';
 
 /**
  * Tests para GalleryService.
  *
  * Servicio de galería institucional que busca álbumes dentro de la
- * colección con digeex.renderType = 'galeria'. Verifica la carga paginada de
+ * colección con dspace.entity.type = 'galeria'. Verifica la carga paginada de
  * álbumes con facetas, la carga de un álbum individual con sus fotos,
  * la obtención de opciones de filtro y el mapeo de metadata Dublin Core + digeex.
  *
@@ -31,7 +31,7 @@ describe('GalleryService', () => {
           name: 'Galería Institucional',
           type: 'collection',
           metadata: {
-            'digeex.renderType': [{ value: RENDER_TYPE.GALERIA }],
+            'dspace.entity.type': [{ value: ENTITY_TYPE.GALERIA }],
           },
         },
       ],

@@ -8,7 +8,7 @@ import { AdvancedSearch } from './advanced-search';
 import { DiscoveryService } from '../../core/api/discovery.service';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { SearchFilters } from './models/search-filters.model';
-import { CONTENT_TYPE } from '../../core/config/digeex-values.config';
+import { ENTITY_TYPE } from '../../core/config/digeex-values.config';
 
 /**
  * Tests para AdvancedSearch — Arquitectura server-side con scope único.
@@ -173,7 +173,7 @@ describe('AdvancedSearch', () => {
       expect.objectContaining({
         scope: 'scope-001',
         size: 0,
-        filters: [{ name: 'contentType', value: CONTENT_TYPE.DOCUMENTO, operator: 'equals' }],
+        filters: [{ name: 'entityType', value: ENTITY_TYPE.DOCUMENTO, operator: 'equals' }],
       })
     );
   });
@@ -215,7 +215,7 @@ describe('AdvancedSearch', () => {
     const callArgs = searchSpy.mock.calls[0][0];
     expect(callArgs.filters).toEqual(
       expect.arrayContaining([
-        { name: 'contentType', value: CONTENT_TYPE.DOCUMENTO, operator: 'equals' },
+        { name: 'entityType', value: ENTITY_TYPE.DOCUMENTO, operator: 'equals' },
       ])
     );
   });
@@ -261,7 +261,7 @@ describe('AdvancedSearch', () => {
     const callArgs = searchSpy.mock.calls[0][0];
     expect(callArgs.filters).toEqual(
       expect.arrayContaining([
-        { name: 'contentType', value: CONTENT_TYPE.DOCUMENTO, operator: 'equals' },
+        { name: 'entityType', value: ENTITY_TYPE.DOCUMENTO, operator: 'equals' },
         { name: 'itemtype', value: 'Manual', operator: 'equals' },
         { name: 'audience', value: 'Primaria', operator: 'equals' },
         { name: 'language', value: 'acr', operator: 'equals' },

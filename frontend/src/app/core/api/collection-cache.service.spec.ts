@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { CollectionCacheService } from './collection-cache.service';
 import { DSpaceApiService } from './dspace-api.service';
-import { NAV_LOCATION, RENDER_TYPE } from '../config/digeex-values.config';
+import { NAV_LOCATION, ENTITY_TYPE } from '../config/digeex-values.config';
 
 /**
  * Tests para CollectionCacheService.
@@ -11,7 +11,7 @@ import { NAV_LOCATION, RENDER_TYPE } from '../config/digeex-values.config';
  * Caché centralizado de colecciones del repositorio.
  * Verifica que se haga una única petición HTTP compartida entre
  * los tres consumidores (Home, PublicHeader, GalleryService),
- * el filtrado por digeex.navLocation, la búsqueda por digeex.renderType y la
+ * el filtrado por digeex.navLocation, la búsqueda por dspace.entity.type y la
  * invalidación del caché.
  *
  * Ciclo 7 TDD - Sprint 4 TDD 
@@ -57,7 +57,7 @@ describe('CollectionCacheService', () => {
           name: 'Galería Institucional',
           type: 'collection',
           metadata: {
-            'digeex.renderType': [{ value: RENDER_TYPE.GALERIA }],
+            'dspace.entity.type': [{ value: ENTITY_TYPE.GALERIA }],
           },
         },
         {
@@ -65,7 +65,7 @@ describe('CollectionCacheService', () => {
           name: 'Estadísticas DIGEEX',
           type: 'collection',
           metadata: {
-            'digeex.renderType': [{ value: RENDER_TYPE.ESTADISTICA }],
+            'dspace.entity.type': [{ value: ENTITY_TYPE.ESTADISTICA }],
           },
         },
       ],
@@ -199,12 +199,12 @@ describe('CollectionCacheService', () => {
     await promise;
   });
 
-  /** findByFormat — búsqueda por digeex.renderType */
+  /** findByFormat — búsqueda por dspace.entity.type */
 
   /** Verifica que findByFormat('galeria') devuelva el UUID correcto. */
   it('should find collection UUID by format', async () => {
     const promise = new Promise((resolve, reject) => {
-      service.findByFormat(RENDER_TYPE.GALERIA).subscribe({
+      service.findByFormat(ENTITY_TYPE.GALERIA).subscribe({
         next: (uuid) => {
           expect(uuid).toBe('col-galeria');
           resolve(uuid);

@@ -6,7 +6,7 @@ import { Menu } from 'primeng/menu';
 import { MenuItem } from 'primeng/api';
 import { CollectionCacheService } from '../../../core/api/collection-cache.service';
 import { getCollectionRoute } from '../../../core/config/collection-format.config';
-import { NAV_LOCATION, RENDER_TYPE } from '../../../core/config/digeex-values.config';
+import { NAV_LOCATION, ENTITY_TYPE } from '../../../core/config/digeex-values.config';
 
 @Component({
   selector: 'app-public-header',
@@ -36,7 +36,7 @@ export class PublicHeader implements OnInit {
       next: (menuCollections) => {
         this.menuItems = [];
         menuCollections.forEach((collection, index) => {
-          const format = collection.metadata?.['digeex.renderType']?.[0]?.value || RENDER_TYPE.DOCUMENTO;
+          const format = collection.metadata?.['dspace.entity.type']?.[0]?.value || ENTITY_TYPE.DOCUMENTO;
 
           this.menuItems.push({
             label: collection.metadata?.['dc.subject']?.[0]?.value || collection.name,

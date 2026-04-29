@@ -8,12 +8,12 @@ import { FacetFilter } from '../../../core/api/models/discovery.model';
 import { Item } from '../../../core/api/models/item.model';
 import { MetadataValue } from '../../../core/api/models/metadata.model';
 import { Album, Photo, AlbumPage, GalleryFilters, FilterOption, FilterOptions } from '../models';
-import { RENDER_TYPE } from '../../../core/config/digeex-values.config';
+import { ENTITY_TYPE } from '../../../core/config/digeex-values.config';
 export type { Album, Photo, AlbumPage, GalleryFilters, FilterOption, FilterOptions } from '../models';
 
 /**
  * Servicio dedicado a la galería institucional.
- * Busca álbumes de fotos dentro de la colección con digeex.renderType = 'galeria'
+ * Busca álbumes de fotos dentro de la colección con dspace.entity.type = 'galeria'
  * usando Discovery para filtros y paginación del servidor.
  */
 @Injectable({
@@ -30,10 +30,10 @@ export class GalleryService {
 
   /**
    * Obtiene el UUID de la colección de galería desde el caché global.
-   * @returns Observable con el UUID de la colección que tiene digeex.renderType = 'galeria'
+   * @returns Observable con el UUID de la colección que tiene dspace.entity.type = 'galeria'
    */
   private findGalleryCollection(): Observable<string> {
-    return this.collectionCache.findByFormat(RENDER_TYPE.GALERIA);
+    return this.collectionCache.findByFormat(ENTITY_TYPE.GALERIA);
   }
 
   /** ─── Cargar álbumes (paginado) ─── */
