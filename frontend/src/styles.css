@@ -460,3 +460,29 @@ h6 {
 .p-paginator .p-paginator-current {
   background: transparent !important;
 }
+
+/* p-select: truncar el valor seleccionado en el campo cerrado y permitir
+   wrap en las opciones abiertas. Resuelve nombres largos como
+   "Subdirección de Formación, Investigación y Proyectos Educativos" o
+   "Programa de Educación de Adultos por Correspondencia". Aplica en todos
+   los tamaños de pantalla. */
+.p-select .p-select-label,
+.p-select [data-pc-section="label"] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Opciones del dropdown abierto: permitir multi-línea para que los nombres
+   largos se lean completos en lugar de cortarse al borde del overlay.
+   Cubre las variantes de clase y data-attributes que usa PrimeNG 20. */
+.p-select-overlay .p-select-option,
+.p-select-overlay .p-select-option-label,
+.p-select-overlay [data-pc-section="option"],
+.p-select-overlay [data-pc-section="optionlabel"],
+.p-select-overlay li {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.4;
+}

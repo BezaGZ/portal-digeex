@@ -29,6 +29,9 @@ export interface ItemView {
   bitstreams: BitstreamView[];
   type: string;
   relationUri: string;
+  /** UUID de la colección dueña del item; permite construir la URL canónica
+   *  /programas/{owningCollectionUuid}/documentos/{itemUuid} desde búsqueda. */
+  owningCollectionUuid?: string;
 }
 
 /**

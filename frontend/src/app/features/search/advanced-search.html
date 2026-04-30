@@ -53,7 +53,7 @@
             <p-paginator
               [rows]="itemsPerPage"
               [totalRecords]="totalElements()"
-              [first]="currentPage * itemsPerPage"
+              [first]="currentPage() * itemsPerPage"
               (onPageChange)="onPageChange($event)"
             />
           </div>

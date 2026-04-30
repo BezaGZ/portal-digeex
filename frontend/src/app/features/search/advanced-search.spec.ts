@@ -9,6 +9,7 @@ import { DiscoveryService } from '../../core/api/discovery.service';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { SearchFilters } from './models/search-filters.model';
 import { ENTITY_TYPE } from '../../core/config/digeex-values.config';
+import { SearchStateService } from './services/search-state.service';
 
 /**
  * Tests para AdvancedSearch — Arquitectura server-side con scope único.
@@ -138,6 +139,7 @@ describe('AdvancedSearch', () => {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     vi.spyOn(dspaceApi, 'getCommunities').mockReturnValue(of(mockCommunitiesResponse as any));
     vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(mockBundlesResponse as any));
+    vi.spyOn(dspaceApi, 'getOwningCollectionOfItem').mockReturnValue(of({ uuid: 'col-001', name: 'Mock', handle: '', metadata: {}, archivedItemsCount: 0, type: 'collection' } as any));
     vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
       if (bundleUuid === 'thumb-bundle-001') return of(mockThumbnailBitstreams as any);
       if (bundleUuid === 'orig-bundle-001') return of(mockOriginalBitstreams as any);
@@ -304,5 +306,29 @@ describe('AdvancedSearch', () => {
     expect(component.totalElements()).toBe(0);
     // onClear should NOT trigger a new search
     expect(searchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  /** Persistencia tras volver del detalle (Sprint 6) */
+
+  describe('persistencia tras volver del detalle', () => {
+    /** Verifica que cuando SearchStateService tiene un scope con valor al
+     *  montar el componente (ej: usuario regresó del detalle de un item),
+     *  AdvancedSearch dispara automáticamente la búsqueda para repoblar
+     *  los resultados sin que el usuario tenga que rehacer scope ni filtros. */
+    it('should re-execute search when SearchStateService has a scope on init', () => {
+      const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
+
+      const searchState = TestBed.inject(SearchStateService);
+      searchState.scope.set('scope-001');
+      searchState.scopeType.set('community');
+      searchState.filters.set({ ...defaultFilters, query: 'restaurada' });
+      searchState.hasSearched.set(true);
+
+      const fixture2 = TestBed.createComponent(AdvancedSearch);
+      fixture2.detectChanges();
+
+      expect(searchSpy).toHaveBeenCalled();
+      expect(fixture2.componentInstance.hasSearched()).toBe(true);
+    });
   });
 });

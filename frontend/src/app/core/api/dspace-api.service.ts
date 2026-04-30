@@ -138,6 +138,17 @@ export class DSpaceApiService {
     );
   }
 
+  /**
+   * Devuelve la colección dueña de un item. Útil para construir URLs
+   * canónicas /programas/{collectionUuid}/documentos/{itemUuid} cuando
+   * el caller solo conoce el UUID del item (ej: resultados de búsqueda).
+   */
+  getOwningCollectionOfItem(itemUuid: string): Observable<Collection> {
+    return this.http.get<Collection>(
+      `${this.apiUrl}/core/items/${itemUuid}/owningCollection`
+    );
+  }
+
   /** ─── Items ─── */
 
   /**

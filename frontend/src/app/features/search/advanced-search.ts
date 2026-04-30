@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { PaginatorModule } from 'primeng/paginator';
@@ -14,6 +14,7 @@ import { DocumentCardComponent, SkeletonCardComponent, EmptyStateComponent } fro
 import { SearchFiltersComponent } from './components/search-filters/search-filters';
 import { SearchFilters, ScopeOption } from './models/search-filters.model';
 import { ENTITY_TYPE } from '../../core/config/digeex-values.config';
+import { SearchStateService } from './services/search-state.service';
 
 @Component({
   selector: 'app-advanced-search',
@@ -32,65 +33,87 @@ import { ENTITY_TYPE } from '../../core/config/digeex-values.config';
 export class AdvancedSearch implements OnInit {
   @ViewChild(SearchFiltersComponent) filtersComponent!: SearchFiltersComponent;
 
-  isSearching = signal(false);
+  /* inject() en lugar de constructor para que el orden de inicialización de
+     campos pueda referenciar el servicio (TS evalúa property initializers
+     antes del cuerpo del constructor). */
+  private readonly discoveryService = inject(DiscoveryService);
+  private readonly dspaceApi = inject(DSpaceApiService);
+  private readonly router = inject(Router);
+  private readonly searchState = inject(SearchStateService);
+
+  /** Signals expuestos al template; persistidos en SearchStateService para
+   *  que sobrevivan a la destrucción del componente al ir al detalle. */
+  readonly isSearching = this.searchState.isSearching;
+  readonly hasSearched = this.searchState.hasSearched;
+  readonly results = this.searchState.results;
+  readonly totalElements = this.searchState.totalElements;
+  readonly scopeOptions = this.searchState.scopeOptions;
+  readonly currentPage = this.searchState.currentPage;
+
+  /** Estado local que no necesita persistir al volver del detalle. */
   isLoadingFacets = signal(false);
-  hasSearched = signal(false);
-  results = signal<ItemView[]>([]);
-  totalElements = signal(0);
-  scopeOptions = signal<ScopeOption[]>([]);
 
   itemsPerPage = 10;
-  currentPage = 0;
-
-  private currentFilters: SearchFilters | null = null;
-  private currentScope = '';
-  private currentScopeType: 'community' | 'collection' = 'community';
 
   /** UUID de la community raíz DIGEEX — se detecta dinámicamente */
   private digeexCommunityUuid = '';
 
-  constructor(
-    private discoveryService: DiscoveryService,
-    private dspaceApi: DSpaceApiService,
-    private router: Router,
-  ) {}
-
   ngOnInit() {
-    this.loadScopeOptions();
+    /* Si el servicio guarda un scope previo, el usuario regresó del detalle
+       de un item y queremos restaurar la búsqueda. Si las opciones del
+       scope ya están cacheadas, las reusamos; si no, recargamos. Después
+       repoblamos las facetas y disparamos la búsqueda con los filtros
+       guardados para repintar resultados. */
+    if (this.searchState.scope()) {
+      if (this.searchState.scopeOptions().length === 0) {
+        this.loadScopeOptions();
+      }
+      this.loadFacetsForScope(this.searchState.scope());
+      this.executeSearch();
+    } else {
+      this.loadScopeOptions();
+    }
   }
 
   onScopeChange(scopeUuid: string) {
-    this.currentScope = scopeUuid;
-    const selectedOption = this.scopeOptions().find((o) => o.value === scopeUuid);
-    this.currentScopeType = selectedOption?.scopeType ?? 'community';
-    this.currentFilters = null;
-    this.hasSearched.set(false);
-    this.results.set([]);
-    this.totalElements.set(0);
+    this.searchState.scope.set(scopeUuid);
+    const selectedOption = this.searchState.scopeOptions().find((o) => o.value === scopeUuid);
+    this.searchState.scopeType.set(selectedOption?.scopeType ?? 'community');
+    this.searchState.filters.set(null);
+    this.searchState.hasSearched.set(false);
+    this.searchState.results.set([]);
+    this.searchState.totalElements.set(0);
     this.loadFacetsForScope(scopeUuid);
   }
 
   onSearch(filters: SearchFilters) {
-    this.currentFilters = filters;
-    this.currentPage = 0;
+    this.searchState.filters.set(filters);
+    this.searchState.currentPage.set(0);
     this.executeSearch();
   }
 
   onClear() {
-    this.currentFilters = null;
-    this.currentPage = 0;
-    this.results.set([]);
-    this.totalElements.set(0);
-    this.hasSearched.set(false);
+    this.searchState.filters.set(null);
+    this.searchState.currentPage.set(0);
+    this.searchState.results.set([]);
+    this.searchState.totalElements.set(0);
+    this.searchState.hasSearched.set(false);
   }
 
   onPageChange(event: PaginatorEvent) {
-    this.currentPage = event.page ?? 0;
+    this.searchState.currentPage.set(event.page ?? 0);
     this.executeSearch();
   }
 
   navigateToDocument(item: ItemView) {
-    this.router.navigate(['/documentos', item.id]);
+    /* Ruta canónica con la colección dueña como contexto. Si por alguna razón
+       el item llegó sin owningCollectionUuid (search response incompleto, item
+       huérfano), caer al deep link corto evita romper la navegación. */
+    if (item.owningCollectionUuid) {
+      this.router.navigate(['/programas', item.owningCollectionUuid, 'documentos', item.id]);
+    } else {
+      this.router.navigate(['/documentos', item.id]);
+    }
   }
 
   downloadBitstream(bitstream: BitstreamView) {
@@ -125,7 +148,7 @@ export class AdvancedSearch implements OnInit {
 
         let remaining = subCommunities.length;
         if (remaining === 0) {
-          this.scopeOptions.set(options);
+          this.searchState.scopeOptions.set(options);
           return;
         }
 
@@ -155,7 +178,7 @@ export class AdvancedSearch implements OnInit {
 
             remaining--;
             if (remaining === 0) {
-              this.scopeOptions.set(options);
+              this.searchState.scopeOptions.set(options);
             }
           });
         }
@@ -170,7 +193,7 @@ export class AdvancedSearch implements OnInit {
     this.isLoadingFacets.set(true);
 
     const facetFilters: FacetFilter[] = [];
-    if (this.currentScopeType === 'community') {
+    if (this.searchState.scopeType() === 'community') {
       facetFilters.push({ name: 'entityType', value: ENTITY_TYPE.DOCUMENTO, operator: 'equals' });
     }
 
@@ -195,13 +218,13 @@ export class AdvancedSearch implements OnInit {
    * Ejecuta búsqueda con un único ámbito + paginación del lado del servidor.
    */
   private executeSearch() {
-    const filters = this.currentFilters;
-    const scope = filters?.scope || this.currentScope;
+    const filters = this.searchState.filters();
+    const scope = filters?.scope || this.searchState.scope();
 
     if (!scope) return;
 
-    this.isSearching.set(true);
-    this.hasSearched.set(true);
+    this.searchState.isSearching.set(true);
+    this.searchState.hasSearched.set(true);
 
     const facetFilters = this.buildFacetFilters(filters);
 
@@ -210,18 +233,18 @@ export class AdvancedSearch implements OnInit {
       query: filters?.query || undefined,
       sort: filters ? this.mapSort(filters.orderBy) : undefined,
       filters: facetFilters.length > 0 ? facetFilters : undefined,
-      page: this.currentPage,
+      page: this.searchState.currentPage(),
       size: this.itemsPerPage,
     }).pipe(
       catchError((error) => {
         console.error('Error en búsqueda:', error);
-        this.results.set([]);
-        this.totalElements.set(0);
-        this.isSearching.set(false);
+        this.searchState.results.set([]);
+        this.searchState.totalElements.set(0);
+        this.searchState.isSearching.set(false);
         return EMPTY;
       }),
     ).subscribe((result: SearchResult) => {
-      this.totalElements.set(result.totalElements);
+      this.searchState.totalElements.set(result.totalElements);
       this.loadItemDetails(result.items);
     });
   }
@@ -233,7 +256,7 @@ export class AdvancedSearch implements OnInit {
      * Si el scope es community o sub-community, filtrar solo items de tipo "documento"
      * para no mezclar álbumes de galería ni estadísticas en los resultados.
      */
-    if (this.currentScopeType === 'community') {
+    if (this.searchState.scopeType() === 'community') {
       facets.push({ name: 'entityType', value: ENTITY_TYPE.DOCUMENTO, operator: 'equals' });
     }
 
@@ -282,8 +305,8 @@ export class AdvancedSearch implements OnInit {
 
   private loadItemDetails(items: Item[]) {
     if (items.length === 0) {
-      this.results.set([]);
-      this.isSearching.set(false);
+      this.searchState.results.set([]);
+      this.searchState.isSearching.set(false);
       return;
     }
 
@@ -301,8 +324,16 @@ export class AdvancedSearch implements OnInit {
             ? this.dspaceApi.getBitstreamsFromBundle(originalBundle.uuid)
             : of(null);
 
-          return forkJoin({ thumbnail: thumbnail$, original: original$ }).pipe(
-            map(({ thumbnail, original }) => {
+          /* Resolvemos la colección dueña en paralelo para construir la URL
+             canónica del detalle (/programas/{collectionUuid}/documentos/...).
+             catchError protege la búsqueda si el item es huérfano o el endpoint
+             responde 404; en ese caso simplemente no se llena el campo. */
+          const owningCollection$ = this.dspaceApi.getOwningCollectionOfItem(item.uuid).pipe(
+            catchError(() => of(null)),
+          );
+
+          return forkJoin({ thumbnail: thumbnail$, original: original$, owningCollection: owningCollection$ }).pipe(
+            map(({ thumbnail, original, owningCollection }) => {
               const originalBitstreams = original?._embedded?.['bitstreams'] || [];
               const downloadableBitstreams: BitstreamView[] = originalBitstreams.map((b: Bitstream) => {
                 const fileName = b.name?.toLowerCase() || '';
@@ -345,6 +376,7 @@ export class AdvancedSearch implements OnInit {
                 bitstreams: downloadableBitstreams,
                 type: item.metadata?.['dc.type']?.[0]?.value || '',
                 relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
+                owningCollectionUuid: owningCollection?.uuid,
               } as ItemView;
             }),
           );
@@ -354,12 +386,12 @@ export class AdvancedSearch implements OnInit {
 
     forkJoin(itemsWithDetails$).subscribe({
       next: (itemsWithCovers: ItemView[]) => {
-        this.results.set(itemsWithCovers);
-        this.isSearching.set(false);
+        this.searchState.results.set(itemsWithCovers);
+        this.searchState.isSearching.set(false);
       },
       error: (error: unknown) => {
         console.error('Error al cargar bitstreams:', error);
-        this.results.set(items.map((item) => ({
+        this.searchState.results.set(items.map((item) => ({
           id: item.uuid,
           name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
           description: item.metadata?.['dc.description.abstract']?.[0]?.value || '',
@@ -370,7 +402,7 @@ export class AdvancedSearch implements OnInit {
           type: item.metadata?.['dc.type']?.[0]?.value || '',
           relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
         })));
-        this.isSearching.set(false);
+        this.searchState.isSearching.set(false);
       },
     });
   }
