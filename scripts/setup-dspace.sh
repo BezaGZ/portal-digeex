@@ -199,10 +199,8 @@ fi
 # Registrar los 5 campos digeex si no existen
 DIGEEX_FIELDS=(
   'navLocation|Ubicacion en navegacion del frontend: menu-principal o menu-secundario'
-  'renderType|Tipo de renderizado frontend: documento, galeria o estadistica'
   'populationType|Tipo de poblacion predominante en fotografia institucional'
   'imageFocus|Contexto visual de la imagen: Infraestructura, Tecnologia, Agricultura'
-  'contentType|Discriminador de contenido para Discovery: documento, galeria o estadistica'
 )
 
 for field_entry in "${DIGEEX_FIELDS[@]}"; do
@@ -230,6 +228,27 @@ for field_entry in "${DIGEEX_FIELDS[@]}"; do
     log_success "  digeex.$FIELD_ELEMENT registrado"
   fi
 done
+
+# ----------------------------------------------------------------------------
+# Registro de entity-types DIGEEX (Documento, Galeria, Estadistica) via CLI.
+# Las colecciones de abajo se marcan con dspace.entity.type apuntando a estos
+# tipos. Los items heredan el tipo de su coleccion padre automaticamente.
+# Idempotente: si los tres ya estan registrados, el bloque salta el CLI.
+# ----------------------------------------------------------------------------
+log_info "Registrando entity-types DIGEEX..."
+
+EXISTING_TYPES_COUNT=$(curl -s -X GET \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  "$BASE_URL/api/core/entitytypes?size=20" | grep -c '"label" : "Documento"' || true)
+
+if [ "$EXISTING_TYPES_COUNT" = "0" ]; then
+  docker exec dspace /dspace/bin/dspace initialize-entities \
+    -f /dspace/config/entities/digeex-entity-types.xml > /dev/null
+  log_success "Entity-types registrados: Documento, Galeria, Estadistica"
+else
+  log_success "Entity-types DIGEEX ya existen"
+fi
 
 # ----------------------------------------------------------------------------
 # Top-Level Community: DIGEEX
@@ -296,6 +315,52 @@ ED_BASICA_RESPONSE=$(curl -s -X POST \
 ED_BASICA_UUID=$(echo "$ED_BASICA_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
 log_success "Educacion Basica creada (UUID: $ED_BASICA_UUID)"
 
+# Crear grupo de administradores para Educacion Basica
+log_info "Creando adminGroup para Educacion Basica"
+ADMIN_GROUP_BASICA_RESPONSE=$(curl -s -X POST \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ADMIN_ED_BASICA",
+    "metadata": {
+      "dc.description": [{"value": "Administradores de Subdirección de Educación Básica"}]
+    }
+  }' \
+  "$BASE_URL/api/eperson/groups")
+
+ADMIN_GROUP_BASICA_UUID=$(echo "$ADMIN_GROUP_BASICA_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+
+# Vincular grupo como adminGroup de la comunidad
+curl -s -X PUT \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: text/uri-list" \
+  -d "$BASE_URL/api/eperson/groups/$ADMIN_GROUP_BASICA_UUID" \
+  "$BASE_URL/api/core/communities/$ED_BASICA_UUID/adminGroup" > /dev/null
+
+log_success "adminGroup vinculado (UUID: $ADMIN_GROUP_BASICA_UUID)"
+
+# Crear grupo de personal delegado (submittersGroup compartido) para Educacion Basica
+log_info "Creando submittersGroup para Educacion Basica"
+SUBMITTERS_GROUP_BASICA_RESPONSE=$(curl -s -X POST \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "SUBMITTERS_ED_BASICA",
+    "metadata": {
+      "dc.description": [{"value": "Personal delegado de Educación Básica (acceso a todas sus colecciones)"}]
+    }
+  }' \
+  "$BASE_URL/api/eperson/groups")
+
+SUBMITTERS_GROUP_BASICA_UUID=$(echo "$SUBMITTERS_GROUP_BASICA_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+log_success "submittersGroup creado (UUID: $SUBMITTERS_GROUP_BASICA_UUID)"
+
 # Educacion para el Trabajo y la Cultura
 log_info "Creando subcomunidad: Educacion para el Trabajo y la Cultura"
 
@@ -315,6 +380,52 @@ ED_TRABAJO_RESPONSE=$(curl -s -X POST \
 
 ED_TRABAJO_UUID=$(echo "$ED_TRABAJO_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
 log_success "Educacion para el Trabajo y la Cultura creada (UUID: $ED_TRABAJO_UUID)"
+
+# Crear grupo de administradores para Educacion para el Trabajo
+log_info "Creando adminGroup para Educacion para el Trabajo"
+ADMIN_GROUP_TRABAJO_RESPONSE=$(curl -s -X POST \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ADMIN_ED_TRABAJO",
+    "metadata": {
+      "dc.description": [{"value": "Administradores de Subdirección para el Trabajo y la Cultura"}]
+    }
+  }' \
+  "$BASE_URL/api/eperson/groups")
+
+ADMIN_GROUP_TRABAJO_UUID=$(echo "$ADMIN_GROUP_TRABAJO_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+
+# Vincular grupo como adminGroup de la comunidad
+curl -s -X PUT \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: text/uri-list" \
+  -d "$BASE_URL/api/eperson/groups/$ADMIN_GROUP_TRABAJO_UUID" \
+  "$BASE_URL/api/core/communities/$ED_TRABAJO_UUID/adminGroup" > /dev/null
+
+log_success "adminGroup vinculado (UUID: $ADMIN_GROUP_TRABAJO_UUID)"
+
+# Crear grupo de personal delegado (submittersGroup compartido) para Educacion para el Trabajo
+log_info "Creando submittersGroup para Educacion para el Trabajo"
+SUBMITTERS_GROUP_TRABAJO_RESPONSE=$(curl -s -X POST \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "SUBMITTERS_ED_TRABAJO",
+    "metadata": {
+      "dc.description": [{"value": "Personal delegado de Educación para el Trabajo (acceso a todas sus colecciones)"}]
+    }
+  }' \
+  "$BASE_URL/api/eperson/groups")
+
+SUBMITTERS_GROUP_TRABAJO_UUID=$(echo "$SUBMITTERS_GROUP_TRABAJO_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+log_success "submittersGroup creado (UUID: $SUBMITTERS_GROUP_TRABAJO_UUID)"
 
 # Formacion, Investigacion y Proyectos Educativos
 log_info "Creando subcomunidad: Formacion, Investigacion y Proyectos Educativos"
@@ -336,6 +447,52 @@ ED_INVESTIGACION_RESPONSE=$(curl -s -X POST \
 ED_INVESTIGACION_UUID=$(echo "$ED_INVESTIGACION_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
 log_success "Formacion, Investigacion y Proyectos creada (UUID: $ED_INVESTIGACION_UUID)"
 
+# Crear grupo de administradores para Formacion, Investigacion y Proyectos
+log_info "Creando adminGroup para Formacion, Investigacion y Proyectos"
+ADMIN_GROUP_INVESTIGACION_RESPONSE=$(curl -s -X POST \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ADMIN_ED_INVESTIGACION",
+    "metadata": {
+      "dc.description": [{"value": "Administradores de Subdirección de Formación, Investigación y Proyectos"}]
+    }
+  }' \
+  "$BASE_URL/api/eperson/groups")
+
+ADMIN_GROUP_INVESTIGACION_UUID=$(echo "$ADMIN_GROUP_INVESTIGACION_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+
+# Vincular grupo como adminGroup de la comunidad
+curl -s -X PUT \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: text/uri-list" \
+  -d "$BASE_URL/api/eperson/groups/$ADMIN_GROUP_INVESTIGACION_UUID" \
+  "$BASE_URL/api/core/communities/$ED_INVESTIGACION_UUID/adminGroup" > /dev/null
+
+log_success "adminGroup vinculado (UUID: $ADMIN_GROUP_INVESTIGACION_UUID)"
+
+# Crear grupo de personal delegado (submittersGroup compartido) para Formacion e Investigacion
+log_info "Creando submittersGroup para Formacion, Investigacion y Proyectos"
+SUBMITTERS_GROUP_INVESTIGACION_RESPONSE=$(curl -s -X POST \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "SUBMITTERS_ED_INVESTIGACION",
+    "metadata": {
+      "dc.description": [{"value": "Personal delegado de Formación e Investigación (acceso a todas sus colecciones)"}]
+    }
+  }' \
+  "$BASE_URL/api/eperson/groups")
+
+SUBMITTERS_GROUP_INVESTIGACION_UUID=$(echo "$SUBMITTERS_GROUP_INVESTIGACION_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+log_success "submittersGroup creado (UUID: $SUBMITTERS_GROUP_INVESTIGACION_UUID)"
+
 # ----------------------------------------------------------------------------
 # Collections — Educacion Basica
 # ----------------------------------------------------------------------------
@@ -344,28 +501,28 @@ log_info "Creando colecciones de Educacion Basica..."
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"PEAC","metadata":{"dc.title":[{"value":"Programa de Educación de Adultos por Correspondencia"}],"dc.description":[{"value":"Modalidad de educación a distancia dirigida a jóvenes y adultos que desean completar la educación primaria mediante materiales autoinstructivos. Incluye guías de estudio, evaluaciones y recursos pedagógicos del programa PEAC."}],"dc.subject":[{"value":"PEAC"}],"digeex.navLocation":[{"value":"menu-principal"}],"digeex.renderType":[{"value":"documento"}],"dc.identifier.other":[{"value":"1"}]}}' \
+  -d '{"name":"PEAC","metadata":{"dc.title":[{"value":"Programa de Educación de Adultos por Correspondencia"}],"dc.description":[{"value":"Modalidad de educación a distancia dirigida a jóvenes y adultos que desean completar la educación primaria mediante materiales autoinstructivos. Incluye guías de estudio, evaluaciones y recursos pedagógicos del programa PEAC."}],"dc.subject":[{"value":"PEAC"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"1"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_BASICA_UUID" > /dev/null
 log_success "  PEAC"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Modalidades Flexibles","metadata":{"dc.title":[{"value":"Programa Modalidades Flexibles para la Educación Media"}],"dc.description":[{"value":"Programa de educación media con metodologías flexibles dirigido a jóvenes y adultos de 15 años en adelante. Atiende ciclo básico y diversificado mediante modalidades semipresenciales y a distancia. Incluye recursos educativos, lineamientos metodológicos y materiales de apoyo adaptados a las necesidades de los estudiantes."}],"dc.subject":[{"value":"Modalidades Flexibles"}],"digeex.navLocation":[{"value":"menu-principal"}],"digeex.renderType":[{"value":"documento"}],"dc.identifier.other":[{"value":"2"}]}}' \
+  -d '{"name":"Modalidades Flexibles","metadata":{"dc.title":[{"value":"Programa Modalidades Flexibles para la Educación Media"}],"dc.description":[{"value":"Programa de educación media con metodologías flexibles dirigido a jóvenes y adultos de 15 años en adelante. Atiende ciclo básico y diversificado mediante modalidades semipresenciales y a distancia. Incluye recursos educativos, lineamientos metodológicos y materiales de apoyo adaptados a las necesidades de los estudiantes."}],"dc.subject":[{"value":"Modalidades Flexibles"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"2"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_BASICA_UUID" > /dev/null
 log_success "  Modalidades Flexibles"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"PRONEA","metadata":{"dc.title":[{"value":"Programa Nacional de Educación Alternativa"}],"dc.description":[{"value":"Programa de alfabetización y educación básica para población adulta mediante metodologías flexibles y contextualizadas. Contiene materiales didácticos, manuales para facilitadores y documentación del programa PRONEA."}],"dc.subject":[{"value":"PRONEA"}],"digeex.navLocation":[{"value":"menu-principal"}],"digeex.renderType":[{"value":"documento"}],"dc.identifier.other":[{"value":"3"}]}}' \
+  -d '{"name":"PRONEA","metadata":{"dc.title":[{"value":"Programa Nacional de Educación Alternativa"}],"dc.description":[{"value":"Programa de alfabetización y educación básica para población adulta mediante metodologías flexibles y contextualizadas. Contiene materiales didácticos, manuales para facilitadores y documentación del programa PRONEA."}],"dc.subject":[{"value":"PRONEA"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"3"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_BASICA_UUID" > /dev/null
 log_success "  PRONEA"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"EVA","metadata":{"dc.title":[{"value":"Entornos Virtuales de Aprendizaje"}],"dc.description":[{"value":"Plataforma de entornos virtuales que ofrece recursos educativos digitales, cursos en línea y herramientas tecnológicas para el subsistema de educación extraescolar. Contiene recursos multimedia, evaluaciones virtuales y materiales de apoyo para la formación a distancia del programa EVA."}],"dc.subject":[{"value":"EVA"}],"digeex.navLocation":[{"value":"menu-principal"}],"digeex.renderType":[{"value":"documento"}],"dc.identifier.other":[{"value":"7"}]}}' \
+  -d '{"name":"EVA","metadata":{"dc.title":[{"value":"Entornos Virtuales de Aprendizaje"}],"dc.description":[{"value":"Plataforma de entornos virtuales que ofrece recursos educativos digitales, cursos en línea y herramientas tecnológicas para el subsistema de educación extraescolar. Contiene recursos multimedia, evaluaciones virtuales y materiales de apoyo para la formación a distancia del programa EVA."}],"dc.subject":[{"value":"EVA"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"7"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_BASICA_UUID" > /dev/null
 log_success "  EVA"
 
@@ -377,28 +534,28 @@ log_info "Creando colecciones de Educacion para el Trabajo y la Cultura..."
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"CEMUCAF","metadata":{"dc.title":[{"value":"Centros Municipales de Capacitación y Formación Humana"}],"dc.description":[{"value":"Red de centros de formación técnica y capacitación laboral en comunidades. Contiene materiales de capacitación, manuales técnicos, currículos y recursos pedagógicos del programa CEMUCAF."}],"dc.subject":[{"value":"CEMUCAF"}],"digeex.navLocation":[{"value":"menu-principal"}],"digeex.renderType":[{"value":"documento"}],"dc.identifier.other":[{"value":"4"}]}}' \
+  -d '{"name":"CEMUCAF","metadata":{"dc.title":[{"value":"Centros Municipales de Capacitación y Formación Humana"}],"dc.description":[{"value":"Red de centros de formación técnica y capacitación laboral en comunidades. Contiene materiales de capacitación, manuales técnicos, currículos y recursos pedagógicos del programa CEMUCAF."}],"dc.subject":[{"value":"CEMUCAF"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"4"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_TRABAJO_UUID" > /dev/null
 log_success "  CEMUCAF"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"SCC","metadata":{"dc.title":[{"value":"Sistema de Certificación de Competencias"}],"dc.description":[{"value":"Sistema de reconocimiento y certificación de competencias laborales adquiridas por experiencia. Incluye procedimientos de certificación, estándares de competencia, evaluaciones y normativas del SCC."}],"dc.subject":[{"value":"SCC"}],"digeex.navLocation":[{"value":"menu-principal"}],"digeex.renderType":[{"value":"documento"}],"dc.identifier.other":[{"value":"5"}]}}' \
+  -d '{"name":"SCC","metadata":{"dc.title":[{"value":"Sistema de Certificación de Competencias"}],"dc.description":[{"value":"Sistema de reconocimiento y certificación de competencias laborales adquiridas por experiencia. Incluye procedimientos de certificación, estándares de competencia, evaluaciones y normativas del SCC."}],"dc.subject":[{"value":"SCC"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"5"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_TRABAJO_UUID" > /dev/null
 log_success "  SCC"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"ETCAE","metadata":{"dc.title":[{"value":"Escuelas Técnicas de Campo para la Alimentación Escolar"}],"dc.description":[{"value":"Centros de formación y capacitación del Subsistema de Educación Extraescolar, asociadas al área agropecuaria. Contiene manuales técnicos, planes de estudio y materiales del programa ETCAE."}],"dc.subject":[{"value":"ETCAE"}],"digeex.navLocation":[{"value":"menu-principal"}],"digeex.renderType":[{"value":"documento"}],"dc.identifier.other":[{"value":"6"}]}}' \
+  -d '{"name":"ETCAE","metadata":{"dc.title":[{"value":"Escuelas Técnicas de Campo para la Alimentación Escolar"}],"dc.description":[{"value":"Centros de formación y capacitación del Subsistema de Educación Extraescolar, asociadas al área agropecuaria. Contiene manuales técnicos, planes de estudio y materiales del programa ETCAE."}],"dc.subject":[{"value":"ETCAE"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"6"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_TRABAJO_UUID" > /dev/null
 log_success "  ETCAE"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"PROBEFI","metadata":{"dc.title":[{"value":"Programa de Becas para Formación Técnica Laboral en Inglés"}],"dc.description":[{"value":"Programa de becas para fortalecer las competencias laborales de jóvenes y adultos mediante el aprendizaje técnico del idioma inglés. Incluye lineamientos, convocatorias, materiales de capacitación y documentación del programa PROBEFI."}],"dc.subject":[{"value":"PROBEFI"}],"digeex.navLocation":[{"value":"menu-principal"}],"digeex.renderType":[{"value":"documento"}],"dc.identifier.other":[{"value":"8"}]}}' \
+  -d '{"name":"PROBEFI","metadata":{"dc.title":[{"value":"Programa de Becas para Formación Técnica Laboral en Inglés"}],"dc.description":[{"value":"Programa de becas para fortalecer las competencias laborales de jóvenes y adultos mediante el aprendizaje técnico del idioma inglés. Incluye lineamientos, convocatorias, materiales de capacitación y documentación del programa PROBEFI."}],"dc.subject":[{"value":"PROBEFI"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"8"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_TRABAJO_UUID" > /dev/null
 log_success "  PROBEFI"
 
@@ -410,44 +567,147 @@ log_info "Creando colecciones de Formacion, Investigacion y Proyectos..."
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Investigaciones","metadata":{"dc.title":[{"value":"Investigaciones Educativas"}],"dc.description":[{"value":"Estudios, investigaciones y análisis sobre educación extraescolar en Guatemala. Incluye investigaciones propias, tesis, estudios de caso, diagnósticos y documentos de investigación educativa."}],"digeex.navLocation":[{"value":"menu-secundario"}],"digeex.renderType":[{"value":"documento"}]}}' \
+  -d '{"name":"Investigaciones","metadata":{"dc.title":[{"value":"Investigaciones Educativas"}],"dc.description":[{"value":"Estudios, investigaciones y análisis sobre educación extraescolar en Guatemala. Incluye investigaciones propias, tesis, estudios de caso, diagnósticos y documentos de investigación educativa."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Investigaciones"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Experiencias Significativas","metadata":{"dc.title":[{"value":"Experiencias Significativas y Buenas Prácticas"}],"dc.description":[{"value":"Sistematización de experiencias exitosas, innovaciones pedagógicas y buenas prácticas en educación extraescolar. Contiene relatos de experiencias, estudios de caso y documentación de prácticas destacadas."}],"digeex.navLocation":[{"value":"menu-secundario"}],"digeex.renderType":[{"value":"documento"}]}}' \
+  -d '{"name":"Experiencias Significativas","metadata":{"dc.title":[{"value":"Experiencias Significativas y Buenas Prácticas"}],"dc.description":[{"value":"Sistematización de experiencias exitosas, innovaciones pedagógicas y buenas prácticas en educación extraescolar. Contiene relatos de experiencias, estudios de caso y documentación de prácticas destacadas."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Experiencias Significativas"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Datos Estadísticos","metadata":{"dc.title":[{"value":"Datos Estadísticos Institucionales"}],"dc.description":[{"value":"Bases de datos, anuarios estadísticos, indicadores educativos y cifras oficiales de DIGEEX. Incluye datos de cobertura, matrícula, graduaciones y otros indicadores del sistema extraescolar."}],"digeex.navLocation":[{"value":"menu-secundario"}],"digeex.renderType":[{"value":"estadistica"}]}}' \
+  -d '{"name":"Datos Estadísticos","metadata":{"dc.title":[{"value":"Datos Estadísticos Institucionales"}],"dc.description":[{"value":"Bases de datos, anuarios estadísticos, indicadores educativos y cifras oficiales de DIGEEX. Incluye datos de cobertura, matrícula, graduaciones y otros indicadores del sistema extraescolar."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Estadistica"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Datos Estadisticos"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Galería Institucional","metadata":{"dc.title":[{"value":"Galería Institucional"}],"dc.description":[{"value":"Registro fotográfico y audiovisual de eventos, actividades, ceremonias y acciones institucionales de DIGEEX. Memoria histórica visual de la dirección y sus programas."}],"digeex.navLocation":[{"value":"menu-secundario"}],"digeex.renderType":[{"value":"galeria"}]}}' \
+  -d '{"name":"Galería Institucional","metadata":{"dc.title":[{"value":"Galería Institucional"}],"dc.description":[{"value":"Registro fotográfico y audiovisual de eventos, actividades, ceremonias y acciones institucionales de DIGEEX. Memoria histórica visual de la dirección y sus programas."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Galeria"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Galeria Institucional"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Informes de Gestión","metadata":{"dc.title":[{"value":"Informes de Gestión y Memorias Institucionales"}],"dc.description":[{"value":"Informes anuales, memorias de labores, planes operativos anuales (POA), rendición de cuentas y documentación de gestión administrativa de DIGEEX."}],"digeex.navLocation":[{"value":"menu-secundario"}],"digeex.renderType":[{"value":"documento"}]}}' \
+  -d '{"name":"Informes de Gestión","metadata":{"dc.title":[{"value":"Informes de Gestión y Memorias Institucionales"}],"dc.description":[{"value":"Informes anuales, memorias de labores, planes operativos anuales (POA), rendición de cuentas y documentación de gestión administrativa de DIGEEX."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Informes de Gestion"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Normativa y Acuerdos","metadata":{"dc.title":[{"value":"Normativa y Acuerdos Institucionales"}],"dc.description":[{"value":"Marco legal, acuerdos ministeriales, resoluciones, lineamientos técnicos, reglamentos y normativa vigente que rige la educación extraescolar en Guatemala."}],"digeex.navLocation":[{"value":"menu-secundario"}],"digeex.renderType":[{"value":"documento"}]}}' \
+  -d '{"name":"Normativa y Acuerdos","metadata":{"dc.title":[{"value":"Normativa y Acuerdos Institucionales"}],"dc.description":[{"value":"Marco legal, acuerdos ministeriales, resoluciones, lineamientos técnicos, reglamentos y normativa vigente que rige la educación extraescolar en Guatemala."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Normativa y Acuerdos"
+
+# ----------------------------------------------------------------------------
+# Vincular submittersGroups a las colecciones
+# ----------------------------------------------------------------------------
+log_info "Vinculando submittersGroups a las colecciones..."
+
+# Obtener todas las colecciones de Educacion Basica y vincular el submittersGroup
+COLLECTIONS_BASICA=$(curl -s -X GET \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  "$BASE_URL/api/core/communities/$ED_BASICA_UUID/collections")
+
+echo "$COLLECTIONS_BASICA" | python3 -c "
+import sys, json, subprocess, os
+data = json.load(sys.stdin)
+collections = data.get('_embedded', {}).get('collections', [])
+base_url = os.environ.get('BASE_URL', 'http://localhost:8080/server')
+group_uuid = os.environ.get('SUBMITTERS_GROUP_BASICA_UUID', '')
+cookies_file = os.environ.get('COOKIES_FILE', '')
+jwt = os.environ.get('JWT', '')
+csrf_token = os.environ.get('CSRF_TOKEN', '')
+
+for coll in collections:
+    coll_uuid = coll.get('uuid')
+    coll_name = coll.get('name')
+    if coll_uuid:
+        subprocess.run([
+            'curl', '-s', '-X', 'PUT',
+            '-b', cookies_file,
+            '-H', f'Authorization: Bearer {jwt}',
+            '-H', f'X-XSRF-TOKEN: {csrf_token}',
+            '-H', 'Content-Type: text/uri-list',
+            '-d', f'{base_url}/api/eperson/groups/{group_uuid}',
+            f'{base_url}/api/core/collections/{coll_uuid}/submittersGroup'
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=os.environ)
+        print(f'  ✓ {coll_name}')
+" 2>/dev/null || log_warning "Error vinculando submittersGroups de Ed. Basica"
+
+# Obtener todas las colecciones de Educacion para el Trabajo y vincular el submittersGroup
+COLLECTIONS_TRABAJO=$(curl -s -X GET \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  "$BASE_URL/api/core/communities/$ED_TRABAJO_UUID/collections")
+
+echo "$COLLECTIONS_TRABAJO" | python3 -c "
+import sys, json, subprocess, os
+data = json.load(sys.stdin)
+collections = data.get('_embedded', {}).get('collections', [])
+base_url = os.environ.get('BASE_URL', 'http://localhost:8080/server')
+group_uuid = os.environ.get('SUBMITTERS_GROUP_TRABAJO_UUID', '')
+cookies_file = os.environ.get('COOKIES_FILE', '')
+jwt = os.environ.get('JWT', '')
+csrf_token = os.environ.get('CSRF_TOKEN', '')
+
+for coll in collections:
+    coll_uuid = coll.get('uuid')
+    coll_name = coll.get('name')
+    if coll_uuid:
+        subprocess.run([
+            'curl', '-s', '-X', 'PUT',
+            '-b', cookies_file,
+            '-H', f'Authorization: Bearer {jwt}',
+            '-H', f'X-XSRF-TOKEN: {csrf_token}',
+            '-H', 'Content-Type: text/uri-list',
+            '-d', f'{base_url}/api/eperson/groups/{group_uuid}',
+            f'{base_url}/api/core/collections/{coll_uuid}/submittersGroup'
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=os.environ)
+        print(f'  ✓ {coll_name}')
+" 2>/dev/null || log_warning "Error vinculando submittersGroups de Ed. Trabajo"
+
+# Obtener todas las colecciones de Formacion e Investigacion y vincular el submittersGroup
+COLLECTIONS_INVESTIGACION=$(curl -s -X GET \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  "$BASE_URL/api/core/communities/$ED_INVESTIGACION_UUID/collections")
+
+echo "$COLLECTIONS_INVESTIGACION" | python3 -c "
+import sys, json, subprocess, os
+data = json.load(sys.stdin)
+collections = data.get('_embedded', {}).get('collections', [])
+base_url = os.environ.get('BASE_URL', 'http://localhost:8080/server')
+group_uuid = os.environ.get('SUBMITTERS_GROUP_INVESTIGACION_UUID', '')
+cookies_file = os.environ.get('COOKIES_FILE', '')
+jwt = os.environ.get('JWT', '')
+csrf_token = os.environ.get('CSRF_TOKEN', '')
+
+for coll in collections:
+    coll_uuid = coll.get('uuid')
+    coll_name = coll.get('name')
+    if coll_uuid:
+        subprocess.run([
+            'curl', '-s', '-X', 'PUT',
+            '-b', cookies_file,
+            '-H', f'Authorization: Bearer {jwt}',
+            '-H', f'X-XSRF-TOKEN: {csrf_token}',
+            '-H', 'Content-Type: text/uri-list',
+            '-d', f'{base_url}/api/eperson/groups/{group_uuid}',
+            f'{base_url}/api/core/collections/{coll_uuid}/submittersGroup'
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=os.environ)
+        print(f'  ✓ {coll_name}')
+" 2>/dev/null || log_warning "Error vinculando submittersGroups de Ed. Investigacion"
+
+log_success "submittersGroups vinculados a todas las colecciones"
 
 # ----------------------------------------------------------------------------
 # Resumen
@@ -461,11 +721,15 @@ echo "Comunidad principal:"
 echo "  DIGEEX (UUID: $DIGEEX_UUID)"
 echo ""
 echo "Subcomunidades:"
-echo "  Educacion Basica             (4 colecciones)"
-echo "  Educacion para el Trabajo    (4 colecciones)"
-echo "  Formacion e Investigacion    (6 colecciones)"
+echo "  Educacion Basica             (4 colecciones + adminGroup + submittersGroup)"
+echo "  Educacion para el Trabajo    (4 colecciones + adminGroup + submittersGroup)"
+echo "  Formacion e Investigacion    (6 colecciones + adminGroup + submittersGroup)"
 echo ""
-echo "Total: 1 comunidad + 3 subcomunidades + 14 colecciones"
+echo "Total: 1 comunidad + 3 subcomunidades + 14 colecciones + 6 grupos de rol"
+echo ""
+echo "Grupos creados:"
+echo "  3 adminGroups (Subadministradores)"
+echo "  3 submittersGroups (Personal delegado, compartido por subdirección)"
 echo ""
 echo "Backend: $BASE_URL"
 echo "Usuario: $ADMIN_EMAIL"

@@ -10,6 +10,12 @@
 scripts/saf-peac/
 scripts/saf-albums/
 scripts/saf-videos/
+scripts/saf-mf-bachillerato/
+scripts/saf-mf-ciclobasico/
+scripts/ACUERDOS GENERALES DIGEEX/
+scripts/ACUERDOS PROGRAMAS DIGEEX/
+scripts/capture-dspace-anchor.sh
+
 
 # Sistema
 .DS_Store

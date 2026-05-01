@@ -20,7 +20,7 @@ fi
 
 BASE_URL="${DSPACE_REST_URL:-http://localhost:8080/server}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@digeex.gob.gt}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-bezaleel1234}"
 
 COOKIES_FILE=$(mktemp)
 trap "rm -f $COOKIES_FILE" EXIT
