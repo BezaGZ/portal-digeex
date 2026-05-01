@@ -1,0 +1,47 @@
+{
+  "_embedded": {
+    "entries": [
+      {
+        "display": "Primaria",
+        "value": "Primaria",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Básico",
+        "value": "Básico",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Diversificado",
+        "value": "Diversificado",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Formación técnico laboral",
+        "value": "Formación técnico laboral",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Todos",
+        "value": "Todos",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      }
+    ]
+  },
+  "page": {
+    "number": 0,
+    "size": 20,
+    "totalPages": 1,
+    "totalElements": 5
+  },
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/server/api/submission/vocabularies/niveles-educativos/entries"
+    }
+  }
+}

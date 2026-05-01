@@ -1,0 +1,89 @@
+{
+  "_embedded": {
+    "entries": [
+      {
+        "display": "PEAC",
+        "value": "PEAC",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "PRONEA",
+        "value": "PRONEA",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Modalidades Flexibles",
+        "value": "Modalidades Flexibles",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "EVA",
+        "value": "EVA",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "CEMUCAF",
+        "value": "CEMUCAF",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "SCC",
+        "value": "SCC",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "ETCAE",
+        "value": "ETCAE",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "PROBEFI",
+        "value": "PROBEFI",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "DIGEEX — Dirección General de Educación Extraescolar",
+        "value": "DIGEEX — Dirección General de Educación Extraescolar",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Integración educativa para poblaciones en condición de vulnerabilidad y migrantes retornados",
+        "value": "Integración educativa para poblaciones en condición de vulnerabilidad y migrantes retornados",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Inclusión educativa de niñas y adolescentes embarazadas y madres víctimas de violencia sexual",
+        "value": "Inclusión educativa de niñas y adolescentes embarazadas y madres víctimas de violencia sexual",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Radios Educativas",
+        "value": "Radios Educativas",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      }
+    ]
+  },
+  "page": {
+    "number": 0,
+    "size": 20,
+    "totalPages": 1,
+    "totalElements": 12
+  },
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/server/api/submission/vocabularies/programas-digeex/entries"
+    }
+  }
+}

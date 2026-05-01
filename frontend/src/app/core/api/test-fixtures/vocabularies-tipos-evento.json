@@ -1,0 +1,77 @@
+{
+  "_embedded": {
+    "entries": [
+      {
+        "display": "Graduaciones",
+        "value": "Graduaciones",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Capacitaciones",
+        "value": "Capacitaciones",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Materiales educativos",
+        "value": "Materiales educativos",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Tutorías",
+        "value": "Tutorías",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Evaluaciones y certificaciones",
+        "value": "Evaluaciones y certificaciones",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Actividades comunitarias",
+        "value": "Actividades comunitarias",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Reuniones institucionales",
+        "value": "Reuniones institucionales",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Investigaciones",
+        "value": "Investigaciones",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Ferias",
+        "value": "Ferias",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Agricultura",
+        "value": "Agricultura",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      }
+    ]
+  },
+  "page": {
+    "number": 0,
+    "size": 20,
+    "totalPages": 1,
+    "totalElements": 10
+  },
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/server/api/submission/vocabularies/tipos-evento/entries"
+    }
+  }
+}

@@ -10,3 +10,4 @@ export * from './search.model';
 export * from './view.model';
 export * from './discovery.model';
 export * from './submission-form.model';
+export * from './vocabulary-entry.model';

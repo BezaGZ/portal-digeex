@@ -1,0 +1,59 @@
+{
+  "_embedded": {
+    "entries": [
+      {
+        "display": "Mujeres jóvenes",
+        "value": "Mujeres jóvenes",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Mujeres adultas",
+        "value": "Mujeres adultas",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Hombres jóvenes",
+        "value": "Hombres jóvenes",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Hombres adultos",
+        "value": "Hombres adultos",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Técnicos docentes",
+        "value": "Técnicos docentes",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Coordinadores",
+        "value": "Coordinadores",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Comunidad",
+        "value": "Comunidad",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      }
+    ]
+  },
+  "page": {
+    "number": 0,
+    "size": 20,
+    "totalPages": 1,
+    "totalElements": 7
+  },
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/server/api/submission/vocabularies/tipo-poblacion/entries"
+    }
+  }
+}

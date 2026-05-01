@@ -1,0 +1,35 @@
+{
+  "_embedded": {
+    "entries": [
+      {
+        "display": "Infraestructura",
+        "value": "Infraestructura",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Tecnología",
+        "value": "Tecnología",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      },
+      {
+        "display": "Agricultura",
+        "value": "Agricultura",
+        "otherInformation": {},
+        "type": "vocabularyEntry"
+      }
+    ]
+  },
+  "page": {
+    "number": 0,
+    "size": 20,
+    "totalPages": 1,
+    "totalElements": 3
+  },
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/server/api/submission/vocabularies/enfoque-imagen/entries"
+    }
+  }
+}
