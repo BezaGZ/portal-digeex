@@ -1,0 +1,80 @@
+{
+  "id": "digeex-estadistica",
+  "name": "digeex-estadistica",
+  "rows": [
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "onebox"
+          },
+          "label": "Título de la gráfica",
+          "mandatory": true,
+          "repeatable": false,
+          "mandatoryMessage": "El título es obligatorio.",
+          "hints": "Etiqueta que aparece sobre la gráfica cuando el portal renderiza las estadísticas.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.title",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "textarea"
+          },
+          "label": "Descripción",
+          "mandatory": false,
+          "repeatable": false,
+          "hints": "Contexto de los datos de la gráfica.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.description.abstract",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "date"
+          },
+          "label": "Fecha",
+          "mandatory": true,
+          "repeatable": false,
+          "mandatoryMessage": "La fecha es obligatoria.",
+          "hints": "Fecha o período al que corresponden los datos.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.date.issued",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    }
+  ],
+  "type": "submissionform",
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/server/api/config/submissionforms/digeex-estadistica"
+    }
+  }
+}

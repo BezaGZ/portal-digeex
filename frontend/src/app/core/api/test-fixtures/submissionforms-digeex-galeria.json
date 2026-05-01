@@ -1,0 +1,196 @@
+{
+  "id": "digeex-galeria",
+  "name": "digeex-galeria",
+  "rows": [
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "onebox"
+          },
+          "label": "Título del álbum",
+          "mandatory": true,
+          "repeatable": false,
+          "mandatoryMessage": "El título es obligatorio.",
+          "hints": "Nombre con el que se identifica el álbum en el portal.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.title",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "textarea"
+          },
+          "label": "Descripción",
+          "mandatory": false,
+          "repeatable": false,
+          "hints": "Resumen del álbum para mostrar en el listado público.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.description.abstract",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "date"
+          },
+          "label": "Fecha",
+          "mandatory": true,
+          "repeatable": false,
+          "mandatoryMessage": "La fecha es obligatoria.",
+          "hints": "Fecha en la que se realizó el evento o se tomaron las fotografías.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.date.issued",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "dropdown"
+          },
+          "label": "Tipo de evento",
+          "mandatory": true,
+          "repeatable": false,
+          "mandatoryMessage": "El tipo de evento es obligatorio.",
+          "hints": "Tipo de evento o actividad documentada en el álbum.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.type",
+              "label": null,
+              "controlledVocabulary": "tipos-evento",
+              "closed": true
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "onebox"
+          },
+          "label": "Autor",
+          "mandatory": false,
+          "repeatable": true,
+          "hints": "Persona o equipo que tomó las fotografías.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.contributor.author",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "dropdown"
+          },
+          "label": "Programa",
+          "mandatory": true,
+          "repeatable": false,
+          "mandatoryMessage": "El programa es obligatorio.",
+          "hints": "Programa DIGEEX al que pertenece el álbum.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.subject.classification",
+              "label": null,
+              "controlledVocabulary": "programas-digeex",
+              "closed": true
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "dropdown"
+          },
+          "label": "Tipo de población predominante",
+          "mandatory": false,
+          "repeatable": false,
+          "hints": "Población predominante en las fotografías.",
+          "selectableMetadata": [
+            {
+              "metadata": "digeex.populationType",
+              "label": null,
+              "controlledVocabulary": "tipo-poblacion",
+              "closed": true
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "dropdown"
+          },
+          "label": "Enfoque visual",
+          "mandatory": false,
+          "repeatable": false,
+          "hints": "Contexto visual del álbum.",
+          "selectableMetadata": [
+            {
+              "metadata": "digeex.imageFocus",
+              "label": null,
+              "controlledVocabulary": "enfoque-imagen",
+              "closed": true
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    }
+  ],
+  "type": "submissionform",
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/server/api/config/submissionforms/digeex-galeria"
+    }
+  }
+}

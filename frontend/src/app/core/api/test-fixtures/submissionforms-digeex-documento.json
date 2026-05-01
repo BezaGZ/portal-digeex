@@ -1,0 +1,215 @@
+{
+  "id": "digeex-documento",
+  "name": "digeex-documento",
+  "rows": [
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "onebox"
+          },
+          "label": "Título",
+          "mandatory": true,
+          "repeatable": false,
+          "mandatoryMessage": "El título es obligatorio.",
+          "hints": "Título del documento o video.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.title",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "textarea"
+          },
+          "label": "Descripción",
+          "mandatory": false,
+          "repeatable": false,
+          "hints": "Resumen del recurso para el listado público.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.description.abstract",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "dropdown"
+          },
+          "label": "Tipo",
+          "mandatory": true,
+          "repeatable": false,
+          "mandatoryMessage": "El tipo es obligatorio.",
+          "hints": "Tipo de documento. El frontend fija \"Video\" cuando el toggle de video está activo.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.type",
+              "label": null,
+              "controlledVocabulary": "tipos-documento",
+              "closed": true
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "dropdown"
+          },
+          "label": "Nivel educativo",
+          "mandatory": false,
+          "repeatable": false,
+          "hints": "Audiencia destinataria del recurso.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.audience",
+              "label": null,
+              "controlledVocabulary": "niveles-educativos",
+              "closed": true
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "date"
+          },
+          "label": "Fecha de publicación",
+          "mandatory": true,
+          "repeatable": false,
+          "mandatoryMessage": "La fecha es obligatoria.",
+          "hints": "Fecha de publicación del recurso.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.date.issued",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "onebox"
+          },
+          "label": "Autor",
+          "mandatory": false,
+          "repeatable": true,
+          "hints": "Persona o equipo responsable del recurso.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.contributor.author",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "tag"
+          },
+          "label": "Palabras clave",
+          "mandatory": false,
+          "repeatable": true,
+          "hints": "Palabras clave que describen el contenido.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.subject",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "onebox"
+          },
+          "label": "Idioma",
+          "mandatory": false,
+          "repeatable": false,
+          "hints": "Código ISO del idioma (es, quc, cak...).",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.language.iso",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    },
+    {
+      "fields": [
+        {
+          "input": {
+            "type": "onebox"
+          },
+          "label": "URL del video externo",
+          "mandatory": false,
+          "repeatable": false,
+          "hints": "URL de YouTube o Google Drive. El frontend muestra este campo solo si el toggle de video está activo.",
+          "selectableMetadata": [
+            {
+              "metadata": "dc.relation.uri",
+              "label": null,
+              "closed": false
+            }
+          ],
+          "languageCodes": [],
+          "typeBind": []
+        }
+      ]
+    }
+  ],
+  "type": "submissionform",
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/server/api/config/submissionforms/digeex-documento"
+    }
+  }
+}

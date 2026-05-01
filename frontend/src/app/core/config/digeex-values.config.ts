@@ -23,3 +23,15 @@ export const NAV_LOCATION = {
   MENU_PRINCIPAL: 'menu-principal',
   MENU_SECUNDARIO: 'menu-secundario',
 } as const;
+
+/**
+ * Nombres de los formularios de submission DIGEEX declarados en
+ * `backend/dspace/config/submission-forms.xml`. El frontend los referencia
+ * para pedir el schema con `SubmissionFormApiService.getForm(name)` y para
+ * mapear `dspace.entity.type` de la colección destino al form correcto.
+ */
+export const DIGEEX_FORM = {
+  DOCUMENTO: 'digeex-documento',
+  GALERIA: 'digeex-galeria',
+  ESTADISTICA: 'digeex-estadistica',
+} as const;

@@ -22,6 +22,7 @@ export const DSPACE_API_BASE = '/server/api';
 export const EPERSONS_COLLECTION_PATH = '/eperson/epersons';
 export const GROUPS_COLLECTION_PATH = '/eperson/groups';
 export const REGISTRATIONS_COLLECTION_PATH = '/eperson/registrations';
+export const SUBMISSIONFORMS_PATH = '/config/submissionforms/';
 
 /**
  * Content-Type que DSpace exige para los endpoints que reciben hrefs
