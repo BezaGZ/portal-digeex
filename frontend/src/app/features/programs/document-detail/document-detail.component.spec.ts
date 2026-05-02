@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { DocumentDetailComponent } from './document-detail.component';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
+import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 
 /**
@@ -21,6 +22,7 @@ import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 describe('DocumentDetailComponent', () => {
   let component: DocumentDetailComponent;
   let dspaceApi: DSpaceApiService;
+  let collectionApi: CollectionApiService;
   let breadcrumbService: BreadcrumbService;
 
   /** Fixtures */
@@ -116,6 +118,7 @@ describe('DocumentDetailComponent', () => {
     const fixture = TestBed.createComponent(DocumentDetailComponent);
     component = fixture.componentInstance;
     dspaceApi = TestBed.inject(DSpaceApiService);
+    collectionApi = TestBed.inject(CollectionApiService);
     breadcrumbService = TestBed.inject(BreadcrumbService);
 
     /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -126,7 +129,7 @@ describe('DocumentDetailComponent', () => {
       if (bundleUuid === 'orig-bundle-001') return of(MOCK_ORIGINAL_BITSTREAMS as any);
       return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any);
     });
-    vi.spyOn(dspaceApi, 'getCollection').mockReturnValue(of({ name: 'PEAC', metadata: { 'dc.subject': [{ value: 'PEAC' }] } } as any));
+    vi.spyOn(collectionApi, 'getOne').mockReturnValue(of({ name: 'PEAC', metadata: { 'dc.subject': [{ value: 'PEAC' }] } } as any));
     vi.spyOn(breadcrumbService, 'setTrail');
     /* eslint-enable @typescript-eslint/no-explicit-any */
   });

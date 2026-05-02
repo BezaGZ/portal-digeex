@@ -6,17 +6,16 @@ import { DSpaceApiService } from './dspace-api.service';
 /**
  * Tests para DSpaceApiService.
  *
- * Servicio central para integración con DSpace REST API.
- * Verifica URLs correctas, parámetros de paginación, transformación
- * de respuestas HAL+HATEOAS y manejo de errores HTTP.
+ * Servicio HTTP para Items (búsqueda y getOne) y Bitstreams (bundles,
+ * descarga del bundle ORIGINAL, thumbnail). Verifica URLs correctas,
+ * parámetros de paginación, transformación de respuestas HAL+HATEOAS y
+ * manejo de errores HTTP.
  *
  * Ciclo 1 TDD — Sprint 3
  */
 describe('DSpaceApiService', () => {
   let service: DSpaceApiService;
   let httpMock: HttpTestingController;
-
-  /** Setup */
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -37,240 +36,6 @@ describe('DSpaceApiService', () => {
 
   it('should be created', () => {
     expect(service).toBeTruthy();
-  });
-
-  /** Communities */
-
-  /** Verifica que getCommunities() use paginación por defecto (page=0, size=20). */
-  it('should fetch communities with default pagination', async () => {
-    const mockResponse = {
-      _embedded: {
-        communities: [
-          {
-            uuid: '123-456',
-            name: 'DIGEEX',
-            type: 'community',
-            metadata: {
-              'dc.title': [{ value: 'Dirección General de Educación Extraescolar' }]
-            }
-          }
-        ]
-      },
-      _links: {
-        self: { href: '/api/core/communities?page=0&size=20' }
-      },
-      page: {
-        size: 20,
-        totalElements: 1,
-        totalPages: 1,
-        number: 0
-      }
-    };
-
-    const promise = new Promise((resolve, reject) => {
-      service.getCommunities().subscribe({
-        next: (response) => {
-          expect(response._embedded['communities'].length).toBe(1);
-          expect(response._embedded['communities'][0].name).toBe('DIGEEX');
-          expect(response.page.totalElements).toBe(1);
-          resolve(response);
-        },
-        error: reject
-      });
-    });
-
-    const req = httpMock.expectOne('/server/api/core/communities?page=0&size=20');
-    expect(req.request.method).toBe('GET');
-    req.flush(mockResponse);
-
-    await promise;
-  });
-
-  /** Verifica que getCommunities() acepte parámetros personalizados de paginación. */
-  it('should fetch communities with custom pagination', async () => {
-    const mockResponse = {
-      _embedded: { communities: [] },
-      _links: {},
-      page: { size: 50, totalElements: 0, totalPages: 0, number: 2 }
-    };
-
-    const promise = new Promise((resolve, reject) => {
-      service.getCommunities(2, 50).subscribe({
-        next: (response) => {
-          expect(response.page.number).toBe(2);
-          expect(response.page.size).toBe(50);
-          resolve(response);
-        },
-        error: reject
-      });
-    });
-
-    const req = httpMock.expectOne('/server/api/core/communities?page=2&size=50');
-    expect(req.request.method).toBe('GET');
-    req.flush(mockResponse);
-
-    await promise;
-  });
-
-  /** Verifica que getCommunity() obtenga una comunidad individual por UUID. */
-  it('should fetch community by uuid', async () => {
-    const mockCommunity = {
-      uuid: '123-456',
-      name: 'DIGEEX',
-      type: 'community',
-      metadata: {
-        'dc.title': [{ value: 'Dirección General de Educación Extraescolar' }],
-        'dc.description': [{ value: 'Comunidad principal de DIGEEX' }]
-      },
-      _links: {
-        self: { href: '/api/core/communities/123-456' }
-      }
-    };
-
-    const promise = new Promise((resolve, reject) => {
-      service.getCommunity('123-456').subscribe({
-        next: (community) => {
-          expect(community.uuid).toBe('123-456');
-          expect(community.name).toBe('DIGEEX');
-          expect(community.type).toBe('community');
-          resolve(community);
-        },
-        error: reject
-      });
-    });
-
-    const req = httpMock.expectOne('/server/api/core/communities/123-456');
-    expect(req.request.method).toBe('GET');
-    req.flush(mockCommunity);
-
-    await promise;
-  });
-
-  /** Verifica que getSubcommunities() obtenga las subcomunidades de una comunidad padre. */
-  it('should fetch subcommunities of a community', async () => {
-    const mockResponse = {
-      _embedded: {
-        subcommunities: [
-          { uuid: 'sub-1', name: 'Subdirección Educación Básica', type: 'community' },
-          { uuid: 'sub-2', name: 'Subdirección Trabajo y Cultura', type: 'community' },
-          { uuid: 'sub-3', name: 'Subdirección Investigación', type: 'community' }
-        ]
-      },
-      _links: {},
-      page: { totalElements: 3 }
-    };
-
-    const promise = new Promise((resolve, reject) => {
-      service.getSubcommunities('123-456').subscribe({
-        next: (response) => {
-          expect(response._embedded['subcommunities'].length).toBe(3);
-          expect(response._embedded['subcommunities'][0].name).toBe('Subdirección Educación Básica');
-          resolve(response);
-        },
-        error: reject
-      });
-    });
-
-    const req = httpMock.expectOne('/server/api/core/communities/123-456/subcommunities?page=0&size=20');
-    expect(req.request.method).toBe('GET');
-    req.flush(mockResponse);
-
-    await promise;
-  });
-
-  /** Collections */
-
-  /** Verifica que getAllCollections() obtenga todas las colecciones del repositorio. */
-  it('should fetch all collections', async () => {
-    const mockResponse = {
-      _embedded: {
-        collections: [
-          { uuid: 'col-1', name: 'PEAC', type: 'collection' },
-          { uuid: 'col-2', name: 'PRONEA', type: 'collection' }
-        ]
-      },
-      _links: {},
-      page: { totalElements: 2 }
-    };
-
-    const promise = new Promise((resolve, reject) => {
-      service.getAllCollections().subscribe({
-        next: (response) => {
-          expect(response._embedded['collections'].length).toBe(2);
-          expect(response._embedded['collections'][0].name).toBe('PEAC');
-          resolve(response);
-        },
-        error: reject
-      });
-    });
-
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100');
-    expect(req.request.method).toBe('GET');
-    req.flush(mockResponse);
-
-    await promise;
-  });
-
-  /** Verifica que getCollection() obtenga una colección individual por UUID. */
-  it('should fetch collection by uuid', async () => {
-    const mockCollection = {
-      uuid: 'col-123',
-      name: 'PEAC',
-      type: 'collection',
-      metadata: {
-        'dc.title': [{ value: 'Programa PEAC' }]
-      },
-      _links: {
-        self: { href: '/api/core/collections/col-123' }
-      }
-    };
-
-    const promise = new Promise((resolve, reject) => {
-      service.getCollection('col-123').subscribe({
-        next: (collection) => {
-          expect(collection.uuid).toBe('col-123');
-          expect(collection.name).toBe('PEAC');
-          resolve(collection);
-        },
-        error: reject
-      });
-    });
-
-    const req = httpMock.expectOne('/server/api/core/collections/col-123');
-    expect(req.request.method).toBe('GET');
-    req.flush(mockCollection);
-
-    await promise;
-  });
-
-  /** Verifica que getCollections() obtenga las colecciones de una comunidad específica. */
-  it('should fetch collections of a community', async () => {
-    const mockResponse = {
-      _embedded: {
-        collections: [
-          { uuid: 'col-1', name: 'PEAC', type: 'collection' },
-          { uuid: 'col-2', name: 'PRONEA', type: 'collection' }
-        ]
-      },
-      _links: {},
-      page: { totalElements: 2 }
-    };
-
-    const promise = new Promise((resolve, reject) => {
-      service.getCollections('123-456').subscribe({
-        next: (response) => {
-          expect(response._embedded['collections'].length).toBe(2);
-          resolve(response);
-        },
-        error: reject
-      });
-    });
-
-    const req = httpMock.expectOne('/server/api/core/communities/123-456/collections?page=0&size=20');
-    expect(req.request.method).toBe('GET');
-    req.flush(mockResponse);
-
-    await promise;
   });
 
   /** Items */
@@ -414,13 +179,13 @@ describe('DSpaceApiService', () => {
 
     try {
       const promise = new Promise((resolve, reject) => {
-        service.getCommunity('invalid-uuid').subscribe({
+        service.getItem('invalid-uuid').subscribe({
           next: resolve,
           error: reject
         });
       });
 
-      const req = httpMock.expectOne('/server/api/core/communities/invalid-uuid');
+      const req = httpMock.expectOne('/server/api/core/items/invalid-uuid');
       req.flush(errorMessage, { status: 404, statusText: 'Not Found' });
 
       await promise;

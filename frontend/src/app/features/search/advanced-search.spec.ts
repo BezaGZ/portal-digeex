@@ -7,6 +7,8 @@ import { of } from 'rxjs';
 import { AdvancedSearch } from './advanced-search';
 import { DiscoveryService } from '../../core/api/discovery.service';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
+import { CommunityApiService } from '../../core/api/community-api.service';
+import { CollectionApiService } from '../../core/api/collection-api.service';
 import { SearchFilters } from './models/search-filters.model';
 import { ENTITY_TYPE } from '../../core/config/digeex-values.config';
 import { SearchStateService } from './services/search-state.service';
@@ -25,6 +27,8 @@ describe('AdvancedSearch', () => {
   let component: AdvancedSearch;
   let discoveryService: DiscoveryService;
   let dspaceApi: DSpaceApiService;
+  let communityApi: CommunityApiService;
+  let collectionApi: CollectionApiService;
 
   /** Fixtures */
 
@@ -134,12 +138,14 @@ describe('AdvancedSearch', () => {
     component = fixture.componentInstance;
     discoveryService = TestBed.inject(DiscoveryService);
     dspaceApi = TestBed.inject(DSpaceApiService);
+    communityApi = TestBed.inject(CommunityApiService);
+    collectionApi = TestBed.inject(CollectionApiService);
 
     /* Mock community loading to prevent ngOnInit API calls */
     /* eslint-disable @typescript-eslint/no-explicit-any */
-    vi.spyOn(dspaceApi, 'getCommunities').mockReturnValue(of(mockCommunitiesResponse as any));
+    vi.spyOn(communityApi, 'list').mockReturnValue(of(mockCommunitiesResponse as any));
     vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(mockBundlesResponse as any));
-    vi.spyOn(dspaceApi, 'getOwningCollectionOfItem').mockReturnValue(of({ uuid: 'col-001', name: 'Mock', handle: '', metadata: {}, archivedItemsCount: 0, type: 'collection' } as any));
+    vi.spyOn(collectionApi, 'getOwningCollectionOfItem').mockReturnValue(of({ uuid: 'col-001', name: 'Mock', handle: '', metadata: {}, archivedItemsCount: 0, type: 'collection' } as any));
     vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
       if (bundleUuid === 'thumb-bundle-001') return of(mockThumbnailBitstreams as any);
       if (bundleUuid === 'orig-bundle-001') return of(mockOriginalBitstreams as any);

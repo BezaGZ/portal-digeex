@@ -10,6 +10,8 @@ import { Item } from '../../core/api/models/item.model';
 import { Bitstream } from '../../core/api/models/bitstream.model';
 import { ItemView, BitstreamView, PaginatorEvent } from '../../core/api/models/view.model';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
+import { CommunityApiService } from '../../core/api/community-api.service';
+import { CollectionApiService } from '../../core/api/collection-api.service';
 import { DocumentCardComponent, SkeletonCardComponent, EmptyStateComponent } from '../../shared';
 import { SearchFiltersComponent } from './components/search-filters/search-filters';
 import { SearchFilters, ScopeOption } from './models/search-filters.model';
@@ -38,6 +40,8 @@ export class AdvancedSearch implements OnInit {
      antes del cuerpo del constructor). */
   private readonly discoveryService = inject(DiscoveryService);
   private readonly dspaceApi = inject(DSpaceApiService);
+  private readonly communityApi = inject(CommunityApiService);
+  private readonly collectionApi = inject(CollectionApiService);
   private readonly router = inject(Router);
   private readonly searchState = inject(SearchStateService);
 
@@ -128,7 +132,7 @@ export class AdvancedSearch implements OnInit {
    * También agrega una opción "Todos los programas" usando el UUID de la comunidad raíz DIGEEX.
    */
   private loadScopeOptions() {
-    this.dspaceApi.getCommunities(0, 10).subscribe((response) => {
+    this.communityApi.list(0, 10).subscribe((response) => {
       const communities = response._embedded?.['communities'] || [];
       const digeex = communities.find(
         (c) =>
@@ -140,7 +144,7 @@ export class AdvancedSearch implements OnInit {
       if (!digeex) return;
       this.digeexCommunityUuid = digeex.uuid;
 
-      this.dspaceApi.getSubcommunities(digeex.uuid, 0, 20).subscribe((subResponse) => {
+      this.communityApi.listSubcommunities(digeex.uuid, 0, 20).subscribe((subResponse) => {
         const subCommunities = subResponse._embedded?.['subcommunities'] || [];
         const options: ScopeOption[] = [
           { label: 'Todos los programas (DIGEEX)', value: digeex.uuid, scopeType: 'community' },
@@ -162,7 +166,7 @@ export class AdvancedSearch implements OnInit {
             scopeType: 'community',
           });
 
-          this.dspaceApi.getCollections(sub.uuid, 0, 20).subscribe((colResponse) => {
+          this.collectionApi.listByCommunity(sub.uuid, 0, 20).subscribe((colResponse) => {
             const collections = colResponse._embedded?.['collections'] || [];
             for (const col of collections) {
               const format = col.metadata?.['dspace.entity.type']?.[0]?.value;
@@ -328,7 +332,7 @@ export class AdvancedSearch implements OnInit {
              canónica del detalle (/programas/{collectionUuid}/documentos/...).
              catchError protege la búsqueda si el item es huérfano o el endpoint
              responde 404; en ese caso simplemente no se llena el campo. */
-          const owningCollection$ = this.dspaceApi.getOwningCollectionOfItem(item.uuid).pipe(
+          const owningCollection$ = this.collectionApi.getOwningCollectionOfItem(item.uuid).pipe(
             catchError(() => of(null)),
           );
 

@@ -12,6 +12,7 @@ import { MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
+import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { BitstreamView, MetadataFieldView, Item, MetadataMap, Bitstream } from '../../../core/api/models';
 import { forkJoin, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
@@ -43,6 +44,7 @@ export class DocumentDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private breadcrumbService: BreadcrumbService,
     private dspaceApi: DSpaceApiService,
+    private collectionApi: CollectionApiService,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -148,7 +150,7 @@ export class DocumentDetailComponent implements OnInit {
   }
 
   private loadProgramForBreadcrumb(collectionUuid: string) {
-    this.dspaceApi.getCollection(collectionUuid).subscribe({
+    this.collectionApi.getOne(collectionUuid).subscribe({
       next: (collection) => {
         const programName = collection.metadata?.['dc.subject']?.[0]?.value || collection.name;
         this.breadcrumbService.setTrail([

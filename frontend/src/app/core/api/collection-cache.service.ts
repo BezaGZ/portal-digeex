@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { Observable, of, tap, map, shareReplay } from 'rxjs';
-import { DSpaceApiService } from './dspace-api.service';
+import { CollectionApiService } from './collection-api.service';
 import { Collection } from './models/collection.model';
 
 /**
@@ -15,7 +15,7 @@ export class CollectionCacheService {
   private loaded = false;
   private cache$: Observable<Collection[]> | null = null;
 
-  constructor(private dspaceApi: DSpaceApiService) {}
+  constructor(private collectionApi: CollectionApiService) {}
 
   /**
    * Devuelve todas las colecciones del repositorio.
@@ -30,7 +30,7 @@ export class CollectionCacheService {
     }
 
     if (!this.cache$) {
-      this.cache$ = this.dspaceApi.getAllCollections(0, 100).pipe(
+      this.cache$ = this.collectionApi.list(0, 100).pipe(
         map((response) => response._embedded?.['collections'] || []),
         tap((cols) => {
           this.collections.set(cols);

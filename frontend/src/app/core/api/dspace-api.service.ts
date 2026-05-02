@@ -4,150 +4,25 @@ import { Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 
 import { HalListResponse } from './models/hal.model';
-import { Community } from './models/community.model';
-import { Collection } from './models/collection.model';
 import { Item } from './models/item.model';
 import { Bitstream } from './models/bitstream.model';
 import { SearchResponse, BundlesResponse, Bundle } from './models/search.model';
 
 /**
- * Servicio principal para comunicación con la API REST de DSpace 9.
- * Todas las peticiones pasan por el proxy de Angular (/server → localhost:8080)
- * configurado en proxy.conf.json.
- * Las respuestas siguen el formato HAL+HATEOAS con _embedded, _links y page.
+ * Servicio HTTP para los recursos Item y Bitstream de DSpace 9.
+ *
+ * Cubre búsqueda y getOne de items, listado de bundles, listado de bitstreams
+ * por bundle, descarga del bundle ORIGINAL y URL del thumbnail.
+ *
+ * Las peticiones pasan por el proxy de Angular (/server → localhost:8080)
+ * configurado en proxy.conf.json. Las respuestas siguen el formato HAL+HATEOAS
+ * con _embedded, _links y page.
  */
 @Injectable({ providedIn: 'root' })
 export class DSpaceApiService {
   private readonly apiUrl = '/server/api';
 
   constructor(private readonly http: HttpClient) {}
-
-  /** ─── Communities ─── */
-
-  /**
-   * Obtiene la lista paginada de comunidades de nivel superior.
-   * @param page - Número de página (default: 0)
-   * @param size - Cantidad por página (default: 20)
-   * @returns Observable con lista HAL de comunidades
-   */
-  getCommunities(page = 0, size = 20): Observable<HalListResponse<Community>> {
-    const params = new HttpParams()
-      .set('page', page)
-      .set('size', size);
-
-    return this.http.get<HalListResponse<Community>>(
-      `${this.apiUrl}/core/communities`,
-      { params }
-    );
-  }
-
-  /**
-   * Obtiene una comunidad por su UUID.
-   * El parámetro opcional `embed` proyecta subrecursos en la misma
-   * respuesta (ej. `adminGroup` para resolver el grupo destino al crear
-   * un admin_subdireccion, según el contrato REST de DSpace 9.2).
-   * @param uuid - UUID de la comunidad
-   * @param options - `embed` con el nombre del subrecurso
-   * @returns Observable con los datos de la comunidad
-   */
-  getCommunity(uuid: string, options: { embed?: string } = {}): Observable<Community> {
-    let params = new HttpParams();
-    if (options.embed) {
-      params = params.set('embed', options.embed);
-    }
-
-    return this.http.get<Community>(
-      `${this.apiUrl}/core/communities/${uuid}`,
-      { params }
-    );
-  }
-
-  /**
-   * Obtiene las sub-comunidades de una comunidad padre.
-   * @param parentUuid - UUID de la comunidad padre
-   * @param page - Número de página (default: 0)
-   * @param size - Cantidad por página (default: 20)
-   * @returns Observable con lista HAL de sub-comunidades
-   */
-  getSubcommunities(parentUuid: string, page = 0, size = 20): Observable<HalListResponse<Community>> {
-    const params = new HttpParams()
-      .set('page', page)
-      .set('size', size);
-
-    return this.http.get<HalListResponse<Community>>(
-      `${this.apiUrl}/core/communities/${parentUuid}/subcommunities`,
-      { params }
-    );
-  }
-
-  /** ─── Collections ─── */
-
-  /**
-   * Obtiene todas las colecciones del repositorio (sin filtrar por comunidad).
-   * Usado internamente por CollectionCacheService para llenar el caché.
-   * @param page - Número de página (default: 0)
-   * @param size - Cantidad por página (default: 100)
-   * @returns Observable con lista HAL de colecciones
-   */
-  getAllCollections(page = 0, size = 100): Observable<HalListResponse<Collection>> {
-    const params = new HttpParams()
-      .set('page', page)
-      .set('size', size);
-
-    return this.http.get<HalListResponse<Collection>>(
-      `${this.apiUrl}/core/collections`,
-      { params }
-    );
-  }
-
-  /**
-   * Obtiene las colecciones que pertenecen a una comunidad específica.
-   * @param communityUuid - UUID de la comunidad padre
-   * @param page - Número de página (default: 0)
-   * @param size - Cantidad por página (default: 20)
-   * @returns Observable con lista HAL de colecciones
-   */
-  getCollections(communityUuid: string, page = 0, size = 20): Observable<HalListResponse<Collection>> {
-    const params = new HttpParams()
-      .set('page', page)
-      .set('size', size);
-
-    return this.http.get<HalListResponse<Collection>>(
-      `${this.apiUrl}/core/communities/${communityUuid}/collections`,
-      { params }
-    );
-  }
-
-  /**
-   * Obtiene una colección por su UUID.
-   * El parámetro opcional `embed` anida subrecursos (ej. `submittersGroup`
-   * para resolver el grupo destino al dar de alta personal_delegado).
-   * @param uuid - UUID de la colección
-   * @param options - `embed` con el nombre del subrecurso
-   * @returns Observable con los datos de la colección
-   */
-  getCollection(uuid: string, options: { embed?: string } = {}): Observable<Collection> {
-    let params = new HttpParams();
-    if (options.embed) {
-      params = params.set('embed', options.embed);
-    }
-
-    return this.http.get<Collection>(
-      `${this.apiUrl}/core/collections/${uuid}`,
-      { params }
-    );
-  }
-
-  /**
-   * Devuelve la colección dueña de un item. Útil para construir URLs
-   * canónicas /programas/{collectionUuid}/documentos/{itemUuid} cuando
-   * el caller solo conoce el UUID del item (ej: resultados de búsqueda).
-   */
-  getOwningCollectionOfItem(itemUuid: string): Observable<Collection> {
-    return this.http.get<Collection>(
-      `${this.apiUrl}/core/items/${itemUuid}/owningCollection`
-    );
-  }
 
   /** ─── Items ─── */
 

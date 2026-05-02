@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { CollectionCacheService } from './collection-cache.service';
-import { DSpaceApiService } from './dspace-api.service';
+import { CollectionApiService } from './collection-api.service';
 import { NAV_LOCATION, ENTITY_TYPE } from '../config/digeex-values.config';
 
 /**
@@ -79,7 +79,7 @@ describe('CollectionCacheService', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        DSpaceApiService,
+        CollectionApiService,
         CollectionCacheService,
       ],
     });

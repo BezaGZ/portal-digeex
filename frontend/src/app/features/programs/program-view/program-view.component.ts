@@ -15,6 +15,7 @@ import { PaginatorModule } from 'primeng/paginator';
 import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
+import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { CollectionView, ItemView, BitstreamView, PaginatorEvent, Bitstream } from '../../../core/api/models';
 import { forkJoin, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
@@ -55,6 +56,7 @@ export class ProgramViewComponent implements OnInit {
     private cdr: ChangeDetectorRef,
     private breadcrumbService: BreadcrumbService,
     private dspaceApi: DSpaceApiService,
+    private collectionApi: CollectionApiService,
   ) {}
 
   ngOnInit() {
@@ -70,7 +72,7 @@ export class ProgramViewComponent implements OnInit {
     this.isLoading = true;
     this.cdr.markForCheck();
 
-    this.dspaceApi.getCollection(collectionUuid).subscribe({
+    this.collectionApi.getOne(collectionUuid).subscribe({
       next: (collection) => {
         const format = collection.metadata?.['dspace.entity.type']?.[0]?.value || ENTITY_TYPE.DOCUMENTO;
         if (format !== ENTITY_TYPE.DOCUMENTO) {
