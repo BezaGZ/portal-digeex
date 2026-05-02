@@ -2,6 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { CommunityApiService } from './community-api.service';
+import { Community, CommunityCreateBody } from './models/community.model';
+import communityCreateToplevelFixture from './test-fixtures/community-create-toplevel-response.json';
+import communityCreateSubFixture from './test-fixtures/community-create-sub-response.json';
+import communityPatchFixture from './test-fixtures/community-patch-response.json';
+import { JsonPatchEntry } from './json-patch.util';
 
 /**
  * Tests de `CommunityApiService`.
@@ -160,5 +165,100 @@ describe('CommunityApiService', () => {
     req.flush(mockResponse);
 
     await promise;
+  });
+
+  it('create() debe pegar POST a /api/core/communities (sin parent) y devolver la community creada', () => {
+    const body: CommunityCreateBody = {
+      name: 'Test Mutaciones Community Sprint 6',
+      metadata: {
+        'dc.title': [
+          { value: 'Test Mutaciones Community Sprint 6', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+      type: 'community',
+    };
+    let result: Community | undefined;
+
+    service.create(body).subscribe((com) => (result = com));
+
+    const req = httpMock.expectOne('/server/api/core/communities');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(body);
+    req.flush(communityCreateToplevelFixture);
+
+    expect(result).toBeDefined();
+    expect(result!.uuid).toBe('1522b3e8-7b77-4c11-986f-2b46d678219a');
+    expect(result!.handle).toBe('123456789/122');
+  });
+
+  it('create() con parentUuid debe pegar POST con parent en query y devolver la sub-community creada', () => {
+    const body: CommunityCreateBody = {
+      name: 'Test Sub Mutaciones Sprint 6',
+      metadata: {
+        'dc.title': [
+          { value: 'Test Sub Mutaciones Sprint 6', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+      type: 'community',
+    };
+    let result: Community | undefined;
+
+    service.create(body, 'parent-uuid').subscribe((com) => (result = com));
+
+    const req = httpMock.expectOne('/server/api/core/communities?parent=parent-uuid');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(body);
+    req.flush(communityCreateSubFixture);
+
+    expect(result).toBeDefined();
+    expect(result!.uuid).toBe('4fa9da73-69ca-4430-8b90-98eb643061cb');
+    expect(result!.handle).toBe('123456789/123');
+  });
+
+  it('updateMetadata() debe pegar PATCH con body JSON Patch y devolver la community actualizada', () => {
+    const patch: JsonPatchEntry[] = [
+      {
+        op: 'replace',
+        path: '/metadata/dc.title/0/value',
+        value: 'Test Sub Mutaciones Sprint 6 (modificada)',
+      },
+    ];
+    let result: Community | undefined;
+
+    service
+      .updateMetadata('4fa9da73-69ca-4430-8b90-98eb643061cb', patch)
+      .subscribe((com) => (result = com));
+
+    const req = httpMock.expectOne(
+      '/server/api/core/communities/4fa9da73-69ca-4430-8b90-98eb643061cb',
+    );
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual(patch);
+    req.flush(communityPatchFixture);
+
+    expect(result).toBeDefined();
+    expect(result!.metadata['dc.title'][0].value).toBe(
+      'Test Sub Mutaciones Sprint 6 (modificada)',
+    );
+  });
+
+  it('delete() debe pegar DELETE y completar el observable sin emitir valor', () => {
+    let nextEmitted = false;
+    let completed = false;
+
+    service.delete('4fa9da73-69ca-4430-8b90-98eb643061cb').subscribe({
+      next: () => (nextEmitted = true),
+      complete: () => (completed = true),
+    });
+
+    const req = httpMock.expectOne(
+      '/server/api/core/communities/4fa9da73-69ca-4430-8b90-98eb643061cb',
+    );
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.body).toBeNull();
+    req.flush(null, { status: 204, statusText: 'No Content' });
+
+    expect(nextEmitted).toBe(true);
+    expect(completed).toBe(true);
   });
 });

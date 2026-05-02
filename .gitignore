@@ -23,4 +23,6 @@ Thumbs.db
 
 # Logs
 *.log
-scripts/capture-collection-mutations.sh
+
+# Scripts con credenciales DSpace (JWT hardcoded para anclajes empíricos)
+scripts/capture-*-mutations.sh

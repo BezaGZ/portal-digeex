@@ -20,3 +20,14 @@ export interface Community {
   type: string;
   _embedded?: CommunityEmbedded;
 }
+
+/**
+ * Body que DSpace 9.x exige al crear una community vía POST. El campo
+ * `type` es el discriminador del recurso; DSpace lo valida contra el path
+ * y rechaza el POST si no coincide.
+ */
+export interface CommunityCreateBody {
+  name: string;
+  metadata: MetadataMap;
+  type: 'community';
+}

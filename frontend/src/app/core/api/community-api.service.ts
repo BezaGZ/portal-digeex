@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Community } from './models/community.model';
+import { Community, CommunityCreateBody } from './models/community.model';
 import { HalListResponse } from './models/hal.model';
 import { DSPACE_API_BASE, COMMUNITIES_PATH } from './dspace-rest.util';
+import { JsonPatchEntry } from './json-patch.util';
 
 /**
  * Wrapper HTTP del recurso `/api/core/communities` de DSpace.
@@ -51,6 +52,49 @@ export class CommunityApiService {
     return this.http.get<HalListResponse<Community>>(
       `${DSPACE_API_BASE}${COMMUNITIES_PATH}/${parentUuid}/subcommunities`,
       { params },
+    );
+  }
+
+  /**
+   * Crea una community. Si `parentUuid` viene, se manda en query como `parent`
+   * y DSpace la cuelga como sub-comunidad de esa community padre; si no, la
+   * crea como top-level. Mismo endpoint y mismo shape de respuesta en ambos
+   * casos: el único delta es el query param. El CSRF token y el JWT los
+   * inyectan los interceptores sobre toda mutación.
+   */
+  create(body: CommunityCreateBody, parentUuid?: string): Observable<Community> {
+    let params = new HttpParams();
+    if (parentUuid) {
+      params = params.set('parent', parentUuid);
+    }
+    return this.http.post<Community>(
+      `${DSPACE_API_BASE}${COMMUNITIES_PATH}`,
+      body,
+      { params },
+    );
+  }
+
+  /**
+   * Aplica un parche JSON sobre la community y devuelve el recurso completo
+   * actualizado. El body es un arreglo de operaciones JSON Patch (RFC 6902);
+   * los helpers `replaceOp`, `addOp` y `removeOp` de `json-patch.util` arman
+   * cada entrada sin que el caller tenga que repetir la estructura.
+   */
+  updateMetadata(uuid: string, patch: JsonPatchEntry[]): Observable<Community> {
+    return this.http.patch<Community>(
+      `${DSPACE_API_BASE}${COMMUNITIES_PATH}/${uuid}`,
+      patch,
+    );
+  }
+
+  /**
+   * Borra una community por UUID. DSpace responde 204 sin body en caso de
+   * éxito; el wrapper expone `Observable<void>` para reflejar esa semántica
+   * y forzar al caller a manejar solo error/complete (no payload).
+   */
+  delete(uuid: string): Observable<void> {
+    return this.http.delete<void>(
+      `${DSPACE_API_BASE}${COMMUNITIES_PATH}/${uuid}`,
     );
   }
 }

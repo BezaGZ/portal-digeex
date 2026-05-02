@@ -1,0 +1,57 @@
+{
+  "id": "4fa9da73-69ca-4430-8b90-98eb643061cb",
+  "uuid": "4fa9da73-69ca-4430-8b90-98eb643061cb",
+  "name": "Test Sub Mutaciones Sprint 6 (modificada)",
+  "handle": "123456789/123",
+  "metadata": {
+    "dc.description": [
+      {
+        "value": "Sub-community efímera creada por capture-community-mutations.sh",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.identifier.uri": [
+      {
+        "value": "http://localhost:4000/handle/123456789/123",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.title": [
+      {
+        "value": "Test Sub Mutaciones Sprint 6 (modificada)",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ]
+  },
+  "archivedItemsCount": -1,
+  "type": "community",
+  "_links": {
+    "collections": {
+      "href": "http://localhost:8080/server/api/core/communities/4fa9da73-69ca-4430-8b90-98eb643061cb/collections"
+    },
+    "logo": {
+      "href": "http://localhost:8080/server/api/core/communities/4fa9da73-69ca-4430-8b90-98eb643061cb/logo"
+    },
+    "subcommunities": {
+      "href": "http://localhost:8080/server/api/core/communities/4fa9da73-69ca-4430-8b90-98eb643061cb/subcommunities"
+    },
+    "parentCommunity": {
+      "href": "http://localhost:8080/server/api/core/communities/4fa9da73-69ca-4430-8b90-98eb643061cb/parentCommunity"
+    },
+    "adminGroup": {
+      "href": "http://localhost:8080/server/api/core/communities/4fa9da73-69ca-4430-8b90-98eb643061cb/adminGroup"
+    },
+    "self": {
+      "href": "http://localhost:8080/server/api/core/communities/4fa9da73-69ca-4430-8b90-98eb643061cb"
+    }
+  }
+}
