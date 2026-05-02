@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Collection } from './models/collection.model';
+import { Collection, CollectionCreateBody } from './models/collection.model';
 import { HalListResponse } from './models/hal.model';
 import {
   DSPACE_API_BASE,
@@ -9,6 +9,7 @@ import {
   COMMUNITIES_PATH,
   ITEMS_PATH,
 } from './dspace-rest.util';
+import { JsonPatchEntry } from './json-patch.util';
 
 /**
  * Wrapper HTTP del recurso `/api/core/collections` de DSpace.
@@ -68,6 +69,46 @@ export class CollectionApiService {
   getOwningCollectionOfItem(itemUuid: string): Observable<Collection> {
     return this.http.get<Collection>(
       `${DSPACE_API_BASE}${ITEMS_PATH}/${itemUuid}/owningCollection`,
+    );
+  }
+
+  /**
+   * Crea una collection bajo la community padre indicada. DSpace devuelve
+   * la collection con `uuid`, `handle` y los `_links` asignados. El CSRF
+   * token y el JWT los inyecta el `csrfInterceptor` y el `authInterceptor`
+   * automáticamente sobre toda mutación.
+   */
+  create(parentUuid: string, body: CollectionCreateBody): Observable<Collection> {
+    const params = new HttpParams().set('parent', parentUuid);
+    return this.http.post<Collection>(
+      `${DSPACE_API_BASE}${COLLECTIONS_PATH}`,
+      body,
+      { params },
+    );
+  }
+
+  /**
+   * Aplica un parche JSON sobre la collection y devuelve el recurso completo
+   * actualizado. El body es un arreglo de operaciones JSON Patch (RFC 6902);
+   * los helpers `replaceOp`, `addOp` y `removeOp` de `json-patch.util` arman
+   * cada entrada sin que el caller tenga que repetir la estructura `{op,
+   * path, value}`.
+   */
+  updateMetadata(uuid: string, patch: JsonPatchEntry[]): Observable<Collection> {
+    return this.http.patch<Collection>(
+      `${DSPACE_API_BASE}${COLLECTIONS_PATH}/${uuid}`,
+      patch,
+    );
+  }
+
+  /**
+   * Borra una collection por UUID. DSpace responde 204 sin body en caso de
+   * éxito; el wrapper expone `Observable<void>` para reflejar esa semántica
+   * y forzar al caller a manejar solo error/complete (no payload).
+   */
+  delete(uuid: string): Observable<void> {
+    return this.http.delete<void>(
+      `${DSPACE_API_BASE}${COLLECTIONS_PATH}/${uuid}`,
     );
   }
 }

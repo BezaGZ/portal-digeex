@@ -12,6 +12,7 @@ import {
   buildPaginationParams,
   mapHalList,
 } from './dspace-rest.util';
+import { JsonPatchEntry, JsonPatchReplace, replaceOp, addOp } from './json-patch.util';
 
 /** Valores fijos del contrato REST de DSpace. */
 const ACCOUNT_REQUEST_FORGOT = 'forgot';
@@ -35,43 +36,8 @@ const PATCH_PATH_LASTNAME_VALUE = '/metadata/eperson.lastname/0/value';
 const PATCH_PATH_EMAIL = '/email';
 const PATCH_PATH_PASSWORD = '/password';
 
-/** Operaciones de JSON Patch que este wrapper sabe construir. */
-const PATCH_OP_REPLACE = 'replace';
-const PATCH_OP_ADD = 'add';
-
-/** Replace: el patron habitual para editar metadatos planos del eperson. */
-type JsonPatchReplace = {
-  op: typeof PATCH_OP_REPLACE;
-  path: string;
-  value: string | boolean;
-};
-
-/**
- * Add: lo usa el cambio de contrasena, donde `value` es un objeto con
- * `current_password` y `new_password` en lugar de un escalar.
- */
-type JsonPatchAdd = {
-  op: typeof PATCH_OP_ADD;
-  path: string;
-  value: object;
-};
-
-/** Cualquier entrada que acepta el body PATCH de DSpace. */
-type JsonPatchEntry = JsonPatchReplace | JsonPatchAdd;
-
-/**
- * Construye una operación replace de JSON Patch.
- * Helper a nivel de módulo para que sea stateless y evitar repetir
- * la estructura `{ op: 'replace', path, value }` en cada push.
- */
-function replaceOp(path: string, value: string | boolean): JsonPatchReplace {
-  return { op: PATCH_OP_REPLACE, path, value };
-}
-
-/** Construye una operación add con value de tipo objeto. */
-function addOp(path: string, value: object): JsonPatchAdd {
-  return { op: PATCH_OP_ADD, path, value };
-}
+// Operaciones y helpers de JSON Patch viven en `json-patch.util.ts` para que
+// los reuse cualquier wrapper que necesite hacer PATCH contra DSpace.
 
 /** Wrapper HTTP del recurso `/api/eperson/epersons` de DSpace. Solo habla con el backend, sin reglas de negocio. */
 @Injectable({ providedIn: 'root' })

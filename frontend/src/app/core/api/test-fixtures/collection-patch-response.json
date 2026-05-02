@@ -1,0 +1,86 @@
+{
+  "id": "0ee8f1ab-cd87-49ef-977c-c801ec508a7c",
+  "uuid": "0ee8f1ab-cd87-49ef-977c-c801ec508a7c",
+  "name": "Test Mutaciones Sprint 6 (modificada)",
+  "handle": "123456789/121",
+  "metadata": {
+    "dc.description": [
+      {
+        "value": "Collection efímera creada por capture-collection-mutations.sh",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.identifier.uri": [
+      {
+        "value": "http://localhost:4000/handle/123456789/121",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.title": [
+      {
+        "value": "Test Mutaciones Sprint 6 (modificada)",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ]
+  },
+  "archivedItemsCount": -1,
+  "type": "collection",
+  "_links": {
+    "harvester": {
+      "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/harvester"
+    },
+    "itemtemplate": {
+      "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/itemtemplate"
+    },
+    "license": {
+      "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/license"
+    },
+    "logo": {
+      "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/logo"
+    },
+    "mappedItems": {
+      "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/mappedItems"
+    },
+    "parentCommunity": {
+      "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/parentCommunity"
+    },
+    "adminGroup": {
+      "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/adminGroup"
+    },
+    "submittersGroup": {
+      "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/submittersGroup"
+    },
+    "itemReadGroup": {
+      "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/itemReadGroup"
+    },
+    "bitstreamReadGroup": {
+      "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/bitstreamReadGroup"
+    },
+    "self": {
+      "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c"
+    },
+    "workflowGroups": [
+      {
+        "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/workflowGroups/reviewer",
+        "name": "reviewer"
+      },
+      {
+        "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/workflowGroups/editor",
+        "name": "editor"
+      },
+      {
+        "href": "http://localhost:8080/server/api/core/collections/0ee8f1ab-cd87-49ef-977c-c801ec508a7c/workflowGroups/finaleditor",
+        "name": "finaleditor"
+      }
+    ]
+  }
+}
