@@ -316,7 +316,7 @@ describe('AdvancedSearch', () => {
 
   /** Persistencia tras volver del detalle (Sprint 6) */
 
-  describe('persistencia tras volver del detalle', () => {
+  describe('persistence after returning from detail', () => {
     /** Verifica que cuando SearchStateService tiene un scope con valor al
      *  montar el componente (ej: usuario regresó del detalle de un item),
      *  AdvancedSearch dispara automáticamente la búsqueda para repoblar

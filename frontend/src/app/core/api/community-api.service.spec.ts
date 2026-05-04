@@ -3,9 +3,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { CommunityApiService } from './community-api.service';
 import { Community, CommunityCreateBody } from './models/community.model';
+import { Group } from './models/group.model';
 import communityCreateToplevelFixture from './test-fixtures/community-create-toplevel-response.json';
 import communityCreateSubFixture from './test-fixtures/community-create-sub-response.json';
 import communityPatchFixture from './test-fixtures/community-patch-response.json';
+import communityCreateAdmingroupFixture from './test-fixtures/community-create-admingroup-response.json';
 import { JsonPatchEntry } from './json-patch.util';
 
 /**
@@ -39,7 +41,7 @@ describe('CommunityApiService', () => {
     httpMock.verify();
   });
 
-  it('list() debe pegar GET /api/core/communities con paginación por defecto (page=0, size=20)', async () => {
+  it('list() should GET /api/core/communities with default pagination (page=0, size=20)', async () => {
     const mockResponse = {
       _embedded: {
         communities: [
@@ -76,7 +78,7 @@ describe('CommunityApiService', () => {
     await promise;
   });
 
-  it('list() debe aceptar parámetros personalizados de paginación', async () => {
+  it('list() should accept custom pagination parameters', async () => {
     const mockResponse = {
       _embedded: { communities: [] },
       _links: {},
@@ -101,7 +103,7 @@ describe('CommunityApiService', () => {
     await promise;
   });
 
-  it('getOne() debe obtener una comunidad individual por UUID', async () => {
+  it('getOne() should fetch a single community by UUID', async () => {
     const mockCommunity = {
       uuid: '123-456',
       name: 'DIGEEX',
@@ -132,7 +134,7 @@ describe('CommunityApiService', () => {
     await promise;
   });
 
-  it('listSubcommunities() debe obtener las sub-comunidades de una community padre', async () => {
+  it('listSubcommunities() should fetch the sub-communities of a parent community', async () => {
     const mockResponse = {
       _embedded: {
         subcommunities: [
@@ -167,7 +169,7 @@ describe('CommunityApiService', () => {
     await promise;
   });
 
-  it('create() debe pegar POST a /api/core/communities (sin parent) y devolver la community creada', () => {
+  it('create() should POST to /api/core/communities (without parent) and return the created community', () => {
     const body: CommunityCreateBody = {
       name: 'Test Mutaciones Community Sprint 6',
       metadata: {
@@ -191,7 +193,7 @@ describe('CommunityApiService', () => {
     expect(result!.handle).toBe('123456789/122');
   });
 
-  it('create() con parentUuid debe pegar POST con parent en query y devolver la sub-community creada', () => {
+  it('create() with parentUuid should POST with parent in query and return the created sub-community', () => {
     const body: CommunityCreateBody = {
       name: 'Test Sub Mutaciones Sprint 6',
       metadata: {
@@ -215,7 +217,7 @@ describe('CommunityApiService', () => {
     expect(result!.handle).toBe('123456789/123');
   });
 
-  it('updateMetadata() debe pegar PATCH con body JSON Patch y devolver la community actualizada', () => {
+  it('updateMetadata() should PATCH with JSON Patch body and return the updated community', () => {
     const patch: JsonPatchEntry[] = [
       {
         op: 'replace',
@@ -242,7 +244,7 @@ describe('CommunityApiService', () => {
     );
   });
 
-  it('delete() debe pegar DELETE y completar el observable sin emitir valor', () => {
+  it('delete() should DELETE and complete the observable without emitting a value', () => {
     let nextEmitted = false;
     let completed = false;
 
@@ -260,5 +262,38 @@ describe('CommunityApiService', () => {
 
     expect(nextEmitted).toBe(true);
     expect(completed).toBe(true);
+  });
+
+  it('createAdminGroup() should POST to /communities/{uuid}/adminGroup with metadata body and return the auto-named Group', () => {
+    const body = {
+      metadata: {
+        'dc.description': [
+          {
+            value: 'AdminGroup efímero auto-asociado vía POST',
+            language: null,
+            authority: null,
+            confidence: -1,
+            place: 0,
+          },
+        ],
+      },
+    };
+    let result: Group | undefined;
+
+    service
+      .createAdminGroup('9123e095-de73-4316-b319-1d2e60e9be83', body)
+      .subscribe((g) => (result = g));
+
+    const req = httpMock.expectOne(
+      '/server/api/core/communities/9123e095-de73-4316-b319-1d2e60e9be83/adminGroup',
+    );
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(body);
+    req.flush(communityCreateAdmingroupFixture);
+
+    expect(result).toBeDefined();
+    expect(result!.uuid).toBe('939d427e-9205-4b1f-85df-704d9bba2478');
+    expect(result!.name).toBe('COMMUNITY_9123e095-de73-4316-b319-1d2e60e9be83_ADMIN');
+    expect(result!.permanent).toBe(false);
   });
 });

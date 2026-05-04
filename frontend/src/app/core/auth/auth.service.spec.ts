@@ -132,7 +132,7 @@ describe('AuthService', () => {
 
   /** Estado inicial */
 
-  describe('estado inicial', () => {
+  describe('initial state', () => {
     /** Verifica que los signals empiecen con isAuthenticated=false y currentUser=null. */
     it('should start with isAuthenticated false and currentUser null', () => {
       expect(service.isAuthenticated()).toBe(false);
@@ -283,7 +283,7 @@ describe('AuthService', () => {
 
   /** Persistencia del JWT en cookie dsAuthInfo */
 
-  describe('persistencia del JWT en cookie dsAuthInfo', () => {
+  describe('JWT persistence in dsAuthInfo cookie', () => {
     /** Verifica que tras un login la cookie dsAuthInfo quede con accessToken y expires. */
     it('should write the dsAuthInfo cookie with AuthTokenInfo after a successful login', async () => {
       await performLogin();

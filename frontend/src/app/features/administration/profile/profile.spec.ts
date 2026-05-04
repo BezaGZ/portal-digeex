@@ -221,7 +221,7 @@ describe('Profile', () => {
    * Replica el patron de ProfilePageMetadataFormComponent: el service traduce
    * los campos presentes a replaces sobre /metadata/eperson.firstname|lastname.
    */
-  describe('onSave() - identidad', () => {
+  describe('onSave() - identity', () => {
     /** Verifica que cambiar solo firstName dispare update(uuid, { firstName }). */
     it('should call epersonApi.update with only firstName when only firstName changed', () => {
       configure(buildAuthUser({ uuid: 'eperson-042', firstName: 'Juan', lastName: 'Pérez' }));
@@ -382,7 +382,7 @@ describe('Profile', () => {
    * Si no hay cambios en ningun bloque se emite warning; si hay intento invalido,
    * el toast explica el motivo en vez de dejar que el backend responda 422.
    */
-  describe('onSave() - validacion local y orquestacion', () => {
+  describe('onSave() - local validation and orchestration', () => {
     /** Verifica que si nada cambio se muestre toast warn "No hiciste cambios". */
     it('should show a warning toast "No hiciste cambios" when nothing changed', () => {
       configure();

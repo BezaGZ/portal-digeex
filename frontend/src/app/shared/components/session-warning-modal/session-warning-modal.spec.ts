@@ -51,7 +51,7 @@ describe('SessionWarningModal', () => {
 
   /** Visibilidad */
 
-  describe('visibilidad', () => {
+  describe('visibility', () => {
     /** Verifica que el modal sea visible cuando warningVisible es true. */
     it('should be visible when warningVisible is true', () => {
       idleService.warningVisible.set(true);
@@ -73,7 +73,7 @@ describe('SessionWarningModal', () => {
 
   /** Botón "Seguir trabajando" */
 
-  describe('seguir trabajando', () => {
+  describe('keep working', () => {
     /** Verifica que el botón llame a refreshToken y resetee el idle. */
     it('should call refreshToken and reset idle on "Seguir trabajando"', () => {
       const { Observable } = require('rxjs');
@@ -97,7 +97,7 @@ describe('SessionWarningModal', () => {
 
   /** Botón "Cerrar sesión" */
 
-  describe('cerrar sesión', () => {
+  describe('log out', () => {
     /** Verifica que el botón llame a logout y redirija a /login. */
     it('should call logout and navigate to /login on "Cerrar sesión"', () => {
       const { Observable } = require('rxjs');
@@ -122,7 +122,7 @@ describe('SessionWarningModal', () => {
 
   /** Expiración automática */
 
-  describe('expiración automática', () => {
+  describe('automatic expiration', () => {
     /** Verifica que ejecute logout automático cuando sessionExpired es true. */
     it('should auto-logout when sessionExpired becomes true', () => {
       const { Observable } = require('rxjs');

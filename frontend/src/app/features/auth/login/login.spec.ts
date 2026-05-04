@@ -158,7 +158,7 @@ describe('LoginComponent', () => {
     });
   });
 
-  describe('resolución de rol fallida', () => {
+  describe('role resolution failure', () => {
     /**
      * Si la autenticación pasa pero `currentUserView$` propaga error, el componente cierra
      * sesión, muestra la copy "sin rol asignado" y no navega al panel.

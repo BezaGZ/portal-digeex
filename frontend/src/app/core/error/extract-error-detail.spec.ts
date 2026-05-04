@@ -15,7 +15,7 @@ describe('extractErrorDetail', () => {
   const FALLBACK = 'Ocurrio un error al guardar los cambios';
 
   /** Verifica que use err.error.message cuando el body trae un mensaje descriptivo. */
-  it('usa err.error.message cuando trae texto', () => {
+  it('uses err.error.message when it has text', () => {
     const err = new HttpErrorResponse({
       error: { message: 'La contrasena no cumple la politica' },
       status: 422,
@@ -26,7 +26,7 @@ describe('extractErrorDetail', () => {
   });
 
   /** Verifica que caiga a err.message cuando el body no trae message propio. */
-  it('cae a err.message cuando el body no trae message', () => {
+  it('falls back to err.message when the body has no message', () => {
     const err = new HttpErrorResponse({
       error: { detail: 'otro campo' },
       status: 500,
@@ -42,7 +42,7 @@ describe('extractErrorDetail', () => {
    * Verifica que un string vacio en err.error.message no cuente como valido.
    * Regresion de la cadena `?? ??`: DSpace a veces manda `message: ""`.
    */
-  it('cae a err.message cuando err.error.message es string vacio', () => {
+  it('falls back to err.message when err.error.message is an empty string', () => {
     const err = new HttpErrorResponse({
       error: { message: '' },
       status: 500,
@@ -57,7 +57,7 @@ describe('extractErrorDetail', () => {
    * Verifica que no crashee si err.error no es objeto.
    * Algunos endpoints devuelven texto plano en vez de JSON.
    */
-  it('cae a err.message cuando err.error no es objeto', () => {
+  it('falls back to err.message when err.error is not an object', () => {
     const err = new HttpErrorResponse({
       error: 'raw body no-json',
       status: 502,
@@ -71,7 +71,7 @@ describe('extractErrorDetail', () => {
    * Verifica que devuelva el fallback cuando ni body ni err.message sirven.
    * Se simula con un objeto minimo porque HttpErrorResponse siempre sintetiza message.
    */
-  it('cae al fallback cuando ni body ni err.message son utilizables', () => {
+  it('falls back to the default when neither body nor err.message are usable', () => {
     const err = { error: null, message: '' } as unknown as HttpErrorResponse;
 
     expect(extractErrorDetail(err, FALLBACK)).toBe(FALLBACK);

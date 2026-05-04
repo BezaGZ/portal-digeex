@@ -1,0 +1,33 @@
+{
+  "id": "939d427e-9205-4b1f-85df-704d9bba2478",
+  "uuid": "939d427e-9205-4b1f-85df-704d9bba2478",
+  "name": "COMMUNITY_9123e095-de73-4316-b319-1d2e60e9be83_ADMIN",
+  "handle": null,
+  "metadata": {
+    "dc.description": [
+      {
+        "value": "AdminGroup efímero auto-asociado vía POST",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ]
+  },
+  "permanent": false,
+  "type": "group",
+  "_links": {
+    "subgroups": {
+      "href": "http://localhost:8080/server/api/eperson/groups/939d427e-9205-4b1f-85df-704d9bba2478/subgroups"
+    },
+    "epersons": {
+      "href": "http://localhost:8080/server/api/eperson/groups/939d427e-9205-4b1f-85df-704d9bba2478/epersons"
+    },
+    "object": {
+      "href": "http://localhost:8080/server/api/eperson/groups/939d427e-9205-4b1f-85df-704d9bba2478/object"
+    },
+    "self": {
+      "href": "http://localhost:8080/server/api/eperson/groups/939d427e-9205-4b1f-85df-704d9bba2478"
+    }
+  }
+}

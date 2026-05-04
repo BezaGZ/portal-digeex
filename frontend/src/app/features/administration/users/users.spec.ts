@@ -104,7 +104,7 @@ describe('Users (contenedor)', () => {
     return value as any;
   }
 
-  describe('lectura desde el facade', () => {
+  describe('reading from the facade', () => {
     /**
      * Verifica que en el mount el contenedor pida a `searchUsers$` con
      * scope por defecto, query vacía y página 0, alineado al arranque del
@@ -200,7 +200,7 @@ describe('Users (contenedor)', () => {
     });
   });
 
-  describe('desactivar usuario', () => {
+  describe('deactivate user', () => {
     /** Verifica que el handler colgado del output del table delegue al facade con el uuid. */
     it('should call facade.deactivateUser$ with the user uuid when the table emits deactivateRequested', () => {
       const target = buildUserView({ uuid: 'uuid-target' });
@@ -262,7 +262,7 @@ describe('Users (contenedor)', () => {
     });
   });
 
-  describe('reactivar usuario', () => {
+  describe('reactivate user', () => {
     /** Verifica que el handler delegue a reactivateUser$ del facade con el uuid del target. */
     it('should call facade.reactivateUser$ with the user uuid when the table emits reactivateRequested', () => {
       const target = buildUserView({ uuid: 'uuid-reactivate', status: 'inactive' });
@@ -273,7 +273,7 @@ describe('Users (contenedor)', () => {
     });
   });
 
-  describe('restablecer contraseña', () => {
+  describe('reset password', () => {
     /**
      * Verifica que el contenedor delegue el reset al facade con uuid y email.
      * El uuid viaja para que la guarda de RN-31 (autoreset) corra sin roundtrip.
@@ -290,7 +290,7 @@ describe('Users (contenedor)', () => {
     });
   });
 
-  describe('crear usuario', () => {
+  describe('create user', () => {
     /** Verifica que el contenedor reenvíe al facade el mismo input que emitió el diálogo. */
     it('should call facade.createUser$ with the form input emitted by the dialog', () => {
       const input = {
@@ -306,7 +306,7 @@ describe('Users (contenedor)', () => {
     });
   });
 
-  describe('editar usuario', () => {
+  describe('edit user', () => {
     /** Verifica que onEditRequested abra el diálogo y guarde el target para el emit del diff. */
     it('should open the edit dialog and store the target when editRequested fires', () => {
       const target = buildUserView({ uuid: 'uuid-edit', firstName: 'Rosa' });
@@ -335,7 +335,7 @@ describe('Users (contenedor)', () => {
    * el mensaje real (del body del backend o del Error) y no el genérico fijo,
    * porque el generico oculta diagnosticos utiles en operacion.
    */
-  describe('errorToToast (errores no-BusinessRuleError)', () => {
+  describe('errorToToast (non-BusinessRuleError errors)', () => {
     /** Verifica que un Error plano use su message como detail del toast. */
     it('should show error.message in the toast detail when the thrown error is a plain Error', () => {
       deactivateUserFn.mockReturnValue(

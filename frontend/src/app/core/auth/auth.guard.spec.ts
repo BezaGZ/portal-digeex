@@ -45,7 +45,7 @@ describe('authGuard', () => {
 
   /** Autenticado */
 
-  describe('usuario autenticado', () => {
+  describe('authenticated user', () => {
     /** Verifica que permita la navegación cuando el usuario está autenticado. */
     it('should allow navigation when authenticated', () => {
       authService.isAuthenticated.set(true);
@@ -60,7 +60,7 @@ describe('authGuard', () => {
 
   /** No autenticado */
 
-  describe('usuario no autenticado', () => {
+  describe('unauthenticated user', () => {
     /** Verifica que redirija a /login cuando no hay sesión activa. */
     it('should redirect to /login when not authenticated', () => {
       authService.isAuthenticated.set(false);
@@ -88,7 +88,7 @@ describe('authGuard', () => {
 
   /** Sesión restaurada desde cookie */
 
-  describe('sesión restaurada desde cookie', () => {
+  describe('session restored from cookie', () => {
     /** Verifica que tras un restoreSession exitoso (caso reload), el guard
      *  permita el paso. El initializer en producción espera a restoreSession
      *  antes de bootstrap, por lo que el guard ya encuentra isAuthenticated=true. */

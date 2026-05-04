@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Collection, CollectionCreateBody } from './models/collection.model';
+import { Group, AssociatedGroupCreateBody } from './models/group.model';
 import { HalListResponse } from './models/hal.model';
 import {
   DSPACE_API_BASE,
@@ -109,6 +110,26 @@ export class CollectionApiService {
   delete(uuid: string): Observable<void> {
     return this.http.delete<void>(
       `${DSPACE_API_BASE}${COLLECTIONS_PATH}/${uuid}`,
+    );
+  }
+
+  /**
+   * Crea el submittersGroup asociado a la collection indicada. DSpace lo
+   * nombra automáticamente (`COLLECTION_<uuid>_SUBMIT`) — el contrato 9.x
+   * prohíbe fijar nombre en este endpoint, por eso el body solo lleva
+   * metadata opcional. Verificado empíricamente el 2 de mayo 2026: DSpace
+   * NO auto-instancia el submittersGroup al crear la collection (GET sobre
+   * el subrecurso devuelve 204 sin body), hay que pegarlo explícitamente.
+   * El facade del Bloque 1 hace este POST y luego enlaza `SUBMITTERS_<sufijo>`
+   * como subgrupo del Group resultante con `GroupApiService.addSubgroup`.
+   */
+  createSubmittersGroup(
+    collectionUuid: string,
+    body: AssociatedGroupCreateBody = {},
+  ): Observable<Group> {
+    return this.http.post<Group>(
+      `${DSPACE_API_BASE}${COLLECTIONS_PATH}/${collectionUuid}/submittersGroup`,
+      body,
     );
   }
 }

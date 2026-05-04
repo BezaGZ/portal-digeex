@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Community, CommunityCreateBody } from './models/community.model';
+import { Group, AssociatedGroupCreateBody } from './models/group.model';
 import { HalListResponse } from './models/hal.model';
 import { DSPACE_API_BASE, COMMUNITIES_PATH } from './dspace-rest.util';
 import { JsonPatchEntry } from './json-patch.util';
@@ -95,6 +96,21 @@ export class CommunityApiService {
   delete(uuid: string): Observable<void> {
     return this.http.delete<void>(
       `${DSPACE_API_BASE}${COMMUNITIES_PATH}/${uuid}`,
+    );
+  }
+
+  /**
+   * Crea el adminGroup asociado a la community indicada. DSpace lo nombra
+   * automáticamente (`COMMUNITY_<uuid>_ADMIN`) — el contrato 9.x prohíbe
+   * fijar nombre en este endpoint, por eso el body solo lleva metadata
+   * opcional. El facade de Bloque 1 hace este POST y luego renombra el
+   * Group resultante a `ADMIN_<sufijo>` con `GroupApiService.updateMetadata`.
+   * DSpace devuelve 422 si la community ya tiene adminGroup.
+   */
+  createAdminGroup(communityUuid: string, body: AssociatedGroupCreateBody = {}): Observable<Group> {
+    return this.http.post<Group>(
+      `${DSPACE_API_BASE}${COMMUNITIES_PATH}/${communityUuid}/adminGroup`,
+      body,
     );
   }
 }

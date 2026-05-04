@@ -37,7 +37,7 @@ describe('VocabularyApiService', () => {
     httpMock.verify();
   });
 
-  it('debe pegar GET /api/submission/vocabularies/{name}/entries y devolver un array de VocabularyEntry', () => {
+  it('should GET /api/submission/vocabularies/{name}/entries and return an array of VocabularyEntry', () => {
     let result: VocabularyEntry[] | undefined;
     service.getEntries('niveles-educativos').subscribe((entries) => (result = entries));
 
@@ -49,7 +49,7 @@ describe('VocabularyApiService', () => {
     expect(Array.isArray(result)).toBe(true);
   });
 
-  it('debe devolver 12 entries para programas-digeex', () => {
+  it('should return 12 entries for programas-digeex', () => {
     let result: VocabularyEntry[] | undefined;
     service.getEntries('programas-digeex').subscribe((entries) => (result = entries));
 
@@ -60,7 +60,7 @@ describe('VocabularyApiService', () => {
     expect(result!.length).toBe(12);
   });
 
-  it('debe mapear cada entry a { display, value } y descartar otherInformation y type', () => {
+  it('should map each entry to { display, value } and discard otherInformation and type', () => {
     let result: VocabularyEntry[] | undefined;
     service.getEntries('niveles-educativos').subscribe((entries) => (result = entries));
 
@@ -72,7 +72,7 @@ describe('VocabularyApiService', () => {
     expect(Object.keys(result![0]).sort()).toEqual(['display', 'value']);
   });
 
-  it('debe propagar el error cuando el endpoint devuelve 404', () => {
+  it('should propagate the error when the endpoint returns 404', () => {
     let capturedError: { status: number } | undefined;
     service.getEntries('inexistente').subscribe({
       next: () => {

@@ -1,0 +1,33 @@
+{
+  "id": "309d5464-6e12-49bc-b1d8-b927b79e701b",
+  "uuid": "309d5464-6e12-49bc-b1d8-b927b79e701b",
+  "name": "COLLECTION_8d55e068-4354-4620-9f80-faf4dbe933c1_SUBMIT",
+  "handle": null,
+  "metadata": {
+    "dc.description": [
+      {
+        "value": "SubmittersGroup efímero auto-asociado vía POST",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ]
+  },
+  "permanent": false,
+  "type": "group",
+  "_links": {
+    "subgroups": {
+      "href": "http://localhost:8080/server/api/eperson/groups/309d5464-6e12-49bc-b1d8-b927b79e701b/subgroups"
+    },
+    "epersons": {
+      "href": "http://localhost:8080/server/api/eperson/groups/309d5464-6e12-49bc-b1d8-b927b79e701b/epersons"
+    },
+    "object": {
+      "href": "http://localhost:8080/server/api/eperson/groups/309d5464-6e12-49bc-b1d8-b927b79e701b/object"
+    },
+    "self": {
+      "href": "http://localhost:8080/server/api/eperson/groups/309d5464-6e12-49bc-b1d8-b927b79e701b"
+    }
+  }
+}

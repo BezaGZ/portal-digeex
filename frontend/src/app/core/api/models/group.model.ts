@@ -38,3 +38,16 @@ export interface GroupCreateBody {
   name: string;
   metadata?: MetadataMap;
 }
+
+/**
+ * Body que DSpace 9.x espera en POST /api/core/communities/{uuid}/adminGroup
+ * y POST /api/core/collections/{uuid}/submittersGroup. A diferencia del POST
+ * standalone sobre /eperson/groups, estos subrecursos NO permiten fijar el
+ * nombre — DSpace lo auto-genera con el UUID del parent (`COMMUNITY_<uuid>_ADMIN`,
+ * `COLLECTION_<uuid>_SUBMIT`). Solo se envía metadata opcional. El rename a
+ * convenciones del portal (`ADMIN_<sufijo>`, `SUBMITTERS_<sufijo>`) se hace
+ * después con `GroupApiService.updateMetadata` y `replaceOp('/name', ...)`.
+ */
+export interface AssociatedGroupCreateBody {
+  metadata?: MetadataMap;
+}

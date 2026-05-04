@@ -3,9 +3,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { CollectionApiService } from './collection-api.service';
 import { Collection, CollectionCreateBody } from './models/collection.model';
+import { Group } from './models/group.model';
 import { JsonPatchEntry } from './json-patch.util';
 import collectionCreateFixture from './test-fixtures/collection-create-response.json';
 import collectionPatchFixture from './test-fixtures/collection-patch-response.json';
+import collectionCreateSubmittersgroupFixture from './test-fixtures/collection-create-submittersgroup-response.json';
 
 /**
  * Tests de `CollectionApiService`.
@@ -38,7 +40,7 @@ describe('CollectionApiService', () => {
     httpMock.verify();
   });
 
-  it('list() debe obtener todas las colecciones del repositorio (page=0, size=100)', async () => {
+  it('list() should fetch all collections in the repository (page=0, size=100)', async () => {
     const mockResponse = {
       _embedded: {
         collections: [
@@ -68,7 +70,7 @@ describe('CollectionApiService', () => {
     await promise;
   });
 
-  it('listByCommunity() debe obtener las colecciones de una comunidad específica', async () => {
+  it('listByCommunity() should fetch the collections of a specific community', async () => {
     const mockResponse = {
       _embedded: {
         collections: [
@@ -99,7 +101,7 @@ describe('CollectionApiService', () => {
     await promise;
   });
 
-  it('getOne() debe obtener una colección individual por UUID', async () => {
+  it('getOne() should fetch a single collection by UUID', async () => {
     const mockCollection = {
       uuid: 'col-123',
       name: 'PEAC',
@@ -126,7 +128,7 @@ describe('CollectionApiService', () => {
     await promise;
   });
 
-  it('getOwningCollectionOfItem() debe devolver la colección dueña de un item', async () => {
+  it('getOwningCollectionOfItem() should return the owning collection of an item', async () => {
     const mockCollection = {
       uuid: 'col-123',
       name: 'PEAC',
@@ -150,7 +152,7 @@ describe('CollectionApiService', () => {
     await promise;
   });
 
-  it('create() debe pegar POST a /api/core/collections con parent en query y devolver la collection creada', () => {
+  it('create() should POST to /api/core/collections with parent in query and return the created collection', () => {
     const body: CollectionCreateBody = {
       name: 'Test Mutaciones Sprint 6',
       metadata: {
@@ -177,7 +179,7 @@ describe('CollectionApiService', () => {
     expect(result!.handle).toBe('123456789/121');
   });
 
-  it('updateMetadata() debe pegar PATCH con body JSON Patch y devolver la collection actualizada', () => {
+  it('updateMetadata() should PATCH with JSON Patch body and return the updated collection', () => {
     const patch: JsonPatchEntry[] = [
       {
         op: 'replace',
@@ -204,7 +206,7 @@ describe('CollectionApiService', () => {
     );
   });
 
-  it('delete() debe pegar DELETE y completar el observable sin emitir valor', () => {
+  it('delete() should DELETE and complete the observable without emitting a value', () => {
     let nextEmitted = false;
     let completed = false;
 
@@ -222,5 +224,38 @@ describe('CollectionApiService', () => {
 
     expect(nextEmitted).toBe(true);
     expect(completed).toBe(true);
+  });
+
+  it('createSubmittersGroup() should POST to /collections/{uuid}/submittersGroup with metadata body and return the auto-named Group', () => {
+    const body = {
+      metadata: {
+        'dc.description': [
+          {
+            value: 'SubmittersGroup efímero auto-asociado vía POST',
+            language: null,
+            authority: null,
+            confidence: -1,
+            place: 0,
+          },
+        ],
+      },
+    };
+    let result: Group | undefined;
+
+    service
+      .createSubmittersGroup('8d55e068-4354-4620-9f80-faf4dbe933c1', body)
+      .subscribe((g) => (result = g));
+
+    const req = httpMock.expectOne(
+      '/server/api/core/collections/8d55e068-4354-4620-9f80-faf4dbe933c1/submittersGroup',
+    );
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(body);
+    req.flush(collectionCreateSubmittersgroupFixture);
+
+    expect(result).toBeDefined();
+    expect(result!.uuid).toBe('309d5464-6e12-49bc-b1d8-b927b79e701b');
+    expect(result!.name).toBe('COLLECTION_8d55e068-4354-4620-9f80-faf4dbe933c1_SUBMIT');
+    expect(result!.permanent).toBe(false);
   });
 });

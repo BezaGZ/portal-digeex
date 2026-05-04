@@ -35,7 +35,7 @@ describe('SubmissionFormApiService', () => {
     httpMock.verify();
   });
 
-  it('debe pegar GET /api/config/submissionforms/{name} y devolver el SubmissionForm con id y name', () => {
+  it('should GET /api/config/submissionforms/{name} and return the SubmissionForm with id and name', () => {
     let result: SubmissionForm | undefined;
     service.getForm('digeex-galeria').subscribe((form) => (result = form));
 
@@ -48,7 +48,7 @@ describe('SubmissionFormApiService', () => {
     expect(result!.name).toBe('digeex-galeria');
   });
 
-  it('debe aplanar rows[].fields[] a un array fields[] con 8 elementos para digeex-galeria', () => {
+  it('should flatten rows[].fields[] into a fields[] array with 8 elements for digeex-galeria', () => {
     let result: SubmissionForm | undefined;
     service.getForm('digeex-galeria').subscribe((form) => (result = form));
 
@@ -58,7 +58,7 @@ describe('SubmissionFormApiService', () => {
     expect(result!.fields.length).toBe(8);
   });
 
-  it('debe preservar vocabularyName cuando el field tiene controlledVocabulary (Tipo de evento)', () => {
+  it('should preserve vocabularyName when the field has controlledVocabulary (Tipo de evento)', () => {
     let result: SubmissionForm | undefined;
     service.getForm('digeex-galeria').subscribe((form) => (result = form));
 
@@ -69,7 +69,7 @@ describe('SubmissionFormApiService', () => {
     expect(tipoEvento!.vocabularyName).toBe('tipos-evento');
   });
 
-  it('debe dejar vocabularyName undefined cuando el field NO tiene controlledVocabulary (Título del álbum)', () => {
+  it('should leave vocabularyName undefined when the field has NO controlledVocabulary (Título del álbum)', () => {
     let result: SubmissionForm | undefined;
     service.getForm('digeex-galeria').subscribe((form) => (result = form));
 
@@ -80,7 +80,7 @@ describe('SubmissionFormApiService', () => {
     expect(titulo!.vocabularyName).toBeUndefined();
   });
 
-  it('debe dejar mandatoryMessage undefined cuando el field es opcional (Tipo de población)', () => {
+  it('should leave mandatoryMessage undefined when the field is optional (Tipo de población)', () => {
     let result: SubmissionForm | undefined;
     service.getForm('digeex-galeria').subscribe((form) => (result = form));
 
@@ -92,7 +92,7 @@ describe('SubmissionFormApiService', () => {
     expect(populationType!.mandatoryMessage).toBeUndefined();
   });
 
-  it('debe propagar el error cuando el endpoint devuelve 404', () => {
+  it('should propagate the error when the endpoint returns 404', () => {
     let capturedError: { status: number } | undefined;
     service.getForm('inexistente').subscribe({
       next: () => {
@@ -109,7 +109,7 @@ describe('SubmissionFormApiService', () => {
     expect(capturedError!.status).toBe(404);
   });
 
-  it('DIGEEX_FORM debe exportar los nombres de los 3 formularios DIGEEX', () => {
+  it('DIGEEX_FORM should export the names of the 3 DIGEEX forms', () => {
     expect(DIGEEX_FORM.DOCUMENTO).toBe('digeex-documento');
     expect(DIGEEX_FORM.GALERIA).toBe('digeex-galeria');
     expect(DIGEEX_FORM.ESTADISTICA).toBe('digeex-estadistica');

@@ -24,7 +24,7 @@ describe('SearchStateService', () => {
 
   /** Estado inicial */
 
-  describe('estado inicial', () => {
+  describe('initial state', () => {
     /** Verifica que arranca con scope vacío y sin búsqueda hecha;
      *  el componente lee estos signals al montar y decide si restaurar o no. */
     it('should start with empty scope and hasSearched=false', () => {

@@ -45,7 +45,7 @@ describe('IdleTimeoutService', () => {
 
   /** Estado inicial */
 
-  describe('estado inicial', () => {
+  describe('initial state', () => {
     /** Verifica que los signals empiecen en false/false. */
     it('should start with warningVisible false and sessionExpired false', () => {
       expect(service.warningVisible()).toBe(false);
@@ -55,7 +55,7 @@ describe('IdleTimeoutService', () => {
 
   /** Rastreo de actividad */
 
-  describe('rastreo de actividad', () => {
+  describe('activity tracking', () => {
     /** Verifica que registre el timestamp al detectar click. */
     it('should track last activity timestamp on click', fakeAsync(() => {
       service.start();
@@ -95,7 +95,7 @@ describe('IdleTimeoutService', () => {
 
   /** Warning a los 25 minutos */
 
-  describe('warning a los 25 min', () => {
+  describe('warning at 25 min', () => {
     /** Verifica que warningVisible sea true a los 25 min sin actividad. */
     it('should emit warning at 25 min idle', fakeAsync(() => {
       service.start();
@@ -110,7 +110,7 @@ describe('IdleTimeoutService', () => {
 
   /** Timeout a los 30 minutos */
 
-  describe('timeout a los 30 min', () => {
+  describe('timeout at 30 min', () => {
     /** Verifica que sessionExpired sea true a los 30 min sin actividad. */
     it('should emit timeout at 30 min idle', fakeAsync(() => {
       service.start();
@@ -123,7 +123,7 @@ describe('IdleTimeoutService', () => {
 
   /** Reset por interacción */
 
-  describe('reset por interacción', () => {
+  describe('reset on interaction', () => {
     /** Verifica que la interacción del usuario resetee el timer y oculte el warning. */
     it('should reset on user interaction after warning', fakeAsync(() => {
       service.start();

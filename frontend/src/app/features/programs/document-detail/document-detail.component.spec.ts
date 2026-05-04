@@ -141,7 +141,7 @@ describe('DocumentDetailComponent', () => {
 
   /** Carga de item y metadata */
 
-  describe('carga de item', () => {
+  describe('item loading', () => {
     /** Verifica que extraiga docId de la ruta y llame a getItem. */
     it('should extract docId from route params and call getItem', () => {
       component.ngOnInit();
@@ -182,7 +182,7 @@ describe('DocumentDetailComponent', () => {
 
   /** Bundles y bitstreams */
 
-  describe('bundles y bitstreams', () => {
+  describe('bundles and bitstreams', () => {
     /** Verifica la carga de bundles THUMBNAIL y ORIGINAL mediante forkJoin. */
     it('should load THUMBNAIL and ORIGINAL bundles via forkJoin', () => {
       component.ngOnInit();
@@ -207,7 +207,7 @@ describe('DocumentDetailComponent', () => {
 
   /** Tipo video */
 
-  describe('tipo video', () => {
+  describe('video type', () => {
     /** Verifica la detección de items de video por dc.type Video. */
     it('should detect video item by dc.type Video', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -222,7 +222,7 @@ describe('DocumentDetailComponent', () => {
 
   /** Estados: loading y error */
 
-  describe('estados', () => {
+  describe('states', () => {
     /** Verifica que isLoading sea false después de completar la carga. */
     it('should set isLoading to false after load completes', () => {
       component.ngOnInit();

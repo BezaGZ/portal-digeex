@@ -44,7 +44,7 @@ describe('jwtInterceptor', () => {
 
   /** Con token */
 
-  describe('con token', () => {
+  describe('with token', () => {
     /** Verifica que adjunte Authorization: Bearer en GET cuando hay JWT. */
     it('should attach Bearer token on GET requests', async () => {
       vi.spyOn(authService, 'getToken').mockReturnValue('my-jwt-token');
@@ -84,7 +84,7 @@ describe('jwtInterceptor', () => {
 
   /** Sin token */
 
-  describe('sin token', () => {
+  describe('without token', () => {
     /** Verifica que NO adjunte Authorization cuando no hay JWT. */
     it('should NOT attach Authorization header when no token', async () => {
       vi.spyOn(authService, 'getToken').mockReturnValue(null);
@@ -106,7 +106,7 @@ describe('jwtInterceptor', () => {
 
   /** Refresh automático */
 
-  describe('refresh automático', () => {
+  describe('automatic refresh', () => {
     /**
      * Helper: genera un JWT falso con un claim exp específico.
      * El payload es base64 del JSON con el exp.
@@ -237,7 +237,7 @@ describe('jwtInterceptor', () => {
 
   /** Redirección en 401 */
 
-  describe('redirección en 401', () => {
+  describe('redirect on 401', () => {
     /** Verifica que redirige a /login cuando DSpace responde 401. */
     it('should redirect to /login on 401 response', async () => {
       vi.spyOn(authService, 'getToken').mockReturnValue('valid-token');
@@ -282,7 +282,7 @@ describe('jwtInterceptor', () => {
    * el header Authorization del HttpResponse y lo persiste vía
    * storeRotatedToken. Esto evita relogin innecesario en sesiones largas.
    */
-  describe('captura de JWT rotado', () => {
+  describe('rotated JWT capture', () => {
     /** Verifica que un Authorization en el response persista el token rotado. */
     it('should call storeRotatedToken with the new token when response brings an Authorization header', async () => {
       vi.spyOn(authService, 'getToken').mockReturnValue('current-token');
@@ -347,7 +347,7 @@ describe('jwtInterceptor', () => {
    * sí mismo y el doble navigate cuando un refresh falla con 401. El
    * AuthService dueño de esas llamadas gestiona sus propios errores.
    */
-  describe('endpoints de /authn/*', () => {
+  describe('endpoints under /authn/*', () => {
     function fakeJwt(expTimestamp: number): string {
       const header = btoa(JSON.stringify({ alg: 'HS256' }));
       const payload = btoa(JSON.stringify({ eid: 'user-001', exp: expTimestamp }));
