@@ -2,6 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { GroupApiService } from './group-api.service';
+import { Group, GroupCreateBody } from './models/group.model';
+import { JsonPatchEntry } from './json-patch.util';
+import groupCreateFixture from './test-fixtures/group-create-response.json';
+import groupSearchByMetadataFixture from './test-fixtures/group-search-by-metadata-response.json';
+import groupPatchFixture from './test-fixtures/group-patch-response.json';
 
 /**
  * Tests de GroupApiService, wrapper HTTP del recurso /api/eperson/groups
@@ -296,6 +301,171 @@ describe('GroupApiService', () => {
       );
 
       await promise;
+    });
+  });
+
+  /**
+   * create(): POST /api/eperson/groups con body {name, metadata?}. Único
+   * endpoint del contrato 9.x donde se puede fijar el nombre del grupo
+   * directamente. Lo usa el CommunityFacade del Bloque 1 para crear los
+   * grupos intermedios SUBMITTERS_<sufijo> al alta de subcomunidad.
+   */
+  describe('create()', () => {
+    it('should POST to /api/eperson/groups with body and return the created Group', () => {
+      const body: GroupCreateBody = {
+        name: 'TEST_CICLO_9',
+        metadata: {
+          'dc.description': [
+            {
+              value: 'Grupo efímero creado por capture-group-mutations.sh para anclar create()',
+              language: null,
+              authority: null,
+              confidence: -1,
+              place: 0,
+            },
+          ],
+        },
+      };
+      let result: Group | undefined;
+
+      service.create(body).subscribe((g) => (result = g));
+
+      const req = httpMock.expectOne('/server/api/eperson/groups');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(body);
+      req.flush(groupCreateFixture);
+
+      expect(result).toBeDefined();
+      expect(result!.uuid).toBe('10b48251-2bd3-4dee-9f42-1d6f300af838');
+      expect(result!.name).toBe('TEST_CICLO_9');
+      expect(result!.permanent).toBe(false);
+    });
+  });
+
+  /**
+   * getByName(): GET /api/eperson/groups/search/byMetadata?query=<name>
+   * + filtro exacto en código. byMetadata hace LIKE sobre nombre y UUID,
+   * por lo que puede devolver substring matches; el wrapper se queda solo
+   * con el `name` exacto y lanza error si no aparece.
+   */
+  describe('getByName()', () => {
+    it('should GET search/byMetadata with the name as query param and return the exact match', () => {
+      let result: Group | undefined;
+
+      service.getByName('TEST_CICLO_9').subscribe((g) => (result = g));
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/groups/search/byMetadata' &&
+          r.params.get('query') === 'TEST_CICLO_9',
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush(groupSearchByMetadataFixture);
+
+      expect(result).toBeDefined();
+      expect(result!.name).toBe('TEST_CICLO_9');
+      expect(result!.uuid).toBe('10b48251-2bd3-4dee-9f42-1d6f300af838');
+    });
+
+    it('should throw when byMetadata returns substring matches but no exact name', () => {
+      let errorMessage: string | undefined;
+
+      service.getByName('NONEXISTENT_GROUP').subscribe({
+        next: () => {
+          throw new Error('No debería emitir valor cuando no hay match exacto');
+        },
+        error: (err: Error) => {
+          errorMessage = err.message;
+        },
+      });
+
+      const substringOnlyResponse = {
+        _embedded: {
+          groups: [
+            {
+              uuid: 'abc',
+              name: 'NONEXISTENT_GROUP_BUT_DIFFERENT',
+              permanent: false,
+              type: 'group',
+              _links: {
+                self: { href: '' },
+                object: { href: '' },
+                epersons: { href: '' },
+                subgroups: { href: '' },
+              },
+            },
+          ],
+        },
+        page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+        _links: { self: { href: '' } },
+      };
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/groups/search/byMetadata' &&
+          r.params.get('query') === 'NONEXISTENT_GROUP',
+      );
+      req.flush(substringOnlyResponse);
+
+      expect(errorMessage).toBe('Grupo NONEXISTENT_GROUP no encontrado');
+    });
+  });
+
+  /**
+   * updateMetadata(): PATCH /api/eperson/groups/{uuid} con JSON Patch en
+   * el body. El uso principal es renombrar el adminGroup auto-generado
+   * por DSpace al pasar de `COMMUNITY_<uuid>_admin` a `ADMIN_<sufijo>`.
+   */
+  describe('updateMetadata()', () => {
+    it('should PATCH /api/eperson/groups/{uuid} with JsonPatchEntry[] and return the updated Group', () => {
+      const patch: JsonPatchEntry[] = [
+        { op: 'replace', path: '/name', value: 'TEST_CICLO_9_RENAMED' },
+      ];
+      let result: Group | undefined;
+
+      service
+        .updateMetadata('10b48251-2bd3-4dee-9f42-1d6f300af838', patch)
+        .subscribe((g) => (result = g));
+
+      const req = httpMock.expectOne(
+        '/server/api/eperson/groups/10b48251-2bd3-4dee-9f42-1d6f300af838',
+      );
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body).toEqual(patch);
+      req.flush(groupPatchFixture);
+
+      expect(result).toBeDefined();
+      expect(result!.name).toBe('TEST_CICLO_9_RENAMED');
+    });
+  });
+
+  /**
+   * addSubgroup(): POST /api/eperson/groups/{parentUuid}/subgroups con
+   * Content-Type text/uri-list y la URI absoluta del subgrupo en el body.
+   * DSpace responde 204 No Content; el wrapper expone Observable<void>
+   * para forzar al caller a manejar solo error/complete.
+   */
+  describe('addSubgroup()', () => {
+    it('should POST text/uri-list with subgroup URI and complete with void at 204', () => {
+      const subgroupUri = 'http://localhost:8080/server/api/eperson/groups/sub-uuid';
+      let nextEmitted = false;
+      let completed = false;
+
+      service.addSubgroup('parent-uuid', subgroupUri).subscribe({
+        next: () => (nextEmitted = true),
+        complete: () => (completed = true),
+      });
+
+      const req = httpMock.expectOne(
+        '/server/api/eperson/groups/parent-uuid/subgroups',
+      );
+      expect(req.request.method).toBe('POST');
+      expect(req.request.headers.get('Content-Type')).toBe('text/uri-list');
+      expect(req.request.body).toBe(subgroupUri);
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      expect(nextEmitted).toBe(true);
+      expect(completed).toBe(true);
     });
   });
 });

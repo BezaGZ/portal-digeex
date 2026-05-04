@@ -1,4 +1,5 @@
 import { HalLink, HalLinks } from './hal.model';
+import { MetadataMap } from './metadata.model';
 
 /**
  * Representa un grupo de DSpace 9.2 (/api/eperson/groups/{uuid}).
@@ -24,4 +25,16 @@ export interface Group {
     epersons: HalLink;
     subgroups: HalLink;
   };
+}
+
+/**
+ * Body que DSpace 9.x espera en POST /api/eperson/groups. Solo `name` es
+ * obligatorio según el contrato; `metadata` es opcional y suele llevar
+ * `dc.description` con el propósito del grupo. El campo `permanent` no
+ * se envía aquí (el server lo asigna como false), y enviarlo en true
+ * provoca 422.
+ */
+export interface GroupCreateBody {
+  name: string;
+  metadata?: MetadataMap;
 }

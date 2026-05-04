@@ -1,0 +1,50 @@
+{
+  "_embedded": {
+    "groups": [
+      {
+        "id": "10b48251-2bd3-4dee-9f42-1d6f300af838",
+        "uuid": "10b48251-2bd3-4dee-9f42-1d6f300af838",
+        "name": "TEST_CICLO_9",
+        "handle": null,
+        "metadata": {
+          "dc.description": [
+            {
+              "value": "Grupo efímero creado por capture-group-mutations.sh para anclar create()",
+              "language": null,
+              "authority": null,
+              "confidence": -1,
+              "place": 0
+            }
+          ]
+        },
+        "permanent": false,
+        "type": "group",
+        "_links": {
+          "subgroups": {
+            "href": "http://localhost:8080/server/api/eperson/groups/10b48251-2bd3-4dee-9f42-1d6f300af838/subgroups"
+          },
+          "epersons": {
+            "href": "http://localhost:8080/server/api/eperson/groups/10b48251-2bd3-4dee-9f42-1d6f300af838/epersons"
+          },
+          "object": {
+            "href": "http://localhost:8080/server/api/eperson/groups/10b48251-2bd3-4dee-9f42-1d6f300af838/object"
+          },
+          "self": {
+            "href": "http://localhost:8080/server/api/eperson/groups/10b48251-2bd3-4dee-9f42-1d6f300af838"
+          }
+        }
+      }
+    ]
+  },
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/server/api/eperson/groups/search/byMetadata?query=TEST_CICLO_9"
+    }
+  },
+  "page": {
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "number": 0
+  }
+}
