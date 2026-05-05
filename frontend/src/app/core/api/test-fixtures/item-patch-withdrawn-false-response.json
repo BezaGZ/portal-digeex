@@ -1,0 +1,208 @@
+{
+  "id": "417db98a-f616-4953-a967-b3af6233df5a",
+  "uuid": "417db98a-f616-4953-a967-b3af6233df5a",
+  "name": "Etapa II Módulo 1: Juntos en Sociedad [TEST_CICLO_11 EFIMERO]",
+  "handle": "123456789/174",
+  "metadata": {
+    "dc.audience": [
+      {
+        "value": "Primaria",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.contributor.author": [
+      {
+        "value": "Subdirección de Educación Básica",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.date.accessioned": [
+      {
+        "value": "2026-05-04T05:37:18Z",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.date.issued": [
+      {
+        "value": "2024-06-15",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.description.abstract": [
+      {
+        "value": "Módulo 1 de la Etapa II del PEAC. Material autoinstructivo para educación primaria de adultos.",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.description.provenance": [
+      {
+        "value": "Submitted by Administrador DIGEEX (admin@digeex.gob.gt) on 2026-05-04T05:37:18Z\nNo. of bitstreams: 2\nPEAC_E2M1_Juntos_en_Sociedad.pdf: 149594802 bytes, checksum: 38646b2a1d1cc0a162b6a34d38ff99cf (MD5)\nEtapa_II_Modulo_1.jpeg: 51337 bytes, checksum: ec5b68d386fc1f5c7d8f25b49e96afa8 (MD5)",
+        "language": "en",
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      },
+      {
+        "value": "Made available in DSpace on 2026-05-04T05:37:18Z (GMT). No. of bitstreams: 2\nPEAC_E2M1_Juntos_en_Sociedad.pdf: 149594802 bytes, checksum: 38646b2a1d1cc0a162b6a34d38ff99cf (MD5)\nEtapa_II_Modulo_1.jpeg: 51337 bytes, checksum: ec5b68d386fc1f5c7d8f25b49e96afa8 (MD5)\n  Previous issue date: 2024-06-15",
+        "language": "en",
+        "authority": null,
+        "confidence": -1,
+        "place": 1
+      },
+      {
+        "value": "Item withdrawn by Administrador DIGEEX (admin@digeex.gob.gt) on 2026-05-04T05:48:33Z\nItem was in collections:\nPrograma de Educación de Adultos por Correspondencia (ID: 9971a736-e7fc-48f9-bfa8-1fd428f95a49)\nNo. of bitstreams: 2\nPEAC_E2M1_Juntos_en_Sociedad.pdf: 149594802 bytes, checksum: 38646b2a1d1cc0a162b6a34d38ff99cf (MD5)\nEtapa_II_Modulo_1.jpeg: 51337 bytes, checksum: ec5b68d386fc1f5c7d8f25b49e96afa8 (MD5)",
+        "language": "en",
+        "authority": null,
+        "confidence": -1,
+        "place": 2
+      },
+      {
+        "value": "Item reinstated by Administrador DIGEEX (admin@digeex.gob.gt) on 2026-05-04T05:48:33Z\nItem was in collections:\nPrograma de Educación de Adultos por Correspondencia (ID: 9971a736-e7fc-48f9-bfa8-1fd428f95a49)\nNo. of bitstreams: 2\nPEAC_E2M1_Juntos_en_Sociedad.pdf: 149594802 bytes, checksum: 38646b2a1d1cc0a162b6a34d38ff99cf (MD5)\nEtapa_II_Modulo_1.jpeg: 51337 bytes, checksum: ec5b68d386fc1f5c7d8f25b49e96afa8 (MD5)",
+        "language": "en",
+        "authority": null,
+        "confidence": -1,
+        "place": 3
+      }
+    ],
+    "dc.identifier.uri": [
+      {
+        "value": "http://localhost:4000/handle/123456789/174",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.language.iso": [
+      {
+        "value": "es",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.publisher": [
+      {
+        "value": "DIGEEX, MINEDUC",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.subject": [
+      {
+        "value": "PEAC",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      },
+      {
+        "value": "convivencia social",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 1
+      },
+      {
+        "value": "ciudadanía",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 2
+      },
+      {
+        "value": "democracia",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 3
+      }
+    ],
+    "dc.title": [
+      {
+        "value": "Etapa II Módulo 1: Juntos en Sociedad [TEST_CICLO_11 EFIMERO]",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.type": [
+      {
+        "value": "Libro de texto",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dspace.entity.type": [
+      {
+        "value": "Documento",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ]
+  },
+  "inArchive": true,
+  "discoverable": true,
+  "withdrawn": false,
+  "lastModified": "2026-05-04T05:48:33.723428Z",
+  "entityType": "Documento",
+  "type": "item",
+  "_links": {
+    "accessStatus": {
+      "href": "http://localhost:8080/server/api/core/items/417db98a-f616-4953-a967-b3af6233df5a/accessStatus"
+    },
+    "bundles": {
+      "href": "http://localhost:8080/server/api/core/items/417db98a-f616-4953-a967-b3af6233df5a/bundles"
+    },
+    "identifiers": {
+      "href": "http://localhost:8080/server/api/core/items/417db98a-f616-4953-a967-b3af6233df5a/identifiers"
+    },
+    "mappedCollections": {
+      "href": "http://localhost:8080/server/api/core/items/417db98a-f616-4953-a967-b3af6233df5a/mappedCollections"
+    },
+    "owningCollection": {
+      "href": "http://localhost:8080/server/api/core/items/417db98a-f616-4953-a967-b3af6233df5a/owningCollection"
+    },
+    "relationships": {
+      "href": "http://localhost:8080/server/api/core/items/417db98a-f616-4953-a967-b3af6233df5a/relationships"
+    },
+    "version": {
+      "href": "http://localhost:8080/server/api/core/items/417db98a-f616-4953-a967-b3af6233df5a/version"
+    },
+    "templateItemOf": {
+      "href": "http://localhost:8080/server/api/core/items/417db98a-f616-4953-a967-b3af6233df5a/templateItemOf"
+    },
+    "thumbnail": {
+      "href": "http://localhost:8080/server/api/core/items/417db98a-f616-4953-a967-b3af6233df5a/thumbnail"
+    },
+    "submitter": {
+      "href": "http://localhost:8080/server/api/core/items/417db98a-f616-4953-a967-b3af6233df5a/submitter"
+    },
+    "self": {
+      "href": "http://localhost:8080/server/api/core/items/417db98a-f616-4953-a967-b3af6233df5a"
+    }
+  }
+}

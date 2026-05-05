@@ -1,7 +1,15 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, of, throwError } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { Observable, from, of, throwError } from 'rxjs';
+import { catchError, map, mergeMap, switchMap, toArray } from 'rxjs/operators';
 import { resolveCaller$, rollbackCascade } from './facade-utils';
+
+/**
+ * Cuántos uploads de bitstream pueden estar en vuelo a la vez sobre el
+ * mismo workspaceitem. Sweet spot conservador: una galería de 100 fotos
+ * sube en ~13s sin saturar el backend Tomcat single-instance. Si en
+ * producción se ve que aguanta más, subirlo. Si se atraganta, bajarlo.
+ */
+const MAX_PARALLEL_UPLOADS = 8;
 import { WorkspaceItemApiService } from '../../../../core/api/workspaceitem-api.service';
 import { ItemApiService } from '../../../../core/api/item-api.service';
 import { ContentScopeService } from './content-scope.service';
@@ -83,9 +91,12 @@ export class SubmissionFacade {
   }
 
   private uploadAllFiles$(workspaceId: number, files: File[]): Observable<unknown> {
-    return files.reduce<Observable<unknown>>(
-      (acc, file) => acc.pipe(switchMap(() => this.workspace.uploadFile(workspaceId, file))),
-      of(undefined),
+    if (files.length === 0) {
+      return of(undefined);
+    }
+    return from(files).pipe(
+      mergeMap((file) => this.workspace.uploadFile(workspaceId, file), MAX_PARALLEL_UPLOADS),
+      toArray(),
     );
   }
 

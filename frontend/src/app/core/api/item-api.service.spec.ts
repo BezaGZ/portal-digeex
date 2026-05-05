@@ -7,6 +7,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { ItemApiService } from './item-api.service';
 import { JsonPatchEntry } from './json-patch.util';
 import itemPatchFixture from './test-fixtures/item-patch-metadata-response.json';
+import itemWithdrawnTrueFixture from './test-fixtures/item-patch-withdrawn-true-response.json';
 
 /**
  * Tests de ItemApiService.
@@ -52,6 +53,59 @@ describe('ItemApiService', () => {
       req.flush(itemPatchFixture);
 
       expect(received?.uuid).toBe(itemPatchFixture.uuid);
+    });
+  });
+
+  describe('getOne()', () => {
+    it('should GET /api/core/items/{uuid} and return the item', () => {
+      let received: typeof itemPatchFixture | undefined;
+
+      service.getOne('item-uuid').subscribe((item) => (received = item as typeof itemPatchFixture));
+
+      const req = httpMock.expectOne('/server/api/core/items/item-uuid');
+      expect(req.request.method).toBe('GET');
+      req.flush(itemPatchFixture);
+
+      expect(received?.uuid).toBe(itemPatchFixture.uuid);
+    });
+  });
+
+  describe('withdraw()', () => {
+    it('should PATCH /api/core/items/{uuid} with [{op:replace, path:/withdrawn, value:true}] and return the item with withdrawn=true', () => {
+      let received: typeof itemWithdrawnTrueFixture | undefined;
+
+      service.withdraw('item-uuid').subscribe(
+        (item) => (received = item as typeof itemWithdrawnTrueFixture),
+      );
+
+      const req = httpMock.expectOne('/server/api/core/items/item-uuid');
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body).toEqual([
+        { op: 'replace', path: '/withdrawn', value: true },
+      ]);
+      req.flush(itemWithdrawnTrueFixture);
+
+      expect(received?.withdrawn).toBe(true);
+    });
+  });
+
+  describe('restore()', () => {
+    it('should PATCH /api/core/items/{uuid} with [{op:replace, path:/withdrawn, value:false}] and return the item with withdrawn=false', () => {
+      const restoredFixture = { ...itemWithdrawnTrueFixture, withdrawn: false };
+      let received: typeof restoredFixture | undefined;
+
+      service.restore('item-uuid').subscribe(
+        (item) => (received = item as typeof restoredFixture),
+      );
+
+      const req = httpMock.expectOne('/server/api/core/items/item-uuid');
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body).toEqual([
+        { op: 'replace', path: '/withdrawn', value: false },
+      ]);
+      req.flush(restoredFixture);
+
+      expect(received?.withdrawn).toBe(false);
     });
   });
 });

@@ -28,4 +28,34 @@ export class ItemApiService {
       patch,
     );
   }
+
+  /**
+   * Trae el item por UUID. Lo usa la pantalla de edición para cargar
+   * el recurso antes de mostrar el form. La lectura por colección sigue
+   * en DSpaceApiService hasta que el ciclo de cleanup migre todos los
+   * consumidores al wrapper específico.
+   */
+  getOne(uuid: string): Observable<Item> {
+    return this.http.get<Item>(`${DSPACE_API_BASE}${ITEMS_PATH}/${uuid}`);
+  }
+
+  /**
+   * Marca el item como withdrawn (soft delete). DSpace lo oculta del
+   * portal público pero queda restorable. PATCH replace sobre el flag
+   * por contrato 9.x.
+   */
+  withdraw(uuid: string): Observable<Item> {
+    return this.updateMetadata(uuid, [
+      { op: 'replace', path: '/withdrawn', value: true },
+    ]);
+  }
+
+  /**
+   * Restaura un item previamente withdrawn. PATCH inverso al anterior.
+   */
+  restore(uuid: string): Observable<Item> {
+    return this.updateMetadata(uuid, [
+      { op: 'replace', path: '/withdrawn', value: false },
+    ]);
+  }
 }
