@@ -1,0 +1,80 @@
+{
+  "id": 57,
+  "errors": [
+    {
+      "message": "error.validation.required",
+      "paths": [
+        "/sections/traditionalpageone/dc.title",
+        "/sections/traditionalpageone/dc.date.issued",
+        "/sections/traditionalpageone/dc.type"
+      ]
+    },
+    {
+      "message": "error.validation.filerequired",
+      "paths": [
+        "/sections/upload"
+      ]
+    },
+    {
+      "message": "error.validation.license.notgranted",
+      "paths": [
+        "/sections/license"
+      ]
+    }
+  ],
+  "lastModified": "2026-05-04T05:48:34.509251875Z",
+  "sections": {
+    "license": {
+      "url": null,
+      "acceptanceDate": null,
+      "granted": false
+    },
+    "upload": {
+      "primary": null,
+      "files": []
+    },
+    "collection": "68b0f337-d452-4c06-a56c-29f54c5c6a3e",
+    "traditionalpagetwo": {},
+    "traditionalpageone": {}
+  },
+  "type": "workspaceitem",
+  "_links": {
+    "supervisionOrders": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/57/supervisionOrders"
+    },
+    "submitter": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/57/submitter"
+    },
+    "item": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/57/item"
+    },
+    "collection": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/57/collection"
+    },
+    "submissionDefinition": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/57/submissionDefinition"
+    },
+    "self": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/57"
+    }
+  },
+  "_embedded": {
+    "submissionDefinition": {
+      "id": "traditional",
+      "name": "traditional",
+      "type": "submissiondefinition",
+      "isDefault": true,
+      "_links": {
+        "collections": {
+          "href": "http://localhost:8080/server/api/config/submissiondefinitions/traditional/collections"
+        },
+        "sections": {
+          "href": "http://localhost:8080/server/api/config/submissiondefinitions/traditional/sections"
+        },
+        "self": {
+          "href": "http://localhost:8080/server/api/config/submissiondefinitions/traditional"
+        }
+      }
+    }
+  }
+}

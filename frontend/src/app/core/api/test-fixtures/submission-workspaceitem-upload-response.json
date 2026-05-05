@@ -1,0 +1,137 @@
+{
+  "id": 58,
+  "errors": [
+    {
+      "message": "error.validation.license.notgranted",
+      "paths": [
+        "/sections/license"
+      ]
+    }
+  ],
+  "lastModified": "2026-05-05T07:55:10.715433966Z",
+  "sections": {
+    "license": {
+      "url": null,
+      "acceptanceDate": null,
+      "granted": false
+    },
+    "upload": {
+      "primary": null,
+      "files": [
+        {
+          "uuid": "813cffc0-d682-41cd-84f1-125a5e07f9dd",
+          "metadata": {
+            "dc.source": [
+              {
+                "value": "captura.pdf",
+                "language": null,
+                "authority": null,
+                "confidence": -1,
+                "place": 0
+              }
+            ],
+            "dc.title": [
+              {
+                "value": "captura.pdf",
+                "language": null,
+                "authority": null,
+                "confidence": -1,
+                "place": 0
+              }
+            ]
+          },
+          "accessConditions": [],
+          "format": {
+            "id": 4,
+            "shortDescription": "Adobe PDF",
+            "description": "Adobe Portable Document Format",
+            "mimetype": "application/pdf",
+            "supportLevel": "KNOWN",
+            "internal": false,
+            "extensions": [
+              "pdf"
+            ],
+            "type": "bitstreamformat"
+          },
+          "sizeBytes": 309,
+          "checkSum": {
+            "checkSumAlgorithm": "MD5",
+            "value": "7fa0c9cea12b802d82e1790a60e8f069"
+          },
+          "url": "http://localhost:8080/server/api/core/bitstreams/813cffc0-d682-41cd-84f1-125a5e07f9dd/content"
+        }
+      ]
+    },
+    "collection": "2d15ce88-46ad-4307-92e7-918e52538066",
+    "traditionalpagetwo": {},
+    "traditionalpageone": {
+      "dc.type": [
+        {
+          "value": "Article",
+          "language": null,
+          "authority": null,
+          "confidence": -1,
+          "place": 0
+        }
+      ],
+      "dc.title": [
+        {
+          "value": "Item de captura efímera",
+          "language": null,
+          "authority": null,
+          "confidence": -1,
+          "place": 0
+        }
+      ],
+      "dc.date.issued": [
+        {
+          "value": "2026",
+          "language": null,
+          "authority": null,
+          "confidence": -1,
+          "place": 0
+        }
+      ]
+    }
+  },
+  "type": "workspaceitem",
+  "_links": {
+    "supervisionOrders": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/58/supervisionOrders"
+    },
+    "submitter": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/58/submitter"
+    },
+    "item": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/58/item"
+    },
+    "collection": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/58/collection"
+    },
+    "submissionDefinition": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/58/submissionDefinition"
+    },
+    "self": {
+      "href": "http://localhost:8080/server/api/submission/workspaceitems/58"
+    }
+  },
+  "_embedded": {
+    "submissionDefinition": {
+      "id": "traditional",
+      "name": "traditional",
+      "type": "submissiondefinition",
+      "isDefault": true,
+      "_links": {
+        "collections": {
+          "href": "http://localhost:8080/server/api/config/submissiondefinitions/traditional/collections"
+        },
+        "sections": {
+          "href": "http://localhost:8080/server/api/config/submissiondefinitions/traditional/sections"
+        },
+        "self": {
+          "href": "http://localhost:8080/server/api/config/submissiondefinitions/traditional"
+        }
+      }
+    }
+  }
+}

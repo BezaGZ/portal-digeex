@@ -1,5 +1,21 @@
 import { Observable, of, throwError } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { catchError, map, switchMap, take } from 'rxjs/operators';
+import { AuthCallerService } from '../../shared/services/auth-caller.service';
+import { Caller } from '../specifications/scope-context.model';
+
+/**
+ * Resuelve el caller actual a la forma que las reglas de scope esperan.
+ * Si no hay sesión activa, devuelve el caller mínimo (rol con menos
+ * privilegios) para que los specs traten al usuario anónimo igual que a
+ * un personal_delegado sin sufijo y nunca le permitan operar sobre nada.
+ * Centraliza el patrón compartido entre los facades del Bloque 1 y 2.
+ */
+export function resolveCaller$(authCaller: AuthCallerService): Observable<Caller> {
+  return authCaller.currentCaller$.pipe(
+    take(1),
+    map((caller) => caller ?? { role: 'personal_delegado', sufijo: null }),
+  );
+}
 
 /**
  * Ejecuta una cascada de pasos de cleanup en orden, traga errores

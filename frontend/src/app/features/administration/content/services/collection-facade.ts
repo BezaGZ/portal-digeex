@@ -1,18 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
-import { catchError, map, switchMap, take } from 'rxjs/operators';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
 import { GroupApiService } from '../../../../core/api/group-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { Collection, CollectionCreateBody } from '../../../../core/api/models/collection.model';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
-import { Caller } from '../specifications/scope-context.model';
 import {
   GROUPS_COLLECTION_PATH,
   buildAbsoluteApiUrl,
 } from '../../../../core/api/dspace-rest.util';
-import { rollbackCascade } from './facade-utils';
+import { resolveCaller$, rollbackCascade } from './facade-utils';
 
 /**
  * Coordina create/update/delete de colecciones bajo una subdirección. Cada
@@ -39,7 +38,7 @@ export class CollectionFacade {
     body: CollectionCreateBody,
     sufijoSubdireccion: string,
   ): Observable<Collection> {
-    return this.resolveCaller$().pipe(
+    return resolveCaller$(this.authCaller).pipe(
       switchMap((caller) => {
         try {
           this.scope.assertWithinScope({
@@ -91,7 +90,7 @@ export class CollectionFacade {
     patch: JsonPatchEntry[],
     sufijoSubdireccion: string,
   ): Observable<Collection> {
-    return this.resolveCaller$().pipe(
+    return resolveCaller$(this.authCaller).pipe(
       switchMap((caller) => {
         try {
           this.scope.assertWithinScope({
@@ -113,7 +112,7 @@ export class CollectionFacade {
    * intacto porque sirve a las demás colecciones hermanas.
    */
   deleteColeccion$(uuid: string, sufijoSubdireccion: string): Observable<void> {
-    return this.resolveCaller$().pipe(
+    return resolveCaller$(this.authCaller).pipe(
       switchMap((caller) => {
         try {
           this.scope.assertWithinScope({
@@ -142,13 +141,6 @@ export class CollectionFacade {
       cleanup$.push(this.collectionApi.delete(collectionUuid));
     }
     return rollbackCascade(cleanup$, originalError);
-  }
-
-  private resolveCaller$(): Observable<Caller> {
-    return this.authCaller.currentCaller$.pipe(
-      take(1),
-      map((caller) => caller ?? { role: 'personal_delegado', sufijo: null }),
-    );
   }
 
   private descriptionMetadata(value: string) {

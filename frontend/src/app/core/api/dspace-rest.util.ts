@@ -27,6 +27,8 @@ export const VOCABULARIES_PATH = '/submission/vocabularies/';
 export const COMMUNITIES_PATH = '/core/communities';
 export const COLLECTIONS_PATH = '/core/collections';
 export const ITEMS_PATH = '/core/items';
+export const WORKSPACEITEMS_PATH = '/submission/workspaceitems';
+export const WORKFLOWITEMS_PATH = '/workflow/workflowitems';
 
 /**
  * Content-Type que DSpace exige para los endpoints que reciben hrefs
