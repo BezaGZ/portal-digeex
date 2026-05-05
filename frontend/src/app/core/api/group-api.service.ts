@@ -177,4 +177,16 @@ export class GroupApiService {
 
     return this.http.post<void>(url, subgroupUri, { headers });
   }
+
+  /**
+   * Borra un grupo por UUID. DSpace responde 204 No Content; el wrapper
+   * expone Observable<void> para reflejar esa semántica. Lo consumen los
+   * facades transaccionales del Bloque 1 al hacer rollback en cascada
+   * inversa y al eliminar subdirecciones (donde hay que borrar
+   * SUBMITTERS_<sufijo> y ADMIN_<sufijo> standalone antes de la community).
+   */
+  delete(uuid: string): Observable<void> {
+    const url = `${DSPACE_API_BASE}${GROUPS_COLLECTION_PATH}/${uuid}`;
+    return this.http.delete<void>(url);
+  }
 }

@@ -468,4 +468,30 @@ describe('GroupApiService', () => {
       expect(completed).toBe(true);
     });
   });
+
+  /**
+   * delete(): DELETE /api/eperson/groups/{uuid}. DSpace responde 204 No
+   * Content; el wrapper expone Observable<void> para forzar al caller a
+   * manejar solo error/complete. Lo consumen los facades transaccionales
+   * del Bloque 1 al hacer rollback en cascada inversa y al borrar
+   * subdirecciones (deleteSubdireccion$).
+   */
+  describe('delete()', () => {
+    it('should DELETE /api/eperson/groups/{uuid} and complete with void at 204', () => {
+      let nextEmitted = false;
+      let completed = false;
+
+      service.delete('group-uuid').subscribe({
+        next: () => (nextEmitted = true),
+        complete: () => (completed = true),
+      });
+
+      const req = httpMock.expectOne('/server/api/eperson/groups/group-uuid');
+      expect(req.request.method).toBe('DELETE');
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      expect(nextEmitted).toBe(true);
+      expect(completed).toBe(true);
+    });
+  });
 });
