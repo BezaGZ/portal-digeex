@@ -28,6 +28,18 @@ export class CommunityApiService {
   }
 
   /**
+   * Comunidades sin parent (raíces del repositorio). En DIGEEX hay solo una
+   * (la community DIGEEX), pero el endpoint sigue siendo paginado por contrato.
+   */
+  searchTop(page = 0, size = 20): Observable<HalListResponse<Community>> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return this.http.get<HalListResponse<Community>>(
+      `${DSPACE_API_BASE}${COMMUNITIES_PATH}/search/top`,
+      { params },
+    );
+  }
+
+  /**
    * Obtiene una comunidad por UUID. `embed` proyecta subrecursos en la
    * misma respuesta (por ejemplo `adminGroup` para resolver el grupo
    * destino al crear un admin_subdireccion).

@@ -78,6 +78,35 @@ describe('CommunityApiService', () => {
     await promise;
   });
 
+  it('searchTop() should GET /api/core/communities/search/top with default pagination', async () => {
+    const mockResponse = {
+      _embedded: {
+        communities: [
+          { uuid: 'digeex-root', name: 'DIGEEX', type: 'community' },
+        ],
+      },
+      _links: { self: { href: '/api/core/communities/search/top?page=0&size=20' } },
+      page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.searchTop().subscribe({
+        next: (response) => {
+          expect(response._embedded['communities'].length).toBe(1);
+          expect(response._embedded['communities'][0].uuid).toBe('digeex-root');
+          resolve(response);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/communities/search/top?page=0&size=20');
+    expect(req.request.method).toBe('GET');
+    req.flush(mockResponse);
+
+    await promise;
+  });
+
   it('list() should accept custom pagination parameters', async () => {
     const mockResponse = {
       _embedded: { communities: [] },
