@@ -8,7 +8,7 @@ import { MessageService } from 'primeng/api';
 
 import { Users } from './users';
 import { UserManagementService } from './services/user-management.service';
-import { BusinessRuleError } from './services/business-rule-error';
+import { BusinessRuleError } from '../../../core/error/business-rule-error';
 import { UserView } from './models/user-view.model';
 import { Paginated } from '../../../core/api/models/hal.model';
 import { EPerson } from '../../../core/api/models/eperson.model';

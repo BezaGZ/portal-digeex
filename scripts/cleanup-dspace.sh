@@ -20,7 +20,7 @@ fi
 
 BASE_URL="${DSPACE_REST_URL:-http://localhost:8080/server}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@digeex.gob.gt}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-bezaleel1234}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-bezaleelj1}"
 
 COOKIES_FILE=$(mktemp)
 trap "rm -f $COOKIES_FILE" EXIT
@@ -92,6 +92,34 @@ for UUID in $UUIDS; do
     echo "Error (HTTP $STATUS)"
   fi
 done
+
+echo ""
+echo "Eliminando grupos del rol del portal (ADMIN_*, SUBMITTERS_*) y técnicos huérfanos (COMMUNITY_*_ADMIN, COLLECTION_*_SUBMIT)..."
+# Los técnicos auto-nombrados deberían cascadear con la community/collection,
+# pero si quedaron huérfanos de runs anteriores, este barrido los limpia.
+ROLE_GROUPS=$(curl -s -X GET \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  "$BASE_URL/api/eperson/groups?size=200" | \
+  jq -r '._embedded.groups[] | select(.permanent == false and (.name | test("^(ADMIN_|SUBMITTERS_|COMMUNITY_|COLLECTION_)"))) | "\(.uuid)|\(.name)"')
+
+if [ -n "$ROLE_GROUPS" ]; then
+  echo "$ROLE_GROUPS" | while IFS='|' read -r G_UUID G_NAME; do
+    echo -n "  Eliminando grupo: $G_NAME ($G_UUID)... "
+    G_STATUS=$(curl -s -w "%{http_code}" -o /dev/null -X DELETE \
+      -b "$COOKIES_FILE" \
+      -H "Authorization: Bearer $JWT" \
+      -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+      "$BASE_URL/api/eperson/groups/$G_UUID")
+    if [ "$G_STATUS" = "204" ]; then
+      echo -e "${GREEN}OK${NC}"
+    else
+      echo "Error (HTTP $G_STATUS)"
+    fi
+  done
+else
+  echo "  No hay grupos del portal para eliminar."
+fi
 
 echo ""
 echo "Limpieza completada."

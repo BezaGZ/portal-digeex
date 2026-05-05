@@ -16,7 +16,7 @@ import {
   isPortalRoleGroup,
   resolveRoleFromGroups,
 } from './role-resolver';
-import { BusinessRuleError } from './business-rule-error';
+import { BusinessRuleError } from '../../../../core/error/business-rule-error';
 
 /**
  * Entrada del alta. El UI pasa el grupo concreto al que va el eperson (uuid + name).

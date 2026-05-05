@@ -315,8 +315,25 @@ ED_BASICA_RESPONSE=$(curl -s -X POST \
 ED_BASICA_UUID=$(echo "$ED_BASICA_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
 log_success "Educacion Basica creada (UUID: $ED_BASICA_UUID)"
 
-# Crear grupo de administradores para Educacion Basica
-log_info "Creando adminGroup para Educacion Basica"
+# Patrón subgroup contract-compliant: POST sobre el subrecurso crea el adminGroup
+# técnico (DSpace lo nombra COMMUNITY_<uuid>_ADMIN) y lo asocia a la community.
+# Luego POST sobre /eperson/groups crea ADMIN_ED_BASICA standalone con nombre
+# custom (que el role-resolver del Sprint 5 busca por prefijo). Finalmente POST
+# .../subgroups con text/uri-list enlaza ADMIN_ED_BASICA como subgrupo del técnico,
+# para que DSpace reconozca a sus miembros como admins de la community por
+# herencia transitiva.
+log_info "Creando adminGroup técnico para Educacion Basica"
+TECH_ADMIN_BASICA_RESPONSE=$(curl -s -X POST \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"metadata":{"dc.description":[{"value":"adminGroup técnico de Subdirección de Educación Básica (auto-nombrado por DSpace)"}]}}' \
+  "$BASE_URL/api/core/communities/$ED_BASICA_UUID/adminGroup")
+
+TECH_ADMIN_BASICA_UUID=$(echo "$TECH_ADMIN_BASICA_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+
+log_info "Creando ADMIN_ED_BASICA standalone (nombre custom para role-resolver)"
 ADMIN_GROUP_BASICA_RESPONSE=$(curl -s -X POST \
   -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" \
@@ -332,16 +349,15 @@ ADMIN_GROUP_BASICA_RESPONSE=$(curl -s -X POST \
 
 ADMIN_GROUP_BASICA_UUID=$(echo "$ADMIN_GROUP_BASICA_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
 
-# Vincular grupo como adminGroup de la comunidad
-curl -s -X PUT \
+curl -s -X POST \
   -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" \
   -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: text/uri-list" \
   -d "$BASE_URL/api/eperson/groups/$ADMIN_GROUP_BASICA_UUID" \
-  "$BASE_URL/api/core/communities/$ED_BASICA_UUID/adminGroup" > /dev/null
+  "$BASE_URL/api/eperson/groups/$TECH_ADMIN_BASICA_UUID/subgroups" > /dev/null
 
-log_success "adminGroup vinculado (UUID: $ADMIN_GROUP_BASICA_UUID)"
+log_success "ADMIN_ED_BASICA wireado vía subgroup (UUID: $ADMIN_GROUP_BASICA_UUID; técnico parent: $TECH_ADMIN_BASICA_UUID)"
 
 # Crear grupo de personal delegado (submittersGroup compartido) para Educacion Basica
 log_info "Creando submittersGroup para Educacion Basica"
@@ -381,8 +397,19 @@ ED_TRABAJO_RESPONSE=$(curl -s -X POST \
 ED_TRABAJO_UUID=$(echo "$ED_TRABAJO_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
 log_success "Educacion para el Trabajo y la Cultura creada (UUID: $ED_TRABAJO_UUID)"
 
-# Crear grupo de administradores para Educacion para el Trabajo
-log_info "Creando adminGroup para Educacion para el Trabajo"
+# Patrón subgroup contract-compliant (ver Educación Básica para detalle).
+log_info "Creando adminGroup técnico para Educacion para el Trabajo"
+TECH_ADMIN_TRABAJO_RESPONSE=$(curl -s -X POST \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"metadata":{"dc.description":[{"value":"adminGroup técnico de Subdirección para el Trabajo y la Cultura (auto-nombrado por DSpace)"}]}}' \
+  "$BASE_URL/api/core/communities/$ED_TRABAJO_UUID/adminGroup")
+
+TECH_ADMIN_TRABAJO_UUID=$(echo "$TECH_ADMIN_TRABAJO_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+
+log_info "Creando ADMIN_ED_TRABAJO standalone (nombre custom para role-resolver)"
 ADMIN_GROUP_TRABAJO_RESPONSE=$(curl -s -X POST \
   -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" \
@@ -398,16 +425,15 @@ ADMIN_GROUP_TRABAJO_RESPONSE=$(curl -s -X POST \
 
 ADMIN_GROUP_TRABAJO_UUID=$(echo "$ADMIN_GROUP_TRABAJO_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
 
-# Vincular grupo como adminGroup de la comunidad
-curl -s -X PUT \
+curl -s -X POST \
   -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" \
   -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: text/uri-list" \
   -d "$BASE_URL/api/eperson/groups/$ADMIN_GROUP_TRABAJO_UUID" \
-  "$BASE_URL/api/core/communities/$ED_TRABAJO_UUID/adminGroup" > /dev/null
+  "$BASE_URL/api/eperson/groups/$TECH_ADMIN_TRABAJO_UUID/subgroups" > /dev/null
 
-log_success "adminGroup vinculado (UUID: $ADMIN_GROUP_TRABAJO_UUID)"
+log_success "ADMIN_ED_TRABAJO wireado vía subgroup (UUID: $ADMIN_GROUP_TRABAJO_UUID; técnico parent: $TECH_ADMIN_TRABAJO_UUID)"
 
 # Crear grupo de personal delegado (submittersGroup compartido) para Educacion para el Trabajo
 log_info "Creando submittersGroup para Educacion para el Trabajo"
@@ -447,8 +473,19 @@ ED_INVESTIGACION_RESPONSE=$(curl -s -X POST \
 ED_INVESTIGACION_UUID=$(echo "$ED_INVESTIGACION_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
 log_success "Formacion, Investigacion y Proyectos creada (UUID: $ED_INVESTIGACION_UUID)"
 
-# Crear grupo de administradores para Formacion, Investigacion y Proyectos
-log_info "Creando adminGroup para Formacion, Investigacion y Proyectos"
+# Patrón subgroup contract-compliant (ver Educación Básica para detalle).
+log_info "Creando adminGroup técnico para Formacion, Investigacion y Proyectos"
+TECH_ADMIN_INVESTIGACION_RESPONSE=$(curl -s -X POST \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"metadata":{"dc.description":[{"value":"adminGroup técnico de Subdirección de Formación, Investigación y Proyectos (auto-nombrado por DSpace)"}]}}' \
+  "$BASE_URL/api/core/communities/$ED_INVESTIGACION_UUID/adminGroup")
+
+TECH_ADMIN_INVESTIGACION_UUID=$(echo "$TECH_ADMIN_INVESTIGACION_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+
+log_info "Creando ADMIN_ED_INVESTIGACION standalone (nombre custom para role-resolver)"
 ADMIN_GROUP_INVESTIGACION_RESPONSE=$(curl -s -X POST \
   -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" \
@@ -464,16 +501,15 @@ ADMIN_GROUP_INVESTIGACION_RESPONSE=$(curl -s -X POST \
 
 ADMIN_GROUP_INVESTIGACION_UUID=$(echo "$ADMIN_GROUP_INVESTIGACION_RESPONSE" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
 
-# Vincular grupo como adminGroup de la comunidad
-curl -s -X PUT \
+curl -s -X POST \
   -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" \
   -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: text/uri-list" \
   -d "$BASE_URL/api/eperson/groups/$ADMIN_GROUP_INVESTIGACION_UUID" \
-  "$BASE_URL/api/core/communities/$ED_INVESTIGACION_UUID/adminGroup" > /dev/null
+  "$BASE_URL/api/eperson/groups/$TECH_ADMIN_INVESTIGACION_UUID/subgroups" > /dev/null
 
-log_success "adminGroup vinculado (UUID: $ADMIN_GROUP_INVESTIGACION_UUID)"
+log_success "ADMIN_ED_INVESTIGACION wireado vía subgroup (UUID: $ADMIN_GROUP_INVESTIGACION_UUID; técnico parent: $TECH_ADMIN_INVESTIGACION_UUID)"
 
 # Crear grupo de personal delegado (submittersGroup compartido) para Formacion e Investigacion
 log_info "Creando submittersGroup para Formacion, Investigacion y Proyectos"
@@ -617,31 +653,28 @@ COLLECTIONS_BASICA=$(curl -s -X GET \
   -H "Authorization: Bearer $JWT" \
   "$BASE_URL/api/core/communities/$ED_BASICA_UUID/collections")
 
-echo "$COLLECTIONS_BASICA" | python3 -c "
-import sys, json, subprocess, os
-data = json.load(sys.stdin)
-collections = data.get('_embedded', {}).get('collections', [])
-base_url = os.environ.get('BASE_URL', 'http://localhost:8080/server')
-group_uuid = os.environ.get('SUBMITTERS_GROUP_BASICA_UUID', '')
-cookies_file = os.environ.get('COOKIES_FILE', '')
-jwt = os.environ.get('JWT', '')
-csrf_token = os.environ.get('CSRF_TOKEN', '')
-
-for coll in collections:
-    coll_uuid = coll.get('uuid')
-    coll_name = coll.get('name')
-    if coll_uuid:
-        subprocess.run([
-            'curl', '-s', '-X', 'PUT',
-            '-b', cookies_file,
-            '-H', f'Authorization: Bearer {jwt}',
-            '-H', f'X-XSRF-TOKEN: {csrf_token}',
-            '-H', 'Content-Type: text/uri-list',
-            '-d', f'{base_url}/api/eperson/groups/{group_uuid}',
-            f'{base_url}/api/core/collections/{coll_uuid}/submittersGroup'
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=os.environ)
-        print(f'  ✓ {coll_name}')
-" 2>/dev/null || log_warning "Error vinculando submittersGroups de Ed. Basica"
+echo "$COLLECTIONS_BASICA" | jq -r '._embedded.collections[] | "\(.uuid)|\(.name)"' | while IFS='|' read -r COLL_UUID COLL_NAME; do
+  TECH_SUBM_RESP=$(curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"metadata":{"dc.description":[{"value":"submittersGroup técnico de la collection"}]}}' \
+    "$BASE_URL/api/core/collections/$COLL_UUID/submittersGroup")
+  TECH_SUBM_UUID=$(echo "$TECH_SUBM_RESP" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+  if [ -z "$TECH_SUBM_UUID" ]; then
+    echo "  ✗ $COLL_NAME (POST submittersGroup no devolvió uuid)"
+    continue
+  fi
+  curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: text/uri-list" \
+    -d "$BASE_URL/api/eperson/groups/$SUBMITTERS_GROUP_BASICA_UUID" \
+    "$BASE_URL/api/eperson/groups/$TECH_SUBM_UUID/subgroups" > /dev/null
+  echo "  ✓ $COLL_NAME"
+done
 
 # Obtener todas las colecciones de Educacion para el Trabajo y vincular el submittersGroup
 COLLECTIONS_TRABAJO=$(curl -s -X GET \
@@ -649,31 +682,28 @@ COLLECTIONS_TRABAJO=$(curl -s -X GET \
   -H "Authorization: Bearer $JWT" \
   "$BASE_URL/api/core/communities/$ED_TRABAJO_UUID/collections")
 
-echo "$COLLECTIONS_TRABAJO" | python3 -c "
-import sys, json, subprocess, os
-data = json.load(sys.stdin)
-collections = data.get('_embedded', {}).get('collections', [])
-base_url = os.environ.get('BASE_URL', 'http://localhost:8080/server')
-group_uuid = os.environ.get('SUBMITTERS_GROUP_TRABAJO_UUID', '')
-cookies_file = os.environ.get('COOKIES_FILE', '')
-jwt = os.environ.get('JWT', '')
-csrf_token = os.environ.get('CSRF_TOKEN', '')
-
-for coll in collections:
-    coll_uuid = coll.get('uuid')
-    coll_name = coll.get('name')
-    if coll_uuid:
-        subprocess.run([
-            'curl', '-s', '-X', 'PUT',
-            '-b', cookies_file,
-            '-H', f'Authorization: Bearer {jwt}',
-            '-H', f'X-XSRF-TOKEN: {csrf_token}',
-            '-H', 'Content-Type: text/uri-list',
-            '-d', f'{base_url}/api/eperson/groups/{group_uuid}',
-            f'{base_url}/api/core/collections/{coll_uuid}/submittersGroup'
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=os.environ)
-        print(f'  ✓ {coll_name}')
-" 2>/dev/null || log_warning "Error vinculando submittersGroups de Ed. Trabajo"
+echo "$COLLECTIONS_TRABAJO" | jq -r '._embedded.collections[] | "\(.uuid)|\(.name)"' | while IFS='|' read -r COLL_UUID COLL_NAME; do
+  TECH_SUBM_RESP=$(curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"metadata":{"dc.description":[{"value":"submittersGroup técnico de la collection"}]}}' \
+    "$BASE_URL/api/core/collections/$COLL_UUID/submittersGroup")
+  TECH_SUBM_UUID=$(echo "$TECH_SUBM_RESP" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+  if [ -z "$TECH_SUBM_UUID" ]; then
+    echo "  ✗ $COLL_NAME (POST submittersGroup no devolvió uuid)"
+    continue
+  fi
+  curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: text/uri-list" \
+    -d "$BASE_URL/api/eperson/groups/$SUBMITTERS_GROUP_TRABAJO_UUID" \
+    "$BASE_URL/api/eperson/groups/$TECH_SUBM_UUID/subgroups" > /dev/null
+  echo "  ✓ $COLL_NAME"
+done
 
 # Obtener todas las colecciones de Formacion e Investigacion y vincular el submittersGroup
 COLLECTIONS_INVESTIGACION=$(curl -s -X GET \
@@ -681,31 +711,28 @@ COLLECTIONS_INVESTIGACION=$(curl -s -X GET \
   -H "Authorization: Bearer $JWT" \
   "$BASE_URL/api/core/communities/$ED_INVESTIGACION_UUID/collections")
 
-echo "$COLLECTIONS_INVESTIGACION" | python3 -c "
-import sys, json, subprocess, os
-data = json.load(sys.stdin)
-collections = data.get('_embedded', {}).get('collections', [])
-base_url = os.environ.get('BASE_URL', 'http://localhost:8080/server')
-group_uuid = os.environ.get('SUBMITTERS_GROUP_INVESTIGACION_UUID', '')
-cookies_file = os.environ.get('COOKIES_FILE', '')
-jwt = os.environ.get('JWT', '')
-csrf_token = os.environ.get('CSRF_TOKEN', '')
-
-for coll in collections:
-    coll_uuid = coll.get('uuid')
-    coll_name = coll.get('name')
-    if coll_uuid:
-        subprocess.run([
-            'curl', '-s', '-X', 'PUT',
-            '-b', cookies_file,
-            '-H', f'Authorization: Bearer {jwt}',
-            '-H', f'X-XSRF-TOKEN: {csrf_token}',
-            '-H', 'Content-Type: text/uri-list',
-            '-d', f'{base_url}/api/eperson/groups/{group_uuid}',
-            f'{base_url}/api/core/collections/{coll_uuid}/submittersGroup'
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=os.environ)
-        print(f'  ✓ {coll_name}')
-" 2>/dev/null || log_warning "Error vinculando submittersGroups de Ed. Investigacion"
+echo "$COLLECTIONS_INVESTIGACION" | jq -r '._embedded.collections[] | "\(.uuid)|\(.name)"' | while IFS='|' read -r COLL_UUID COLL_NAME; do
+  TECH_SUBM_RESP=$(curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"metadata":{"dc.description":[{"value":"submittersGroup técnico de la collection"}]}}' \
+    "$BASE_URL/api/core/collections/$COLL_UUID/submittersGroup")
+  TECH_SUBM_UUID=$(echo "$TECH_SUBM_RESP" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+  if [ -z "$TECH_SUBM_UUID" ]; then
+    echo "  ✗ $COLL_NAME (POST submittersGroup no devolvió uuid)"
+    continue
+  fi
+  curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: text/uri-list" \
+    -d "$BASE_URL/api/eperson/groups/$SUBMITTERS_GROUP_INVESTIGACION_UUID" \
+    "$BASE_URL/api/eperson/groups/$TECH_SUBM_UUID/subgroups" > /dev/null
+  echo "  ✓ $COLL_NAME"
+done
 
 log_success "submittersGroups vinculados a todas las colecciones"
 

@@ -29,7 +29,7 @@ import {
   ChangeUserRoleInput,
   UpdateUserInput,
 } from './services/user-management.service';
-import { BusinessRuleError, BusinessRuleErrorCode } from './services/business-rule-error';
+import { BusinessRuleError, BusinessRuleErrorCode } from '../../../core/error/business-rule-error';
 import { UserView } from './models/user-view.model';
 import { Paginated } from '../../../core/api/models/hal.model';
 import { Group } from '../../../core/api/models/group.model';
