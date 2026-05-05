@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { catchError, map, switchMap, take } from 'rxjs/operators';
 import { CommunityApiService } from '../../../../core/api/community-api.service';
 import { GroupApiService } from '../../../../core/api/group-api.service';
@@ -13,6 +13,7 @@ import {
   GROUPS_COLLECTION_PATH,
   buildAbsoluteApiUrl,
 } from '../../../../core/api/dspace-rest.util';
+import { rollbackCascade } from './facade-utils';
 
 /**
  * Coordina create/update/delete de subdirecciones (sub-comunidades de la
@@ -176,20 +177,12 @@ export class CommunityFacade {
   ): Observable<never> {
     const cleanup$: Observable<unknown>[] = [];
     if (standaloneAdminUuid) {
-      cleanup$.push(this.groupApi.delete(standaloneAdminUuid).pipe(catchError(() => of(undefined))));
+      cleanup$.push(this.groupApi.delete(standaloneAdminUuid));
     }
     if (communityUuid) {
-      cleanup$.push(this.communityApi.delete(communityUuid).pipe(catchError(() => of(undefined))));
+      cleanup$.push(this.communityApi.delete(communityUuid));
     }
-    if (cleanup$.length === 0) {
-      return throwError(() => originalError);
-    }
-    return cleanup$
-      .reduce(
-        (acc, next) => acc.pipe(switchMap(() => next)),
-        of(undefined) as Observable<unknown>,
-      )
-      .pipe(switchMap(() => throwError(() => originalError)));
+    return rollbackCascade(cleanup$, originalError);
   }
 
   private resolveCaller$(): Observable<Caller> {
