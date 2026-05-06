@@ -26,4 +26,18 @@ export class CommunityTable {
   readonly editRequest = output<Community>();
   readonly deleteRequest = output<Community>();
   readonly lazyLoad = output<TableLazyLoadEvent>();
+
+  /**
+   * Nombre corto: convención setup-dspace.sh lo guarda en dc.title.alternative
+   * (qualifier nativo del schema dc, semánticamente "título alternativo").
+   * El campo `name` no se puede usar como fuente porque DSpace 9.x lo
+   * sobrescribe con dc.title al consultarlo.
+   */
+  getNombreCorto(row: Community): string {
+    return row.metadata?.['dc.title.alternative']?.[0]?.value ?? row.name;
+  }
+
+  getTituloCompleto(row: Community): string {
+    return row.metadata?.['dc.title']?.[0]?.value ?? row.name;
+  }
 }

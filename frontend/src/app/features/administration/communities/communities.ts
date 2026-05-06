@@ -28,7 +28,8 @@ import { CommunityDialog } from './components/community-dialog/community-dialog'
 import { SubdireccionView } from './models/subdireccion-view.model';
 
 interface SubdireccionFormPayload {
-  name: string;
+  nombreCorto: string;
+  tituloCompleto: string;
   sufijo: string;
   description: string;
 }
@@ -82,6 +83,24 @@ export class Communities {
   readonly editTargetSufijo = computed(() => {
     const t = this.editTarget();
     return t ? this.extractSufijo(t) : '';
+  });
+
+  /**
+   * Nombre corto de la subdirección. Se guarda en `dc.title.alternative`
+   * (qualifier nativo del schema dc): es semánticamente "título alternativo"
+   * — la forma corta del título oficial — y sobrevive el quirk de DSpace
+   * 9.x que sobrescribe `name` con `dc.title` al consultar el recurso.
+   * Mismo campo que se usa para la sigla del programa.
+   */
+  readonly editTargetNombreCorto = computed(() => {
+    const t = this.editTarget();
+    return t?.metadata?.['dc.title.alternative']?.[0]?.value ?? t?.name ?? '';
+  });
+
+  /** Título completo de la subdirección, leído de dc.title del metadata. */
+  readonly editTargetTituloCompleto = computed(() => {
+    const t = this.editTarget();
+    return t?.metadata?.['dc.title']?.[0]?.value ?? t?.name ?? '';
   });
 
   /** Descripción del target en edición, leída de dc.description del metadata. */
@@ -150,9 +169,17 @@ export class Communities {
   }
 
   handleCreateSubmit(payload: SubdireccionFormPayload): void {
+    // Convención setup-dspace.sh: el nombre corto va en `name` (DSpace lo
+    // termina sobreescribiendo con dc.title) y replicado en
+    // `dc.title.alternative`, que es la fuente estable de lectura. El
+    // título completo va en `dc.title`. Mismo campo que la sigla en
+    // programas para tener un solo modelo mental.
     const metadata: CommunityCreateBody['metadata'] = {
       'dc.title': [
-        { value: payload.name, language: null, authority: null, confidence: -1, place: 0 },
+        { value: payload.tituloCompleto, language: null, authority: null, confidence: -1, place: 0 },
+      ],
+      'dc.title.alternative': [
+        { value: payload.nombreCorto, language: null, authority: null, confidence: -1, place: 0 },
       ],
     };
     if (payload.description?.trim()) {
@@ -161,7 +188,7 @@ export class Communities {
       ];
     }
     const body: CommunityCreateBody = {
-      name: payload.name,
+      name: payload.nombreCorto,
       type: 'community',
       metadata,
     };
@@ -180,8 +207,13 @@ export class Communities {
     if (!target) {
       return;
     }
+    // nombreCorto y sufijo son inmutables después de crear: nombreCorto
+    // está atado a dc.title.alternative (identificador estable, espejo de
+    // la sigla en programas) y sufijo rompe los grupos ADMIN_<sufijo>/
+    // SUBMITTERS_<sufijo>. Solo se patchean tituloCompleto (dc.title)
+    // y descripción.
     const patch: JsonPatchEntry[] = [
-      { op: 'replace', path: '/metadata/dc.title/0/value', value: payload.name },
+      { op: 'replace', path: '/metadata/dc.title/0/value', value: payload.tituloCompleto },
       // El path /metadata/dc.description con value array funciona aunque el
       // campo no exista todavía: JSON Patch add reemplaza si existe y crea
       // si no. Cubre las subdirecciones de setup que ya tienen descripción
@@ -205,8 +237,13 @@ export class Communities {
   }
 
   handleDelete(target: Community, sufijo: string): void {
+    // Para el mensaje uso el nombre corto (dc.title.alternative) si está,
+    // fallback a name. En subdirecciones backfileadas con setup-dspace.sh
+    // el corto es siempre más legible que el dc.title largo (Subdirección
+    // de ...).
+    const labelCorto = target.metadata?.['dc.title.alternative']?.[0]?.value ?? target.name;
     this.confirmation.confirm({
-      message: `¿Eliminar la subdirección "${target.name}"? Esta acción borra también sus colecciones, items y grupos asociados.`,
+      message: `¿Eliminar la subdirección "${labelCorto}"? Esta acción borra también sus colecciones, items y grupos asociados.`,
       header: 'Confirmar eliminación',
       icon: 'pi pi-exclamation-triangle',
       rejectButtonProps: {

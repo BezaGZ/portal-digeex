@@ -7,6 +7,7 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
@@ -17,7 +18,8 @@ import { TextareaModule } from 'primeng/textarea';
 export type CommunityDialogMode = 'closed' | 'create' | 'edit';
 
 export interface CommunityDialogPayload {
-  name: string;
+  nombreCorto: string;
+  tituloCompleto: string;
   sufijo: string;
   description: string;
 }
@@ -39,7 +41,8 @@ export class CommunityDialog {
   private readonly fb = inject(FormBuilder);
 
   readonly mode = input.required<CommunityDialogMode>();
-  readonly initialName = input<string>('');
+  readonly initialNombreCorto = input<string>('');
+  readonly initialTituloCompleto = input<string>('');
   readonly initialSufijo = input<string>('');
   readonly initialDescription = input<string>('');
 
@@ -47,58 +50,63 @@ export class CommunityDialog {
   readonly cancelForm = output<void>();
 
   readonly form = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.minLength(2)]],
+    nombreCorto: ['', [Validators.required, Validators.minLength(2)]],
+    tituloCompleto: ['', [Validators.required, Validators.minLength(2)]],
     sufijo: ['', [Validators.required, Validators.pattern(/^[A-Z][A-Z0-9_]*$/)]],
     description: [''],
   });
 
   /**
-   * Snapshot del valor inicial del form. Se actualiza cada vez que el
-   * dialog se reabre. Sirve de baseline para detectar si el usuario
-   * realmente modificó algo y habilitar/deshabilitar el botón Guardar.
+   * Snapshot del valor inicial del form. Sirve de baseline para detectar
+   * si el usuario realmente modificó algo y habilitar/deshabilitar el
+   * botón Guardar. El nombreCorto NO entra en el snapshot porque está
+   * bloqueado en edit (es identificador estable como sufijo y siglas).
    */
-  private readonly snapshot = signal<{ name: string; description: string }>({
-    name: '',
+  private readonly snapshot = signal<{ tituloCompleto: string; description: string }>({
+    tituloCompleto: '',
     description: '',
   });
 
-  /** Versión observable del valor del form para comparar contra el snapshot. */
-  private readonly formValue = signal<{ name: string; description: string }>({
-    name: '',
+  private readonly formValue = signal<{ tituloCompleto: string; description: string }>({
+    tituloCompleto: '',
     description: '',
   });
 
-  /** True si algún campo editable cambió respecto al estado inicial. */
   readonly hasChanges = computed(() => {
     const s = this.snapshot();
     const v = this.formValue();
-    return s.name !== v.name || s.description !== v.description;
+    return s.tituloCompleto !== v.tituloCompleto || s.description !== v.description;
   });
 
   constructor() {
     effect(() => {
       const m = this.mode();
-      const baseline = {
-        name: this.initialName(),
-        description: this.initialDescription(),
-      };
-      this.snapshot.set(baseline);
-      this.formValue.set(baseline);
-      this.form.reset({
-        name: this.initialName(),
-        sufijo: this.initialSufijo(),
-        description: this.initialDescription(),
+      untracked(() => {
+        const baseline = {
+          tituloCompleto: this.initialTituloCompleto(),
+          description: this.initialDescription(),
+        };
+        this.snapshot.set(baseline);
+        this.formValue.set(baseline);
+        this.form.reset({
+          nombreCorto: this.initialNombreCorto(),
+          tituloCompleto: this.initialTituloCompleto(),
+          sufijo: this.initialSufijo(),
+          description: this.initialDescription(),
+        });
+        if (m === 'edit') {
+          this.form.controls.nombreCorto.disable({ emitEvent: false });
+          this.form.controls.sufijo.disable({ emitEvent: false });
+        } else {
+          this.form.controls.nombreCorto.enable({ emitEvent: false });
+          this.form.controls.sufijo.enable({ emitEvent: false });
+        }
       });
-      if (m === 'edit') {
-        this.form.controls.sufijo.disable({ emitEvent: false });
-      } else {
-        this.form.controls.sufijo.enable({ emitEvent: false });
-      }
     });
 
     this.form.valueChanges.subscribe((v) => {
       this.formValue.set({
-        name: v.name ?? '',
+        tituloCompleto: v.tituloCompleto ?? '',
         description: v.description ?? '',
       });
     });
@@ -109,7 +117,8 @@ export class CommunityDialog {
       return;
     }
     this.submitForm.emit({
-      name: this.form.controls.name.value,
+      nombreCorto: this.form.controls.nombreCorto.value || this.initialNombreCorto(),
+      tituloCompleto: this.form.controls.tituloCompleto.value,
       sufijo: this.form.controls.sufijo.value || this.initialSufijo(),
       description: this.form.controls.description.value,
     });

@@ -252,6 +252,46 @@ else
 fi
 
 # ----------------------------------------------------------------------------
+# Verificacion de dc.title.alternative (sigla de programa / nombre corto de
+# subdireccion). Es un qualifier nativo del schema dc en DSpace 9.x, asi que
+# normalmente ya esta registrado; el check es defensivo para que un schema
+# truncado no falle silenciosamente al crear comunidades y colecciones.
+# ----------------------------------------------------------------------------
+log_info "Verificando dc.title.alternative en el schema dc..."
+
+EXISTING_DC_ALT=$(curl -s -X GET \
+  -b "$COOKIES_FILE" \
+  -H "Authorization: Bearer $JWT" \
+  "$BASE_URL/api/core/metadatafields/search/byFieldName?schema=dc&element=title&qualifier=alternative")
+
+HAS_DC_ALT=$(echo "$EXISTING_DC_ALT" | grep -c '"qualifier" : "alternative"' || true)
+
+if [ "$HAS_DC_ALT" -gt 0 ]; then
+  log_success "  dc.title.alternative ya existe"
+else
+  log_info "  dc.title.alternative no estaba registrado, registrandolo..."
+
+  DC_SCHEMA_ID=$(curl -s -X GET \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    "$BASE_URL/api/core/metadataschemas/search/byPrefix?prefix=dc" | grep -o '"id" : [0-9]*' | head -1 | sed 's/"id" : //')
+
+  if [ -z "$DC_SCHEMA_ID" ]; then
+    log_error "No se pudo encontrar el schema dc"
+  fi
+
+  curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"element":"title","qualifier":"alternative","scopeNote":"Titulo alternativo. En DIGEEX se usa como sigla de programa (PEAC, PRONEA) y nombre corto de subdireccion (Educacion Basica)."}' \
+    "$BASE_URL/api/core/metadatafields?schemaId=$DC_SCHEMA_ID" > /dev/null
+
+  log_success "  dc.title.alternative registrado"
+fi
+
+# ----------------------------------------------------------------------------
 # Top-Level Community: DIGEEX
 # ----------------------------------------------------------------------------
 log_info "Verificando si DIGEEX ya existe..."
@@ -308,6 +348,7 @@ ED_BASICA_RESPONSE=$(curl -s -X POST \
     "name": "Educación Básica",
     "metadata": {
       "dc.title": [{"value": "Subdirección de Educación Básica"}],
+      "dc.title.alternative": [{"value": "Educación Básica"}],
       "dc.description": [{"value": "Programas de educación básica extraescolar dirigidos a jóvenes y adultos que no tuvieron acceso a la educación formal. Incluye PEAC, PRONEA, Modalidades Flexibles y EVA."}],
       "digeex.sufijo": [{"value": "ED_BASICA"}]
     }
@@ -391,6 +432,7 @@ ED_TRABAJO_RESPONSE=$(curl -s -X POST \
     "name": "Educación para el Trabajo y la Cultura",
     "metadata": {
       "dc.title": [{"value": "Subdirección para el Trabajo y la Cultura"}],
+      "dc.title.alternative": [{"value": "Educación para el Trabajo y la Cultura"}],
       "dc.description": [{"value": "Programas de formación técnica, capacitación laboral y promoción cultural. Incluye CEMUCAF, PROBEFI, ETCAE y SCC, orientados al desarrollo de competencias para el trabajo y el fortalecimiento cultural."}],
       "digeex.sufijo": [{"value": "ED_TRABAJO"}]
     }
@@ -468,6 +510,7 @@ ED_INVESTIGACION_RESPONSE=$(curl -s -X POST \
     "name": "Formación, Investigación y Proyectos Educativos",
     "metadata": {
       "dc.title": [{"value": "Subdirección de Formación, Investigación y Proyectos Educativos"}],
+      "dc.title.alternative": [{"value": "Formación, Investigación y Proyectos Educativos"}],
       "dc.description": [{"value": "Área de investigación educativa, generación de conocimiento, innovación pedagógica y gestión documental institucional. Incluye investigaciones, experiencias significativas, datos estadísticos, galería institucional, informes de gestión, y normativa vigente."}],
       "digeex.sufijo": [{"value": "ED_INVESTIGACION"}]
     }
@@ -541,28 +584,28 @@ log_info "Creando colecciones de Educacion Basica..."
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"PEAC","metadata":{"dc.title":[{"value":"Programa de Educación de Adultos por Correspondencia"}],"dc.description":[{"value":"Modalidad de educación a distancia dirigida a jóvenes y adultos que desean completar la educación primaria mediante materiales autoinstructivos. Incluye guías de estudio, evaluaciones y recursos pedagógicos del programa PEAC."}],"dc.subject":[{"value":"PEAC"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"1"}]}}' \
+  -d '{"name":"PEAC","metadata":{"dc.title":[{"value":"Programa de Educación de Adultos por Correspondencia"}],"dc.description":[{"value":"Modalidad de educación a distancia dirigida a jóvenes y adultos que desean completar la educación primaria mediante materiales autoinstructivos. Incluye guías de estudio, evaluaciones y recursos pedagógicos del programa PEAC."}],"dc.title.alternative":[{"value":"PEAC"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"1"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_BASICA_UUID" > /dev/null
 log_success "  PEAC"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Modalidades Flexibles","metadata":{"dc.title":[{"value":"Programa Modalidades Flexibles para la Educación Media"}],"dc.description":[{"value":"Programa de educación media con metodologías flexibles dirigido a jóvenes y adultos de 15 años en adelante. Atiende ciclo básico y diversificado mediante modalidades semipresenciales y a distancia. Incluye recursos educativos, lineamientos metodológicos y materiales de apoyo adaptados a las necesidades de los estudiantes."}],"dc.subject":[{"value":"Modalidades Flexibles"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"2"}]}}' \
+  -d '{"name":"Modalidades Flexibles","metadata":{"dc.title":[{"value":"Programa Modalidades Flexibles para la Educación Media"}],"dc.description":[{"value":"Programa de educación media con metodologías flexibles dirigido a jóvenes y adultos de 15 años en adelante. Atiende ciclo básico y diversificado mediante modalidades semipresenciales y a distancia. Incluye recursos educativos, lineamientos metodológicos y materiales de apoyo adaptados a las necesidades de los estudiantes."}],"dc.title.alternative":[{"value":"Modalidades Flexibles"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"2"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_BASICA_UUID" > /dev/null
 log_success "  Modalidades Flexibles"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"PRONEA","metadata":{"dc.title":[{"value":"Programa Nacional de Educación Alternativa"}],"dc.description":[{"value":"Programa de alfabetización y educación básica para población adulta mediante metodologías flexibles y contextualizadas. Contiene materiales didácticos, manuales para facilitadores y documentación del programa PRONEA."}],"dc.subject":[{"value":"PRONEA"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"3"}]}}' \
+  -d '{"name":"PRONEA","metadata":{"dc.title":[{"value":"Programa Nacional de Educación Alternativa"}],"dc.description":[{"value":"Programa de alfabetización y educación básica para población adulta mediante metodologías flexibles y contextualizadas. Contiene materiales didácticos, manuales para facilitadores y documentación del programa PRONEA."}],"dc.title.alternative":[{"value":"PRONEA"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"3"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_BASICA_UUID" > /dev/null
 log_success "  PRONEA"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"EVA","metadata":{"dc.title":[{"value":"Entornos Virtuales de Aprendizaje"}],"dc.description":[{"value":"Plataforma de entornos virtuales que ofrece recursos educativos digitales, cursos en línea y herramientas tecnológicas para el subsistema de educación extraescolar. Contiene recursos multimedia, evaluaciones virtuales y materiales de apoyo para la formación a distancia del programa EVA."}],"dc.subject":[{"value":"EVA"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"7"}]}}' \
+  -d '{"name":"EVA","metadata":{"dc.title":[{"value":"Entornos Virtuales de Aprendizaje"}],"dc.description":[{"value":"Plataforma de entornos virtuales que ofrece recursos educativos digitales, cursos en línea y herramientas tecnológicas para el subsistema de educación extraescolar. Contiene recursos multimedia, evaluaciones virtuales y materiales de apoyo para la formación a distancia del programa EVA."}],"dc.title.alternative":[{"value":"EVA"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"7"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_BASICA_UUID" > /dev/null
 log_success "  EVA"
 
@@ -574,28 +617,28 @@ log_info "Creando colecciones de Educacion para el Trabajo y la Cultura..."
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"CEMUCAF","metadata":{"dc.title":[{"value":"Centros Municipales de Capacitación y Formación Humana"}],"dc.description":[{"value":"Red de centros de formación técnica y capacitación laboral en comunidades. Contiene materiales de capacitación, manuales técnicos, currículos y recursos pedagógicos del programa CEMUCAF."}],"dc.subject":[{"value":"CEMUCAF"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"4"}]}}' \
+  -d '{"name":"CEMUCAF","metadata":{"dc.title":[{"value":"Centros Municipales de Capacitación y Formación Humana"}],"dc.description":[{"value":"Red de centros de formación técnica y capacitación laboral en comunidades. Contiene materiales de capacitación, manuales técnicos, currículos y recursos pedagógicos del programa CEMUCAF."}],"dc.title.alternative":[{"value":"CEMUCAF"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"4"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_TRABAJO_UUID" > /dev/null
 log_success "  CEMUCAF"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"SCC","metadata":{"dc.title":[{"value":"Sistema de Certificación de Competencias"}],"dc.description":[{"value":"Sistema de reconocimiento y certificación de competencias laborales adquiridas por experiencia. Incluye procedimientos de certificación, estándares de competencia, evaluaciones y normativas del SCC."}],"dc.subject":[{"value":"SCC"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"5"}]}}' \
+  -d '{"name":"SCC","metadata":{"dc.title":[{"value":"Sistema de Certificación de Competencias"}],"dc.description":[{"value":"Sistema de reconocimiento y certificación de competencias laborales adquiridas por experiencia. Incluye procedimientos de certificación, estándares de competencia, evaluaciones y normativas del SCC."}],"dc.title.alternative":[{"value":"SCC"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"5"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_TRABAJO_UUID" > /dev/null
 log_success "  SCC"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"ETCAE","metadata":{"dc.title":[{"value":"Escuelas Técnicas de Campo para la Alimentación Escolar"}],"dc.description":[{"value":"Centros de formación y capacitación del Subsistema de Educación Extraescolar, asociadas al área agropecuaria. Contiene manuales técnicos, planes de estudio y materiales del programa ETCAE."}],"dc.subject":[{"value":"ETCAE"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"6"}]}}' \
+  -d '{"name":"ETCAE","metadata":{"dc.title":[{"value":"Escuelas Técnicas de Campo para la Alimentación Escolar"}],"dc.description":[{"value":"Centros de formación y capacitación del Subsistema de Educación Extraescolar, asociadas al área agropecuaria. Contiene manuales técnicos, planes de estudio y materiales del programa ETCAE."}],"dc.title.alternative":[{"value":"ETCAE"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"6"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_TRABAJO_UUID" > /dev/null
 log_success "  ETCAE"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"PROBEFI","metadata":{"dc.title":[{"value":"Programa de Becas para Formación Técnica Laboral en Inglés"}],"dc.description":[{"value":"Programa de becas para fortalecer las competencias laborales de jóvenes y adultos mediante el aprendizaje técnico del idioma inglés. Incluye lineamientos, convocatorias, materiales de capacitación y documentación del programa PROBEFI."}],"dc.subject":[{"value":"PROBEFI"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"8"}]}}' \
+  -d '{"name":"PROBEFI","metadata":{"dc.title":[{"value":"Programa de Becas para Formación Técnica Laboral en Inglés"}],"dc.description":[{"value":"Programa de becas para fortalecer las competencias laborales de jóvenes y adultos mediante el aprendizaje técnico del idioma inglés. Incluye lineamientos, convocatorias, materiales de capacitación y documentación del programa PROBEFI."}],"dc.title.alternative":[{"value":"PROBEFI"}],"digeex.navLocation":[{"value":"menu-principal"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"8"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_TRABAJO_UUID" > /dev/null
 log_success "  PROBEFI"
 
@@ -607,42 +650,42 @@ log_info "Creando colecciones de Formacion, Investigacion y Proyectos..."
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Investigaciones","metadata":{"dc.title":[{"value":"Investigaciones Educativas"}],"dc.description":[{"value":"Estudios, investigaciones y análisis sobre educación extraescolar en Guatemala. Incluye investigaciones propias, tesis, estudios de caso, diagnósticos y documentos de investigación educativa."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}]}}' \
+  -d '{"name":"INVEST","metadata":{"dc.title":[{"value":"Investigaciones Educativas"}],"dc.description":[{"value":"Estudios, investigaciones y análisis sobre educación extraescolar en Guatemala. Incluye investigaciones propias, tesis, estudios de caso, diagnósticos y documentos de investigación educativa."}],"dc.title.alternative":[{"value":"INVEST"}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"1"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Investigaciones"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Experiencias Significativas","metadata":{"dc.title":[{"value":"Experiencias Significativas y Buenas Prácticas"}],"dc.description":[{"value":"Sistematización de experiencias exitosas, innovaciones pedagógicas y buenas prácticas en educación extraescolar. Contiene relatos de experiencias, estudios de caso y documentación de prácticas destacadas."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}]}}' \
+  -d '{"name":"EXPER","metadata":{"dc.title":[{"value":"Experiencias Significativas y Buenas Prácticas"}],"dc.description":[{"value":"Sistematización de experiencias exitosas, innovaciones pedagógicas y buenas prácticas en educación extraescolar. Contiene relatos de experiencias, estudios de caso y documentación de prácticas destacadas."}],"dc.title.alternative":[{"value":"EXPER"}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"2"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Experiencias Significativas"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Datos Estadísticos","metadata":{"dc.title":[{"value":"Datos Estadísticos Institucionales"}],"dc.description":[{"value":"Bases de datos, anuarios estadísticos, indicadores educativos y cifras oficiales de DIGEEX. Incluye datos de cobertura, matrícula, graduaciones y otros indicadores del sistema extraescolar."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Estadistica"}]}}' \
+  -d '{"name":"DATOS","metadata":{"dc.title":[{"value":"Datos Estadísticos Institucionales"}],"dc.description":[{"value":"Bases de datos, anuarios estadísticos, indicadores educativos y cifras oficiales de DIGEEX. Incluye datos de cobertura, matrícula, graduaciones y otros indicadores del sistema extraescolar."}],"dc.title.alternative":[{"value":"DATOS"}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Estadistica"}],"dc.identifier.other":[{"value":"3"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Datos Estadisticos"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Galería Institucional","metadata":{"dc.title":[{"value":"Galería Institucional"}],"dc.description":[{"value":"Registro fotográfico y audiovisual de eventos, actividades, ceremonias y acciones institucionales de DIGEEX. Memoria histórica visual de la dirección y sus programas."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Galeria"}]}}' \
+  -d '{"name":"GALERIA","metadata":{"dc.title":[{"value":"Galería Institucional"}],"dc.description":[{"value":"Registro fotográfico y audiovisual de eventos, actividades, ceremonias y acciones institucionales de DIGEEX. Memoria histórica visual de la dirección y sus programas."}],"dc.title.alternative":[{"value":"GALERIA"}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Galeria"}],"dc.identifier.other":[{"value":"4"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Galeria Institucional"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Informes de Gestión","metadata":{"dc.title":[{"value":"Informes de Gestión y Memorias Institucionales"}],"dc.description":[{"value":"Informes anuales, memorias de labores, planes operativos anuales (POA), rendición de cuentas y documentación de gestión administrativa de DIGEEX."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}]}}' \
+  -d '{"name":"INFORMES","metadata":{"dc.title":[{"value":"Informes de Gestión y Memorias Institucionales"}],"dc.description":[{"value":"Informes anuales, memorias de labores, planes operativos anuales (POA), rendición de cuentas y documentación de gestión administrativa de DIGEEX."}],"dc.title.alternative":[{"value":"INFORMES"}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"5"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Informes de Gestion"
 
 curl -s -X POST -b "$COOKIES_FILE" \
   -H "Authorization: Bearer $JWT" -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Normativa y Acuerdos","metadata":{"dc.title":[{"value":"Normativa y Acuerdos Institucionales"}],"dc.description":[{"value":"Marco legal, acuerdos ministeriales, resoluciones, lineamientos técnicos, reglamentos y normativa vigente que rige la educación extraescolar en Guatemala."}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}]}}' \
+  -d '{"name":"NORMATIVA","metadata":{"dc.title":[{"value":"Normativa y Acuerdos Institucionales"}],"dc.description":[{"value":"Marco legal, acuerdos ministeriales, resoluciones, lineamientos técnicos, reglamentos y normativa vigente que rige la educación extraescolar en Guatemala."}],"dc.title.alternative":[{"value":"NORMATIVA"}],"digeex.navLocation":[{"value":"menu-secundario"}],"dspace.entity.type":[{"value":"Documento"}],"dc.identifier.other":[{"value":"6"}]}}' \
   "$BASE_URL/api/core/collections?parent=$ED_INVESTIGACION_UUID" > /dev/null
 log_success "  Normativa y Acuerdos"
 

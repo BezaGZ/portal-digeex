@@ -215,17 +215,29 @@ describe('Communities (contenedor)', () => {
   });
 
   describe('mutations', () => {
-    it('should call createSubdireccion$ with the body and sufijo, close the dialog, refresh the list and toast on success', () => {
+    it('should call createSubdireccion$ with name=nombreCorto and dc.title.alternative+dc.title metadata, close the dialog, refresh and toast', () => {
       const fixture = TestBed.createComponent(Communities);
       fixture.detectChanges();
       const c = fixture.componentInstance;
       c.openCreateDialog();
       listSubcommunitiesFn.mockClear();
 
-      c.handleCreateSubmit({ name: 'Nueva subdirección', sufijo: 'ED_NUEVA', description: '' });
+      c.handleCreateSubmit({
+        nombreCorto: 'Nueva',
+        tituloCompleto: 'Subdirección Nueva',
+        sufijo: 'ED_NUEVA',
+        description: '',
+      });
 
       expect(createSubdireccionFn).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Nueva subdirección', type: 'community' }),
+        expect.objectContaining({
+          name: 'Nueva',
+          type: 'community',
+          metadata: expect.objectContaining({
+            'dc.title': [expect.objectContaining({ value: 'Subdirección Nueva' })],
+            'dc.title.alternative': [expect.objectContaining({ value: 'Nueva' })],
+          }),
+        }),
         'ED_NUEVA',
       );
       expect(c.dialogMode()).toBe('closed');
@@ -235,7 +247,7 @@ describe('Communities (contenedor)', () => {
       );
     });
 
-    it('should call updateSubdireccion$ with a JsonPatch on dc.title and the sufijo, close dialog, refresh and toast', () => {
+    it('should call updateSubdireccion$ with a JsonPatch on dc.title (tituloCompleto) and the sufijo, close dialog, refresh and toast', () => {
       const fixture = TestBed.createComponent(Communities);
       fixture.detectChanges();
       const c = fixture.componentInstance;
@@ -243,12 +255,21 @@ describe('Communities (contenedor)', () => {
       c.openEditDialog(target);
       listSubcommunitiesFn.mockClear();
 
-      c.handleEditSubmit({ name: 'Educación Básica Renombrada', sufijo: 'ED_BASICA', description: '' });
+      c.handleEditSubmit({
+        nombreCorto: 'Educación Básica',
+        tituloCompleto: 'Subdirección de Educación Básica Renombrada',
+        sufijo: 'ED_BASICA',
+        description: '',
+      });
 
       expect(updateSubdireccionFn).toHaveBeenCalledWith(
         'sub-1',
         expect.arrayContaining([
-          expect.objectContaining({ op: 'replace', path: '/metadata/dc.title/0/value', value: 'Educación Básica Renombrada' }),
+          expect.objectContaining({
+            op: 'replace',
+            path: '/metadata/dc.title/0/value',
+            value: 'Subdirección de Educación Básica Renombrada',
+          }),
         ]),
         'ED_BASICA',
       );

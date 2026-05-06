@@ -11,7 +11,8 @@
   (onLazyLoad)="lazyLoad.emit($event)">
   <ng-template #header>
     <tr>
-      <th>Nombre</th>
+      <th class="w-56">Nombre corto</th>
+      <th>Título completo</th>
       <th>Identificador</th>
       <th>Programas</th>
       <th>Recursos publicados</th>
@@ -20,35 +21,38 @@
   </ng-template>
   <ng-template #body let-row>
     <tr>
-      <td class="font-medium">{{ row.name }}</td>
+      <td class="font-bold">{{ getNombreCorto(row) }}</td>
+      <td class="font-medium">{{ getTituloCompleto(row) }}</td>
       <td class="text-gray-600 dark:text-gray-400">{{ row.handle }}</td>
       <td>{{ row.programasCount ?? '—' }}</td>
       <td>{{ row.recursosCount ?? '—' }}</td>
-      <td class="flex gap-2">
-        @if (canEdit()) {
-          <p-button
-            icon="pi pi-pencil"
-            severity="info"
-            size="small"
-            [rounded]="true"
-            [text]="true"
-            (onClick)="editRequest.emit(row)" />
-        }
-        @if (canDelete()) {
-          <p-button
-            icon="pi pi-trash"
-            severity="danger"
-            size="small"
-            [rounded]="true"
-            [text]="true"
-            (onClick)="deleteRequest.emit(row)" />
-        }
+      <td>
+        <div class="flex gap-2">
+          @if (canEdit()) {
+            <p-button
+              icon="pi pi-pencil"
+              severity="info"
+              size="small"
+              [rounded]="true"
+              [text]="true"
+              (onClick)="editRequest.emit(row)" />
+          }
+          @if (canDelete()) {
+            <p-button
+              icon="pi pi-trash"
+              severity="danger"
+              size="small"
+              [rounded]="true"
+              [text]="true"
+              (onClick)="deleteRequest.emit(row)" />
+          }
+        </div>
       </td>
     </tr>
   </ng-template>
   <ng-template #emptymessage>
     <tr>
-      <td colspan="5" class="text-center text-gray-500 dark:text-gray-400 py-6">
+      <td colspan="6" class="text-center text-gray-500 dark:text-gray-400 py-6">
         No hay subdirecciones registradas todavía.
       </td>
     </tr>

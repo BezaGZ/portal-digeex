@@ -1,17 +1,34 @@
 <p-dialog
   [visible]="mode() !== 'closed'"
   [modal]="true"
+  [closable]="false"
+  [dismissableMask]="false"
+  [draggable]="false"
+  [resizable]="false"
   [header]="mode() === 'create' ? 'Nueva subdirección' : 'Editar subdirección'"
-  [style]="{ width: '480px' }"
-  (visibleChange)="$event === false && onCancel()">
+  [style]="{ width: '480px' }">
   <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4 pt-2">
     <div class="flex flex-col gap-1">
-      <label for="name" class="text-sm font-semibold text-gray-700 dark:text-gray-300">Nombre</label>
-      <input pInputText id="name" formControlName="name" class="w-full" />
+      <label for="nombreCorto" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Nombre corto <span class="text-gray-400 font-normal">(ej: Educación Básica)</span>
+        @if (mode() === 'edit') {
+          <span class="text-gray-400 font-normal">— no editable</span>
+        }
+      </label>
+      <input pInputText id="nombreCorto" formControlName="nombreCorto" class="w-full" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="tituloCompleto" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Título completo <span class="text-gray-400 font-normal">(ej: Subdirección de Educación Básica)</span>
+      </label>
+      <input pInputText id="tituloCompleto" formControlName="tituloCompleto" class="w-full" />
     </div>
     <div class="flex flex-col gap-1">
       <label for="sufijo" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
         Sufijo <span class="text-gray-400 font-normal">(ej: ED_BASICA)</span>
+        @if (mode() === 'edit') {
+          <span class="text-gray-400 font-normal">— no editable</span>
+        }
       </label>
       <input pInputText id="sufijo" formControlName="sufijo" class="w-full" />
       @if (form.controls.sufijo.errors?.['pattern'] && form.controls.sufijo.touched) {

@@ -44,7 +44,8 @@
 
   <app-community-dialog
     [mode]="dialogMode()"
-    [initialName]="editTarget()?.name ?? ''"
+    [initialNombreCorto]="editTargetNombreCorto()"
+    [initialTituloCompleto]="editTargetTituloCompleto()"
     [initialSufijo]="editTargetSufijo()"
     [initialDescription]="editTargetDescription()"
     (submitForm)="dialogMode() === 'create' ? handleCreateSubmit($event) : handleEditSubmit($event)"
