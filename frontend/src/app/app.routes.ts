@@ -60,6 +60,7 @@ export const routes: Routes = [
   {
     path: 'administrador',
     canActivate: [authGuard],
+    canActivateChild: [authGuard],
     loadComponent: () => import('./layout/admin-layout/app.layout/app.layout').then(m => m.AppLayout),
     data: { breadcrumb: 'Administrador' },
     children: [
