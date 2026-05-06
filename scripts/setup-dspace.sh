@@ -201,6 +201,7 @@ DIGEEX_FIELDS=(
   'navLocation|Ubicacion en navegacion del frontend: menu-principal o menu-secundario'
   'populationType|Tipo de poblacion predominante en fotografia institucional'
   'imageFocus|Contexto visual de la imagen: Infraestructura, Tecnologia, Agricultura'
+  'sufijo|Sufijo identificador de la subdireccion (ej: ED_BASICA) usado para nombrar los grupos ADMIN_<sufijo> y SUBMITTERS_<sufijo>'
 )
 
 for field_entry in "${DIGEEX_FIELDS[@]}"; do
@@ -307,7 +308,8 @@ ED_BASICA_RESPONSE=$(curl -s -X POST \
     "name": "Educación Básica",
     "metadata": {
       "dc.title": [{"value": "Subdirección de Educación Básica"}],
-      "dc.description": [{"value": "Programas de educación básica extraescolar dirigidos a jóvenes y adultos que no tuvieron acceso a la educación formal. Incluye PEAC, PRONEA, Modalidades Flexibles y EVA."}]
+      "dc.description": [{"value": "Programas de educación básica extraescolar dirigidos a jóvenes y adultos que no tuvieron acceso a la educación formal. Incluye PEAC, PRONEA, Modalidades Flexibles y EVA."}],
+      "digeex.sufijo": [{"value": "ED_BASICA"}]
     }
   }' \
   "$BASE_URL/api/core/communities?parent=$DIGEEX_UUID")
@@ -389,7 +391,8 @@ ED_TRABAJO_RESPONSE=$(curl -s -X POST \
     "name": "Educación para el Trabajo y la Cultura",
     "metadata": {
       "dc.title": [{"value": "Subdirección para el Trabajo y la Cultura"}],
-      "dc.description": [{"value": "Programas de formación técnica, capacitación laboral y promoción cultural. Incluye CEMUCAF, PROBEFI, ETCAE y SCC, orientados al desarrollo de competencias para el trabajo y el fortalecimiento cultural."}]
+      "dc.description": [{"value": "Programas de formación técnica, capacitación laboral y promoción cultural. Incluye CEMUCAF, PROBEFI, ETCAE y SCC, orientados al desarrollo de competencias para el trabajo y el fortalecimiento cultural."}],
+      "digeex.sufijo": [{"value": "ED_TRABAJO"}]
     }
   }' \
   "$BASE_URL/api/core/communities?parent=$DIGEEX_UUID")
@@ -465,7 +468,8 @@ ED_INVESTIGACION_RESPONSE=$(curl -s -X POST \
     "name": "Formación, Investigación y Proyectos Educativos",
     "metadata": {
       "dc.title": [{"value": "Subdirección de Formación, Investigación y Proyectos Educativos"}],
-      "dc.description": [{"value": "Área de investigación educativa, generación de conocimiento, innovación pedagógica y gestión documental institucional. Incluye investigaciones, experiencias significativas, datos estadísticos, galería institucional, informes de gestión, y normativa vigente."}]
+      "dc.description": [{"value": "Área de investigación educativa, generación de conocimiento, innovación pedagógica y gestión documental institucional. Incluye investigaciones, experiencias significativas, datos estadísticos, galería institucional, informes de gestión, y normativa vigente."}],
+      "digeex.sufijo": [{"value": "ED_INVESTIGACION"}]
     }
   }' \
   "$BASE_URL/api/core/communities?parent=$DIGEEX_UUID")

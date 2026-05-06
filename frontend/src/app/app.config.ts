@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { providePrimeNG } from 'primeng/config';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import { firstValueFrom } from 'rxjs';
@@ -147,6 +147,66 @@ const DigeexPreset = definePreset(Aura, {
       800: '#33AEFF',
       900: '#1AA3FF',
       950: '#0098FF'
+    },
+
+    /**
+     * Verde semántico para estado de éxito (severity="success").
+     *
+     * Valor clave:
+     * - 500: emerald-500 de Tailwind (#10B981)
+     */
+    emerald: {
+      50: '#ECFDF5',
+      100: '#D1FAE5',
+      200: '#A7F3D0',
+      300: '#6EE7B7',
+      400: '#34D399',
+      500: '#10B981',
+      600: '#059669',
+      700: '#047857',
+      800: '#065F46',
+      900: '#064E3B',
+      950: '#022C22'
+    },
+
+    /**
+     * Rojo semántico para estado de peligro (severity="danger").
+     *
+     * Valor clave:
+     * - 500: red-500 de Tailwind (#EF4444)
+     */
+    red: {
+      50: '#FEF2F2',
+      100: '#FEE2E2',
+      200: '#FECACA',
+      300: '#FCA5A5',
+      400: '#F87171',
+      500: '#EF4444',
+      600: '#DC2626',
+      700: '#B91C1C',
+      800: '#991B1B',
+      900: '#7F1D1D',
+      950: '#450A0A'
+    },
+
+    /**
+     * Gris neutral para botones secundarios (severity="secondary").
+     *
+     * Valor clave:
+     * - 500: zinc-500 de Tailwind (#71717A)
+     */
+    zinc: {
+      50: '#FAFAFA',
+      100: '#F4F4F5',
+      200: '#E4E4E7',
+      300: '#D4D4D8',
+      400: '#A1A1AA',
+      500: '#71717A',
+      600: '#52525B',
+      700: '#3F3F46',
+      800: '#27272A',
+      900: '#18181B',
+      950: '#09090B'
     }
   }
 });
@@ -172,6 +232,7 @@ export const appConfig: ApplicationConfig = {
     provideAnimations(),
     { provide: LOCALE_ID, useValue: 'es-GT' },
     MessageService,
+    ConfirmationService,
     providePrimeNG({
       theme: {
         preset: DigeexPreset,

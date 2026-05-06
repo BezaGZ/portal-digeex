@@ -1,0 +1,49 @@
+<p-dialog
+  [visible]="mode() !== 'closed'"
+  [modal]="true"
+  [header]="mode() === 'create' ? 'Nueva subdirección' : 'Editar subdirección'"
+  [style]="{ width: '480px' }"
+  (visibleChange)="$event === false && onCancel()">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label for="name" class="text-sm font-semibold text-gray-700 dark:text-gray-300">Nombre</label>
+      <input pInputText id="name" formControlName="name" class="w-full" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="sufijo" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Sufijo <span class="text-gray-400 font-normal">(ej: ED_BASICA)</span>
+      </label>
+      <input pInputText id="sufijo" formControlName="sufijo" class="w-full" />
+      @if (form.controls.sufijo.errors?.['pattern'] && form.controls.sufijo.touched) {
+        <small class="text-red-600">El sufijo debe ir en mayúsculas con guiones bajos (ej: ED_BASICA).</small>
+      }
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="description" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Descripción <span class="text-gray-400 font-normal">(opcional)</span>
+      </label>
+      <textarea
+        pTextarea
+        id="description"
+        formControlName="description"
+        rows="4"
+        class="w-full"></textarea>
+    </div>
+    <div class="flex justify-end gap-2 pt-2">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [outlined]="true"
+        [rounded]="true"
+        (onClick)="onCancel()" />
+      <p-button
+        label="Guardar"
+        icon="pi pi-check"
+        severity="success"
+        styleClass="!text-white !font-medium"
+        [rounded]="true"
+        type="submit"
+        [disabled]="form.invalid || !hasChanges()" />
+    </div>
+  </form>
+</p-dialog>

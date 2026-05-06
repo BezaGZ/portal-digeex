@@ -121,7 +121,16 @@ export class CommunityFacade {
     body: CommunityCreateBody,
     sufijo: string,
   ): Observable<Community> {
-    return this.communityApi.create(body, rootUuid).pipe(
+    const enriched: CommunityCreateBody = {
+      ...body,
+      metadata: {
+        ...body.metadata,
+        'digeex.sufijo': [
+          { value: sufijo, language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+    return this.communityApi.create(enriched, rootUuid).pipe(
       switchMap((community) =>
         this.communityApi
           .createAdminGroup(community.uuid, {

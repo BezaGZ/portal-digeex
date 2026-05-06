@@ -6,7 +6,7 @@ import { authGuard } from './core/auth/auth.guard';
  *
  * F-10 pide aplicar el authGuard a TODAS las rutas administrativas,
  * incluidas las dinámicas que se monten más adelante (por ejemplo
- * `/administrador/comunidades/:uuid/editar`). Para que la
+ * `/administrador/subdirecciones/:uuid/editar`). Para que la
  * protección la herede cualquier hijo del árbol sin tener que
  * declarar el guard en cada ruta nueva, `/administrador` lleva
  * `canActivateChild` además de `canActivate`.

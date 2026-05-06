@@ -141,7 +141,17 @@ describe('CommunityFacade', () => {
         caller: { role: 'superadmin', sufijo: null },
       });
       expect(mockCommunityApi.searchTop).toHaveBeenCalled();
-      expect(mockCommunityApi.create).toHaveBeenCalledWith(sampleBody, 'digeex-root-uuid');
+      expect(mockCommunityApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Subdirección de Calidad',
+          metadata: expect.objectContaining({
+            'digeex.sufijo': expect.arrayContaining([
+              expect.objectContaining({ value: 'ED_CALIDAD' }),
+            ]),
+          }),
+        }),
+        'digeex-root-uuid',
+      );
       expect(mockCommunityApi.createAdminGroup).toHaveBeenCalledWith('comm-new', expect.any(Object));
       expect(mockGroupApi.create).toHaveBeenNthCalledWith(1, expect.objectContaining({ name: 'ADMIN_ED_CALIDAD' }));
       expect(mockGroupApi.addSubgroup).toHaveBeenCalledWith('tech-admin-uuid', expect.stringContaining('standalone-admin-uuid'));

@@ -70,9 +70,9 @@ export const routes: Routes = [
         data: { breadcrumb: 'Estadísticas' }
       },
       {
-        path: 'comunidades',
+        path: 'subdirecciones',
         loadComponent: () => import('./features/administration/communities/communities').then(m => m.Communities),
-        data: { breadcrumb: 'Comunidades' }
+        data: { breadcrumb: 'Subdirecciones' }
       },
       {
         path: 'colecciones',

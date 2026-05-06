@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, combineLatest } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -23,6 +23,7 @@ import { UserTable } from './components/user-table/user-table';
 import { UserDialog } from './components/user-dialog/user-dialog';
 import { ChangeRoleDialog } from './components/change-role-dialog/change-role-dialog';
 import { EditUserDialog } from './components/edit-user-dialog/edit-user-dialog';
+import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import {
   UserManagementService,
   CreateUserInput,
@@ -71,6 +72,7 @@ const UNEXPECTED_ERROR_FALLBACK = 'Ocurrió un error al procesar la solicitud. I
     UserDialog,
     ChangeRoleDialog,
     EditUserDialog,
+    LoadingSpinnerComponent,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -117,6 +119,9 @@ export class Users {
    */
   private refresh$ = new BehaviorSubject<void>(undefined);
 
+  /** Estado de carga del listado, expuesto al template para mostrar el spinner. */
+  readonly loading = signal<boolean>(true);
+
   private visibleUsersPaginated = toSignal(
     combineLatest([
       toObservable(this.queryDebounced),
@@ -124,9 +129,11 @@ export class Users {
       toObservable(this.tableState),
       this.refresh$,
     ]).pipe(
+      tap(() => this.loading.set(true)),
       switchMap(([query, scope, state]) =>
         this.userService.searchUsers$({ scope, query, page: state.page, size: state.size }),
       ),
+      tap(() => this.loading.set(false)),
     ),
     { initialValue: emptyPaginatedView(INITIAL_PAGE_STATE.size) },
   );

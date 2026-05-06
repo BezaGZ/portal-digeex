@@ -51,18 +51,22 @@
     </div>
   </p-card>
 
-  <app-user-table
-    [users]="visibleUsers()"
-    [totalRecords]="totalRecords()"
-    [pageSize]="pageSize()"
-    [currentUser]="currentUser()"
-    (deactivateRequested)="onDeactivateRequested($event)"
-    (reactivateRequested)="onReactivateRequested($event)"
-    (resetPasswordRequested)="onResetPasswordRequested($event)"
-    (modifyRoleRequested)="onModifyRoleRequested($event)"
-    (editRequested)="onEditRequested($event)"
-    (lazyLoad)="onLazyLoad($event)"
-  />
+  @if (loading()) {
+    <app-loading-spinner minHeight="240px" />
+  } @else {
+    <app-user-table
+      [users]="visibleUsers()"
+      [totalRecords]="totalRecords()"
+      [pageSize]="pageSize()"
+      [currentUser]="currentUser()"
+      (deactivateRequested)="onDeactivateRequested($event)"
+      (reactivateRequested)="onReactivateRequested($event)"
+      (resetPasswordRequested)="onResetPasswordRequested($event)"
+      (modifyRoleRequested)="onModifyRoleRequested($event)"
+      (editRequested)="onEditRequested($event)"
+      (lazyLoad)="onLazyLoad($event)"
+    />
+  }
 
   @if (showCreateDialog()) {
     <app-user-dialog

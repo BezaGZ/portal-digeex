@@ -36,8 +36,12 @@ export class DSpaceApiService {
    * @returns Observable con lista HAL de ítems
    */
   getItems(collectionUuid: string, page = 0, size = 20): Observable<HalListResponse<Item>> {
+    // dsoType=item es clave: sin él Discovery cuenta también communities y
+    // collections dentro del scope, inflando totalElements en quien usa el
+    // método para contar items recursivos.
     const params = new HttpParams()
       .set('scope', collectionUuid)
+      .set('dsoType', 'item')
       .set('page', page)
       .set('size', size);
 

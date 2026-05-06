@@ -1,8 +1,54 @@
 <div class="p-6">
-  <h1 class="text-3xl font-bold mb-4">Gestión de Comunidades</h1>
-  <p class="text-gray-600">Aquí podrás administrar las comunidades (subdirecciones) de DIGEEX.</p>
+  <p-toast position="top-right" />
 
-  <div class="mt-6 bg-white p-6 rounded-lg shadow">
-    <p class="text-gray-500">Contenido de gestión de comunidades próximamente...</p>
+  <div class="mb-6">
+    <div class="flex justify-between items-center">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Subdirecciones</h1>
+        <p class="text-gray-600 dark:text-gray-400">
+          Gestión de las sub-comunidades top-level del repositorio DIGEEX.
+        </p>
+      </div>
+      @if (canCreateTopLevel() && !loading()) {
+        <p-button
+          label="Nueva subdirección"
+          icon="pi pi-plus"
+          severity="success"
+          styleClass="!text-white !font-medium"
+          [rounded]="true"
+          (onClick)="openCreateDialog()" />
+      }
+    </div>
   </div>
+
+  @if (loading()) {
+    <app-loading-spinner minHeight="240px" />
+  } @else if (rootUuid() === null) {
+    <p-message
+      severity="warn"
+      text="El repositorio no está inicializado. Pídale al administrador del sistema que ejecute el bootstrap (setup-dspace.sh)."
+      [closable]="false" />
+  } @else {
+    <p-card class="shadow-sm">
+      <app-community-table
+        [items]="subdirecciones()"
+        [canEdit]="true"
+        [canDelete]="canCreateTopLevel()"
+        [pageSize]="pageSize()"
+        [totalRecords]="totalRecords()"
+        (editRequest)="openEditDialog($event)"
+        (deleteRequest)="onDeleteClick($event)"
+        (lazyLoad)="onLazyLoad($event)" />
+    </p-card>
+  }
+
+  <app-community-dialog
+    [mode]="dialogMode()"
+    [initialName]="editTarget()?.name ?? ''"
+    [initialSufijo]="editTargetSufijo()"
+    [initialDescription]="editTargetDescription()"
+    (submitForm)="dialogMode() === 'create' ? handleCreateSubmit($event) : handleEditSubmit($event)"
+    (cancelForm)="closeDialog()" />
+
+  <p-confirmDialog />
 </div>
