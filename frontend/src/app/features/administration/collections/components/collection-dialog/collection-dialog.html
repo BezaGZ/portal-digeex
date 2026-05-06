@@ -1,0 +1,94 @@
+<p-dialog
+  [visible]="mode() !== 'closed'"
+  [modal]="true"
+  [closable]="false"
+  [dismissableMask]="false"
+  [draggable]="false"
+  [resizable]="false"
+  [header]="mode() === 'create' ? 'Nuevo programa' : 'Editar programa'"
+  [style]="{ width: '520px' }">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label for="siglas" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Siglas <span class="text-gray-400 font-normal">(ej: PEAC)</span>
+        @if (mode() === 'edit') {
+          <span class="text-gray-400 font-normal">— no editable</span>
+        }
+      </label>
+      <input pInputText id="siglas" formControlName="siglas" class="w-full" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="titulo" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Título completo
+      </label>
+      <input pInputText id="titulo" formControlName="titulo" class="w-full" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="entityType" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Tipo de programa
+        @if (mode() === 'edit') {
+          <span class="text-gray-400 font-normal">(no editable)</span>
+        }
+      </label>
+      <p-select
+        id="entityType"
+        formControlName="entityType"
+        [options]="entityTypeOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Selecciona un tipo"
+        appendTo="body"
+        [style]="{ width: '100%' }" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="navLocation" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Ubicación en el menú
+      </label>
+      <p-select
+        id="navLocation"
+        formControlName="navLocation"
+        [options]="navLocationOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Selecciona una ubicación"
+        appendTo="body"
+        [style]="{ width: '100%' }" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="orden" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Orden en el menú <span class="text-gray-400 font-normal">(número entero, ej: 1, 2, 3)</span>
+      </label>
+      <input pInputText id="orden" type="number" min="1" formControlName="orden" class="w-full" />
+      @if (form.controls.orden.errors?.['pattern'] && form.controls.orden.touched) {
+        <small class="text-red-600">Solo números enteros positivos.</small>
+      }
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="description" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Descripción <span class="text-gray-400 font-normal">(opcional)</span>
+      </label>
+      <textarea
+        pTextarea
+        id="description"
+        formControlName="description"
+        rows="3"
+        class="w-full"></textarea>
+    </div>
+    <div class="flex justify-end gap-2 pt-2">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [outlined]="true"
+        [rounded]="true"
+        (onClick)="onCancel()" />
+      <p-button
+        label="Guardar"
+        icon="pi pi-check"
+        severity="success"
+        styleClass="!text-white !font-medium"
+        [rounded]="true"
+        type="submit"
+        [disabled]="form.invalid || !hasChanges()" />
+    </div>
+  </form>
+</p-dialog>

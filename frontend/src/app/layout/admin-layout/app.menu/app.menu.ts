@@ -53,7 +53,7 @@ export class AppMenu {
         label: 'Repositorio',
         items: [
           { label: 'Subdirecciones', icon: 'pi pi-fw pi-sitemap', routerLink: ['/administrador/subdirecciones'] },
-          { label: 'Colecciones', icon: 'pi pi-fw pi-folder', routerLink: ['/administrador/colecciones'] },
+          { label: 'Programas', icon: 'pi pi-fw pi-folder', routerLink: ['/administrador/programas'] },
           { label: 'Envíos', icon: 'pi pi-fw pi-upload', routerLink: ['/administrador/envios'] },
         ],
       },

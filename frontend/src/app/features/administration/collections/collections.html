@@ -1,8 +1,78 @@
 <div class="p-6">
-  <h1 class="text-3xl font-bold mb-4">Gestión de Colecciones</h1>
-  <p class="text-gray-600">Aquí podrás administrar las colecciones de recursos educativos.</p>
+  <p-toast position="top-right" />
 
-  <div class="mt-6 bg-white p-6 rounded-lg shadow">
-    <p class="text-gray-500">Contenido de gestión de colecciones próximamente...</p>
+  <div class="mb-6">
+    <div class="flex justify-between items-center">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Programas</h1>
+        <p class="text-gray-600 dark:text-gray-400">
+          Gestión de las colecciones (programas) bajo cada subdirección.
+        </p>
+      </div>
+      @if (selectedSubdireccion() && !loading()) {
+        <p-button
+          label="Nuevo programa"
+          icon="pi pi-plus"
+          severity="success"
+          styleClass="!text-white !font-medium"
+          [rounded]="true"
+          (onClick)="openCreateDialog()" />
+      }
+    </div>
   </div>
+
+  <p-card class="mb-6 shadow-sm">
+    <div class="flex flex-col gap-1 max-w-md">
+      <label for="subdireccion" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Subdirección
+      </label>
+      <p-select
+        id="subdireccion"
+        [options]="subdirecciones()"
+        optionLabel="name"
+        [ngModel]="selectedSubdireccion()"
+        (ngModelChange)="selectSubdireccion($event)"
+        [disabled]="!canChooseAnySubdireccion()"
+        placeholder="Selecciona una subdirección"
+        styleClass="w-full" />
+    </div>
+  </p-card>
+
+  @if (loading()) {
+    <app-loading-spinner minHeight="240px" />
+  } @else if (rootUuid() === null) {
+    <p-message
+      severity="warn"
+      text="El repositorio no está inicializado. Pídale al administrador del sistema que ejecute el bootstrap (setup-dspace.sh)."
+      [closable]="false" />
+  } @else if (!selectedSubdireccion()) {
+    <p-message
+      severity="info"
+      text="Selecciona una subdirección arriba para ver sus programas."
+      [closable]="false" />
+  } @else {
+    <p-card class="shadow-sm">
+      <app-collection-table
+        [items]="collections()"
+        [canEdit]="true"
+        [canDelete]="true"
+        [pageSize]="10"
+        [totalRecords]="collections().length"
+        (editRequest)="openEditDialog($event)"
+        (deleteRequest)="onDeleteClick($event)" />
+    </p-card>
+  }
+
+  <app-collection-dialog
+    [mode]="dialogMode()"
+    [initialSiglas]="editTargetSiglas()"
+    [initialTitulo]="editTargetTitulo()"
+    [initialDescription]="editTargetDescription()"
+    [initialEntityType]="editTargetEntityType()"
+    [initialNavLocation]="editTargetNavLocation()"
+    [initialOrden]="editTargetOrden()"
+    (submitForm)="dialogMode() === 'create' ? handleCreateSubmit($event) : handleEditSubmit($event)"
+    (cancelForm)="closeDialog()" />
+
+  <p-confirmDialog />
 </div>

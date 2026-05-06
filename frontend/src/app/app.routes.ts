@@ -75,9 +75,9 @@ export const routes: Routes = [
         data: { breadcrumb: 'Subdirecciones' }
       },
       {
-        path: 'colecciones',
+        path: 'programas',
         loadComponent: () => import('./features/administration/collections/collections').then(m => m.Collections),
-        data: { breadcrumb: 'Colecciones' }
+        data: { breadcrumb: 'Programas' }
       },
       {
         path: 'envios',
