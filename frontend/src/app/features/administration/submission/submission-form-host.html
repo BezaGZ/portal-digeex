@@ -1,0 +1,8 @@
+@if (formComponent(); as form) {
+  <ng-container *ngComponentOutlet="form; inputs: inputs()" />
+} @else {
+  <p-message
+    severity="warn"
+    text="Tipo de contenido no soportado para esta colección. Contacta al administrador del portal."
+    [closable]="false" />
+}

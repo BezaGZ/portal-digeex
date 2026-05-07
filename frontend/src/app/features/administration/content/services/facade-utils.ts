@@ -8,7 +8,6 @@ import { Caller } from '../specifications/scope-context.model';
  * Si no hay sesión activa, devuelve el caller mínimo (rol con menos
  * privilegios) para que los specs traten al usuario anónimo igual que a
  * un personal_delegado sin sufijo y nunca le permitan operar sobre nada.
- * Centraliza el patrón compartido entre los facades del Bloque 1 y 2.
  */
 export function resolveCaller$(authCaller: AuthCallerService): Observable<Caller> {
   return authCaller.currentCaller$.pipe(

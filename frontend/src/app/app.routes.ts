@@ -86,7 +86,7 @@ export const routes: Routes = [
       },
       {
         path: 'envios',
-        loadComponent: () => import('./features/administration/submissions/submissions').then(m => m.Submissions),
+        loadComponent: () => import('./features/administration/submission/my-submissions/my-submissions').then(m => m.MySubmissions),
         data: { breadcrumb: 'Mis envíos' }
       },
       {
