@@ -32,8 +32,13 @@ fi
 
 # Configuracion (usa .env si existe, si no usa defaults de desarrollo)
 BASE_URL="${DSPACE_REST_URL:-http://localhost:8080/server}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-admin@digeex.gob.gt}"
+ADMIN_EMAIL="${ADMIN_EMAIL:-admin@mineduc.gob.gt}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
+
+# Password compartido por los 6 seed users de subdirecciones (admin_subdireccion
+# y personal_delegado de las 3 subs). En produccion se sobreescribe via .env y
+# cada usuario lo cambia al primer login. En dev queda en digeex123 para pruebas.
+SEED_PASSWORD="${SEED_PASSWORD:-digeex123}"
 
 COOKIES_FILE=$(mktemp)
 trap "rm -f $COOKIES_FILE" EXIT
@@ -577,6 +582,88 @@ SUBMITTERS_GROUP_INVESTIGACION_UUID=$(echo "$SUBMITTERS_GROUP_INVESTIGACION_RESP
 log_success "submittersGroup creado (UUID: $SUBMITTERS_GROUP_INVESTIGACION_UUID)"
 
 # ----------------------------------------------------------------------------
+# Seed users — un admin_subdireccion y un personal_delegado por subdireccion.
+# Idempotente: si el email ya existe en DSpace se skipea el create y solo se
+# verifica que este enrollado al grupo. La creacion del eperson va via CLI
+# (`dspace user --add`) porque es la forma soportada por DSpace 9.x para fijar
+# password en el alta. El enroll al grupo va via REST con text/uri-list, igual
+# que en el alta normal de personal delegado del Sprint 5.
+# ----------------------------------------------------------------------------
+log_info "Creando seed users de subdirecciones..."
+
+SEED_USERS=(
+  "adminsub_basica@mineduc.gob.gt|Admin|Educación Básica|$ADMIN_GROUP_BASICA_UUID"
+  "adminsub_trabajo@mineduc.gob.gt|Admin|Trabajo y Cultura|$ADMIN_GROUP_TRABAJO_UUID"
+  "adminsub_investigacion@mineduc.gob.gt|Admin|Investigación|$ADMIN_GROUP_INVESTIGACION_UUID"
+  "submitters_basica@mineduc.gob.gt|Personal|Educación Básica|$SUBMITTERS_GROUP_BASICA_UUID"
+  "submitters_trabajo@mineduc.gob.gt|Personal|Trabajo y Cultura|$SUBMITTERS_GROUP_TRABAJO_UUID"
+  "submitters_investigacion@mineduc.gob.gt|Personal|Investigación|$SUBMITTERS_GROUP_INVESTIGACION_UUID"
+)
+
+for entry in "${SEED_USERS[@]}"; do
+  IFS='|' read -r SEED_EMAIL SEED_FIRST SEED_LAST SEED_GROUP_UUID <<< "$entry"
+
+  # Buscar si el eperson ya existe.
+  EXISTING_EPERSON=$(curl -s -X GET \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    "$BASE_URL/api/eperson/epersons/search/byEmail?email=$SEED_EMAIL")
+
+  EPERSON_UUID=$(echo "$EXISTING_EPERSON" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+
+  if [ -z "$EPERSON_UUID" ]; then
+    log_info "  Creando $SEED_EMAIL..."
+    # Las flags del subcomando `user --add` divergen de las de
+    # `create-administrator` (que usa --first/--last/-c): aqui son
+    # --givenname/--surname y no acepta --language ni --silent. Documentado
+    # en wiki.lyrasis.org/display/DSDOC7x/Managing+User+Accounts.
+    CREATE_OUTPUT=$(docker exec dspace /dspace/bin/dspace user --add \
+      --email "$SEED_EMAIL" \
+      --givenname "$SEED_FIRST" \
+      --surname "$SEED_LAST" \
+      --password "$SEED_PASSWORD" 2>&1)
+    CREATE_EXIT=$?
+
+    if [ $CREATE_EXIT -ne 0 ]; then
+      echo "Salida del CLI:"
+      echo "$CREATE_OUTPUT"
+      log_error "dspace user --add fallo (exit $CREATE_EXIT) para $SEED_EMAIL"
+    fi
+
+    # Parsear el UUID directamente del output del CLI ("Created EPerson <uuid>").
+    # NO usar /api/eperson/epersons/search/byEmail post-create: la REST API
+    # tiene cache stale del eperson recien creado via CLI y devuelve 204.
+    # El CLI escribe directo a DB sin invalidar el cache REST hasta que pase
+    # un tiempo o se reinicie el contenedor.
+    EPERSON_UUID=$(echo "$CREATE_OUTPUT" | grep -oE 'EPerson [a-f0-9-]+' | head -1 | sed 's/EPerson //')
+
+    if [ -z "$EPERSON_UUID" ]; then
+      echo "Salida del CLI:"
+      echo "$CREATE_OUTPUT"
+      log_error "No se pudo parsear UUID del output del CLI para $SEED_EMAIL"
+    fi
+  else
+    log_success "  $SEED_EMAIL ya existe (UUID: $EPERSON_UUID)"
+  fi
+
+  # Enrollar al grupo. POST con text/uri-list es idempotente en DSpace 9.x:
+  # si el eperson ya es miembro del grupo, devuelve 4xx silencioso pero no
+  # lanza error visible al script. La verificacion previa de membership
+  # involucra un GET extra por usuario y no aporta valor.
+  curl -s -o /dev/null -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: text/uri-list" \
+    -d "$BASE_URL/api/eperson/epersons/$EPERSON_UUID" \
+    "$BASE_URL/api/eperson/groups/$SEED_GROUP_UUID/epersons"
+
+  log_success "  $SEED_EMAIL enrollado en grupo $SEED_GROUP_UUID"
+done
+
+log_success "Seed users de subdirecciones creados"
+
+# ----------------------------------------------------------------------------
 # Collections — Educacion Basica
 # ----------------------------------------------------------------------------
 log_info "Creando colecciones de Educacion Basica..."
@@ -806,4 +893,12 @@ echo "  3 adminGroups (Subadministradores)"
 echo "  3 submittersGroups (Personal delegado, compartido por subdirección)"
 echo ""
 echo "Backend: $BASE_URL"
-echo "Usuario: $ADMIN_EMAIL"
+echo ""
+echo "Usuarios seed (password de los 6 de subdireccion: $SEED_PASSWORD):"
+echo "  $ADMIN_EMAIL                                  superadmin"
+echo "  adminsub_basica@mineduc.gob.gt                admin_subdireccion ED_BASICA"
+echo "  adminsub_trabajo@mineduc.gob.gt               admin_subdireccion ED_TRABAJO"
+echo "  adminsub_investigacion@mineduc.gob.gt         admin_subdireccion ED_INVESTIGACION"
+echo "  submitters_basica@mineduc.gob.gt              personal_delegado ED_BASICA"
+echo "  submitters_trabajo@mineduc.gob.gt             personal_delegado ED_TRABAJO"
+echo "  submitters_investigacion@mineduc.gob.gt       personal_delegado ED_INVESTIGACION"

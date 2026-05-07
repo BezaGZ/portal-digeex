@@ -80,9 +80,14 @@ export const routes: Routes = [
         data: { breadcrumb: 'Programas' }
       },
       {
+        path: 'cargar',
+        loadComponent: () => import('./features/administration/upload-content/upload-content').then(m => m.UploadContent),
+        data: { breadcrumb: 'Cargar contenido' }
+      },
+      {
         path: 'envios',
         loadComponent: () => import('./features/administration/submissions/submissions').then(m => m.Submissions),
-        data: { breadcrumb: 'Envíos' }
+        data: { breadcrumb: 'Mis envíos' }
       },
       {
         path: 'usuarios',

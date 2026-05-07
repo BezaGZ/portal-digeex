@@ -24,12 +24,71 @@ export class AppMenu {
     initialValue: null,
   });
 
+  /**
+   * Menú filtrado por rol del caller (RN-32, RN-40, RN-41).
+   *  - superadmin: ve todo (Subdirecciones, Programas, Cargar contenido, Reportes, Usuarios).
+   *  - admin_subdireccion: ve Programas filtrado a su sub, Cargar contenido, Reportes.
+   *    No ve Subdirecciones top-level (RN-40) ni Usuarios (Sprint 5 ya bloquea con superadminGuard).
+   *  - personal_delegado: solo Cargar contenido. No ve Programas ni Subdirecciones ni Usuarios.
+   *
+   * El filtrado del sidebar es UX, no autorización: defensa real corre en
+   * los guards y en los facades (ContentScopeService.assertWithinScope).
+   */
   model = computed<MenuItem[]>(() => {
-    const isSuperadmin = this.currentUser()?.role === 'superadmin';
+    const role = this.currentUser()?.role;
+    const isSuperadmin = role === 'superadmin';
+    const isAdminSub = role === 'admin_subdireccion';
+    const isDelegado = role === 'personal_delegado';
 
-    const gestionItems: MenuItem[] = [
-      { label: 'Reportes', icon: 'pi pi-fw pi-chart-bar', routerLink: ['/administrador/reportes'] },
-    ];
+    const sections: MenuItem[] = [];
+
+    // Administración (Estadísticas) — la ven todos los logueados.
+    sections.push({
+      label: 'Administración',
+      items: [
+        {
+          label: 'Estadísticas',
+          icon: 'pi pi-fw pi-home',
+          routerLink: ['/administrador/estadisticas'],
+        },
+      ],
+    });
+
+    // Repositorio — varía por rol.
+    const repositorioItems: MenuItem[] = [];
+    if (isSuperadmin) {
+      repositorioItems.push({
+        label: 'Subdirecciones',
+        icon: 'pi pi-fw pi-sitemap',
+        routerLink: ['/administrador/subdirecciones'],
+      });
+    }
+    if (isSuperadmin || isAdminSub) {
+      repositorioItems.push({
+        label: 'Programas',
+        icon: 'pi pi-fw pi-folder',
+        routerLink: ['/administrador/programas'],
+      });
+    }
+    if (isSuperadmin || isAdminSub || isDelegado) {
+      repositorioItems.push({
+        label: 'Cargar contenido',
+        icon: 'pi pi-fw pi-upload',
+        routerLink: ['/administrador/cargar'],
+      });
+    }
+    if (repositorioItems.length > 0) {
+      sections.push({ label: 'Repositorio', items: repositorioItems });
+    }
+
+    const gestionItems: MenuItem[] = [];
+    if (isSuperadmin || isAdminSub) {
+      gestionItems.push({
+        label: 'Reportes',
+        icon: 'pi pi-fw pi-chart-bar',
+        routerLink: ['/administrador/reportes'],
+      });
+    }
     if (isSuperadmin) {
       gestionItems.unshift({
         label: 'Usuarios',
@@ -37,30 +96,10 @@ export class AppMenu {
         routerLink: ['/administrador/usuarios'],
       });
     }
+    if (gestionItems.length > 0) {
+      sections.push({ label: 'Gestión', items: gestionItems });
+    }
 
-    return [
-      {
-        label: 'Administración',
-        items: [
-          {
-            label: 'Estadísticas',
-            icon: 'pi pi-fw pi-home',
-            routerLink: ['/administrador/estadisticas'],
-          },
-        ],
-      },
-      {
-        label: 'Repositorio',
-        items: [
-          { label: 'Subdirecciones', icon: 'pi pi-fw pi-sitemap', routerLink: ['/administrador/subdirecciones'] },
-          { label: 'Programas', icon: 'pi pi-fw pi-folder', routerLink: ['/administrador/programas'] },
-          { label: 'Envíos', icon: 'pi pi-fw pi-upload', routerLink: ['/administrador/envios'] },
-        ],
-      },
-      {
-        label: 'Gestión',
-        items: gestionItems,
-      },
-    ];
+    return sections;
   });
 }
