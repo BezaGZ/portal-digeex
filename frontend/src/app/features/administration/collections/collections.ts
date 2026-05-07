@@ -2,8 +2,10 @@ import {
   Component,
   ChangeDetectionStrategy,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Observable, forkJoin, of } from 'rxjs';
@@ -27,6 +29,7 @@ import { Collection, CollectionCreateBody } from '../../../core/api/models/colle
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { CollectionFacade } from '../content/services/collection-facade';
+import { findCallerSub } from '../shared/services/scope-resolver';
 import { ProgramaView } from './models/programa-view.model';
 
 interface ProgramaFormPayload {
@@ -324,6 +327,26 @@ export class Collections {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+
+    // Auto-selecciona la subdirección del caller cuando NO es superadmin
+    // (admin_subdireccion y personal_delegado quedan fijados a su sufijo via
+    // findCallerSub). El effect espera a que ambos signals (subs y caller)
+    // estén listos. untracked previene loop entre el effect y la escritura
+    // de selectedSubdireccion via selectSubdireccion.
+    effect(() => {
+      const subs = this.subdirecciones();
+      const c = this.caller();
+      if (subs.length === 0 || !c) {
+        return;
+      }
+      untracked(() => {
+        if (this.selectedSubdireccion()) return;
+        const matching = findCallerSub(subs, c);
+        if (matching) {
+          this.selectSubdireccion(matching);
+        }
+      });
     });
   }
 

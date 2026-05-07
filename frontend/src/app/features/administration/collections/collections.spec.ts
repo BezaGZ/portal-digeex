@@ -195,6 +195,50 @@ describe('Collections (contenedor)', () => {
     });
   });
 
+  describe('auto-selection of caller sub', () => {
+    it('should NOT auto-select any sub when caller is superadmin (chooses freely)', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.selectedSubdireccion()).toBeNull();
+    });
+
+    it('should auto-select the matching sub when caller is admin_subdireccion with sufijo', () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [Collections],
+        providers: [
+          provideNoopAnimations(),
+          {
+            provide: CommunityApiService,
+            useValue: { searchTop: searchTopFn, listSubcommunities: listSubcommunitiesFn },
+          },
+          {
+            provide: CollectionApiService,
+            useValue: {
+              listByCommunity: vi.fn(() => of({ _embedded: { collections: [] }, _links: { self: { href: '/' } }, page: { size: 10, totalElements: 0, totalPages: 0, number: 0 } })),
+            },
+          },
+          {
+            provide: DSpaceApiService,
+            useValue: {
+              getItems: vi.fn(() => of({ _embedded: { items: [] }, _links: { self: { href: '/' } }, page: { size: 1, totalElements: 0, totalPages: 0, number: 0 } })),
+            },
+          },
+          { provide: CollectionFacade, useValue: {} },
+          {
+            provide: AuthCallerService,
+            useValue: { currentCaller$: of({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }) },
+          },
+          { provide: MessageService, useValue: { add: vi.fn(), messageObserver: EMPTY, clearObserver: EMPTY } },
+          ConfirmationService,
+        ],
+      });
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.selectedSubdireccion()?.uuid).toBe('sub-1');
+    });
+  });
+
   describe('dialog flow', () => {
     it('should open the dialog in create mode when openCreateDialog is invoked', () => {
       const fixture = TestBed.createComponent(Collections);
