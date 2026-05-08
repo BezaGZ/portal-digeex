@@ -80,8 +80,13 @@ export const routes: Routes = [
         data: { breadcrumb: 'Programas' }
       },
       {
+        path: 'programas/:uuid/cargar',
+        loadComponent: () => import('./features/administration/submission/submission-page/submission-page').then(m => m.SubmissionPage),
+        data: { breadcrumb: 'Cargar' }
+      },
+      {
         path: 'cargar',
-        loadComponent: () => import('./features/administration/upload-content/upload-content').then(m => m.UploadContent),
+        loadComponent: () => import('./features/administration/submission/upload-content/upload-content').then(m => m.UploadContent),
         data: { breadcrumb: 'Cargar contenido' }
       },
       {

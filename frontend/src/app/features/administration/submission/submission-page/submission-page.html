@@ -1,0 +1,11 @@
+<div class="p-6">
+  @if (collection(); as col) {
+    @if (caller(); as c) {
+      <app-submission-form-host [collection]="col" [caller]="c" />
+    } @else {
+      <p class="text-gray-500 dark:text-gray-400">Resolviendo sesión...</p>
+    }
+  } @else {
+    <p class="text-gray-500 dark:text-gray-400">Cargando programa...</p>
+  }
+</div>
