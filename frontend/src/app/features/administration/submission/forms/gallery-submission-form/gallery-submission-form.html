@@ -1,0 +1,155 @@
+<p-card>
+  @if (vocabulariesLoading()) {
+    <app-loading-spinner minHeight="320px" />
+  } @else {
+  <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+      <label for="title" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Título del álbum <span class="text-red-600">*</span>
+      </label>
+      <input id="title" pInputText formControlName="title" maxlength="200" class="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="abstract" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Descripción <span class="text-gray-400 font-normal">(opcional)</span>
+      </label>
+      <textarea id="abstract" pTextarea formControlName="abstract" rows="3" maxlength="1000" class="w-full"></textarea>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="issued" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Fecha del evento <span class="text-red-600">*</span>
+      </label>
+      <p-datepicker
+        inputId="issued"
+        formControlName="issued"
+        dateFormat="yy-mm-dd"
+        placeholder="Año-Mes-Día"
+        appendTo="body"
+        styleClass="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="type" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Tipo de evento <span class="text-red-600">*</span>
+      </label>
+      <p-select
+        inputId="type"
+        formControlName="type"
+        [options]="tiposEventoOptions()"
+        optionLabel="display"
+        optionValue="value"
+        placeholder="Elegí un tipo"
+        appendTo="body"
+        styleClass="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="classification" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Programa <span class="text-red-600">*</span>
+      </label>
+      <p-select
+        inputId="classification"
+        formControlName="classification"
+        [options]="programasOptions()"
+        optionLabel="display"
+        optionValue="value"
+        placeholder="Elegí un programa"
+        appendTo="body"
+        styleClass="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="author" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Autor o responsable <span class="text-gray-400 font-normal">(opcional)</span>
+      </label>
+      <input id="author" pInputText formControlName="author" class="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="populationType" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Tipo de población predominante <span class="text-gray-400 font-normal">(opcional)</span>
+      </label>
+      <p-select
+        inputId="populationType"
+        formControlName="populationType"
+        [options]="tipoPoblacionOptions()"
+        optionLabel="display"
+        optionValue="value"
+        placeholder="Elegí una población"
+        [showClear]="true"
+        appendTo="body"
+        styleClass="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="imageFocus" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Enfoque visual <span class="text-gray-400 font-normal">(opcional)</span>
+      </label>
+      <p-select
+        inputId="imageFocus"
+        formControlName="imageFocus"
+        [options]="enfoqueImagenOptions()"
+        optionLabel="display"
+        optionValue="value"
+        placeholder="Elegí un enfoque"
+        [showClear]="true"
+        appendTo="body"
+        styleClass="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Fotos del álbum <span class="text-red-600">*</span>
+        <span class="text-gray-400 font-normal">(JPG o PNG; podés subir varias)</span>
+      </label>
+      <app-file-dropzone
+        accept="image/*"
+        [multiple]="true"
+        chooseLabel="Seleccionar fotos"
+        dropMessage="Arrastrá las fotos aquí o usá el botón de elegir."
+        (filesChange)="onFilesChange($event)" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Visibilidad
+      </label>
+      <div class="flex items-center gap-3">
+        <p-toggleswitch
+          inputId="visibility"
+          [ngModel]="visibility() === 'public'"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="visibility.set($event ? 'public' : 'private')" />
+        <label for="visibility" class="text-sm text-gray-700 dark:text-gray-300">
+          {{ visibility() === 'public'
+              ? 'Pública: aparece en búsqueda y listados.'
+              : 'Privada: oculta de búsqueda; solo accesible por URL directa.' }}
+        </label>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-2 pt-2">
+      <p-button
+        type="button"
+        label="Regresar"
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        [outlined]="true"
+        [rounded]="true"
+        [disabled]="submitting()"
+        (onClick)="cancel()" />
+      <p-button
+        type="submit"
+        label="Subir álbum"
+        icon="pi pi-upload"
+        severity="success"
+        styleClass="!text-white !font-medium"
+        [rounded]="true"
+        [disabled]="!canSubmit() || submitting()"
+        [loading]="submitting()" />
+    </div>
+  </form>
+  }
+</p-card>
