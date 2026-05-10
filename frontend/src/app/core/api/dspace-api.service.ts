@@ -39,9 +39,13 @@ export class DSpaceApiService {
     // dsoType=item es clave: sin él Discovery cuenta también communities y
     // collections dentro del scope, inflando totalElements en quien usa el
     // método para contar items recursivos.
+    // embed=thumbnail trae el bitstream del thumbnail embebido en cada
+    // indexableObject, evitando una pegada al endpoint nativo
+    // /items/{uuid}/thumbnail por cada card del listado.
     const params = new HttpParams()
       .set('scope', collectionUuid)
       .set('dsoType', 'item')
+      .set('embed', 'thumbnail')
       .set('page', page)
       .set('size', size);
 
@@ -53,7 +57,16 @@ export class DSpaceApiService {
         const objects = response._embedded?.searchResult?._embedded?.objects || [];
         const items = objects
           .filter((obj) => obj._embedded?.indexableObject?.type === 'item')
-          .map((obj) => obj._embedded.indexableObject);
+          .map((obj) => {
+            const indexable = obj._embedded.indexableObject;
+            // Cada indexableObject puede traer su thumbnail embebido bajo
+            // _embedded.thumbnail (cuando el item lo tiene asociado);
+            // lo subimos al campo top-level del Item para que los consumers
+            // no naveguen el HAL profundo.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const thumbnail = (indexable as any)?._embedded?.thumbnail;
+            return thumbnail ? { ...indexable, thumbnail } : indexable;
+          });
 
         return {
           _embedded: { items },

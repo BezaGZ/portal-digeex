@@ -36,6 +36,11 @@ export interface ItemView {
 
 /**
  * Vista de bitstream procesado para descargas y visualización.
+ *
+ * `format` lleva el mime type (usado por previewers); `formatLabel` lleva
+ * la etiqueta humana ("PDF", "Word", "Excel") que se muestra junto al
+ * archivo en la vista publica. `formatLabel` es opcional para no romper
+ * a los consumers existentes; los nuevos lo populan via inferBitstreamFormat.
  */
 export interface BitstreamView {
   name: string;
@@ -43,6 +48,7 @@ export interface BitstreamView {
   size: number;
   format: string;
   uuid: string;
+  formatLabel?: string;
 }
 
 /**

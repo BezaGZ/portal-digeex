@@ -34,6 +34,7 @@ describe('DSpaceApiService', () => {
     httpMock.verify();
   });
 
+  /** Verifica que el servicio se instancie correctamente vía DI. */
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
@@ -79,6 +80,56 @@ describe('DSpaceApiService', () => {
       request.params.get('scope') === 'col-123'
     );
     expect(req.request.method).toBe('GET');
+    req.flush(mockResponse);
+
+    await promise;
+  });
+
+  /** Verifica que getItems incluya embed=thumbnail y mapee el bitstream embebido a item.thumbnail. */
+  it('should request items with embed=thumbnail and surface the embedded bitstream on each item', async () => {
+    const mockResponse = {
+      _embedded: {
+        searchResult: {
+          _embedded: {
+            objects: [
+              {
+                _embedded: {
+                  indexableObject: {
+                    uuid: 'item-1',
+                    name: 'Item con portada',
+                    type: 'item',
+                    _embedded: {
+                      thumbnail: {
+                        uuid: 'thumb-bs-1',
+                        name: 'portada.jpg',
+                        type: 'bitstream',
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+          page: { totalElements: 1 },
+        },
+      },
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.getItems('col-123').subscribe({
+        next: (response) => {
+          expect(response._embedded['items'][0].thumbnail?.uuid).toBe('thumb-bs-1');
+          resolve(response);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne(
+      (request) =>
+        request.url.includes('/server/api/discover/search/objects') &&
+        request.params.get('embed') === 'thumbnail',
+    );
     req.flush(mockResponse);
 
     await promise;
