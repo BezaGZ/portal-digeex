@@ -310,6 +310,14 @@ body {
   line-height: var(--leading-normal);
 }
 
+/* Defensa global contra texto que ensancha la pantalla. Solo entra en
+   acción cuando una palabra individual no cabe en su contenedor (URL
+   larga, ID sin espacios, etc.). No rompe palabras cortas ni cambia el
+   flow normal del texto. */
+h1, h2, h3, h4, h5, h6, p {
+  overflow-wrap: break-word;
+}
+
 /* ============================================
    ENCABEZADOS — Jerarquía según DESIGN_SYSTEM_DIGEEX v3
 

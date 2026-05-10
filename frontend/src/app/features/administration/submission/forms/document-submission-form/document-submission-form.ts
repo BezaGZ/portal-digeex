@@ -68,8 +68,8 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
 
   /** Form de los campos del schema digeex-documento. `isVideo` es el toggle. */
   readonly form = this.fb.nonNullable.group({
-    title: ['', [Validators.required, Validators.minLength(1)]],
-    abstract: ['', [Validators.required]],
+    title: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(200)]],
+    abstract: ['', [Validators.required, Validators.maxLength(1000)]],
     type: [''],
     audience: [''],
     issued: ['', [Validators.required]],

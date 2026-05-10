@@ -4,14 +4,14 @@
       <label for="title" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
         Título <span class="text-red-600">*</span>
       </label>
-      <input id="title" pInputText formControlName="title" class="w-full" />
+      <input id="title" pInputText formControlName="title" maxlength="200" class="w-full" />
     </div>
 
     <div class="flex flex-col gap-1">
       <label for="abstract" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
         Resumen <span class="text-red-600">*</span>
       </label>
-      <textarea id="abstract" pTextarea formControlName="abstract" rows="3" class="w-full"></textarea>
+      <textarea id="abstract" pTextarea formControlName="abstract" rows="3" maxlength="1000" class="w-full"></textarea>
     </div>
 
     <div class="flex items-center gap-3">
