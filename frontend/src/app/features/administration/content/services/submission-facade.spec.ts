@@ -1,8 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { firstValueFrom, of, throwError } from 'rxjs';
+import { Subject, firstValueFrom, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 import { SubmissionFacade, SubmitItemRequest } from './submission-facade';
 import { WorkspaceItemApiService } from '../../../../core/api/workspaceitem-api.service';
+import { BundleApiService } from '../../../../core/api/bundle-api.service';
 import { ItemApiService } from '../../../../core/api/item-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
@@ -19,6 +20,11 @@ type WorkspaceApiMock = {
 type ItemApiMock = { updateMetadata: Mock };
 type ScopeMock = { assertWithinScope: Mock };
 type AuthCallerMock = { currentCaller$: ReturnType<typeof of> };
+type BundleApiMock = {
+  listForItem: Mock;
+  createBundle: Mock;
+  uploadBitstream: Mock;
+};
 
 /**
  * Tests de SubmissionFacade.
@@ -40,6 +46,7 @@ describe('SubmissionFacade', () => {
   let mockItemApi: ItemApiMock;
   let mockScope: ScopeMock;
   let mockAuthCaller: AuthCallerMock;
+  let mockBundleApi: BundleApiMock;
 
   const newWorkspaceItem = {
     id: 99,
@@ -80,6 +87,7 @@ describe('SubmissionFacade', () => {
         { provide: ItemApiService, useValue: mockItemApi },
         { provide: ContentScopeService, useValue: mockScope },
         { provide: AuthCallerService, useValue: mockAuthCaller },
+        { provide: BundleApiService, useValue: mockBundleApi },
       ],
     });
     facade = TestBed.inject(SubmissionFacade);
@@ -96,9 +104,15 @@ describe('SubmissionFacade', () => {
     };
     mockItemApi = { updateMetadata: vi.fn(() => of({ ...inProgressItem, discoverable: false })) };
     mockScope = { assertWithinScope: vi.fn() };
+    mockBundleApi = {
+      listForItem: vi.fn(() => of({ _embedded: { bundles: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } })),
+      createBundle: vi.fn(() => of({ uuid: 'thumb-bundle-new', name: 'THUMBNAIL', type: 'bundle' })),
+      uploadBitstream: vi.fn(() => of({ uuid: 'cover-bitstream', name: 'portada.jpg', type: 'bitstream' })),
+    };
   });
 
   describe('submitItem$', () => {
+    /** Verifica el flujo completo de submit público: scope, create, patch metadata, upload, license, commit. */
     it('should validate scope, then chain workspace create + metadata patch + uploadFile per file + license + getItem + commit, returning the resolved item for a public submission', async () => {
       setupFacadeWithCaller('superadmin', null);
 
@@ -136,6 +150,7 @@ describe('SubmissionFacade', () => {
       expect(result.uuid).toBe('item-archived-uuid');
     });
 
+    /** Verifica que con visibility=private se hace PATCH /discoverable=false sobre el item archivado. */
     it('should PATCH /discoverable=false on the archived item when visibility is private', async () => {
       setupFacadeWithCaller('superadmin', null);
 
@@ -149,6 +164,7 @@ describe('SubmissionFacade', () => {
       );
     });
 
+    /** Verifica que un caller fuera de scope falle en seco sin emitir ninguna llamada HTTP. */
     it('should throw OUT_OF_SCOPE without making HTTP calls when caller sufijo does not match', async () => {
       setupFacadeWithCaller('admin_subdireccion', 'ED_TRABAJO');
       mockScope.assertWithinScope.mockImplementation(() => {
@@ -161,6 +177,7 @@ describe('SubmissionFacade', () => {
       expect(mockWorkspace.create).not.toHaveBeenCalled();
     });
 
+    /** Verifica que un fallo en patchSection borre el workspaceitem para dejar el backend limpio. */
     it('should rollback the workspaceitem when patchSection fails', async () => {
       setupFacadeWithCaller('superadmin', null);
       mockWorkspace.patchSection = vi.fn(() => throwError(() => new Error('422 invalid metadata')));
@@ -169,12 +186,111 @@ describe('SubmissionFacade', () => {
       expect(mockWorkspace.delete).toHaveBeenCalledWith(99);
     });
 
+    /** Verifica que un fallo en uploadFile dispare el rollback del workspaceitem. */
     it('should rollback the workspaceitem when uploadFile fails', async () => {
       setupFacadeWithCaller('superadmin', null);
       mockWorkspace.uploadFile = vi.fn(() => throwError(() => new Error('413 file too large')));
 
       await expect(firstValueFrom(facade.submitItem$(sampleRequest))).rejects.toThrow();
       expect(mockWorkspace.delete).toHaveBeenCalledWith(99);
+    });
+
+    /** Verifica que cuando no se pasa coverFile, BundleApi no recibe ninguna llamada. */
+    it('should NOT call BundleApi when coverFile is absent', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(facade.submitItem$(sampleRequest));
+
+      expect(mockBundleApi.listForItem).not.toHaveBeenCalled();
+      expect(mockBundleApi.createBundle).not.toHaveBeenCalled();
+      expect(mockBundleApi.uploadBitstream).not.toHaveBeenCalled();
+    });
+
+    /** Verifica que el facade cree el bundle THUMBNAIL y suba la portada si no existe ya. */
+    it('should create a THUMBNAIL bundle and upload the cover when no THUMBNAIL bundle exists', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockBundleApi.listForItem = vi.fn(() =>
+        of({
+          _embedded: { bundles: [{ uuid: 'orig-uuid', name: 'ORIGINAL', type: 'bundle' }] },
+          _links: {},
+          page: { size: 1, totalElements: 1, totalPages: 1, number: 0 },
+        }),
+      );
+      const cover = new File(['img'], 'portada.jpg', { type: 'image/jpeg' });
+
+      await firstValueFrom(facade.submitItem$({ ...sampleRequest, coverFile: cover }));
+
+      expect(mockBundleApi.listForItem).toHaveBeenCalledWith('item-archived-uuid');
+      expect(mockBundleApi.createBundle).toHaveBeenCalledWith('item-archived-uuid', 'THUMBNAIL');
+      expect(mockBundleApi.uploadBitstream).toHaveBeenCalledWith('thumb-bundle-new', cover);
+    });
+
+    /** Verifica que si ya existe un bundle THUMBNAIL, el facade lo reutilice y solo suba el bitstream. */
+    it('should reuse the existing THUMBNAIL bundle when one already exists', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockBundleApi.listForItem = vi.fn(() =>
+        of({
+          _embedded: {
+            bundles: [
+              { uuid: 'orig-uuid', name: 'ORIGINAL', type: 'bundle' },
+              { uuid: 'thumb-existing', name: 'THUMBNAIL', type: 'bundle' },
+            ],
+          },
+          _links: {},
+          page: { size: 2, totalElements: 2, totalPages: 1, number: 0 },
+        }),
+      );
+      const cover = new File(['img'], 'portada.jpg', { type: 'image/jpeg' });
+
+      await firstValueFrom(facade.submitItem$({ ...sampleRequest, coverFile: cover }));
+
+      // No se crea bundle nuevo, se sube el bitstream al existente.
+      expect(mockBundleApi.createBundle).not.toHaveBeenCalled();
+      expect(mockBundleApi.uploadBitstream).toHaveBeenCalledWith('thumb-existing', cover);
+    });
+
+    /**
+     * Verifica que los uploads se hagan secuencialmente con concatMap.
+     * DSpace 9.x persiste el workspaceitem por POST sin lock optimista; uploads paralelos pisan bitstreams.
+     */
+    it('should upload files sequentially (concatMap), not concurrently, to avoid lost updates on the workspaceitem', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      const fileA = new File(['a'], 'a.pdf', { type: 'application/pdf' });
+      const fileB = new File(['b'], 'b.pdf', { type: 'application/pdf' });
+
+      // Cada uploadFile devuelve un Subject que solo emite cuando lo controlamos
+      // a mano; asi probamos el orden temporal y no solo el conteo de calls.
+      const uploadCalls: { file: File; subject: Subject<typeof newWorkspaceItem> }[] = [];
+      mockWorkspace.uploadFile = vi.fn((_id: number, file: File) => {
+        const subject = new Subject<typeof newWorkspaceItem>();
+        uploadCalls.push({ file, subject });
+        return subject.asObservable();
+      });
+
+      const sub = facade
+        .submitItem$({ ...sampleRequest, files: [fileA, fileB] })
+        .subscribe({ next: () => undefined, error: () => undefined });
+
+      // Cede el event loop para que el pipeline llegue a uploadAllFiles$.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Si el facade fuera paralelo (mergeMap) ya habria invocado los dos
+      // uploadFile; con concatMap solo arranca el primero hasta que complete.
+      expect(uploadCalls.length).toBe(1);
+      expect(uploadCalls[0].file).toBe(fileA);
+
+      uploadCalls[0].subject.next(newWorkspaceItem);
+      uploadCalls[0].subject.complete();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(uploadCalls.length).toBe(2);
+      expect(uploadCalls[1].file).toBe(fileB);
+
+      // Cierre limpio: el segundo upload completa para no dejar el subscribe colgado.
+      uploadCalls[1].subject.next(newWorkspaceItem);
+      uploadCalls[1].subject.complete();
+      sub.unsubscribe();
     });
   });
 });

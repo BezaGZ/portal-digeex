@@ -196,6 +196,17 @@
     <row>
         <field>
             <dc-schema>dc</dc-schema>
+            <dc-element>publisher</dc-element>
+            <repeatable>false</repeatable>
+            <label>Publicado por</label>
+            <input-type>onebox</input-type>
+            <hint>Subdirección o entidad que publica el recurso (opcional).</hint>
+            <required></required>
+        </field>
+    </row>
+    <row>
+        <field>
+            <dc-schema>dc</dc-schema>
             <dc-element>subject</dc-element>
             <repeatable>true</repeatable>
             <label>Palabras clave</label>
@@ -211,8 +222,8 @@
             <dc-qualifier>iso</dc-qualifier>
             <repeatable>false</repeatable>
             <label>Idioma</label>
-            <input-type>onebox</input-type>
-            <hint>Código ISO del idioma (es, quc, cak...).</hint>
+            <input-type value-pairs-name="idiomas-digeex">dropdown</input-type>
+            <hint>Idioma del recurso. La lista incluye español, los 22 idiomas mayas, garífuna, xinka y los principales internacionales.</hint>
             <required></required>
         </field>
     </row>
@@ -351,4 +362,37 @@
     <pair><displayed-value>Investigaciones</displayed-value><stored-value>Investigaciones</stored-value></pair>
     <pair><displayed-value>Ferias</displayed-value><stored-value>Ferias</stored-value></pair>
     <pair><displayed-value>Agricultura</displayed-value><stored-value>Agricultura</stored-value></pair>
+</value-pairs>
+
+<!-- Idiomas DIGEEX: español + 22 idiomas mayas + garífuna + xinka + internacionales -->
+<value-pairs value-pairs-name="idiomas-digeex" dc-term="language.iso">
+    <pair><displayed-value>Español</displayed-value><stored-value>es</stored-value></pair>
+    <pair><displayed-value>Achi</displayed-value><stored-value>acr</stored-value></pair>
+    <pair><displayed-value>Akateko</displayed-value><stored-value>knj</stored-value></pair>
+    <pair><displayed-value>Awakateko</displayed-value><stored-value>agu</stored-value></pair>
+    <pair><displayed-value>Chalchiteko</displayed-value><stored-value>qch</stored-value></pair>
+    <pair><displayed-value>Ch'orti'</displayed-value><stored-value>caa</stored-value></pair>
+    <pair><displayed-value>Chuj</displayed-value><stored-value>cac</stored-value></pair>
+    <pair><displayed-value>Itza'</displayed-value><stored-value>itz</stored-value></pair>
+    <pair><displayed-value>Ixil</displayed-value><stored-value>ixl</stored-value></pair>
+    <pair><displayed-value>Jakalteko (Popti')</displayed-value><stored-value>jac</stored-value></pair>
+    <pair><displayed-value>Kaqchikel</displayed-value><stored-value>cak</stored-value></pair>
+    <pair><displayed-value>K'iche'</displayed-value><stored-value>quc</stored-value></pair>
+    <pair><displayed-value>Mam</displayed-value><stored-value>mam</stored-value></pair>
+    <pair><displayed-value>Mopan</displayed-value><stored-value>mop</stored-value></pair>
+    <pair><displayed-value>Poqomam</displayed-value><stored-value>poa</stored-value></pair>
+    <pair><displayed-value>Poqomchi'</displayed-value><stored-value>poh</stored-value></pair>
+    <pair><displayed-value>Q'anjob'al</displayed-value><stored-value>kjb</stored-value></pair>
+    <pair><displayed-value>Q'eqchi'</displayed-value><stored-value>kek</stored-value></pair>
+    <pair><displayed-value>Sakapulteko</displayed-value><stored-value>quv</stored-value></pair>
+    <pair><displayed-value>Sipakapense</displayed-value><stored-value>qum</stored-value></pair>
+    <pair><displayed-value>Tektiteko</displayed-value><stored-value>ttc</stored-value></pair>
+    <pair><displayed-value>Tz'utujil</displayed-value><stored-value>tzj</stored-value></pair>
+    <pair><displayed-value>Uspanteko</displayed-value><stored-value>usp</stored-value></pair>
+    <pair><displayed-value>Garífuna</displayed-value><stored-value>cab</stored-value></pair>
+    <pair><displayed-value>Xinka</displayed-value><stored-value>xin</stored-value></pair>
+    <pair><displayed-value>Inglés</displayed-value><stored-value>en</stored-value></pair>
+    <pair><displayed-value>Francés</displayed-value><stored-value>fr</stored-value></pair>
+    <pair><displayed-value>Portugués</displayed-value><stored-value>pt</stored-value></pair>
+    <pair><displayed-value>Otro</displayed-value><stored-value>other</stored-value></pair>
 </value-pairs>

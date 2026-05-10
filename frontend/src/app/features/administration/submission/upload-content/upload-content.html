@@ -5,7 +5,7 @@
   </p>
 
   @if (loading()) {
-    <p class="text-gray-500 dark:text-gray-400">Cargando...</p>
+    <app-loading-spinner minHeight="240px" />
   } @else if (hasNothingToShow()) {
     <p class="text-gray-500 dark:text-gray-400 italic">
       No tenés programas asignados para subir contenido. Si crees que es un error, contactá al administrador del portal.

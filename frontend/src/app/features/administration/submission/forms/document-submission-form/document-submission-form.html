@@ -1,0 +1,194 @@
+<p-card>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+      <label for="title" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Título <span class="text-red-600">*</span>
+      </label>
+      <input id="title" pInputText formControlName="title" class="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="abstract" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Resumen <span class="text-red-600">*</span>
+      </label>
+      <textarea id="abstract" pTextarea formControlName="abstract" rows="3" class="w-full"></textarea>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <p-toggleswitch formControlName="isVideo" inputId="isVideo" />
+      <label for="isVideo" class="text-sm text-gray-700 dark:text-gray-300">
+        ¿Es un video externo (YouTube, Drive)?
+      </label>
+    </div>
+
+    @if (!form.controls.isVideo.value) {
+      <div class="flex flex-col gap-1">
+        <label for="type" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Tipo de documento <span class="text-red-600">*</span>
+        </label>
+        <p-select
+          inputId="type"
+          formControlName="type"
+          [options]="tipoDocumentoOptions()"
+          optionLabel="display"
+          optionValue="value"
+          placeholder="Elegí un tipo"
+          appendTo="body"
+          styleClass="w-full" />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label for="audience" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Nivel educativo <span class="text-red-600">*</span>
+        </label>
+        <p-select
+          inputId="audience"
+          formControlName="audience"
+          [options]="audienceOptions()"
+          optionLabel="display"
+          optionValue="value"
+          placeholder="Elegí un nivel"
+          appendTo="body"
+          styleClass="w-full" />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label for="subject" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Palabras clave <span class="text-gray-400 font-normal">(opcional, separadas por coma)</span>
+        </label>
+        <input id="subject" pInputText formControlName="subject" class="w-full" />
+      </div>
+    } @else {
+      <div class="flex flex-col gap-1">
+        <label for="relationUri" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          URL del video <span class="text-red-600">*</span>
+        </label>
+        <input
+          id="relationUri"
+          pInputText
+          formControlName="relationUri"
+          placeholder="https://www.youtube.com/watch?v=..."
+          class="w-full" />
+        @if (form.controls.relationUri.touched && form.controls.relationUri.invalid) {
+          <small class="text-red-600">Ingresá una URL válida que empiece con http:// o https://.</small>
+        }
+      </div>
+    }
+
+    <div class="flex flex-col gap-1">
+      <label for="issued" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Fecha de publicación <span class="text-red-600">*</span>
+      </label>
+      <p-datepicker
+        inputId="issued"
+        formControlName="issued"
+        dateFormat="yy-mm-dd"
+        placeholder="Año-Mes-Día"
+        appendTo="body"
+        styleClass="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="author" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Autor o responsable <span class="text-gray-400 font-normal">(opcional)</span>
+      </label>
+      <input id="author" pInputText formControlName="author" class="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="publisher" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Publicado por <span class="text-gray-400 font-normal">(opcional)</span>
+      </label>
+      <input
+        id="publisher"
+        pInputText
+        formControlName="publisher"
+        placeholder="Ej. Subdirección de Educación Bilingüe Intercultural"
+        class="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="language" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Idioma <span class="text-gray-400 font-normal">(opcional)</span>
+      </label>
+      <p-select
+        inputId="language"
+        formControlName="language"
+        [options]="idiomaOptions()"
+        optionLabel="display"
+        optionValue="value"
+        placeholder="Elegí un idioma"
+        [showClear]="true"
+        [filter]="true"
+        appendTo="body"
+        styleClass="w-full" />
+    </div>
+
+    @if (!form.controls.isVideo.value) {
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Archivos <span class="text-red-600">*</span>
+          <span class="text-gray-400 font-normal">(PDF, Word, Excel, PowerPoint, OpenDocument; podés subir varios)</span>
+        </label>
+        <app-file-dropzone
+          [accept]="acceptedFileTypes"
+          [multiple]="true"
+          chooseLabel="Seleccionar archivos"
+          dropMessage="Arrastrá los documentos aquí o usá el botón de elegir."
+          (filesChange)="onFilesChange($event)" />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Portada del documento
+          <span class="text-gray-400 font-normal">(opcional, JPG o PNG)</span>
+        </label>
+        <app-file-dropzone
+          accept="image/*"
+          [multiple]="false"
+          chooseLabel="Seleccionar portada"
+          dropMessage="Arrastrá la portada aquí o usá el botón de elegir."
+          (filesChange)="onCoverChange($event)" />
+      </div>
+    }
+
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Visibilidad
+      </label>
+      <div class="flex items-center gap-3">
+        <p-toggleswitch
+          inputId="visibility"
+          [ngModel]="visibility() === 'public'"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="visibility.set($event ? 'public' : 'private')" />
+        <label for="visibility" class="text-sm text-gray-700 dark:text-gray-300">
+          {{ visibility() === 'public'
+              ? 'Pública: aparece en búsqueda y listados.'
+              : 'Privada: oculta de búsqueda; solo accesible por URL directa.' }}
+        </label>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-2 pt-2">
+      <p-button
+        type="button"
+        label="Regresar"
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        [outlined]="true"
+        [rounded]="true"
+        [disabled]="submitting()"
+        (onClick)="cancel()" />
+      <p-button
+        type="submit"
+        label="Subir contenido"
+        icon="pi pi-upload"
+        severity="success"
+        styleClass="!text-white !font-medium"
+        [rounded]="true"
+        [disabled]="!canSubmit() || submitting()"
+        [loading]="submitting()" />
+    </div>
+  </form>
+</p-card>

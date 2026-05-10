@@ -16,6 +16,7 @@ import { CommunityApiService } from '../../../../core/api/community-api.service'
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { findCallerSub } from '../../shared/services/scope-resolver';
+import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 
 /** Subdirección + sus programas; lo que la pantalla agrupa por bloque para listar. */
 export interface SubdireccionWithPrograms {
@@ -33,6 +34,7 @@ export interface SubdireccionWithPrograms {
   selector: 'app-upload-content',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './upload-content.html',
+  imports: [LoadingSpinnerComponent],
 })
 export class UploadContent {
   private readonly communityApi = inject(CommunityApiService);

@@ -81,7 +81,16 @@ export const routes: Routes = [
       },
       {
         path: 'programas/:uuid/cargar',
-        loadComponent: () => import('./features/administration/submission/submission-page/submission-page').then(m => m.SubmissionPage),
+        /**
+         * Importar primero el bootstrap garantiza que registerSubmissionForm()
+         * de cada formulario corrió antes de que el host intente montar el
+         * componente; sin esto el registry queda vacío en runtime con lazy
+         * loading y aparece "Tipo no soportado" para cualquier colección.
+         */
+        loadComponent: () =>
+          import('./features/administration/submission/submission-forms-bootstrap')
+            .then(() => import('./features/administration/submission/submission-page/submission-page'))
+            .then(m => m.SubmissionPage),
         data: { breadcrumb: 'Cargar' }
       },
       {

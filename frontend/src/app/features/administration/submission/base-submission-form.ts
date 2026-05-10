@@ -43,6 +43,16 @@ export abstract class BaseSubmissionForm {
   protected abstract getVisibility(): 'public' | 'private';
 
   /**
+   * Imagen opcional que el subform expone como portada del item. La submission
+   * API solo soporta upload al bundle ORIGINAL; el facade coloca esta imagen
+   * en el bundle THUMBNAIL post-archive. Default null para los subforms que
+   * no la usan (Galería, Estadística).
+   */
+  protected getCoverFile(): File | null {
+    return null;
+  }
+
+  /**
    * Orquesta la submission completa. Idempotente: si ya hay un submit en
    * vuelo, el segundo llamado se ignora para que un doble click del botón
    * no dispare dos workspaceitems.
@@ -57,6 +67,7 @@ export abstract class BaseSubmissionForm {
       files: this.getFiles(),
       visibility: this.getVisibility(),
       sufijoSubdireccion: this.caller().sufijo ?? '',
+      coverFile: this.getCoverFile() ?? undefined,
     };
 
     this.submitting.set(true);
