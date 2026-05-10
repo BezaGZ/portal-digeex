@@ -14,14 +14,15 @@ import { ENTITY_TYPE } from '../../core/config/digeex-values.config';
 import { SearchStateService } from './services/search-state.service';
 
 /**
- * Tests para AdvancedSearch — Arquitectura server-side con scope único.
+ * Tests de `AdvancedSearch`.
  *
- * El componente requiere selección de scope (programa/subdirección) antes
- * de buscar. Usa un solo request con paginación server-side (page + size)
- * y filtro implícito f.contentType=documento para excluir galería/estadísticas
- * cuando el scope es community o sub-community.
+ * Búsqueda avanzada server-side con scope único. El componente requiere
+ * selección de scope (programa/subdirección) antes de buscar. Usa un solo
+ * request con paginación server-side (page + size) y filtro implícito
+ * f.contentType=documento para excluir galería/estadísticas cuando el scope
+ * es community o sub-community.
  *
- * Sprint 4 — Refactor facetas server-side
+ * Ciclos del Sprint 4. Ajustado en Sprint 6.
  */
 describe('AdvancedSearch', () => {
   let component: AdvancedSearch;
@@ -277,23 +278,26 @@ describe('AdvancedSearch', () => {
     );
   });
 
-  /** Thumbnails y bitstreams */
+  /** Thumbnails y bitstreams (lazy) */
 
-  /** Verifica la carga de thumbnails y bitstreams después del search. */
-  it('should load thumbnails and bitstreams after search', () => {
+  /**
+   * Verifica que el listado de búsqueda sea lazy y no pre-cargue bundles ni bitstreams.
+   * El thumbnail usa el endpoint nativo y los bitstreams se consultan solo al click "Descargar".
+   */
+  it('should NOT pre-load bundles or bitstreams after search (lazy listing)', () => {
     vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 
     component.onSearch({ ...defaultFilters, query: 'educación' });
 
-    expect(dspaceApi.getBundles).toHaveBeenCalledWith('item-001');
-    expect(dspaceApi.getBitstreamsFromBundle).toHaveBeenCalledWith('thumb-bundle-001');
-    expect(dspaceApi.getBitstreamsFromBundle).toHaveBeenCalledWith('orig-bundle-001');
+    expect(dspaceApi.getBundles).not.toHaveBeenCalled();
+    expect(dspaceApi.getBitstreamsFromBundle).not.toHaveBeenCalled();
 
     const results = component.results();
     expect(results.length).toBe(1);
-    expect(results[0].coverImage).toBe('/server/api/core/bitstreams/thumb-bs-001/content');
-    expect(results[0].bitstreams.length).toBe(1);
-    expect(results[0].bitstreams[0].url).toBe('/server/api/core/bitstreams/orig-bs-001/content');
+    // coverImage usa el endpoint nativo /thumbnail; bitstreams queda vacío
+    // hasta que el usuario dispare downloadItem.
+    expect(results[0].coverImage).toBe('/server/api/core/items/item-001/thumbnail');
+    expect(results[0].bitstreams).toEqual([]);
   });
 
   /** onClear */
@@ -314,13 +318,13 @@ describe('AdvancedSearch', () => {
     expect(searchSpy).toHaveBeenCalledTimes(1);
   });
 
-  /** Persistencia tras volver del detalle (Sprint 6) */
+  /** Persistencia tras volver del detalle */
 
   describe('persistence after returning from detail', () => {
-    /** Verifica que cuando SearchStateService tiene un scope con valor al
-     *  montar el componente (ej: usuario regresó del detalle de un item),
-     *  AdvancedSearch dispara automáticamente la búsqueda para repoblar
-     *  los resultados sin que el usuario tenga que rehacer scope ni filtros. */
+    /**
+     * Verifica que si SearchStateService trae scope al montar, AdvancedSearch reejecute la búsqueda.
+     * Caso: el usuario regresa del detalle y debe ver sus resultados sin rehacer scope ni filtros.
+     */
     it('should re-execute search when SearchStateService has a scope on init', () => {
       const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
 

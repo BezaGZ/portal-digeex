@@ -9,9 +9,11 @@ import { SearchResult, FacetFilter } from '../../core/api/models/discovery.model
 import { Item } from '../../core/api/models/item.model';
 import { Bitstream } from '../../core/api/models/bitstream.model';
 import { ItemView, BitstreamView, PaginatorEvent } from '../../core/api/models/view.model';
+import { inferBitstreamFormat } from '../../core/api/bitstream-format.util';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { CommunityApiService } from '../../core/api/community-api.service';
 import { CollectionApiService } from '../../core/api/collection-api.service';
+import { BitstreamDownloadService } from '../../core/api/bitstream-download.service';
 import { DocumentCardComponent, SkeletonCardComponent, EmptyStateComponent } from '../../shared';
 import { SearchFiltersComponent } from './components/search-filters/search-filters';
 import { SearchFilters, ScopeOption } from './models/search-filters.model';
@@ -44,6 +46,7 @@ export class AdvancedSearch implements OnInit {
   private readonly collectionApi = inject(CollectionApiService);
   private readonly router = inject(Router);
   private readonly searchState = inject(SearchStateService);
+  private readonly downloader = inject(BitstreamDownloadService);
 
   /** Signals expuestos al template; persistidos en SearchStateService para
    *  que sobrevivan a la destrucción del componente al ir al detalle. */
@@ -63,11 +66,7 @@ export class AdvancedSearch implements OnInit {
   private digeexCommunityUuid = '';
 
   ngOnInit() {
-    /* Si el servicio guarda un scope previo, el usuario regresó del detalle
-       de un item y queremos restaurar la búsqueda. Si las opciones del
-       scope ya están cacheadas, las reusamos; si no, recargamos. Después
-       repoblamos las facetas y disparamos la búsqueda con los filtros
-       guardados para repintar resultados. */
+    // Restaura la búsqueda anterior cuando el usuario regresa del detalle.
     if (this.searchState.scope()) {
       if (this.searchState.scopeOptions().length === 0) {
         this.loadScopeOptions();
@@ -120,11 +119,62 @@ export class AdvancedSearch implements OnInit {
     }
   }
 
-  downloadBitstream(bitstream: BitstreamView) {
-    const link = document.createElement('a');
-    link.href = bitstream.url;
-    link.download = bitstream.name;
-    link.click();
+  /** Set de itemIds que están en proceso de descarga lazy; los cards lo bindean a [downloading]. */
+  readonly downloadingItems = signal(new Set<string>());
+
+  isDownloading(itemId: string): boolean {
+    return this.downloadingItems().has(itemId);
+  }
+
+  /**
+   * Descarga del card en resultados de búsqueda. Hace lazy lookup del bundle
+   * ORIGINAL del item clickeado y delega al BitstreamDownloadService que
+   * decide single vs ZIP. Mismo patrón que program-view.onDownloadItem.
+   */
+  downloadItem(item: ItemView): void {
+    if (this.isDownloading(item.id)) return;
+    const next = new Set(this.downloadingItems());
+    next.add(item.id);
+    this.downloadingItems.set(next);
+
+    this.dspaceApi
+      .getBundles(item.id)
+      .pipe(
+        switchMap((bundlesResponse) => {
+          const bundles = bundlesResponse._embedded?.['bundles'] || [];
+          const original = bundles.find((b) => b.name === 'ORIGINAL');
+          if (!original) return of([] as BitstreamView[]);
+          return this.dspaceApi.getBitstreamsFromBundle(original.uuid).pipe(
+            map((res) => {
+              const list = res?._embedded?.['bitstreams'] || [];
+              return list.map((b: Bitstream) => {
+                const fmt = inferBitstreamFormat(b.name || '');
+                return {
+                  name: b.name || '',
+                  url: `/server/api/core/bitstreams/${b.uuid}/content`,
+                  size: b.sizeBytes || 0,
+                  format: fmt.mime,
+                  formatLabel: fmt.label,
+                  uuid: b.uuid,
+                } as BitstreamView;
+              });
+            }),
+          );
+        }),
+      )
+      .subscribe({
+        next: async (bitstreams) => {
+          await this.downloader.downloadAuto(bitstreams, item.name || 'documento');
+          this.clearDownloading(item.id);
+        },
+        error: () => this.clearDownloading(item.id),
+      });
+  }
+
+  private clearDownloading(itemId: string): void {
+    const next = new Set(this.downloadingItems());
+    next.delete(itemId);
+    this.downloadingItems.set(next);
   }
 
   /**
@@ -307,6 +357,13 @@ export class AdvancedSearch implements OnInit {
     return sortMap[orderBy];
   }
 
+  /**
+   * Lazy: el listado de búsqueda no pre-carga bundles ni bitstreams. El
+   * thumbnail se obtiene del endpoint nativo /api/core/items/{uuid}/thumbnail
+   * directo en el <img>, y los bitstreams del ORIGINAL se consultan solo al
+   * darle "Descargar" (downloadItem). Sigue resolviendo owningCollection en
+   * paralelo porque el card lo necesita para la URL canónica del detalle.
+   */
   private loadItemDetails(items: Item[]) {
     if (items.length === 0) {
       this.searchState.results.set([]);
@@ -314,98 +371,45 @@ export class AdvancedSearch implements OnInit {
       return;
     }
 
-    const itemsWithDetails$ = items.map((item) =>
-      this.dspaceApi.getBundles(item.uuid).pipe(
-        switchMap((bundlesResponse) => {
-          const bundles = bundlesResponse._embedded?.['bundles'] || [];
-          const thumbnailBundle = bundles.find((b) => b.name === 'THUMBNAIL');
-          const originalBundle = bundles.find((b) => b.name === 'ORIGINAL');
-
-          const thumbnail$ = thumbnailBundle
-            ? this.dspaceApi.getBitstreamsFromBundle(thumbnailBundle.uuid)
-            : of(null);
-          const original$ = originalBundle
-            ? this.dspaceApi.getBitstreamsFromBundle(originalBundle.uuid)
-            : of(null);
-
-          /* Resolvemos la colección dueña en paralelo para construir la URL
-             canónica del detalle (/programas/{collectionUuid}/documentos/...).
-             catchError protege la búsqueda si el item es huérfano o el endpoint
-             responde 404; en ese caso simplemente no se llena el campo. */
-          const owningCollection$ = this.collectionApi.getOwningCollectionOfItem(item.uuid).pipe(
-            catchError(() => of(null)),
-          );
-
-          return forkJoin({ thumbnail: thumbnail$, original: original$, owningCollection: owningCollection$ }).pipe(
-            map(({ thumbnail, original, owningCollection }) => {
-              const originalBitstreams = original?._embedded?.['bitstreams'] || [];
-              const downloadableBitstreams: BitstreamView[] = originalBitstreams.map((b: Bitstream) => {
-                const fileName = b.name?.toLowerCase() || '';
-                let format = 'application/octet-stream';
-                if (fileName.endsWith('.pdf')) format = 'application/pdf';
-                else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) format = 'image/jpeg';
-                else if (fileName.endsWith('.png')) format = 'image/png';
-
-                return {
-                  name: b.name || '',
-                  url: `/server/api/core/bitstreams/${b.uuid}/content`,
-                  size: b.sizeBytes || 0,
-                  format,
-                  uuid: b.uuid,
-                };
-              });
-
-              const thumbnailBitstreams = thumbnail?._embedded?.['bitstreams'] || [];
-              let coverImage: string | null = null;
-
-              if (thumbnailBitstreams.length > 0) {
-                coverImage = `/server/api/core/bitstreams/${thumbnailBitstreams[0].uuid}/content`;
-              } else {
-                const imageBitstream = originalBitstreams.find((b: Bitstream) => {
-                  const fileName = b.name?.toLowerCase() || '';
-                  return fileName.endsWith('.jpeg') || fileName.endsWith('.jpg') || fileName.endsWith('.png');
-                });
-                if (imageBitstream) {
-                  coverImage = `/server/api/core/bitstreams/${imageBitstream.uuid}/content`;
-                }
-              }
-
-              return {
-                id: item.uuid,
-                name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
-                description: item.metadata?.['dc.description.abstract']?.[0]?.value || '',
-                dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-                handle: item.handle,
-                coverImage,
-                bitstreams: downloadableBitstreams,
-                type: item.metadata?.['dc.type']?.[0]?.value || '',
-                relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
-                owningCollectionUuid: owningCollection?.uuid,
-              } as ItemView;
-            }),
-          );
-        }),
+    const owningPerItem$ = items.map((item) =>
+      this.collectionApi.getOwningCollectionOfItem(item.uuid).pipe(
+        catchError(() => of(null)),
+        map((owning) => ({ item, owningUuid: owning?.uuid })),
       ),
     );
 
-    forkJoin(itemsWithDetails$).subscribe({
-      next: (itemsWithCovers: ItemView[]) => {
-        this.searchState.results.set(itemsWithCovers);
+    forkJoin(owningPerItem$).subscribe({
+      next: (resolved) => {
+        this.searchState.results.set(
+          resolved.map(({ item, owningUuid }) => ({
+            id: item.uuid,
+            name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
+            description: item.metadata?.['dc.description.abstract']?.[0]?.value || '',
+            dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
+            handle: item.handle,
+            coverImage: this.dspaceApi.getThumbnailUrl(item.uuid),
+            bitstreams: [],
+            type: item.metadata?.['dc.type']?.[0]?.value || '',
+            relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
+            owningCollectionUuid: owningUuid,
+          })),
+        );
         this.searchState.isSearching.set(false);
       },
-      error: (error: unknown) => {
-        console.error('Error al cargar bitstreams:', error);
-        this.searchState.results.set(items.map((item) => ({
-          id: item.uuid,
-          name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
-          description: item.metadata?.['dc.description.abstract']?.[0]?.value || '',
-          dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-          handle: item.handle,
-          coverImage: null,
-          bitstreams: [],
-          type: item.metadata?.['dc.type']?.[0]?.value || '',
-          relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
-        })));
+      error: () => {
+        this.searchState.results.set(
+          items.map((item) => ({
+            id: item.uuid,
+            name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
+            description: item.metadata?.['dc.description.abstract']?.[0]?.value || '',
+            dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
+            handle: item.handle,
+            coverImage: this.dspaceApi.getThumbnailUrl(item.uuid),
+            bitstreams: [],
+            type: item.metadata?.['dc.type']?.[0]?.value || '',
+            relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
+          })),
+        );
         this.searchState.isSearching.set(false);
       },
     });

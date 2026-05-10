@@ -1,4 +1,5 @@
-import { Component, ChangeDetectionStrategy, input, output, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, input, output, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -9,6 +10,7 @@ import { DatePickerModule } from 'primeng/datepicker';
 import { CardModule } from 'primeng/card';
 import { SearchFilters, SelectOption, ScopeOption } from '../../models/search-filters.model';
 import { Facet } from '../../../../core/api/models/discovery.model';
+import { VocabularyDisplayService } from '../../../../core/api/vocabulary-display.service';
 
 @Component({
   selector: 'app-search-filters',
@@ -27,6 +29,8 @@ import { Facet } from '../../../../core/api/models/discovery.model';
   templateUrl: './search-filters.html',
 })
 export class SearchFiltersComponent {
+  private readonly vocabDisplay = inject(VocabularyDisplayService);
+
   scopeOptions = input<ScopeOption[]>([]);
 
   search = output<SearchFilters>();
@@ -43,6 +47,24 @@ export class SearchFiltersComponent {
     itemtype: this.tipoDocumentoOptions,
     audience: this.nivelEducativoOptions,
     language: this.idiomaOptions,
+  };
+
+  /** Maps cacheados de stored value → display label por vocabulario. */
+  private readonly tipoDocumentoMap = toSignal(this.vocabDisplay.displayMap$('tipos-documento'), {
+    initialValue: new Map<string, string>(),
+  });
+  private readonly nivelEducativoMap = toSignal(
+    this.vocabDisplay.displayMap$('niveles-educativos'),
+    { initialValue: new Map<string, string>() },
+  );
+  private readonly idiomaMap = toSignal(this.vocabDisplay.displayMap$('idiomas-digeex'), {
+    initialValue: new Map<string, string>(),
+  });
+
+  private readonly facetVocabMap: Record<string, () => Map<string, string>> = {
+    itemtype: () => this.tipoDocumentoMap(),
+    audience: () => this.nivelEducativoMap(),
+    language: () => this.idiomaMap(),
   };
 
   /** Indica si las facetas fueron cargadas (habilita los filtros) */
@@ -87,14 +109,14 @@ export class SearchFiltersComponent {
   updateFacetOptions(facets: Facet[]) {
     for (const facet of facets) {
       const targetSignal = this.facetSignalMap[facet.name];
-      if (targetSignal) {
-        targetSignal.set(
-          facet.values.map((v) => ({
-            label: `${v.label} (${v.count})`,
-            value: v.label,
-          }))
-        );
-      }
+      if (!targetSignal) continue;
+      const lookup = this.facetVocabMap[facet.name]?.() ?? new Map<string, string>();
+      targetSignal.set(
+        facet.values.map((v) => ({
+          label: `${lookup.get(v.label) ?? v.label} (${v.count})`,
+          value: v.label,
+        })),
+      );
     }
     this.facetsLoaded.set(true);
   }
