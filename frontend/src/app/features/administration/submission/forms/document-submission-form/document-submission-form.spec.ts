@@ -4,7 +4,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { vi } from 'vitest';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 
 import { DocumentSubmissionForm } from './document-submission-form';
 import { Collection } from '../../../../../core/api/models/collection.model';
@@ -175,6 +175,34 @@ describe('DocumentSubmissionForm', () => {
   /** Verifica que el componente quede registrado bajo el entity-type Documento. */
   it('should register itself in the submission form registry under the Documento entity-type', () => {
     expect(getSubmissionFormComponent('Documento')).toBe(DocumentSubmissionForm);
+  });
+
+  /** Verifica que vocabulariesLoading arranque en true y baje a false sólo cuando los tres vocabularios resolvieron. */
+  it('should expose vocabulariesLoading=true while vocab requests are in flight and false after all three resolve', () => {
+    const tipos$ = new Subject<{ display: string; value: string }[]>();
+    const niveles$ = new Subject<{ display: string; value: string }[]>();
+    const idiomas$ = new Subject<{ display: string; value: string }[]>();
+    getEntriesFn.mockImplementation((name: string) => {
+      if (name === 'tipos-documento') return tipos$;
+      if (name === 'niveles-educativos') return niveles$;
+      if (name === 'idiomas-digeex') return idiomas$;
+      return of([]);
+    });
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.vocabulariesLoading()).toBe(true);
+
+    tipos$.next([]); tipos$.complete();
+    niveles$.next([]); niveles$.complete();
+    expect(c.vocabulariesLoading()).toBe(true);
+
+    idiomas$.next([]); idiomas$.complete();
+    expect(c.vocabulariesLoading()).toBe(false);
   });
 
   /** Verifica que en init se carguen los vocabularios tipos-documento, niveles-educativos e idiomas-digeex. */

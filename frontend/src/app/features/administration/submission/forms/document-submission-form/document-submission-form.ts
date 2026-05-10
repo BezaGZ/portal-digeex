@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { startWith } from 'rxjs/operators';
 import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
@@ -12,6 +13,7 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
 import { FileDropzoneComponent } from '../../../../../shared';
+import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
 import { BaseSubmissionForm } from '../../base-submission-form';
 import { registerSubmissionForm } from '../../submission-form-registry';
 import { mv } from '../../metadata-value.util';
@@ -42,6 +44,7 @@ import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry
     ButtonModule,
     MessageModule,
     FileDropzoneComponent,
+    LoadingSpinnerComponent,
   ],
 })
 export class DocumentSubmissionForm extends BaseSubmissionForm {
@@ -90,6 +93,13 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
   /** Entradas del dropdown de idioma (vocabulario idiomas-digeex). */
   readonly idiomaOptions = signal<VocabularyEntry[]>([]);
 
+  /**
+   * True hasta que los tres vocabularios respondieron. El template lo bindea
+   * a `<app-loading-spinner>` para evitar mostrar dropdowns vacíos durante el
+   * vuelo de las requests.
+   */
+  readonly vocabulariesLoading = signal(true);
+
   /** Estado del form como signal — los validators reactivos lo emiten en cada cambio. */
   private readonly formStatus = toSignal(
     this.form.statusChanges.pipe(startWith(this.form.status), takeUntilDestroyed()),
@@ -110,15 +120,21 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
 
   constructor() {
     super();
-    this.vocabApi
-      .getEntries('tipos-documento')
-      .subscribe((entries) => this.tipoDocumentoOptions.set(entries));
-    this.vocabApi
-      .getEntries('niveles-educativos')
-      .subscribe((entries) => this.audienceOptions.set(entries));
-    this.vocabApi
-      .getEntries('idiomas-digeex')
-      .subscribe((entries) => this.idiomaOptions.set(entries));
+    /**
+     * Carga paralela de los tres vocabularios. forkJoin emite cuando todos
+     * completan, así con un solo subscribe sabemos que el form ya está
+     * armado y podemos bajar el flag del spinner.
+     */
+    forkJoin({
+      tipos: this.vocabApi.getEntries('tipos-documento'),
+      niveles: this.vocabApi.getEntries('niveles-educativos'),
+      idiomas: this.vocabApi.getEntries('idiomas-digeex'),
+    }).subscribe(({ tipos, niveles, idiomas }) => {
+      this.tipoDocumentoOptions.set(tipos);
+      this.audienceOptions.set(niveles);
+      this.idiomaOptions.set(idiomas);
+      this.vocabulariesLoading.set(false);
+    });
 
     this.form.controls.isVideo.valueChanges
       .pipe(startWith(this.form.controls.isVideo.value), takeUntilDestroyed())
