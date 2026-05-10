@@ -48,8 +48,8 @@ const DigeexPreset = definePreset(Aura, {
       100: '#C4D0E5',
       200: '#9DB1D4',
       300: '#7691C3',
-      400: '#5879B6',
-      500: '#1E3159',  // Base: Azul Gobierno oficial
+      400: '#5879B6',      /** Base: Azul Gobierno oficial */
+      500: '#1E3159',
       600: '#1A2B4E',
       700: '#162443',
       800: '#121D38',
@@ -239,7 +239,87 @@ export const appConfig: ApplicationConfig = {
         options: {
           darkModeSelector: '.dark'
         }
-      }
+      },
+      /**
+       * Traducción global de PrimeNG al español. Cubre fileupload, calendar,
+       * paginator, confirm dialogs, datatables y demás. Cualquier componente
+       * PrimeNG agregado a futuro hereda estas labels sin configuración local.
+       */
+      translation: {
+        /** FileUpload */
+        choose: 'Elegir',
+        upload: 'Subir',
+        cancel: 'Cancelar',
+        pending: 'Pendiente',
+        fileSizeTypes: ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
+        noFileChosenMessage: 'No se ha elegido un archivo',
+        /** Confirm dialogs */
+        accept: 'Aceptar',
+        reject: 'Cancelar',
+        /** Empty states */
+        emptyMessage: 'No se encontraron resultados',
+        emptyFilterMessage: 'No hay coincidencias',
+        emptySelectionMessage: 'Sin selección',
+        emptySearchMessage: 'No hay resultados de búsqueda',
+        /** Calendar / DatePicker */
+        dayNames: [
+          'Domingo',
+          'Lunes',
+          'Martes',
+          'Miércoles',
+          'Jueves',
+          'Viernes',
+          'Sábado',
+        ],
+        dayNamesShort: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+        dayNamesMin: ['D', 'L', 'M', 'M', 'J', 'V', 'S'],
+        monthNames: [
+          'Enero',
+          'Febrero',
+          'Marzo',
+          'Abril',
+          'Mayo',
+          'Junio',
+          'Julio',
+          'Agosto',
+          'Septiembre',
+          'Octubre',
+          'Noviembre',
+          'Diciembre',
+        ],
+        monthNamesShort: [
+          'Ene',
+          'Feb',
+          'Mar',
+          'Abr',
+          'May',
+          'Jun',
+          'Jul',
+          'Ago',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dic',
+        ],
+        today: 'Hoy',
+        clear: 'Limpiar',
+        weekHeader: 'Sm',
+        firstDayOfWeek: 0,
+        dateFormat: 'yy-mm-dd',
+        /** ARIA labels (accesibilidad lectores de pantalla) */
+        aria: {
+          selectAll: 'Seleccionar todo',
+          unselectAll: 'Deseleccionar todo',
+          close: 'Cerrar',
+          previousPageLabel: 'Página anterior',
+          nextPageLabel: 'Página siguiente',
+          firstPageLabel: 'Primera página',
+          lastPageLabel: 'Última página',
+          rowsPerPageLabel: 'Filas por página',
+          jumpToPageDropdownLabel: 'Saltar a la página',
+          jumpToPageInputLabel: 'Ir a la página',
+        },
+      },
     })
   ]
 };

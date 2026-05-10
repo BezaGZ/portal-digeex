@@ -2,6 +2,13 @@
 @import "tailwindcss-primeui";
 @import "primeicons/primeicons.css";
 
+/* Activa la variante `dark:` de Tailwind 4 cuando la clase `.dark` está
+   en el elemento o cualquiera de sus ancestros. Sin esta directiva
+   Tailwind v4 (CSS-first) ignora los `dark:*` que ya están escritos en
+   los templates del proyecto. Coincide con el `darkModeSelector: '.dark'`
+   configurado para el preset Aura de PrimeNG en app.config.ts. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ============================================
    TIPOGRAFÍAS OFICIALES — Gobierno de Guatemala
    Fuente: Estrategia Visual 2026
