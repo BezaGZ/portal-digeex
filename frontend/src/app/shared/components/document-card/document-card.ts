@@ -1,9 +1,17 @@
-import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
+import { Component, ChangeDetectionStrategy, effect, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-import { ItemView, BitstreamView } from '../../../core/api/models';
+import { ItemView } from '../../../core/api/models';
 
+/**
+ * Card de un item para listados públicos. Lazy: no asume que el listado
+ * pre-cargó los bitstreams. El click en "Descargar" emite el ItemView
+ * entero y el padre se encarga del lookup de bitstreams + descarga.
+ *
+ * downloading es un flag opcional que el padre setea mientras resuelve
+ * el lookup, así el botón muestra spinner (PrimeNG [loading]).
+ */
 @Component({
   selector: 'app-document-card',
   standalone: true,
@@ -13,22 +21,38 @@ import { ItemView, BitstreamView } from '../../../core/api/models';
 })
 export class DocumentCardComponent {
   item = input.required<ItemView>();
+  downloading = input<boolean>(false);
 
   cardClick = output<ItemView>();
-  download = output<BitstreamView>();
+  download = output<ItemView>();
   watchVideo = output<ItemView>();
+
+  /** True cuando el endpoint /thumbnail devolvió 204/404 y el <img> falló. */
+  readonly imageError = signal(false);
+
+  constructor() {
+    // El card se recicla en @for; reseteamos imageError al cambiar de item.
+    effect(() => {
+      this.item().coverImage;
+      this.imageError.set(false);
+    });
+  }
 
   get isVideo(): boolean {
     return this.item().type === 'MovingImage';
+  }
+
+  onImageError(): void {
+    this.imageError.set(true);
   }
 
   onCardClick() {
     this.cardClick.emit(this.item());
   }
 
-  onDownload(event: Event, bitstream: BitstreamView) {
+  onDownload(event: Event) {
     event.stopPropagation();
-    this.download.emit(bitstream);
+    this.download.emit(this.item());
   }
 
   onWatchVideo(event: Event) {

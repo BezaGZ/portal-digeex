@@ -8,6 +8,7 @@ import { DocumentDetailComponent } from './document-detail.component';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
+import { VocabularyDisplayService } from '../../../core/api/vocabulary-display.service';
 
 /**
  * Tests para DocumentDetailComponent.
@@ -24,6 +25,7 @@ describe('DocumentDetailComponent', () => {
   let dspaceApi: DSpaceApiService;
   let collectionApi: CollectionApiService;
   let breadcrumbService: BreadcrumbService;
+  let vocabDisplay: VocabularyDisplayService;
 
   /** Fixtures */
 
@@ -120,6 +122,7 @@ describe('DocumentDetailComponent', () => {
     dspaceApi = TestBed.inject(DSpaceApiService);
     collectionApi = TestBed.inject(CollectionApiService);
     breadcrumbService = TestBed.inject(BreadcrumbService);
+    vocabDisplay = TestBed.inject(VocabularyDisplayService);
 
     /* eslint-disable @typescript-eslint/no-explicit-any */
     vi.spyOn(dspaceApi, 'getItem').mockReturnValue(of(MOCK_ITEM_DOC as any));
@@ -131,6 +134,15 @@ describe('DocumentDetailComponent', () => {
     });
     vi.spyOn(collectionApi, 'getOne').mockReturnValue(of({ name: 'PEAC', metadata: { 'dc.subject': [{ value: 'PEAC' }] } } as any));
     vi.spyOn(breadcrumbService, 'setTrail');
+    // Mock del servicio de vocabularios: traduce los pares conocidos y cae al
+    // value crudo para cualquier otro, replicando el contrato del servicio real.
+    vi.spyOn(vocabDisplay, 'display$').mockImplementation((name: string, value: string) => {
+      if (name === 'idiomas-digeex' && value === 'es') return of('Español');
+      if (name === 'idiomas-digeex' && value === 'acr') return of('Achi');
+      if (name === 'niveles-educativos' && value === 'Primaria') return of('Primaria');
+      if (name === 'tipos-documento' && value === 'Guía') return of('Guía');
+      return of(value);
+    });
     /* eslint-enable @typescript-eslint/no-explicit-any */
   });
 
@@ -217,6 +229,181 @@ describe('DocumentDetailComponent', () => {
 
       expect(component.isVideo).toBe(true);
       expect(component.videoUrl).toBe('https://youtube.com/watch?v=abc123');
+    });
+  });
+
+  /** Múltiples bitstreams visibles en el detalle con su label de formato. */
+  describe('multi-bitstream listing', () => {
+    // Mock con PDF + Word para cubrir caso real de varios archivos por item.
+    const MOCK_MULTI_ORIGINAL = {
+      _embedded: {
+        bitstreams: [
+          { uuid: 'orig-bs-001', name: 'guia-peac.pdf', sizeBytes: 245000, _links: {} },
+          { uuid: 'orig-bs-002', name: 'anexo.docx', sizeBytes: 50000, _links: {} },
+        ],
+      },
+      _links: {},
+      page: { size: 20, totalElements: 2, totalPages: 1, number: 0 },
+    };
+
+    /** Verifica que todos los bitstreams del bundle ORIGINAL queden expuestos con formatLabel poblado. */
+    it('should expose every bitstream from the ORIGINAL bundle with its formatLabel populated', () => {
+      vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
+        if (bundleUuid === 'thumb-bundle-001') return of(MOCK_THUMBNAIL_BITSTREAMS as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+        if (bundleUuid === 'orig-bundle-001') return of(MOCK_MULTI_ORIGINAL as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+        return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      });
+
+      component.ngOnInit();
+
+      // Ambos bitstreams quedan en la lista (no se filtra por extension a nivel componente).
+      expect(component.documentBitstreams.length).toBe(2);
+      const pdf = component.documentBitstreams.find((b) => b.name === 'guia-peac.pdf');
+      const docx = component.documentBitstreams.find((b) => b.name === 'anexo.docx');
+      expect(pdf?.formatLabel).toBe('PDF');
+      expect(docx?.formatLabel).toBe('Word');
+      expect(docx?.format).toBe(
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      );
+    });
+
+    /** Verifica que el template renderice una fila por bitstream con su nombre y formatLabel visibles. */
+    it('should render every bitstream in the template with name and formatLabel, regardless of mime', () => {
+      vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
+        if (bundleUuid === 'thumb-bundle-001') return of(MOCK_THUMBNAIL_BITSTREAMS as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+        if (bundleUuid === 'orig-bundle-001') return of(MOCK_MULTI_ORIGINAL as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+        return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      });
+
+      const fixture = TestBed.createComponent(DocumentDetailComponent);
+      fixture.componentInstance.ngOnInit();
+      fixture.detectChanges();
+
+      // Cada bitstream lleva un nodo con [data-testid="bitstream-row"].
+      const rows = fixture.nativeElement.querySelectorAll(
+        '[data-testid="bitstream-row"]',
+      );
+      expect(rows.length).toBe(2);
+      const text = fixture.nativeElement.textContent ?? '';
+      expect(text).toContain('guia-peac.pdf');
+      expect(text).toContain('anexo.docx');
+      expect(text).toContain('PDF');
+      expect(text).toContain('Word');
+    });
+
+    /** Verifica que el botón "Descargar todo" se oculte cuando hay un único bitstream. */
+    it('should hide the "Descargar todo" button when there is only one bitstream', () => {
+      // El default mock (MOCK_ORIGINAL_BITSTREAMS) tiene exactamente un bitstream.
+      const fixture = TestBed.createComponent(DocumentDetailComponent);
+      fixture.componentInstance.ngOnInit();
+      fixture.detectChanges();
+
+      const zipBtn = fixture.nativeElement.querySelector(
+        '[data-testid="download-all-zip"]',
+      );
+      expect(zipBtn).toBeNull();
+    });
+
+    /** Verifica que downloadAllAsZip baje todos los bitstreams, los empaque en ZIP y dispare una sola descarga. */
+    it('should fetch every bitstream, bundle them into a ZIP and trigger a single download', async () => {
+      vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
+        if (bundleUuid === 'thumb-bundle-001') return of(MOCK_THUMBNAIL_BITSTREAMS as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+        if (bundleUuid === 'orig-bundle-001') return of(MOCK_MULTI_ORIGINAL as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+        return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      });
+
+      // Mock fetch para no pegar a la red; cada bitstream devuelve un blob fake.
+      const fetchMock = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          blob: () => Promise.resolve(new Blob(['x'], { type: 'application/octet-stream' })),
+        }),
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (globalThis as any).fetch = fetchMock;
+
+      // jsdom no implementa estos metodos; los asignamos directo en el objeto.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (URL as any).createObjectURL = vi.fn().mockReturnValue('blob:mock-zip');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (URL as any).revokeObjectURL = vi.fn();
+
+      // Spy del <a download> sin romper otros createElement del fixture.
+      const fakeAnchor = { click: vi.fn(), href: '', download: '' };
+      const realCreate = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        if (tag === 'a') return fakeAnchor as unknown as HTMLAnchorElement;
+        return realCreate(tag);
+      });
+
+      component.ngOnInit();
+      await component.downloadAllAsZip();
+
+      expect(fetchMock).toHaveBeenCalledWith('/server/api/core/bitstreams/orig-bs-001/content');
+      expect(fetchMock).toHaveBeenCalledWith('/server/api/core/bitstreams/orig-bs-002/content');
+      expect(fakeAnchor.click).toHaveBeenCalledTimes(1);
+      expect(fakeAnchor.download).toMatch(/\.zip$/);
+      // El flag de loading queda en false al cerrar el flujo (try/finally).
+      expect(component.downloadingZip).toBe(false);
+    });
+
+    /** Verifica que el botón "Descargar todo" aparezca cuando hay dos o más bitstreams. */
+    it('should show the "Descargar todo" button when there are two or more bitstreams', () => {
+      vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
+        if (bundleUuid === 'thumb-bundle-001') return of(MOCK_THUMBNAIL_BITSTREAMS as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+        if (bundleUuid === 'orig-bundle-001') return of(MOCK_MULTI_ORIGINAL as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+        return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      });
+
+      const fixture = TestBed.createComponent(DocumentDetailComponent);
+      fixture.componentInstance.ngOnInit();
+      fixture.detectChanges();
+
+      const zipBtn = fixture.nativeElement.querySelector(
+        '[data-testid="download-all-zip"]',
+      );
+      expect(zipBtn).not.toBeNull();
+    });
+  });
+
+  /** Vocabularios: idioma, nivel educativo y tipo de documento */
+
+  describe('vocabulary lookups', () => {
+    /** Verifica que el label de idioma se resuelva via VocabularyDisplayService para códigos fuera del mapa local. */
+    it('should resolve language label via VocabularyDisplayService for codes outside the hardcoded map', () => {
+      const itemAchi = {
+        ...MOCK_ITEM_DOC,
+        metadata: {
+          ...MOCK_ITEM_DOC.metadata,
+          'dc.language.iso': [{ value: 'acr' }],
+        },
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(dspaceApi, 'getItem').mockReturnValue(of(itemAchi as any));
+
+      component.ngOnInit();
+
+      expect(vocabDisplay.display$).toHaveBeenCalledWith('idiomas-digeex', 'acr');
+      const idiomaField = component.metadataFields.find((f) => f.label === 'Idioma');
+      expect(idiomaField?.value).toBe('Achi');
+    });
+
+    /** Verifica que el label de nivel educativo se resuelva via VocabularyDisplayService. */
+    it('should resolve audience label via VocabularyDisplayService', () => {
+      component.ngOnInit();
+
+      expect(vocabDisplay.display$).toHaveBeenCalledWith('niveles-educativos', 'Primaria');
+      const audienceField = component.metadataFields.find((f) => f.label === 'Nivel educativo');
+      expect(audienceField?.value).toBe('Primaria');
+    });
+
+    /** Verifica que el label del tipo de documento se resuelva via VocabularyDisplayService (vocabulario tipos-documento). */
+    it('should resolve type label via VocabularyDisplayService', () => {
+      component.ngOnInit();
+
+      expect(vocabDisplay.display$).toHaveBeenCalledWith('tipos-documento', 'Guía');
+      const typeField = component.metadataFields.find((f) => f.label === 'Tipo de documento');
+      expect(typeField?.value).toBe('Guía');
     });
   });
 

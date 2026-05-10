@@ -7,7 +7,7 @@
     styleClass="!rounded-2xl !border !border-gray-200 !shadow-sm hover:!shadow-lg transition-all flex flex-col h-full"
   >
     <ng-template pTemplate="header">
-      @if (item().coverImage) {
+      @if (item().coverImage && !imageError()) {
         <div
           class="w-full aspect-[3/4] bg-[#F3F4F6] flex items-center justify-center overflow-hidden"
         >
@@ -15,6 +15,7 @@
             [src]="item().coverImage"
             [alt]="item().name"
             loading="lazy"
+            (error)="onImageError()"
             class="w-full h-full object-contain"
           />
         </div>
@@ -60,14 +61,16 @@
             styleClass="!font-medium !px-6 !py-2 transition-all duration-200"
             (onClick)="onWatchVideo($event)"
           ></p-button>
-        } @else if (item().bitstreams.length > 0) {
+        } @else {
           <p-button
             label="Descargar"
             icon="pi pi-download"
             severity="primary"
             [rounded]="true"
+            [loading]="downloading()"
+            [disabled]="downloading()"
             styleClass="!font-medium !px-6 !py-2 transition-all duration-200"
-            (onClick)="onDownload($event, item().bitstreams[0])"
+            (onClick)="onDownload($event)"
           ></p-button>
         }
       </div>

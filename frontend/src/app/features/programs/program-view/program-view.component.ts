@@ -16,10 +16,11 @@ import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
+import { BitstreamDownloadService } from '../../../core/api/bitstream-download.service';
+import { inferBitstreamFormat } from '../../../core/api/bitstream-format.util';
 import { CollectionView, ItemView, BitstreamView, PaginatorEvent, Bitstream } from '../../../core/api/models';
-import { forkJoin, of } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
 import { SkeletonCardComponent, EmptyStateComponent, DocumentCardComponent } from '../../../shared';
+import { switchMap } from 'rxjs/operators';
 import { getCollectionRoute } from '../../../core/config/collection-format.config';
 import { ENTITY_TYPE } from '../../../core/config/digeex-values.config';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -49,6 +50,8 @@ export class ProgramViewComponent implements OnInit {
   itemsPerPage = 8;
   currentPage = 0;
   totalRecords = 0;
+  /** Set de itemIds que están en proceso de descarga lazy; los cards los bindean a [downloading]. */
+  downloadingItems = new Set<string>();
 
   constructor(
     private route: ActivatedRoute,
@@ -57,6 +60,7 @@ export class ProgramViewComponent implements OnInit {
     private breadcrumbService: BreadcrumbService,
     private dspaceApi: DSpaceApiService,
     private collectionApi: CollectionApiService,
+    private downloader: BitstreamDownloadService,
   ) {}
 
   ngOnInit() {
@@ -117,104 +121,24 @@ export class ProgramViewComponent implements OnInit {
         const items = itemsResponse._embedded?.['items'] || [];
         this.totalRecords = itemsResponse.page?.totalElements ?? 0;
 
-        if (items.length === 0) {
-          this.items = [];
-          this.isLoading = false;
-          this.cdr.markForCheck();
-          this.updateBreadcrumb();
-          return;
-        }
-
-        const itemsWithThumbnails$ = items.map((item) =>
-          this.dspaceApi.getBundles(item.uuid).pipe(
-            switchMap((bundlesResponse) => {
-              const bundles = bundlesResponse._embedded?.['bundles'] || [];
-              const thumbnailBundle = bundles.find((b) => b.name === 'THUMBNAIL');
-              const originalBundle = bundles.find((b) => b.name === 'ORIGINAL');
-
-              const thumbnail$ = thumbnailBundle
-                ? this.dspaceApi.getBitstreamsFromBundle(thumbnailBundle.uuid)
-                : of(null);
-              const original$ = originalBundle
-                ? this.dspaceApi.getBitstreamsFromBundle(originalBundle.uuid)
-                : of(null);
-
-              return forkJoin({ thumbnail: thumbnail$, original: original$ }).pipe(
-                map(({ thumbnail, original }) => {
-                  const originalBitstreams = original?._embedded?.['bitstreams'] || [];
-                  const downloadableBitstreams: BitstreamView[] = originalBitstreams.map((b: Bitstream) => {
-                    const fileName = b.name?.toLowerCase() || '';
-                    let format = 'application/octet-stream';
-                    if (fileName.endsWith('.pdf')) format = 'application/pdf';
-                    else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) format = 'image/jpeg';
-                    else if (fileName.endsWith('.png')) format = 'image/png';
-
-                    return {
-                      name: b.name || '',
-                      url: `/server/api/core/bitstreams/${b.uuid}/content`,
-                      size: b.sizeBytes || 0,
-                      format,
-                      uuid: b.uuid,
-                    };
-                  });
-
-                  const thumbnailBitstreams = thumbnail?._embedded?.['bitstreams'] || [];
-                  let coverImage: string | null = null;
-
-                  if (thumbnailBitstreams.length > 0) {
-                    coverImage = `/server/api/core/bitstreams/${thumbnailBitstreams[0].uuid}/content`;
-                  } else {
-                    const imageBitstream = originalBitstreams.find((b: Bitstream) => {
-                      const fileName = b.name?.toLowerCase() || '';
-                      return fileName.endsWith('.jpeg') || fileName.endsWith('.jpg') || fileName.endsWith('.png');
-                    });
-                    if (imageBitstream) {
-                      coverImage = `/server/api/core/bitstreams/${imageBitstream.uuid}/content`;
-                    }
-                  }
-
-                  return {
-                    id: item.uuid,
-                    name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
-                    description: item.metadata?.['dc.description']?.[0]?.value || '',
-                    dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-                    handle: item.handle,
-                    coverImage,
-                    bitstreams: downloadableBitstreams,
-                    type: item.metadata?.['dc.type']?.[0]?.value || '',
-                    relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
-                  } as ItemView;
-                }),
-              );
-            }),
-          ),
-        );
-
-        forkJoin(itemsWithThumbnails$).subscribe({
-          next: (itemsWithCovers) => {
-            this.items = itemsWithCovers;
-            this.isLoading = false;
-            this.cdr.markForCheck();
-            this.updateBreadcrumb();
-          },
-          error: (error) => {
-            console.error('Error al cargar bitstreams:', error);
-            this.items = items.map((item) => ({
-              id: item.uuid,
-              name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
-              description: item.metadata?.['dc.description']?.[0]?.value || '',
-              dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-              handle: item.handle,
-              coverImage: null,
-              bitstreams: [],
-              type: item.metadata?.['dc.type']?.[0]?.value || '',
-              relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
-            }));
-            this.isLoading = false;
-            this.cdr.markForCheck();
-            this.updateBreadcrumb();
-          },
-        });
+        // El thumbnail viene embebido en cada item; los bitstreams se
+        // consultan solo al click "Descargar" en el card.
+        this.items = items.map((item) => ({
+          id: item.uuid,
+          name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
+          description: item.metadata?.['dc.description']?.[0]?.value || '',
+          dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
+          handle: item.handle,
+          coverImage: item.thumbnail?.uuid
+            ? `/server/api/core/bitstreams/${item.thumbnail.uuid}/content`
+            : this.dspaceApi.getThumbnailUrl(item.uuid),
+          bitstreams: [],
+          type: item.metadata?.['dc.type']?.[0]?.value || '',
+          relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
+        }));
+        this.isLoading = false;
+        this.cdr.markForCheck();
+        this.updateBreadcrumb();
       },
       error: (error) => {
         console.error('Error al cargar items desde DSpace:', error);
@@ -256,11 +180,57 @@ export class ProgramViewComponent implements OnInit {
     }
   }
 
-  downloadBitstream(bitstream: BitstreamView) {
-    const link = document.createElement('a');
-    link.href = bitstream.url;
-    link.download = bitstream.name;
-    link.click();
+  /**
+   * Click "Descargar" en el card. Hace lazy lookup del bundle ORIGINAL del
+   * item, mapea bitstreams, y delega al BitstreamDownloadService que decide
+   * single vs ZIP. Marca el itemId en downloadingItems para que el card
+   * muestre el [loading] del p-button mientras llega la respuesta.
+   */
+  isDownloading(itemId: string): boolean {
+    return this.downloadingItems.has(itemId);
+  }
+
+  onDownloadItem(item: ItemView): void {
+    if (this.downloadingItems.has(item.id)) return;
+    this.downloadingItems.add(item.id);
+    this.cdr.markForCheck();
+
+    this.dspaceApi
+      .getBundles(item.id)
+      .pipe(
+        switchMap((bundlesResponse) => {
+          const bundles = bundlesResponse._embedded?.['bundles'] || [];
+          const original = bundles.find((b) => b.name === 'ORIGINAL');
+          if (!original) {
+            return Promise.resolve([] as BitstreamView[]);
+          }
+          return this.dspaceApi.getBitstreamsFromBundle(original.uuid).toPromise().then((res) => {
+            const list = res?._embedded?.['bitstreams'] || [];
+            return list.map((b: Bitstream) => {
+              const fmt = inferBitstreamFormat(b.name || '');
+              return {
+                name: b.name || '',
+                url: `/server/api/core/bitstreams/${b.uuid}/content`,
+                size: b.sizeBytes || 0,
+                format: fmt.mime,
+                formatLabel: fmt.label,
+                uuid: b.uuid,
+              } as BitstreamView;
+            });
+          });
+        }),
+      )
+      .subscribe({
+        next: async (bitstreams) => {
+          await this.downloader.downloadAuto(bitstreams, item.name || 'documento');
+          this.downloadingItems.delete(item.id);
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.downloadingItems.delete(item.id);
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   goBack() {

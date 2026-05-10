@@ -50,8 +50,9 @@
           @for (item of items; track item.id) {
             <app-document-card
               [item]="item"
+              [downloading]="isDownloading(item.id)"
               (cardClick)="navigateToDocument($event)"
-              (download)="downloadBitstream($event)"
+              (download)="onDownloadItem($event)"
               (watchVideo)="openVideo($event)"
             />
           }

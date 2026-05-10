@@ -42,20 +42,24 @@
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div class="md:col-span-1 flex justify-center md:justify-start">
-          @if (documentCoverImage) {
+          @if (documentCoverImage && !coverImageError) {
             <div class="w-48 md:w-64 lg:w-full lg:max-w-xs">
               <img
                 [src]="documentCoverImage"
                 [alt]="documentTitle"
+                (error)="onCoverImageError()"
                 class="w-full rounded-lg shadow-sm"
               />
             </div>
           } @else {
             <div
-              class="w-40 h-52 bg-white border border-gray-200 shadow-sm flex items-center justify-center text-sm"
-              style="color: var(--color-text-secondary); font-family: var(--font-body)"
+              class="w-48 md:w-64 lg:w-full lg:max-w-xs aspect-[3/4] bg-[#F3F4F6] border border-gray-200 shadow-sm rounded-lg flex items-center justify-center"
             >
-              No Thumbnail Available
+              <i
+                [class]="isVideo ? 'pi pi-play-circle' : 'pi pi-file-pdf'"
+                class="text-6xl"
+                style="color: var(--gob-competitividad)"
+              ></i>
             </div>
           }
         </div>
@@ -102,19 +106,39 @@
 
           @if (!isVideo && documentBitstreams.length > 0) {
             <div class="mb-8">
-              <h3
-                class="text-sm uppercase tracking-wide mb-3"
-                style="
-                  color: var(--color-text-secondary);
-                  font-family: var(--font-heading);
-                  font-weight: 500;
-                "
-              >
-                Archivos
-              </h3>
+              <div class="flex items-center justify-between mb-3">
+                <h3
+                  class="text-sm uppercase tracking-wide"
+                  style="
+                    color: var(--color-text-secondary);
+                    font-family: var(--font-heading);
+                    font-weight: 500;
+                  "
+                >
+                  Archivos
+                </h3>
+                @if (documentBitstreams.length > 1) {
+                  <p-button
+                    data-testid="download-all-zip"
+                    label="Descargar todo (ZIP)"
+                    icon="pi pi-folder-open"
+                    severity="primary"
+                    [rounded]="true"
+                    [loading]="downloadingZip"
+                    [disabled]="downloadingZip"
+                    styleClass="!font-medium !px-4 !py-2 transition-all duration-200"
+                    (onClick)="downloadAllAsZip()"
+                  ></p-button>
+                }
+              </div>
+
               @for (bitstream of documentBitstreams; track bitstream.uuid) {
-                @if (bitstream.format === 'application/pdf') {
-                  <div class="flex items-center gap-2 mb-2" style="color: var(--gob-azul-gobierno)">
+                <div
+                  data-testid="bitstream-row"
+                  class="flex items-center justify-between gap-3 py-2 border-b"
+                  style="border-color: var(--color-border, #e5e7eb)"
+                >
+                  <div class="flex items-center gap-3 min-w-0">
                     <span
                       class="inline-flex items-center px-2 py-0.5 rounded text-xs"
                       style="
@@ -124,45 +148,48 @@
                         font-weight: 500;
                       "
                     >
-                      Principal
+                      {{ bitstream.formatLabel }}
                     </span>
                     <span
                       class="truncate text-base"
-                      style="font-family: var(--font-body); font-weight: 400"
+                      style="
+                        font-family: var(--font-body);
+                        font-weight: 400;
+                        color: var(--gob-azul-gobierno);
+                      "
                       >{{ bitstream.name }}</span
                     >
+                    <span
+                      class="text-sm whitespace-nowrap"
+                      style="
+                        color: var(--color-text-secondary);
+                        font-family: var(--font-body);
+                      "
+                      >({{ bitstream.size | fileSize }})</span
+                    >
                   </div>
-                  <div
-                    class="text-sm mt-1"
-                    style="
-                      color: var(--color-text-secondary);
-                      font-family: var(--font-body);
-                      font-weight: 400;
-                    "
-                  >
-                    ({{ bitstream.size | fileSize }})
+                  <div class="flex items-center gap-2 shrink-0">
+                    @if (bitstream.format === 'application/pdf') {
+                      <p-button
+                        label="Ver"
+                        icon="pi pi-eye"
+                        [text]="true"
+                        severity="primary"
+                        styleClass="!font-medium"
+                        (onClick)="viewBitstream(bitstream)"
+                      ></p-button>
+                    }
+                    <p-button
+                      label="Descargar"
+                      icon="pi pi-download"
+                      [text]="true"
+                      severity="primary"
+                      styleClass="!font-medium"
+                      (onClick)="downloadBitstream(bitstream)"
+                    ></p-button>
                   </div>
-                }
+                </div>
               }
-              <div class="mt-4 flex flex-wrap gap-3">
-                <p-button
-                  label="Ver"
-                  icon="pi pi-eye"
-                  [outlined]="true"
-                  severity="primary"
-                  [rounded]="true"
-                  styleClass="!font-medium !px-6 !py-2 transition-all duration-200"
-                  (onClick)="viewDocument()"
-                ></p-button>
-                <p-button
-                  label="Descargar"
-                  icon="pi pi-download"
-                  severity="primary"
-                  [rounded]="true"
-                  styleClass="!font-medium !px-6 !py-2 transition-all duration-200"
-                  (onClick)="downloadDocument()"
-                ></p-button>
-              </div>
             </div>
           }
 

@@ -13,9 +13,12 @@ import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
+import { VocabularyDisplayService } from '../../../core/api/vocabulary-display.service';
+import { BitstreamDownloadService } from '../../../core/api/bitstream-download.service';
+import { inferBitstreamFormat } from '../../../core/api/bitstream-format.util';
 import { BitstreamView, MetadataFieldView, Item, MetadataMap, Bitstream } from '../../../core/api/models';
-import { forkJoin, of } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { Observable, forkJoin, of } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 import { SkeletonDetailComponent } from '../../../shared';
 import { FileSizePipe } from '../../../shared/pipes';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -34,17 +37,26 @@ export class DocumentDetailComponent implements OnInit {
   documentTitle: string = 'Documento';
   documentDescription: string = '';
   documentCoverImage: string = '';
+  /** True cuando el <img> de la portada falla; el template muestra el ícono PDF. */
+  coverImageError = false;
   documentBitstreams: BitstreamView[] = [];
   metadataFields: MetadataFieldView[] = [];
   isLoading = false;
   isVideo = false;
   videoUrl = '';
 
+  onCoverImageError(): void {
+    this.coverImageError = true;
+    this.cdr.markForCheck();
+  }
+
   constructor(
     private route: ActivatedRoute,
     private breadcrumbService: BreadcrumbService,
     private dspaceApi: DSpaceApiService,
     private collectionApi: CollectionApiService,
+    private vocabDisplay: VocabularyDisplayService,
+    private downloader: BitstreamDownloadService,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -65,9 +77,8 @@ export class DocumentDetailComponent implements OnInit {
         this.documentDescription = item.metadata?.['dc.description.abstract']?.[0]?.value || '';
         this.isVideo = item.metadata?.['dc.type']?.[0]?.value === 'Video';
         this.videoUrl = item.metadata?.['dc.relation.uri']?.[0]?.value || '';
-        this.buildMetadataFields(item.metadata, null);
 
-        return this.dspaceApi.getBundles(itemUuid).pipe(
+        const bundlesAndBitstreams$ = this.dspaceApi.getBundles(itemUuid).pipe(
           switchMap((bundlesResponse) => {
             const bundles = bundlesResponse._embedded?.['bundles'] || [];
 
@@ -84,35 +95,33 @@ export class DocumentDetailComponent implements OnInit {
             return forkJoin({ thumbnail: thumbnail$, original: original$ });
           })
         );
+
+        return forkJoin({
+          bundles: bundlesAndBitstreams$,
+          vocabLabels: this.resolveVocabLabels$(item.metadata),
+        }).pipe(map((res) => ({ item, ...res })));
       }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (response) => {
-        if (response.original) {
-          const originalBitstreams = response.original._embedded?.['bitstreams'] || [];
+        this.buildMetadataFields(response.item.metadata, null, response.vocabLabels);
+        if (response.bundles.original) {
+          const originalBitstreams = response.bundles.original._embedded?.['bitstreams'] || [];
           this.documentBitstreams = originalBitstreams.map((bitstream: Bitstream) => {
-            const fileName = bitstream.name?.toLowerCase() || '';
-            let format = 'application/octet-stream';
-            if (fileName.endsWith('.pdf')) {
-              format = 'application/pdf';
-            } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
-              format = 'image/jpeg';
-            } else if (fileName.endsWith('.png')) {
-              format = 'image/png';
-            }
-
+            const fmt = inferBitstreamFormat(bitstream.name || '');
             return {
               name: bitstream.name || '',
               url: `/server/api/core/bitstreams/${bitstream.uuid}/content`,
               size: bitstream.sizeBytes || 0,
-              format: format,
+              format: fmt.mime,
+              formatLabel: fmt.label,
               uuid: bitstream.uuid,
             } as BitstreamView;
           });
         }
 
-        if (response.thumbnail) {
-          const thumbnailBitstreams = response.thumbnail._embedded?.['bitstreams'] || [];
+        if (response.bundles.thumbnail) {
+          const thumbnailBitstreams = response.bundles.thumbnail._embedded?.['bitstreams'] || [];
           if (thumbnailBitstreams.length > 0) {
             const thumbnail = thumbnailBitstreams[0];
             this.documentCoverImage = `/server/api/core/bitstreams/${thumbnail.uuid}/content`;
@@ -165,11 +174,39 @@ export class DocumentDetailComponent implements OnInit {
     });
   }
 
-  private buildMetadataFields(metadata: MetadataMap, collectionName: string | null) {
+  /**
+   * Resuelve los display labels de los vocabularios DSpace que aplica el item:
+   * idiomas-digeex para dc.language.iso, niveles-educativos para dc.audience y
+   * tipos-documento para dc.type. Devuelve null en cada uno si el item no trae
+   * ese campo, asi forkJoin no bloquea por una rama vacia.
+   */
+  private resolveVocabLabels$(metadata: MetadataMap): Observable<{
+    language: string | null;
+    audience: string | null;
+    type: string | null;
+  }> {
+    const langValue = metadata?.['dc.language.iso']?.[0]?.value;
+    const audienceValue = metadata?.['dc.audience']?.[0]?.value;
+    const typeValue = metadata?.['dc.type']?.[0]?.value;
+
+    return forkJoin({
+      language: langValue
+        ? this.vocabDisplay.display$('idiomas-digeex', langValue)
+        : of(null),
+      audience: audienceValue
+        ? this.vocabDisplay.display$('niveles-educativos', audienceValue)
+        : of(null),
+      type: typeValue ? this.vocabDisplay.display$('tipos-documento', typeValue) : of(null),
+    });
+  }
+
+  private buildMetadataFields(
+    metadata: MetadataMap,
+    collectionName: string | null,
+    vocabLabels: { language: string | null; audience: string | null; type: string | null },
+  ) {
     this.metadataFields = [];
 
-    // TODO: Consumir labels desde DSpace submission-forms.xml vía REST API
-    // Ver: GET /server/api/submission/vocabularies
     const fieldLabels: Record<string, string> = {
       'dc.contributor.author': 'Autor / Área responsable',
       'dc.date.issued': 'Fecha de publicación',
@@ -200,21 +237,21 @@ export class DocumentDetailComponent implements OnInit {
             type: 'list',
           });
         } else if (fieldKey === 'dc.language.iso') {
-          const langCode = fieldValues[0].value;
-          // TODO: Consumir desde GET /server/api/submission/vocabularies
-          // Los 25 idiomas oficiales están en docker/submission-forms.xml
-          // Mapeo temporal de los 5 más comunes
-          const commonLanguages: Record<string, string> = {
-            es: 'Español',
-            quc: "K'iche'",
-            cak: 'Kaqchikel',
-            mam: 'Mam',
-            kek: "Q'eqchi'",
-          };
-          const langName = commonLanguages[langCode] || langCode.toUpperCase();
           this.metadataFields.push({
             label: fieldLabel,
-            value: langName,
+            value: vocabLabels.language ?? fieldValues[0].value,
+            type: 'text',
+          });
+        } else if (fieldKey === 'dc.audience') {
+          this.metadataFields.push({
+            label: fieldLabel,
+            value: vocabLabels.audience ?? fieldValues[0].value,
+            type: 'text',
+          });
+        } else if (fieldKey === 'dc.type') {
+          this.metadataFields.push({
+            label: fieldLabel,
+            value: vocabLabels.type ?? fieldValues[0].value,
             type: 'text',
           });
         } else if (fieldKey === 'dc.date.issued') {
@@ -248,44 +285,59 @@ export class DocumentDetailComponent implements OnInit {
     }
   }
 
-  downloadDocument() {
-    const pdfBitstream = this.documentBitstreams.find((b) => b.format === 'application/pdf');
+  /** Estado del boton ZIP mientras se arma el archivo en memoria. */
+  downloadingZip = false;
 
-    if (pdfBitstream) {
-      const link = document.createElement('a');
-      link.href = pdfBitstream.url;
-      link.download = pdfBitstream.name;
-      link.click();
-    } else if (this.documentBitstreams.length > 0) {
-      const primaryBitstream = this.documentBitstreams[0];
-      const link = document.createElement('a');
-      link.href = primaryBitstream.url;
-      link.download = primaryBitstream.name;
-      link.click();
-    }
+  /** Dispara la descarga del bitstream individual via <a download>. */
+  downloadBitstream(bitstream: BitstreamView): void {
+    const link = document.createElement('a');
+    link.href = bitstream.url;
+    link.download = bitstream.name;
+    link.click();
   }
 
-  viewDocument() {
-    const pdfBitstream = this.documentBitstreams.find((b) => b.format === 'application/pdf');
+  /**
+   * Abre un PDF en pestana nueva via blob URL para evitar el "open with"
+   * del browser. Para otros mimes el navegador no tiene preview universal,
+   * asi que cae al download directo.
+   */
+  viewBitstream(bitstream: BitstreamView): void {
+    if (bitstream.format !== 'application/pdf') {
+      this.downloadBitstream(bitstream);
+      return;
+    }
+    fetch(bitstream.url)
+      .then((response) => response.blob())
+      .then((blob) => {
+        const blobUrl = URL.createObjectURL(blob);
+        const viewerWindow = window.open(blobUrl, '_blank');
+        if (viewerWindow) {
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        }
+      })
+      .catch(() => {
+        window.open(bitstream.url, '_blank');
+      });
+  }
 
-    if (pdfBitstream) {
-      fetch(pdfBitstream.url)
-        .then((response) => response.blob())
-        .then((blob) => {
-          const blobUrl = URL.createObjectURL(blob);
-
-          const viewerWindow = window.open(blobUrl, '_blank');
-
-          if (viewerWindow) {
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-          }
-        })
-        .catch((error) => {
-          console.error('Error al cargar PDF para visualización:', error);
-          window.open(pdfBitstream.url, '_blank');
-        });
-    } else if (this.documentBitstreams.length > 0) {
-      window.open(this.documentBitstreams[0].url, '_blank');
+  /**
+   * Delega en BitstreamDownloadService que decide single vs ZIP segun la
+   * cantidad de bitstreams. Mantiene el flag downloadingZip para [loading]
+   * del boton y evitar dobles clicks; el servicio se encarga del JSZip y
+   * del <a download>.
+   */
+  async downloadAllAsZip(): Promise<void> {
+    if (this.downloadingZip || this.documentBitstreams.length === 0) return;
+    this.downloadingZip = true;
+    this.cdr.markForCheck();
+    try {
+      await this.downloader.downloadAuto(
+        this.documentBitstreams,
+        this.documentTitle || 'documento',
+      );
+    } finally {
+      this.downloadingZip = false;
+      this.cdr.markForCheck();
     }
   }
 
