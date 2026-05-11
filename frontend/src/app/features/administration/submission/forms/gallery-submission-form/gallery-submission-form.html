@@ -112,6 +112,19 @@
         (filesChange)="onFilesChange($event)" />
     </div>
 
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Portada del álbum <span class="text-red-600">*</span>
+        <span class="text-gray-400 font-normal">(JPG o PNG; aparece en el listado y en el detalle)</span>
+      </label>
+      <app-file-dropzone
+        accept="image/*"
+        [multiple]="false"
+        chooseLabel="Seleccionar portada"
+        dropMessage="Arrastrá la portada aquí o usá el botón de elegir."
+        (filesChange)="onCoverChange($event)" />
+    </div>
+
     <div class="flex flex-col gap-1">
       <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
         Visibilidad

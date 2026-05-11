@@ -52,6 +52,9 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
   /** Multi-bitstream: cada foto del álbum llega al bundle ORIGINAL del workspaceitem. */
   readonly files = signal<File[]>([]);
 
+  /** Imagen de portada que el facade coloca en el bundle THUMBNAIL post-archive. Required en Galería. */
+  readonly coverFile = signal<File | null>(null);
+
   /**
    * Form de los campos del schema digeex-galeria. Required: title, issued,
    * type (vocabulario tipos-evento) y classification (vocabulario
@@ -95,12 +98,14 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
   );
 
   /**
-   * Habilita el botón Submit. Un álbum sin fotos no tiene sentido, así que
-   * además del FormGroup válido exigimos al menos un bitstream cargado.
+   * Habilita el botón Submit. Galería requiere form válido, al menos una
+   * foto en el bundle ORIGINAL y una portada explícita: sin portada el
+   * álbum se vería con placeholder gris en listados y detail.
    */
   readonly canSubmit = computed(() => {
     if (this.formStatus() !== 'VALID') return false;
-    return this.files().length > 0;
+    if (this.files().length === 0) return false;
+    return this.coverFile() !== null;
   });
 
   constructor() {
@@ -152,6 +157,16 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
   }
 
   /**
+   * Portada del álbum: el usuario sube una imagen específica que el facade
+   * coloca en el bundle THUMBNAIL post-archive. A diferencia de Documento,
+   * en Galería es required: sin portada un álbum se vería con placeholder
+   * gris en el listado y el detail.
+   */
+  override getCoverFile(): File | null {
+    return this.coverFile();
+  }
+
+  /**
    * Tras un submit exitoso volvemos al estado inicial para que el usuario
    * pueda armar otro álbum en el mismo programa sin recargar. Resetea form,
    * fotos y visibilidad; deja la collection seleccionada.
@@ -168,6 +183,7 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
       imageFocus: '',
     });
     this.files.set([]);
+    this.coverFile.set(null);
     this.visibility.set('public');
     if (typeof window !== 'undefined') {
       window.scrollTo(0, 0);
@@ -177,6 +193,11 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
   /** Selección de fotos desde el app-file-dropzone (multiple, image/*). */
   onFilesChange(files: File[]): void {
     this.files.set(files);
+  }
+
+  /** Selección de la portada desde el app-file-dropzone (single, image/*). */
+  onCoverChange(files: File[]): void {
+    this.coverFile.set(files[0] ?? null);
   }
 
   /** Vuelve al listado de programas; descarta cualquier dato sin enviar. */

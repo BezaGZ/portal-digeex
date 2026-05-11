@@ -78,6 +78,15 @@ export class SubmissionFacade {
           switchMap(() => this.uploadAllFiles$(ws.id, req.files)),
           switchMap(() => this.workspace.patchSection(ws.id, this.licensePatch())),
           switchMap(() => this.workspace.getItem(ws.id)),
+          /**
+           * El rollback solo aplica a operaciones pre-archive: si algo falla
+           * antes del commit el workspaceitem existe y se puede borrar limpio.
+           * Las post-archive (cover, visibility) ya no pueden disparar
+           * `workspace.delete` porque el commit transformó el workspaceitem
+           * en item archivado y DSpace tira 500 al borrar algo que ya no es
+           * workspaceitem.
+           */
+          catchError((err) => rollbackCascade([this.workspace.delete(ws.id)], err)),
           switchMap((item) =>
             this.workspace.commit(ws.id).pipe(
               switchMap(() => this.applyCover$(item, req.coverFile)),
@@ -85,7 +94,6 @@ export class SubmissionFacade {
               map(() => item),
             ),
           ),
-          catchError((err) => rollbackCascade([this.workspace.delete(ws.id)], err)),
         ),
       ),
     );

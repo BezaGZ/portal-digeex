@@ -38,7 +38,7 @@ type BundleApiMock = {
  * de la creación del workspaceitem falla, borra el workspaceitem para
  * dejar el backend limpio.
  *
- * Ciclo 14 TDD — Sprint 6
+ * Ciclo 14 TDD — Sprint 6. Ajustado en Ciclo 30.
  */
 describe('SubmissionFacade', () => {
   let facade: SubmissionFacade;
@@ -244,7 +244,7 @@ describe('SubmissionFacade', () => {
 
       await firstValueFrom(facade.submitItem$({ ...sampleRequest, coverFile: cover }));
 
-      // No se crea bundle nuevo, se sube el bitstream al existente.
+      /* No se crea bundle nuevo, se sube el bitstream al existente. */
       expect(mockBundleApi.createBundle).not.toHaveBeenCalled();
       expect(mockBundleApi.uploadBitstream).toHaveBeenCalledWith('thumb-existing', cover);
     });
@@ -259,8 +259,10 @@ describe('SubmissionFacade', () => {
       const fileA = new File(['a'], 'a.pdf', { type: 'application/pdf' });
       const fileB = new File(['b'], 'b.pdf', { type: 'application/pdf' });
 
-      // Cada uploadFile devuelve un Subject que solo emite cuando lo controlamos
-      // a mano; asi probamos el orden temporal y no solo el conteo de calls.
+      /**
+       * Cada uploadFile devuelve un Subject que solo emite cuando lo controlamos
+       * a mano; asi probamos el orden temporal y no solo el conteo de calls.
+       */
       const uploadCalls: { file: File; subject: Subject<typeof newWorkspaceItem> }[] = [];
       mockWorkspace.uploadFile = vi.fn((_id: number, file: File) => {
         const subject = new Subject<typeof newWorkspaceItem>();
@@ -272,11 +274,13 @@ describe('SubmissionFacade', () => {
         .submitItem$({ ...sampleRequest, files: [fileA, fileB] })
         .subscribe({ next: () => undefined, error: () => undefined });
 
-      // Cede el event loop para que el pipeline llegue a uploadAllFiles$.
+      /* Cede el event loop para que el pipeline llegue a uploadAllFiles$. */
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      // Si el facade fuera paralelo (mergeMap) ya habria invocado los dos
-      // uploadFile; con concatMap solo arranca el primero hasta que complete.
+      /**
+       * Si el facade fuera paralelo (mergeMap) ya habria invocado los dos
+       * uploadFile; con concatMap solo arranca el primero hasta que complete.
+       */
       expect(uploadCalls.length).toBe(1);
       expect(uploadCalls[0].file).toBe(fileA);
 
@@ -287,10 +291,29 @@ describe('SubmissionFacade', () => {
       expect(uploadCalls.length).toBe(2);
       expect(uploadCalls[1].file).toBe(fileB);
 
-      // Cierre limpio: el segundo upload completa para no dejar el subscribe colgado.
+      /* Cierre limpio: el segundo upload completa para no dejar el subscribe colgado. */
       uploadCalls[1].subject.next(newWorkspaceItem);
       uploadCalls[1].subject.complete();
       sub.unsubscribe();
+    });
+
+    /**
+     * Verifica que fallar tras el commit (en applyCover por ejemplo) NO
+     * dispare el rollback de workspace.delete: el workspaceitem ya no
+     * existe como tal, intentar borrarlo termina en 500 y oculta el éxito
+     * del archive del item. El rollback solo aplica a errores pre-archive.
+     */
+    it('should NOT call workspace.delete when a post-archive step fails', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockBundleApi.listForItem = vi.fn(() =>
+        throwError(() => new Error('post-archive failure')),
+      );
+      const cover = new File(['img'], 'portada.jpg', { type: 'image/jpeg' });
+
+      await expect(
+        firstValueFrom(facade.submitItem$({ ...sampleRequest, coverFile: cover })),
+      ).rejects.toThrow();
+      expect(mockWorkspace.delete).not.toHaveBeenCalled();
     });
   });
 });

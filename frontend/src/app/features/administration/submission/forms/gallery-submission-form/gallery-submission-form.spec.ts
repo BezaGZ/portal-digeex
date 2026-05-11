@@ -21,7 +21,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * subir las fotos del álbum. Usa los vocabularios programas-digeex,
  * tipo-poblacion, enfoque-imagen y tipos-evento.
  *
- * Ciclo 24 TDD — Sprint 6
+ * Ciclo 24 TDD — Sprint 6. Ajustado en Ciclos 29 y 30.
  */
 describe('GallerySubmissionForm', () => {
   function buildCollection(uuid: string): Collection {
@@ -52,6 +52,7 @@ describe('GallerySubmissionForm', () => {
     });
   });
 
+  /** Verifica que el form declare digeex-galeria como section name de la submission. */
   it('should declare digeex-galeria as the submission section name', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
@@ -61,6 +62,7 @@ describe('GallerySubmissionForm', () => {
     expect(fixture.componentInstance.getSectionName()).toBe('digeex-galeria');
   });
 
+  /** Verifica que la visibilidad arranque en public y refleje cambios de la signal. */
   it('should default visibility to public and reflect changes from the signal', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
@@ -74,6 +76,7 @@ describe('GallerySubmissionForm', () => {
     expect(c.getVisibility()).toBe('private');
   });
 
+  /** Verifica que getFiles devuelva las fotos del álbum cargadas en el signal. */
   it('should expose multiple files via getFiles for the photo album', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
@@ -89,6 +92,7 @@ describe('GallerySubmissionForm', () => {
     expect(c.getFiles()).toEqual([a, b]);
   });
 
+  /** Verifica que buildMetadata mapee cada campo del form a su clave dc.* o digeex.* correspondiente. */
   it('should map every form field to its dc.* / digeex.* key in buildMetadata', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
@@ -119,8 +123,24 @@ describe('GallerySubmissionForm', () => {
     expect(metadata['digeex.imageFocus']?.[0]?.value).toBe('Infraestructura');
   });
 
+  /** Verifica que el componente quede registrado bajo el entity-type Galeria. */
   it('should register itself in the submission form registry under the Galeria entity-type', () => {
     expect(getSubmissionFormComponent('Galeria')).toBe(GallerySubmissionForm);
+  });
+
+  /** Verifica que getCoverFile exponga la portada elegida por el usuario. */
+  it('should expose the selected cover file via getCoverFile', () => {
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.getCoverFile()).toBeNull();
+
+    const cover = new File([''], 'portada.jpg', { type: 'image/jpeg' });
+    c.onCoverChange([cover]);
+    expect(c.getCoverFile()).toBe(cover);
   });
 
   /** Verifica que dc.contributor.author se mapee como una sola entry trimmed cuando el campo viene relleno. */
@@ -162,6 +182,7 @@ describe('GallerySubmissionForm', () => {
       imageFocus: 'Infraestructura',
     });
     c.files.set([new File([''], 'foto1.jpg', { type: 'image/jpeg' })]);
+    c.onCoverChange([new File([''], 'portada.jpg', { type: 'image/jpeg' })]);
     c.visibility.set('private');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -172,6 +193,7 @@ describe('GallerySubmissionForm', () => {
     expect(c.form.value.author).toBe('');
     expect(c.form.value.classification).toBe('');
     expect(c.files()).toEqual([]);
+    expect(c.coverFile()).toBeNull();
     expect(c.visibility()).toBe('public');
   });
 
@@ -194,18 +216,18 @@ describe('GallerySubmissionForm', () => {
     expect(c.buildMetadata()['dc.contributor.author']).toBeUndefined();
   });
 
-  /** Verifica que canSubmit habilite el envío sólo cuando el form es válido y hay al menos una foto cargada. */
-  it('should expose canSubmit=true only when the form is valid and at least one photo is uploaded', () => {
+  /** Verifica que canSubmit habilite el envío sólo cuando el form es válido, hay fotos y hay portada. */
+  it('should expose canSubmit=true only when the form is valid, there is at least one photo and a cover is selected', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
     fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
-    // Form vacío y sin fotos: no se puede enviar.
+    /* Form vacío: no se puede enviar. */
     expect(c.canSubmit()).toBe(false);
 
-    // Form lleno pero sin fotos: tampoco se puede (un álbum sin fotos no tiene sentido).
+    /* Form lleno pero sin fotos y sin portada: no. */
     c.form.patchValue({
       title: 'Graduación PEAC',
       issued: '2026-04-15',
@@ -214,11 +236,15 @@ describe('GallerySubmissionForm', () => {
     });
     expect(c.canSubmit()).toBe(false);
 
-    // Form lleno + al menos una foto: ahora sí.
+    /* Con foto pero sin portada: tampoco (Galería exige portada explícita). */
     c.files.set([new File([''], 'foto1.jpg', { type: 'image/jpeg' })]);
+    expect(c.canSubmit()).toBe(false);
+
+    /* Con portada también: ahora sí. */
+    c.onCoverChange([new File([''], 'portada.jpg', { type: 'image/jpeg' })]);
     expect(c.canSubmit()).toBe(true);
 
-    // Si vaciamos el title vuelve a falso (form inválido aunque haya foto).
+    /* Si vaciamos el title vuelve a falso (form inválido). */
     c.form.patchValue({ title: '' });
     expect(c.canSubmit()).toBe(false);
   });
@@ -231,10 +257,10 @@ describe('GallerySubmissionForm', () => {
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
-    // Faltan los cuatro required; el form arranca inválido.
+    /* Faltan los cuatro required; el form arranca inválido. */
     expect(c.form.invalid).toBe(true);
 
-    // Llenamos todos menos title: sigue inválido.
+    /* Llenamos todos menos title: sigue inválido. */
     c.form.patchValue({
       title: '',
       issued: '2026-04-15',
@@ -243,11 +269,11 @@ describe('GallerySubmissionForm', () => {
     });
     expect(c.form.invalid).toBe(true);
 
-    // Con title puesto y los demás llenos: válido.
+    /* Con title puesto y los demás llenos: válido. */
     c.form.patchValue({ title: 'Graduación PEAC' });
     expect(c.form.invalid).toBe(false);
 
-    // Quitamos classification: vuelve a inválido.
+    /* Quitamos classification: vuelve a inválido. */
     c.form.patchValue({ classification: '' });
     expect(c.form.invalid).toBe(true);
   });
@@ -272,16 +298,16 @@ describe('GallerySubmissionForm', () => {
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
-    // Apenas se montó, ningún Subject emitió: spinner activo.
+    /* Apenas se montó, ningún Subject emitió: spinner activo. */
     expect(c.vocabulariesLoading()).toBe(true);
 
-    // Tres resuelven, falta uno: spinner sigue activo (forkJoin espera al último).
+    /* Tres resuelven, falta uno: spinner sigue activo (forkJoin espera al último). */
     tipos$.next([]); tipos$.complete();
     programas$.next([]); programas$.complete();
     poblacion$.next([]); poblacion$.complete();
     expect(c.vocabulariesLoading()).toBe(true);
 
-    // El cuarto cierra: forkJoin emite y vocabulariesLoading pasa a false.
+    /* El cuarto cierra: forkJoin emite y vocabulariesLoading pasa a false. */
     enfoque$.next([]); enfoque$.complete();
     expect(c.vocabulariesLoading()).toBe(false);
   });

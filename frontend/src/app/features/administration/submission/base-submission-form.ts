@@ -46,7 +46,7 @@ export abstract class BaseSubmissionForm {
    * Imagen opcional que el subform expone como portada del item. La submission
    * API solo soporta upload al bundle ORIGINAL; el facade coloca esta imagen
    * en el bundle THUMBNAIL post-archive. Default null para los subforms que
-   * no la usan (Galería, Estadística).
+   * no la usan (Estadística por ejemplo).
    */
   protected getCoverFile(): File | null {
     return null;

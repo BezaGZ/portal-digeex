@@ -20,13 +20,14 @@ export interface JsonPatchReplace {
 }
 
 /**
- * Add: para casos donde el value es un objeto (por ejemplo el cambio de
- * contraseña con `current_password` y `new_password` en lugar de un escalar).
+ * Add: cubre tanto el caso de value objeto (metadata, cambio de contraseña)
+ * como el de value escalar (string del UUID de un bitstream para marcar
+ * /sections/upload/primary). DSpace acepta ambos formatos en `op: 'add'`.
  */
 export interface JsonPatchAdd {
   op: typeof PATCH_OP_ADD;
   path: string;
-  value: object;
+  value: object | string;
 }
 
 /** Remove: borra el path indicado del recurso. */
@@ -46,8 +47,8 @@ export function replaceOp(path: string, value: string | boolean): JsonPatchRepla
   return { op: PATCH_OP_REPLACE, path, value };
 }
 
-/** Construye una operación add con value de tipo objeto. */
-export function addOp(path: string, value: object): JsonPatchAdd {
+/** Construye una operación add. Acepta value objeto o string. */
+export function addOp(path: string, value: object | string): JsonPatchAdd {
   return { op: PATCH_OP_ADD, path, value };
 }
 
