@@ -64,6 +64,7 @@
             <tr class="border-b border-gray-200 dark:border-gray-700 text-left uppercase tracking-wide text-xs text-gray-600 dark:text-gray-300">
               <th class="px-3 py-3 w-14"></th>
               <th class="px-3 py-3">Título</th>
+              <th class="px-3 py-3">Recurso</th>
               <th class="px-3 py-3">Tipo</th>
               <th class="px-3 py-3">Fecha</th>
               <th class="px-3 py-3">Estado</th>
@@ -92,6 +93,7 @@
                 <td class="px-3 py-3 font-medium text-gray-800 dark:text-gray-100">
                   {{ titleOf(o) }}
                 </td>
+                <td class="px-3 py-3 text-gray-700 dark:text-gray-200">{{ resourceTypeOf(o) }}</td>
                 <td class="px-3 py-3 text-gray-700 dark:text-gray-200">{{ entityTypeOf(o) }}</td>
                 <td class="px-3 py-3 text-gray-700 dark:text-gray-200">{{ issuedOf(o) }}</td>
                 <td class="px-3 py-3">
@@ -130,7 +132,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="6" class="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                <td colspan="7" class="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
                   <i class="pi pi-inbox text-4xl mb-3 block"></i>
                   Todavía no has subido ningún recurso. Cuando subas tu primer envío aparecerá aquí.
                 </td>

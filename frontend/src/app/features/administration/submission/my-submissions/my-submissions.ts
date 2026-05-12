@@ -193,6 +193,11 @@ export class MySubmissions {
     return d ? d.toLocaleDateString('es-GT') : raw;
   }
 
+  /** Etiqueta de la columna Recurso: el entity-type del item (Documento, Galeria, Estadistica). */
+  resourceTypeOf(o: MyDSpaceObject): string {
+    return o.indexableObject.metadata?.['dspace.entity.type']?.[0]?.value ?? '—';
+  }
+
   /**
    * Etiqueta de la columna Tipo. Prioriza `dc.type` (categoría granular del
    * recurso) y cae a `dspace.entity.type` cuando el item no lo trae.

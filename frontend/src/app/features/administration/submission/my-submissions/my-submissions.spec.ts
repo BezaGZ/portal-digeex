@@ -305,4 +305,67 @@ describe('MySubmissions', () => {
       expect(c.entityTypeOf(buildWithType('4', null, 'Estadistica'))).toBe('Estadistica');
     });
   });
+
+  describe('Recurso column', () => {
+    function buildWithEntity(uuid: string, entityType: string | null) {
+      const metadata: Record<string, { value: string; language: null; authority: null; confidence: number; place: number }[]> = {
+        'dc.title': [{ value: 'X', language: null, authority: null, confidence: -1, place: 0 }],
+      };
+      if (entityType !== null) {
+        metadata['dspace.entity.type'] = [
+          { value: entityType, language: null, authority: null, confidence: -1, place: 0 },
+        ];
+      }
+      return {
+        type: 'discover' as const,
+        indexableObject: {
+          uuid,
+          name: 'X',
+          handle: `123/${uuid}`,
+          metadata,
+          inArchive: true,
+          discoverable: true,
+          withdrawn: false,
+          lastModified: '2026-05-11T00:00:00Z',
+          type: 'item',
+        },
+      };
+    }
+
+    /** Verifica que resourceTypeOf devuelva el dspace.entity.type del item. */
+    it('should return dspace.entity.type for the Recurso column', async () => {
+      const fixture = TestBed.createComponent(MySubmissions);
+      await fixture.whenStable();
+      const c = fixture.componentInstance;
+
+      expect(c.resourceTypeOf(buildWithEntity('1', 'Documento'))).toBe('Documento');
+      expect(c.resourceTypeOf(buildWithEntity('2', 'Galeria'))).toBe('Galeria');
+      expect(c.resourceTypeOf(buildWithEntity('3', 'Estadistica'))).toBe('Estadistica');
+    });
+
+    /** Verifica que devuelva el guion cuando el item no trae dspace.entity.type. */
+    it('should return "—" when dspace.entity.type is absent', async () => {
+      const fixture = TestBed.createComponent(MySubmissions);
+      await fixture.whenStable();
+      const c = fixture.componentInstance;
+
+      expect(c.resourceTypeOf(buildWithEntity('4', null))).toBe('—');
+    });
+
+    /** Verifica que el header "Recurso" se renderice entre Título y Tipo. */
+    it('should render a Recurso column header between Título and Tipo', async () => {
+      const fixture = TestBed.createComponent(MySubmissions);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const headers = Array.from(
+        fixture.nativeElement.querySelectorAll('thead th'),
+      ).map((th) => (th as HTMLElement).textContent?.trim() ?? '');
+      const titulo = headers.indexOf('Título');
+      const recurso = headers.indexOf('Recurso');
+      const tipo = headers.indexOf('Tipo');
+      expect(recurso).toBeGreaterThan(titulo);
+      expect(recurso).toBeLessThan(tipo);
+    });
+  });
 });
