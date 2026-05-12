@@ -135,6 +135,66 @@ describe('MyDSpaceApiService', () => {
     expect(result?.items[0].indexableObject.thumbnail?.uuid).toBe('thumb-uuid-9');
   });
 
+  /** Verifica que objetos con `_embedded.indexableObject` vacío se filtren del response. */
+  it('should drop ghost objects with empty indexableObject (no uuid) from the response', () => {
+    let result: Paginated<MyDSpaceObject> | undefined;
+    service.search$(0, 20).subscribe((p) => (result = p));
+
+    const req = httpMock.expectOne(
+      (r) => r.url === '/server/api/discover/search/objects',
+    );
+    req.flush({
+      _embedded: {
+        searchResult: {
+          page: { size: 20, totalElements: 3, totalPages: 1, number: 0 },
+          _embedded: {
+            objects: [
+              {
+                type: 'discover',
+                _embedded: {
+                  indexableObject: {
+                    uuid: 'real-1',
+                    name: 'Real 1',
+                    handle: '123/1',
+                    metadata: {},
+                    inArchive: true,
+                    discoverable: true,
+                    withdrawn: false,
+                    lastModified: '2026-05-11T00:00:00Z',
+                    type: 'item',
+                  },
+                },
+              },
+              {
+                type: null,
+                _embedded: { indexableObject: {} },
+              },
+              {
+                type: 'discover',
+                _embedded: {
+                  indexableObject: {
+                    uuid: 'real-2',
+                    name: 'Real 2',
+                    handle: '123/2',
+                    metadata: {},
+                    inArchive: true,
+                    discoverable: true,
+                    withdrawn: false,
+                    lastModified: '2026-05-11T00:00:00Z',
+                    type: 'item',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    expect(result?.items.length).toBe(2);
+    expect(result?.items.map((o) => o.indexableObject.uuid)).toEqual(['real-1', 'real-2']);
+  });
+
   /** Verifica que con opts el wrapper agregue los params nativos del workspace bean: query, f.dateIssued y sort. */
   it('should append query, f.dateIssued range and sort when opts are provided', () => {
     service

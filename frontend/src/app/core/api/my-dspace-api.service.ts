@@ -110,14 +110,19 @@ export class MyDSpaceApiService {
            * que el template arme la URL con `/bitstreams/{uuid}/content` sin
            * conocer la envoltura HAL.
            */
-          const items: MyDSpaceObject[] = raw.map((o) => {
-            const ix = o._embedded.indexableObject;
-            const thumbnail = ix._embedded?.thumbnail;
-            return {
-              type: o.type,
-              indexableObject: thumbnail ? { ...ix, thumbnail } : ix,
-            };
-          });
+          // Filtra objetos sin uuid: DSpace devuelve a veces resultados con
+          // indexableObject vacío que rompen el track-by del consumer.
+          const items: MyDSpaceObject[] = raw
+            .map((o) => {
+              const ix = o._embedded?.indexableObject;
+              if (!ix?.uuid) return null;
+              const thumbnail = ix._embedded?.thumbnail;
+              return {
+                type: o.type,
+                indexableObject: thumbnail ? { ...ix, thumbnail } : ix,
+              };
+            })
+            .filter((o): o is MyDSpaceObject => o !== null);
           return {
             items,
             totalElements: sr.page.totalElements,

@@ -16,6 +16,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { MyDSpaceApiService } from '../../../../core/api/my-dspace-api.service';
 import { MyDSpaceObject } from '../../../../core/api/models/my-dspace.model';
+import { parseIsoDateLocal } from '../../../../core/i18n/iso-date.util';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemAdminFacade } from '../../content/services/item-admin-facade';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
@@ -172,7 +173,7 @@ export class MySubmissions {
   }
 
   titleOf(o: MyDSpaceObject): string {
-    return o.indexableObject.metadata['dc.title']?.[0]?.value ?? o.indexableObject.name;
+    return o.indexableObject.metadata?.['dc.title']?.[0]?.value ?? o.indexableObject.name;
   }
 
   /**
@@ -186,17 +187,20 @@ export class MySubmissions {
 
   /** Fecha legible para la columna. Devuelve string vacío si no viene dc.date.issued. */
   issuedOf(o: MyDSpaceObject): string {
-    const raw = o.indexableObject.metadata['dc.date.issued']?.[0]?.value ?? '';
+    const raw = o.indexableObject.metadata?.['dc.date.issued']?.[0]?.value ?? '';
     if (!raw) return '';
-    const d = new Date(raw);
-    return Number.isNaN(d.getTime()) ? raw : d.toLocaleDateString('es-GT');
+    const d = parseIsoDateLocal(raw);
+    return d ? d.toLocaleDateString('es-GT') : raw;
   }
 
-  /** Etiqueta del tipo de entidad: Documento, Galeria, Estadistica. */
+  /**
+   * Etiqueta de la columna Tipo. Prioriza `dc.type` (categoría granular del
+   * recurso) y cae a `dspace.entity.type` cuando el item no lo trae.
+   */
   entityTypeOf(o: MyDSpaceObject): string {
     return (
-      o.indexableObject.metadata['dspace.entity.type']?.[0]?.value ??
-      o.indexableObject.metadata['dc.type']?.[0]?.value ??
+      o.indexableObject.metadata?.['dc.type']?.[0]?.value ??
+      o.indexableObject.metadata?.['dspace.entity.type']?.[0]?.value ??
       '—'
     );
   }

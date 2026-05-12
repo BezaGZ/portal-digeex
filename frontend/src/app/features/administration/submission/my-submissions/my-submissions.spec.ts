@@ -213,4 +213,96 @@ describe('MySubmissions', () => {
       expect.objectContaining({ dateFrom: 2020, dateTo: 2024, sort: 'dc.title,asc' }),
     );
   });
+
+  /** Verifica que las funciones de columna toleren indexableObject.metadata undefined. */
+  it('should not throw when indexableObject.metadata is undefined', async () => {
+    const fixture = TestBed.createComponent(MySubmissions);
+    await fixture.whenStable();
+    const c = fixture.componentInstance;
+    const o = {
+      type: 'discover' as const,
+      indexableObject: {
+        uuid: 'no-meta',
+        name: 'Fallback name',
+        handle: '123/x',
+        // metadata intencionalmente ausente
+        inArchive: true,
+        discoverable: true,
+        withdrawn: false,
+        lastModified: '2026-05-11T00:00:00Z',
+        type: 'item',
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    expect(() => c.titleOf(o)).not.toThrow();
+    expect(c.titleOf(o)).toBe('Fallback name');
+    expect(() => c.issuedOf(o)).not.toThrow();
+    expect(c.issuedOf(o)).toBe('');
+    expect(() => c.entityTypeOf(o)).not.toThrow();
+    expect(c.entityTypeOf(o)).toBe('—');
+  });
+
+  describe('Tipo column priority', () => {
+    function buildWithType(uuid: string, dcType: string | null, entityType: string): {
+      type: 'discover';
+      indexableObject: {
+        uuid: string;
+        name: string;
+        handle: string;
+        metadata: Record<string, { value: string; language: null; authority: null; confidence: number; place: number }[]>;
+        inArchive: boolean;
+        discoverable: boolean;
+        withdrawn: boolean;
+        lastModified: string;
+        type: string;
+      };
+    } {
+      const metadata: Record<string, { value: string; language: null; authority: null; confidence: number; place: number }[]> = {
+        'dc.title': [{ value: 'X', language: null, authority: null, confidence: -1, place: 0 }],
+        'dspace.entity.type': [
+          { value: entityType, language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      };
+      if (dcType !== null) {
+        metadata['dc.type'] = [
+          { value: dcType, language: null, authority: null, confidence: -1, place: 0 },
+        ];
+      }
+      return {
+        type: 'discover' as const,
+        indexableObject: {
+          uuid,
+          name: 'X',
+          handle: `123/${uuid}`,
+          metadata,
+          inArchive: true,
+          discoverable: true,
+          withdrawn: false,
+          lastModified: '2026-05-11T00:00:00Z',
+          type: 'item',
+        },
+      };
+    }
+
+    /** Verifica que dc.type tenga prioridad sobre dspace.entity.type para la columna Tipo. */
+    it('should return dc.type when present (Video, Manual, Capacitación) instead of the entity-type', async () => {
+      const fixture = TestBed.createComponent(MySubmissions);
+      await fixture.whenStable();
+      const c = fixture.componentInstance;
+
+      expect(c.entityTypeOf(buildWithType('1', 'Video', 'Documento'))).toBe('Video');
+      expect(c.entityTypeOf(buildWithType('2', 'Manual', 'Documento'))).toBe('Manual');
+      expect(c.entityTypeOf(buildWithType('3', 'Capacitación', 'Galeria'))).toBe('Capacitación');
+    });
+
+    /** Verifica que el fallback sea dspace.entity.type cuando el item no trae dc.type. */
+    it('should fall back to dspace.entity.type when dc.type is absent (Estadistica)', async () => {
+      const fixture = TestBed.createComponent(MySubmissions);
+      await fixture.whenStable();
+      const c = fixture.componentInstance;
+
+      expect(c.entityTypeOf(buildWithType('4', null, 'Estadistica'))).toBe('Estadistica');
+    });
+  });
 });

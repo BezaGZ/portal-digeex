@@ -387,7 +387,9 @@ export class AdvancedSearch implements OnInit {
             description: item.metadata?.['dc.description.abstract']?.[0]?.value || '',
             dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
             handle: item.handle,
-            coverImage: this.dspaceApi.getThumbnailUrl(item.uuid),
+            coverImage: item.thumbnail?.uuid
+              ? `/server/api/core/bitstreams/${item.thumbnail.uuid}/content`
+              : this.dspaceApi.getThumbnailUrl(item.uuid),
             bitstreams: [],
             type: item.metadata?.['dc.type']?.[0]?.value || '',
             relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
@@ -404,7 +406,9 @@ export class AdvancedSearch implements OnInit {
             description: item.metadata?.['dc.description.abstract']?.[0]?.value || '',
             dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
             handle: item.handle,
-            coverImage: this.dspaceApi.getThumbnailUrl(item.uuid),
+            coverImage: item.thumbnail?.uuid
+              ? `/server/api/core/bitstreams/${item.thumbnail.uuid}/content`
+              : this.dspaceApi.getThumbnailUrl(item.uuid),
             bitstreams: [],
             type: item.metadata?.['dc.type']?.[0]?.value || '',
             relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',

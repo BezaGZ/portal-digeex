@@ -136,4 +136,62 @@ describe('DiscoveryService', () => {
 
     await promise;
   });
+
+  /** Verifica que search() pida embed=thumbnail al endpoint Discovery. */
+  it('should request embed=thumbnail on every search', async () => {
+    service.search({}).subscribe();
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/server/api/discover/search/objects' &&
+        r.params.get('embed') === 'thumbnail',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(mockSearchResponse);
+  });
+
+  /** Verifica que el thumbnail embebido se levante al campo top-level de cada item. */
+  it('should lift _embedded.thumbnail of each indexableObject to item.thumbnail', async () => {
+    const promise = new Promise((resolve, reject) => {
+      service.search({}).subscribe({
+        next: (result) => {
+          expect(result.items[0].thumbnail?.uuid).toBe('thumb-bs-1');
+          resolve(result);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne((r) => r.url === '/server/api/discover/search/objects');
+    req.flush({
+      _embedded: {
+        searchResult: {
+          _embedded: {
+            objects: [
+              {
+                _embedded: {
+                  indexableObject: {
+                    uuid: 'item-with-thumb',
+                    name: 'Con portada',
+                    type: 'item',
+                    metadata: {},
+                    _embedded: {
+                      thumbnail: { uuid: 'thumb-bs-1', name: 'cover.jpg', type: 'bitstream' },
+                    },
+                  },
+                },
+                _links: { self: { href: '' } },
+                hitHighlights: {},
+              },
+            ],
+          },
+          page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+        },
+        facets: [],
+      },
+      _links: { self: { href: '' } },
+    });
+
+    await promise;
+  });
 });

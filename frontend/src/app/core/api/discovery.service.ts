@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { SearchResponse } from './models/search.model';
 import { SearchParams, SearchResult, Facet } from './models/discovery.model';
+import { Item } from './models/item.model';
+import { Bitstream } from './models/bitstream.model';
 
 /**
  * Servicio que encapsula la Discovery API de DSpace (Apache Solr).
@@ -41,7 +43,8 @@ export class DiscoveryService {
   private buildSearchParams(params: SearchParams): HttpParams {
     let httpParams = new HttpParams()
       .set('page', params.page ?? 0)
-      .set('size', params.size ?? 20);
+      .set('size', params.size ?? 20)
+      .set('embed', 'thumbnail');
 
     if (params.query) {
       httpParams = httpParams.set('query', params.query);
@@ -75,7 +78,13 @@ export class DiscoveryService {
     const objects = response._embedded?.searchResult?._embedded?.objects || [];
     const items = objects
       .filter((obj) => obj._embedded?.indexableObject?.type === 'item')
-      .map((obj) => obj._embedded.indexableObject);
+      .map((obj) => {
+        const ix = obj._embedded.indexableObject as Item & {
+          _embedded?: { thumbnail?: Bitstream };
+        };
+        const thumbnail = ix._embedded?.thumbnail;
+        return thumbnail ? { ...ix, thumbnail } : ix;
+      });
 
     const page = response._embedded?.searchResult?.page;
     const facets = this.mapFacets(response);

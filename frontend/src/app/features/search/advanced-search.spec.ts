@@ -294,10 +294,26 @@ describe('AdvancedSearch', () => {
 
     const results = component.results();
     expect(results.length).toBe(1);
-    // coverImage usa el endpoint nativo /thumbnail; bitstreams queda vacío
-    // hasta que el usuario dispare downloadItem.
+    // Sin thumbnail embebido, coverImage cae al endpoint nativo /thumbnail.
     expect(results[0].coverImage).toBe('/server/api/core/items/item-001/thumbnail');
     expect(results[0].bitstreams).toEqual([]);
+  });
+
+  /** Verifica que el coverImage use el bitstream embebido cuando el item lo trae. */
+  it('should use the embedded thumbnail bitstream URL as coverImage when present', () => {
+    const itemWithThumb = {
+      ...mockSearchResult.items[0],
+      uuid: 'item-thumb',
+      thumbnail: { uuid: 'thumb-bs-9', name: 'cover.jpg', type: 'bitstream' },
+    };
+    const result = { ...mockSearchResult, items: [itemWithThumb] };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(discoveryService, 'search').mockReturnValue(of(result as any));
+
+    component.onSearch({ ...defaultFilters, query: 'algo' });
+
+    const results = component.results();
+    expect(results[0].coverImage).toBe('/server/api/core/bitstreams/thumb-bs-9/content');
   });
 
   /** onClear */
