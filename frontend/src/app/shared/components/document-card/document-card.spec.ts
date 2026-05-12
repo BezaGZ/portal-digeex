@@ -42,13 +42,10 @@ describe('DocumentCardComponent', () => {
     fixture.componentRef.setInput('item', buildItem());
     fixture.detectChanges();
 
-    // Primer item: simulamos error de carga (DSpace devolvió 204).
     fixture.nativeElement.querySelector('img')?.dispatchEvent(new Event('error'));
     fixture.detectChanges();
     expect(fixture.componentInstance.imageError()).toBe(true);
 
-    // El componente se reusa: cambia al ítem con portada real (otra URL). El
-    // flag debe resetearse para que el <img> vuelva a intentar la nueva URL.
     fixture.componentRef.setInput('item', {
       ...buildItem(),
       id: 'item-with-cover',
@@ -64,18 +61,58 @@ describe('DocumentCardComponent', () => {
     fixture.componentRef.setInput('item', buildItem());
     fixture.detectChanges();
 
-    // Antes del error, el <img> se renderiza con la URL del thumbnail nativo.
     const initialImg = fixture.nativeElement.querySelector('img');
     expect(initialImg).not.toBeNull();
 
-    // Simulamos el evento error del <img> y forzamos change detection.
     initialImg.dispatchEvent(new Event('error'));
     fixture.detectChanges();
 
-    // Tras el error la imagen desaparece y el fallback con ícono PDF queda visible.
     const imgAfter = fixture.nativeElement.querySelector('img');
     expect(imgAfter).toBeNull();
     const icon = fixture.nativeElement.querySelector('i.pi-file-pdf');
     expect(icon).not.toBeNull();
+  });
+
+  /** Verifica que en modo Video se renderice el botón "Ver" en lugar de "Descargar". */
+  it('should render the "Ver" button and not "Descargar" when item.type is Video', () => {
+    const fixture = TestBed.createComponent(DocumentCardComponent);
+    fixture.componentRef.setInput('item', {
+      ...buildItem(),
+      type: 'Video',
+      relationUri: 'https://youtu.be/abc',
+    });
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement.textContent ?? '') as string;
+    expect(text).toContain('Ver');
+    expect(text).not.toContain('Descargar');
+  });
+
+  /** Verifica que el fallback de un item Video sin portada sea el ícono play-circle. */
+  it('should show pi-play-circle as fallback when item is Video and the cover image fails', () => {
+    const fixture = TestBed.createComponent(DocumentCardComponent);
+    fixture.componentRef.setInput('item', { ...buildItem(), type: 'Video' });
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('img')?.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+
+    const icon = fixture.nativeElement.querySelector('i.pi-play-circle');
+    expect(icon).not.toBeNull();
+    const pdfIcon = fixture.nativeElement.querySelector('i.pi-file-pdf');
+    expect(pdfIcon).toBeNull();
+  });
+
+  /** Verifica que dateIssued se renderice preservando el día local del ISO. */
+  it('should render dateIssued preserving the local day for a full ISO date', () => {
+    const fixture = TestBed.createComponent(DocumentCardComponent);
+    fixture.componentRef.setInput('item', { ...buildItem(), dateIssued: '2026-05-04' });
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement.textContent ?? '') as string;
+    expect(text).toContain('4');
+    expect(text).toContain('5');
+    expect(text).toContain('26');
+    expect(text).not.toMatch(/\b3\/5\/26\b/);
   });
 });

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { ItemView } from '../../../core/api/models';
+import { IsoDateLocalPipe } from '../../../core/i18n/iso-date-local.pipe';
 
 /**
  * Card de un item para listados públicos. Lazy: no asume que el listado
@@ -16,7 +17,7 @@ import { ItemView } from '../../../core/api/models';
   selector: 'app-document-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CardModule, ButtonModule],
+  imports: [CommonModule, CardModule, ButtonModule, IsoDateLocalPipe],
   templateUrl: './document-card.html',
 })
 export class DocumentCardComponent {
@@ -31,7 +32,6 @@ export class DocumentCardComponent {
   readonly imageError = signal(false);
 
   constructor() {
-    // El card se recicla en @for; reseteamos imageError al cambiar de item.
     effect(() => {
       this.item().coverImage;
       this.imageError.set(false);
@@ -39,7 +39,8 @@ export class DocumentCardComponent {
   }
 
   get isVideo(): boolean {
-    return this.item().type === 'MovingImage';
+    const t = this.item().type;
+    return t === 'Video' || t === 'MovingImage';
   }
 
   onImageError(): void {

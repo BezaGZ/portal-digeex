@@ -428,4 +428,44 @@ describe('DocumentDetailComponent', () => {
       expect(component.isLoading).toBe(false);
     });
   });
+
+  describe('video metadata cleanup', () => {
+    /** Verifica que el detalle omita "Nivel educativo" para items con dc.type=Video. */
+    it('should NOT include "Nivel educativo" in metadataFields when the item is Video', () => {
+      const VIDEO_WITH_AUDIENCE = {
+        ...MOCK_ITEM_VIDEO,
+        metadata: {
+          ...MOCK_ITEM_VIDEO.metadata,
+          'dc.audience': [{ value: 'Primaria' }],
+        },
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(dspaceApi, 'getItem').mockReturnValue(of(VIDEO_WITH_AUDIENCE as any));
+
+      component.ngOnInit();
+
+      const labels = component.metadataFields.map((f) => f.label);
+      expect(labels).not.toContain('Nivel educativo');
+    });
+  });
+
+  describe('issued date rendering', () => {
+    /** Verifica que un ISO date-only completo se renderice con el día local. */
+    it('should render dc.date.issued preserving the local day when the value is a full ISO date', () => {
+      const ITEM_FULL_DATE = {
+        ...MOCK_ITEM_DOC,
+        metadata: {
+          ...MOCK_ITEM_DOC.metadata,
+          'dc.date.issued': [{ value: '2026-05-04' }],
+        },
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(dspaceApi, 'getItem').mockReturnValue(of(ITEM_FULL_DATE as any));
+
+      component.ngOnInit();
+
+      const dateField = component.metadataFields.find((f) => f.label === 'Fecha de publicación');
+      expect(dateField?.value).toBe('04/05/2026');
+    });
+  });
 });

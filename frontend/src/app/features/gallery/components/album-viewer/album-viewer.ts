@@ -8,6 +8,7 @@ import { GalleryService } from '../../services/gallery.service';
 import { Album } from '../../models';
 import { PhotoGridItemComponent } from '../photo-grid-item/photo-grid-item';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { parseIsoDateLocal } from '../../../../core/i18n/iso-date.util';
 
 @Component({
   selector: 'app-album-viewer',
@@ -72,7 +73,8 @@ export class AlbumViewer implements OnInit {
   }
 
   formatDate(dateString: string): string {
-    const date = new Date(dateString);
+    const date = parseIsoDateLocal(dateString);
+    if (!date) return dateString;
     return date.toLocaleDateString('es-GT', {
       year: 'numeric',
       month: 'long',

@@ -12,7 +12,7 @@
   <div class="p-4">
     <div class="album-date">
       <i class="pi pi-calendar text-sm"></i>
-      <span>{{ album().date | date: 'longDate' }}</span>
+      <span>{{ album().date | isoDateLocal: 'longDate' }}</span>
       @if (album().photoCount > 0) {
         <span class="ml-2 flex items-center gap-1">
           <i class="pi pi-images text-sm"></i>

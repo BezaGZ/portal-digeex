@@ -16,6 +16,7 @@ import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { VocabularyDisplayService } from '../../../core/api/vocabulary-display.service';
 import { BitstreamDownloadService } from '../../../core/api/bitstream-download.service';
 import { inferBitstreamFormat } from '../../../core/api/bitstream-format.util';
+import { parseIsoDateLocal } from '../../../core/i18n/iso-date.util';
 import { BitstreamView, MetadataFieldView, Item, MetadataMap, Bitstream } from '../../../core/api/models';
 import { Observable, forkJoin, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
@@ -107,17 +108,19 @@ export class DocumentDetailComponent implements OnInit {
         this.buildMetadataFields(response.item.metadata, null, response.vocabLabels);
         if (response.bundles.original) {
           const originalBitstreams = response.bundles.original._embedded?.['bitstreams'] || [];
-          this.documentBitstreams = originalBitstreams.map((bitstream: Bitstream) => {
-            const fmt = inferBitstreamFormat(bitstream.name || '');
-            return {
-              name: bitstream.name || '',
-              url: `/server/api/core/bitstreams/${bitstream.uuid}/content`,
-              size: bitstream.sizeBytes || 0,
-              format: fmt.mime,
-              formatLabel: fmt.label,
-              uuid: bitstream.uuid,
-            } as BitstreamView;
-          });
+          this.documentBitstreams = originalBitstreams
+            .filter((b: Bitstream) => b.name !== '_video_link.txt')
+            .map((bitstream: Bitstream) => {
+              const fmt = inferBitstreamFormat(bitstream.name || '');
+              return {
+                name: bitstream.name || '',
+                url: `/server/api/core/bitstreams/${bitstream.uuid}/content`,
+                size: bitstream.sizeBytes || 0,
+                format: fmt.mime,
+                formatLabel: fmt.label,
+                uuid: bitstream.uuid,
+              } as BitstreamView;
+            });
         }
 
         if (response.bundles.thumbnail) {
@@ -226,6 +229,8 @@ export class DocumentDetailComponent implements OnInit {
     }
 
     for (const [fieldKey, fieldLabel] of Object.entries(fieldLabels)) {
+      if (this.isVideo && fieldKey === 'dc.audience') continue;
+
       const fieldValues = metadata?.[fieldKey];
 
       if (fieldValues && fieldValues.length > 0) {
@@ -274,15 +279,12 @@ export class DocumentDetailComponent implements OnInit {
   }
 
   private formatDate(dateString: string): string {
-    try {
-      const date = new Date(dateString);
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch {
-      return dateString;
-    }
+    const date = parseIsoDateLocal(dateString);
+    if (!date) return dateString;
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   }
 
   /** Estado del boton ZIP mientras se arma el archivo en memoria. */

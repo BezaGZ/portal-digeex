@@ -3,12 +3,13 @@ import { CommonModule } from '@angular/common';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { Album } from '../../models';
+import { IsoDateLocalPipe } from '../../../../core/i18n/iso-date-local.pipe';
 
 @Component({
   selector: 'app-album-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CardModule, ButtonModule],
+  imports: [CommonModule, CardModule, ButtonModule, IsoDateLocalPipe],
   templateUrl: './album-card.html',
   styleUrls: ['./album-card.scss'],
 })
