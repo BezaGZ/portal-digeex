@@ -78,12 +78,19 @@
                 class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/40">
                 <td class="px-3 py-2">
                   @if (coverUrlOf(o); as url) {
-                    <img
-                      [src]="url"
-                      [alt]="titleOf(o)"
-                      loading="lazy"
-                      decoding="async"
-                      class="w-10 h-10 object-cover rounded border border-gray-200 dark:border-gray-700" />
+                    @if (!hasImageError(o)) {
+                      <img
+                        [src]="url"
+                        [alt]="titleOf(o)"
+                        loading="lazy"
+                        decoding="async"
+                        (error)="onImageError(o.indexableObject.uuid)"
+                        class="w-10 h-10 object-cover rounded border border-gray-200 dark:border-gray-700" />
+                    } @else {
+                      <div class="w-10 h-10 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                        <i class="pi pi-image text-gray-400 dark:text-gray-500 text-sm"></i>
+                      </div>
+                    }
                   } @else {
                     <div class="w-10 h-10 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
                       <i class="pi pi-image text-gray-400 dark:text-gray-500 text-sm"></i>
@@ -111,22 +118,40 @@
                 </td>
                 <td class="px-3 py-3 text-right whitespace-nowrap">
                   <div class="flex gap-2 justify-end">
-                    <p-button
-                      icon="pi pi-pencil"
-                      severity="secondary"
-                      [text]="true"
-                      [rounded]="true"
-                      (onClick)="onEdit(o.indexableObject.uuid)"
-                      pTooltip="Editar"
-                      tooltipPosition="top" />
-                    <p-button
-                      icon="pi pi-trash"
-                      severity="danger"
-                      [text]="true"
-                      [rounded]="true"
-                      (onClick)="onDelete(o.indexableObject.uuid)"
-                      pTooltip="Eliminar"
-                      tooltipPosition="top" />
+                    <span data-testid="action-edit">
+                      <p-button
+                        icon="pi pi-pencil"
+                        severity="secondary"
+                        [text]="true"
+                        [rounded]="true"
+                        [disabled]="isWithdrawn(o)"
+                        (onClick)="onEdit(o.indexableObject.uuid)"
+                        pTooltip="Editar"
+                        tooltipPosition="top" />
+                    </span>
+                    @if (isWithdrawn(o)) {
+                      <span data-testid="action-restore">
+                        <p-button
+                          icon="pi pi-replay"
+                          severity="success"
+                          [text]="true"
+                          [rounded]="true"
+                          (onClick)="onRestore(o.indexableObject.uuid)"
+                          pTooltip="Restaurar"
+                          tooltipPosition="top" />
+                      </span>
+                    }
+                    <span data-testid="action-delete">
+                      <p-button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        [text]="true"
+                        [rounded]="true"
+                        [disabled]="isWithdrawn(o)"
+                        (onClick)="onDelete(o.indexableObject.uuid)"
+                        pTooltip="Eliminar"
+                        tooltipPosition="top" />
+                    </span>
                   </div>
                 </td>
               </tr>

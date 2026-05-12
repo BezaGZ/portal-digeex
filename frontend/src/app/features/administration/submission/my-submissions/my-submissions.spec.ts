@@ -28,6 +28,7 @@ import { ConfirmationService } from 'primeng/api';
 describe('MySubmissions', () => {
   let searchFn: ReturnType<typeof vi.fn>;
   let withdrawFn: ReturnType<typeof vi.fn>;
+  let restoreFn: ReturnType<typeof vi.fn>;
   let confirmFn: ReturnType<typeof vi.fn>;
 
   const buildItemObject = (uuid: string, title: string) => ({
@@ -59,6 +60,7 @@ describe('MySubmissions', () => {
     );
 
     withdrawFn = vi.fn().mockReturnValue(of({}));
+    restoreFn = vi.fn().mockReturnValue(of({}));
     confirmFn = vi.fn().mockImplementation((opts: { accept?: () => void }) => opts.accept?.());
 
     TestBed.configureTestingModule({
@@ -69,7 +71,7 @@ describe('MySubmissions', () => {
         provideNoopAnimations(),
         provideRouter([]),
         { provide: MyDSpaceApiService, useValue: { search$: searchFn } },
-        { provide: ItemAdminFacade, useValue: { withdrawItem$: withdrawFn } },
+        { provide: ItemAdminFacade, useValue: { withdrawItem$: withdrawFn, restoreItem$: restoreFn } },
         {
           provide: AuthCallerService,
           useValue: { currentCaller$: of({ role: 'superadmin', sufijo: 'PEAC' }) },
@@ -303,6 +305,136 @@ describe('MySubmissions', () => {
       const c = fixture.componentInstance;
 
       expect(c.entityTypeOf(buildWithType('4', null, 'Estadistica'))).toBe('Estadistica');
+    });
+  });
+
+  describe('withdrawn items actions', () => {
+    function buildWithdrawnObject(uuid: string) {
+      return {
+        type: 'discover' as const,
+        indexableObject: {
+          uuid,
+          name: 'Eliminado',
+          handle: `123/${uuid}`,
+          metadata: {
+            'dc.title': [{ value: 'Eliminado', language: null, authority: null, confidence: -1, place: 0 }],
+            'dspace.entity.type': [
+              { value: 'Documento', language: null, authority: null, confidence: -1, place: 0 },
+            ],
+          },
+          inArchive: false,
+          discoverable: true,
+          withdrawn: true,
+          lastModified: '2026-05-12T15:24:19Z',
+          type: 'item',
+        },
+      };
+    }
+
+    function setupWithWithdrawn() {
+      searchFn.mockReturnValueOnce(
+        of({ items: [buildWithdrawnObject('w-1')], totalElements: 1, totalPages: 1, size: 20, page: 0 }),
+      );
+      const fixture = TestBed.createComponent(MySubmissions);
+      fixture.detectChanges();
+      return fixture;
+    }
+
+    /** Verifica que `isWithdrawn` devuelva true cuando el flag nativo del item está prendido. */
+    it('should expose isWithdrawn=true when indexableObject.withdrawn is true', async () => {
+      const fixture = setupWithWithdrawn();
+      await fixture.whenStable();
+      const c = fixture.componentInstance;
+      expect(c.isWithdrawn(buildWithdrawnObject('w-1'))).toBe(true);
+    });
+
+    /** Verifica que el botón Editar quede deshabilitado para items withdrawn. */
+    it('should disable the Editar button when the item is withdrawn', async () => {
+      const fixture = setupWithWithdrawn();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const editBtn = fixture.nativeElement.querySelector(
+        '[data-testid="action-edit"] button',
+      ) as HTMLButtonElement | null;
+      expect(editBtn).not.toBeNull();
+      expect(editBtn!.disabled).toBe(true);
+    });
+
+    /** Verifica que el botón Eliminar quede deshabilitado para items withdrawn. */
+    it('should disable the Eliminar button when the item is withdrawn', async () => {
+      const fixture = setupWithWithdrawn();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const deleteBtn = fixture.nativeElement.querySelector(
+        '[data-testid="action-delete"] button',
+      ) as HTMLButtonElement | null;
+      expect(deleteBtn).not.toBeNull();
+      expect(deleteBtn!.disabled).toBe(true);
+    });
+
+    /** Verifica que aparezca el botón Restaurar para items withdrawn. */
+    it('should render the Restaurar button only for withdrawn items', async () => {
+      const fixture = setupWithWithdrawn();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const restoreBtn = fixture.nativeElement.querySelector(
+        '[data-testid="action-restore"]',
+      );
+      expect(restoreBtn).not.toBeNull();
+    });
+
+    /** Verifica que `onRestore` confirme y dispare `restoreItem$` con el sufijo del caller. */
+    it('should confirm and dispatch restoreItem$ with the caller sufijo when onRestore is called', async () => {
+      const fixture = setupWithWithdrawn();
+      await fixture.whenStable();
+      fixture.componentInstance.onRestore('w-1');
+
+      expect(confirmFn).toHaveBeenCalled();
+      expect(restoreFn).toHaveBeenCalledWith('w-1', 'PEAC');
+    });
+  });
+
+  describe('thumbnail fallback', () => {
+    function buildObjectWithThumb(uuid: string) {
+      return {
+        type: 'discover' as const,
+        indexableObject: {
+          uuid,
+          name: 'Con thumbnail roto',
+          handle: `123/${uuid}`,
+          metadata: {
+            'dc.title': [{ value: 'X', language: null, authority: null, confidence: -1, place: 0 }],
+          },
+          thumbnail: { uuid: 'bs-roto', name: 'cover.jpg', type: 'bitstream' },
+          inArchive: true,
+          discoverable: true,
+          withdrawn: false,
+          lastModified: '2026-05-12T00:00:00Z',
+          type: 'item',
+        },
+      };
+    }
+
+    /** Verifica que al fallar la carga del thumbnail se reemplace por el placeholder. */
+    it('should fall back to the placeholder when the thumbnail image fails to load', async () => {
+      searchFn.mockReturnValueOnce(
+        of({ items: [buildObjectWithThumb('item-1')], totalElements: 1, totalPages: 1, size: 20, page: 0 }),
+      );
+      const fixture = TestBed.createComponent(MySubmissions);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const img = fixture.nativeElement.querySelector('img') as HTMLImageElement | null;
+      expect(img).not.toBeNull();
+      img!.dispatchEvent(new Event('error'));
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('img')).toBeNull();
+      expect(fixture.nativeElement.querySelector('i.pi-image')).not.toBeNull();
     });
   });
 

@@ -81,6 +81,9 @@ export class MySubmissions {
 
   readonly sortOptions = SORT_OPTIONS;
 
+  /** UUIDs de items cuyo thumbnail falló al cargar; el template cae al placeholder. */
+  readonly imageErrors = signal<ReadonlySet<string>>(new Set());
+
   /** Sufijo del caller capturado del AuthCallerService; lo exige el facade para scope check. */
   private callerSufijo = '';
 
@@ -138,11 +141,30 @@ export class MySubmissions {
    */
   onDelete(uuid: string): void {
     this.confirmation.confirm({
-      message: 'Esto retira el envío del sitio público. Podés restaurarlo desde el listado de eliminados.',
+      message: 'Esto retira el envío del sitio público. Podés restaurarlo después.',
       header: '¿Eliminar este envío?',
       accept: () => {
         this.facade
           .withdrawItem$(uuid, this.callerSufijo)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(() => this.load(0));
+      },
+    });
+  }
+
+  /** Devuelve true cuando el item está retirado del archivo público. */
+  isWithdrawn(o: MyDSpaceObject): boolean {
+    return o.indexableObject.withdrawn === true;
+  }
+
+  /** Restaura un item retirado; PATCH /withdrawn=false vía ItemAdminFacade. */
+  onRestore(uuid: string): void {
+    this.confirmation.confirm({
+      message: 'El envío volverá al sitio público y aparecerá en la búsqueda.',
+      header: '¿Restaurar este envío?',
+      accept: () => {
+        this.facade
+          .restoreItem$(uuid, this.callerSufijo)
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe(() => this.load(0));
       },
@@ -183,6 +205,18 @@ export class MySubmissions {
   coverUrlOf(o: MyDSpaceObject): string | null {
     const uuid = o.indexableObject.thumbnail?.uuid;
     return uuid ? `/server/api/core/bitstreams/${uuid}/content` : null;
+  }
+
+  /** El template lo usa para mostrar el placeholder cuando el bitstream del thumbnail no carga. */
+  hasImageError(o: MyDSpaceObject): boolean {
+    return this.imageErrors().has(o.indexableObject.uuid);
+  }
+
+  /** Marca el thumbnail como roto para que el render caiga al placeholder. */
+  onImageError(uuid: string): void {
+    const next = new Set(this.imageErrors());
+    next.add(uuid);
+    this.imageErrors.set(next);
   }
 
   /** Fecha legible para la columna. Devuelve string vacío si no viene dc.date.issued. */
