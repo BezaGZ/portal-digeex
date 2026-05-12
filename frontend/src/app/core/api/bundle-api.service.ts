@@ -1,10 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { Bundle, BundlesResponse } from './models/search.model';
 import { Bitstream } from './models/bitstream.model';
-import { DSPACE_API_BASE, BUNDLES_PATH, ITEMS_PATH } from './dspace-rest.util';
+import { HalListResponse } from './models/hal.model';
+import { DSPACE_API_BASE, BUNDLES_PATH, BITSTREAMS_PATH, ITEMS_PATH } from './dspace-rest.util';
 
 /**
  * Wrapper HTTP de los recursos `/api/core/items/{uuid}/bundles` y
@@ -34,6 +36,22 @@ export class BundleApiService {
     return this.http.post<Bundle>(
       `${DSPACE_API_BASE}${ITEMS_PATH}/${itemUuid}/bundles`,
       { name, metadata: {} },
+    );
+  }
+
+  /** Lista los bitstreams de un bundle (THUMBNAIL, ORIGINAL, etc.). */
+  listBitstreams(bundleUuid: string): Observable<Bitstream[]> {
+    return this.http
+      .get<HalListResponse<Bitstream>>(
+        `${DSPACE_API_BASE}${BUNDLES_PATH}/${bundleUuid}/bitstreams`,
+      )
+      .pipe(map((res) => res._embedded?.['bitstreams'] ?? []));
+  }
+
+  /** Borra un bitstream del repositorio. */
+  deleteBitstream(bitstreamUuid: string): Observable<void> {
+    return this.http.delete<void>(
+      `${DSPACE_API_BASE}${BITSTREAMS_PATH}/${bitstreamUuid}`,
     );
   }
 

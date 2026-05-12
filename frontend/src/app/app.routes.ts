@@ -104,6 +104,14 @@ export const routes: Routes = [
         data: { breadcrumb: 'Mis envíos' }
       },
       {
+        path: 'envios/:uuid/editar',
+        loadComponent: () =>
+          import('./features/administration/submission/submission-forms-bootstrap')
+            .then(() => import('./features/administration/submission/edit-item/edit-item'))
+            .then(m => m.EditItem),
+        data: { breadcrumb: 'Editar envío' }
+      },
+      {
         path: 'usuarios',
         canActivate: [superadminGuard],
         loadComponent: () => import('./features/administration/users/users').then(m => m.Users),

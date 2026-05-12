@@ -10,7 +10,9 @@ import { BaseSubmissionForm } from './base-submission-form';
 import { Collection } from '../../../core/api/models/collection.model';
 import { Item } from '../../../core/api/models/item.model';
 import { MetadataValue } from '../../../core/api/models/metadata.model';
+import { JsonPatchEntry } from '../../../core/api/json-patch.util';
 import { SubmissionFacade } from '../content/services/submission-facade';
+import { ItemAdminFacade } from '../content/services/item-admin-facade';
 
 /**
  * Subclase concreta para ejercitar el flujo de la base sin atarlo a un
@@ -37,6 +39,12 @@ class FakeSubmissionForm extends BaseSubmissionForm {
   }
   protected getVisibility(): 'public' | 'private' {
     return 'public';
+  }
+  protected applyItemToForm(_item: Item): void {
+    /* no-op para los tests del flujo de creación. */
+  }
+  protected buildPatchFromForm(_item: Item): JsonPatchEntry[] {
+    return [];
   }
 }
 
@@ -75,6 +83,7 @@ describe('BaseSubmissionForm', () => {
       providers: [
         provideNoopAnimations(),
         { provide: SubmissionFacade, useValue: { submitItem$: submitItemFn } },
+        { provide: ItemAdminFacade, useValue: { editItem$: vi.fn(() => of({ uuid: 'item-1' } as Item)) } },
         { provide: MessageService, useValue: { add: toastAdd } },
         { provide: Router, useValue: { navigate: routerNavigate } },
       ],
@@ -148,7 +157,6 @@ describe('BaseSubmissionForm', () => {
   });
 
   it('should ignore a second submit while the first is still in flight', () => {
-    // El observable jamás emite para mantener submitting() en true entre los dos llamados.
     submitItemFn.mockReturnValue(NEVER);
     const fixture = TestBed.createComponent(FakeSubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));

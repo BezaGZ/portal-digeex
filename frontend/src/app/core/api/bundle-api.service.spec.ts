@@ -47,6 +47,39 @@ describe('BundleApiService', () => {
     expect(result?.name).toBe('THUMBNAIL');
   });
 
+  /** Verifica que listBitstreams haga GET al endpoint de bitstreams del bundle. */
+  it('should GET /api/core/bundles/{uuid}/bitstreams and return the embedded list', () => {
+    let result: { uuid: string }[] | undefined;
+    service
+      .listBitstreams('bundle-uuid-1')
+      .subscribe((b) => (result = b as { uuid: string }[]));
+
+    const req = httpMock.expectOne('/server/api/core/bundles/bundle-uuid-1/bitstreams');
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      _embedded: {
+        bitstreams: [
+          { uuid: 'bs-a', name: 'a.jpg', type: 'bitstream' },
+          { uuid: 'bs-b', name: 'b.jpg', type: 'bitstream' },
+        ],
+      },
+    });
+
+    expect(result?.map((b) => b.uuid)).toEqual(['bs-a', 'bs-b']);
+  });
+
+  /** Verifica que deleteBitstream haga DELETE al recurso bitstream por uuid. */
+  it('should DELETE /api/core/bitstreams/{uuid}', () => {
+    let completed = false;
+    service.deleteBitstream('bs-a').subscribe(() => (completed = true));
+
+    const req = httpMock.expectOne('/server/api/core/bitstreams/bs-a');
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+
+    expect(completed).toBe(true);
+  });
+
   /** Verifica que uploadBitstream envíe FormData multipart con campo "file" al bundle indicado. */
   it('should POST a multipart bitstream to /api/core/bundles/{uuid}/bitstreams with field "file"', () => {
     const file = new File(['contenido'], 'portada.jpg', { type: 'image/jpeg' });
@@ -57,8 +90,6 @@ describe('BundleApiService', () => {
 
     const req = httpMock.expectOne('/server/api/core/bundles/bundle-uuid-1/bitstreams');
     expect(req.request.method).toBe('POST');
-    // El body es FormData con el field "file"; verificamos el shape sin
-    // depender del boundary que arma HttpClient.
     const body = req.request.body as FormData;
     expect(body instanceof FormData).toBe(true);
     expect((body.get('file') as File).name).toBe('portada.jpg');

@@ -1,15 +1,17 @@
-import { Directive, inject, input, signal } from '@angular/core';
+import { Directive, computed, effect, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 
 import { Collection } from '../../../core/api/models/collection.model';
 import { Item } from '../../../core/api/models/item.model';
 import { MetadataValue } from '../../../core/api/models/metadata.model';
+import { JsonPatchEntry } from '../../../core/api/json-patch.util';
 import { Caller } from '../content/specifications/scope-context.model';
 import {
   SubmissionFacade,
   SubmitItemRequest,
 } from '../content/services/submission-facade';
+import { ItemAdminFacade } from '../content/services/item-admin-facade';
 
 /**
  * Base abstracta para los formularios de submission. Define el flujo común
@@ -17,18 +19,44 @@ import {
  * delega a cada subform las decisiones específicas del tipo: nombre de la
  * sección del submission process, construcción del metadata, archivos a
  * subir y visibilidad. Patrón Template Method.
+ *
+ * El mismo subform sirve para "crear" y "editar": cuando se le pasa el input
+ * `item`, el form entra en modo edición. En ese modo se ocultan los dropzones
+ * (la gestión de bitstreams va en el ciclo siguiente), se pre-llena el form
+ * desde `item.metadata` y el submit dispara `ItemAdminFacade.updateItem$`
+ * con el diff JSON Patch que cada subform calcula.
  */
 @Directive()
 export abstract class BaseSubmissionForm {
   protected readonly facade = inject(SubmissionFacade);
+  protected readonly itemFacade = inject(ItemAdminFacade);
   protected readonly toast = inject(MessageService);
   protected readonly router = inject(Router);
 
-  readonly collection = input.required<Collection>();
+  readonly collection = input<Collection | null>(null);
   readonly caller = input.required<Caller>();
+
+  /** Item a editar; si está presente, el form opera en modo edición en lugar de creación. */
+  readonly item = input<Item | null>(null);
 
   /** True mientras el submit está en vuelo; los subforms lo bindean a `[disabled]` del botón. */
   readonly submitting = signal(false);
+
+  /** Conveniencia: el template se ramifica con esto para mostrar/ocultar dropzones y cambiar el label del botón. */
+  readonly isEditMode = computed(() => this.item() !== null);
+
+  /** Pre-llena el form la primera vez que el input `item` entra con un valor no nulo. */
+  private prefilledFor: string | null = null;
+
+  constructor() {
+    effect(() => {
+      const it = this.item();
+      if (it && this.prefilledFor !== it.uuid) {
+        this.prefilledFor = it.uuid;
+        this.applyItemToForm(it);
+      }
+    });
+  }
 
   /** Nombre de la `<step-definition>` del submission process configurado para el entity-type. */
   protected abstract getSectionName(): string;
@@ -42,6 +70,12 @@ export abstract class BaseSubmissionForm {
   /** `private` hace un PATCH extra a `/discoverable=false` post-archivo (privacidad nivel discovery). */
   protected abstract getVisibility(): 'public' | 'private';
 
+  /** Pre-llena el form desde la metadata del item; solo se invoca en modo edición. */
+  protected abstract applyItemToForm(item: Item): void;
+
+  /** Calcula el JSON Patch mínimo para reflejar los cambios del form sobre el item original. */
+  protected abstract buildPatchFromForm(item: Item): JsonPatchEntry[];
+
   /**
    * Imagen opcional que el subform expone como portada del item. La submission
    * API solo soporta upload al bundle ORIGINAL; el facade coloca esta imagen
@@ -53,15 +87,25 @@ export abstract class BaseSubmissionForm {
   }
 
   /**
-   * Orquesta la submission completa. Idempotente: si ya hay un submit en
-   * vuelo, el segundo llamado se ignora para que un doble click del botón
-   * no dispare dos workspaceitems.
+   * Orquesta create o update según el modo. Idempotente: si ya hay un submit
+   * en vuelo, el segundo llamado se ignora para que un doble click del botón
+   * no dispare dos requests.
    */
   submit(): void {
     if (this.submitting()) return;
+    if (this.isEditMode()) {
+      this.runUpdate();
+    } else {
+      this.runCreate();
+    }
+  }
+
+  private runCreate(): void {
+    const col = this.collection();
+    if (!col) return;
 
     const req: SubmitItemRequest = {
-      collectionUuid: this.collection().uuid,
+      collectionUuid: col.uuid,
       sectionName: this.getSectionName(),
       metadata: this.buildMetadata(),
       files: this.getFiles(),
@@ -90,6 +134,52 @@ export abstract class BaseSubmissionForm {
         this.submitting.set(false);
       },
     });
+  }
+
+  private runUpdate(): void {
+    const it = this.item();
+    if (!it) return;
+    const patch = this.buildPatchFromForm(it);
+    const visibility = this.getVisibility();
+    const coverFile = this.getCoverFile() ?? undefined;
+    const visibilityChanged = (visibility === 'public') !== it.discoverable;
+    if (patch.length === 0 && !visibilityChanged && !coverFile) {
+      this.toast.add({
+        severity: 'info',
+        summary: 'Sin cambios',
+        detail: 'No hay diferencias para guardar.',
+      });
+      return;
+    }
+
+    this.submitting.set(true);
+    this.itemFacade
+      .editItem$(
+        it.uuid,
+        { patch, visibility, coverFile, item: it },
+        this.caller().sufijo ?? '',
+      )
+      .subscribe({
+        next: (updated) => {
+          this.toast.add({
+            severity: 'success',
+            summary: 'Cambios guardados',
+            detail: 'El item se actualizó correctamente.',
+          });
+          this.afterSuccess(updated);
+          this.submitting.set(false);
+          // Cerrar la edición devolviendo al usuario a su bandeja personal.
+          this.router.navigate(['/administrador/envios']);
+        },
+        error: (err) => {
+          this.toast.add({
+            severity: 'error',
+            summary: 'Error al guardar',
+            detail: this.extractErrorMessage(err),
+          });
+          this.submitting.set(false);
+        },
+      });
   }
 
   /** Hook opcional para side-effects post-éxito (resetear el form, navegar, etc.). */

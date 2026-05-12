@@ -3,6 +3,7 @@ import { firstValueFrom, of } from 'rxjs';
 import { Mock, vi } from 'vitest';
 import { ItemAdminFacade } from './item-admin-facade';
 import { ItemApiService } from '../../../../core/api/item-api.service';
+import { BundleApiService } from '../../../../core/api/bundle-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { BusinessRuleError } from '../../../../core/error/business-rule-error';
@@ -12,6 +13,14 @@ type ItemApiMock = {
   updateMetadata: Mock;
   withdraw: Mock;
   restore: Mock;
+  getOne: Mock;
+};
+type BundleApiMock = {
+  listForItem: Mock;
+  createBundle: Mock;
+  uploadBitstream: Mock;
+  listBitstreams: Mock;
+  deleteBitstream: Mock;
 };
 type ScopeMock = { assertWithinScope: Mock };
 type AuthCallerMock = { currentCaller$: ReturnType<typeof of> };
@@ -31,6 +40,7 @@ type AuthCallerMock = { currentCaller$: ReturnType<typeof of> };
 describe('ItemAdminFacade', () => {
   let facade: ItemAdminFacade;
   let mockItemApi: ItemApiMock;
+  let mockBundleApi: BundleApiMock;
   let mockScope: ScopeMock;
   let mockAuthCaller: AuthCallerMock;
 
@@ -53,6 +63,7 @@ describe('ItemAdminFacade', () => {
       providers: [
         ItemAdminFacade,
         { provide: ItemApiService, useValue: mockItemApi },
+        { provide: BundleApiService, useValue: mockBundleApi },
         { provide: ContentScopeService, useValue: mockScope },
         { provide: AuthCallerService, useValue: mockAuthCaller },
       ],
@@ -65,6 +76,14 @@ describe('ItemAdminFacade', () => {
       updateMetadata: vi.fn(() => of(archivedItem)),
       withdraw: vi.fn(() => of({ ...archivedItem, withdrawn: true })),
       restore: vi.fn(() => of({ ...archivedItem, withdrawn: false })),
+      getOne: vi.fn(() => of(archivedItem)),
+    };
+    mockBundleApi = {
+      listForItem: vi.fn(() => of({ _embedded: { bundles: [] } })),
+      createBundle: vi.fn(() => of({ uuid: 'thumb-bundle-uuid', name: 'THUMBNAIL' })),
+      uploadBitstream: vi.fn(() => of({ uuid: 'cover-bs-uuid' })),
+      listBitstreams: vi.fn(() => of([])),
+      deleteBitstream: vi.fn(() => of(undefined)),
     };
     mockScope = { assertWithinScope: vi.fn() };
   });
@@ -127,6 +146,191 @@ describe('ItemAdminFacade', () => {
         firstValueFrom(facade.withdrawItem$('item-uuid', 'ED_TRABAJO')),
       ).rejects.toBeInstanceOf(BusinessRuleError);
       expect(mockItemApi.withdraw).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('editItem$', () => {
+    const itemPriv = { ...archivedItem, discoverable: false };
+
+    /** Verifica que el step de metadata patch se ejecute cuando viene patch en el payload. */
+    it('should apply metadata patch when patch is provided', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      const patch: JsonPatchEntry[] = [
+        { op: 'replace', path: '/metadata/dc.title/0/value', value: 'X' },
+      ];
+
+      await firstValueFrom(
+        facade.editItem$('item-uuid', { patch, item: archivedItem }, 'ED_BASICA'),
+      );
+
+      expect(mockItemApi.updateMetadata).toHaveBeenCalledWith('item-uuid', patch);
+    });
+
+    /** Verifica que el cambio a private emita PATCH /discoverable=false. */
+    it('should PATCH /discoverable=false when visibility changes to private', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(
+        facade.editItem$(
+          'item-uuid',
+          { patch: [], visibility: 'private', item: archivedItem },
+          'ED_BASICA',
+        ),
+      );
+
+      const calls = mockItemApi.updateMetadata.mock.calls;
+      const visibilityCall = calls.find((c) =>
+        (c[1] as JsonPatchEntry[]).some((p) => p.path === '/discoverable'),
+      );
+      expect(visibilityCall).toBeDefined();
+      expect(visibilityCall![1]).toEqual([
+        { op: 'replace', path: '/discoverable', value: false },
+      ]);
+    });
+
+    /** Verifica que el cambio a public emita PATCH /discoverable=true. */
+    it('should PATCH /discoverable=true when visibility changes to public', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(
+        facade.editItem$(
+          'item-uuid',
+          { patch: [], visibility: 'public', item: itemPriv },
+          'ED_BASICA',
+        ),
+      );
+
+      const calls = mockItemApi.updateMetadata.mock.calls;
+      const visibilityCall = calls.find((c) =>
+        (c[1] as JsonPatchEntry[]).some((p) => p.path === '/discoverable'),
+      );
+      expect(visibilityCall).toBeDefined();
+      expect(visibilityCall![1]).toEqual([
+        { op: 'replace', path: '/discoverable', value: true },
+      ]);
+    });
+
+    /** Verifica que el step de visibility se omita cuando el target coincide con item.discoverable. */
+    it('should NOT touch visibility when it equals the current item.discoverable', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(
+        facade.editItem$(
+          'item-uuid',
+          { patch: [], visibility: 'public', item: archivedItem },
+          'ED_BASICA',
+        ),
+      );
+
+      const visibilityCall = mockItemApi.updateMetadata.mock.calls.find((c) =>
+        (c[1] as JsonPatchEntry[]).some((p) => p.path === '/discoverable'),
+      );
+      expect(visibilityCall).toBeUndefined();
+    });
+
+    /** Verifica que se cree el bundle THUMBNAIL y se suba el bitstream cuando el item no tenía uno. */
+    it('should upload the cover to a new THUMBNAIL bundle when none exists', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      const cover = new File([''], 'cover.jpg', { type: 'image/jpeg' });
+
+      await firstValueFrom(
+        facade.editItem$(
+          'item-uuid',
+          { patch: [], coverFile: cover, item: archivedItem },
+          'ED_BASICA',
+        ),
+      );
+
+      expect(mockBundleApi.listForItem).toHaveBeenCalledWith('item-uuid');
+      expect(mockBundleApi.createBundle).toHaveBeenCalledWith('item-uuid', 'THUMBNAIL');
+      expect(mockBundleApi.uploadBitstream).toHaveBeenCalledWith('thumb-bundle-uuid', cover);
+    });
+
+    /** Verifica que el bundle THUMBNAIL existente se reuse en lugar de crear uno nuevo. */
+    it('should reuse the existing THUMBNAIL bundle when one already exists', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockBundleApi.listForItem.mockReturnValueOnce(
+        of({ _embedded: { bundles: [{ uuid: 'existing-thumb', name: 'THUMBNAIL' }] } }),
+      );
+      const cover = new File([''], 'cover.jpg', { type: 'image/jpeg' });
+
+      await firstValueFrom(
+        facade.editItem$(
+          'item-uuid',
+          { patch: [], coverFile: cover, item: archivedItem },
+          'ED_BASICA',
+        ),
+      );
+
+      expect(mockBundleApi.createBundle).not.toHaveBeenCalled();
+      expect(mockBundleApi.uploadBitstream).toHaveBeenCalledWith('existing-thumb', cover);
+    });
+
+    /** Verifica que los bitstreams previos del bundle THUMBNAIL se borren antes de subir el cover nuevo. */
+    it('should delete existing bitstreams from the THUMBNAIL bundle before uploading the new cover', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockBundleApi.listForItem.mockReturnValueOnce(
+        of({ _embedded: { bundles: [{ uuid: 'existing-thumb', name: 'THUMBNAIL' }] } }),
+      );
+      mockBundleApi.listBitstreams.mockReturnValueOnce(
+        of([{ uuid: 'old-bs-1' }, { uuid: 'old-bs-2' }]),
+      );
+      const cover = new File([''], 'cover.jpg', { type: 'image/jpeg' });
+
+      await firstValueFrom(
+        facade.editItem$(
+          'item-uuid',
+          { patch: [], coverFile: cover, item: archivedItem },
+          'ED_BASICA',
+        ),
+      );
+
+      expect(mockBundleApi.listBitstreams).toHaveBeenCalledWith('existing-thumb');
+      expect(mockBundleApi.deleteBitstream).toHaveBeenCalledWith('old-bs-1');
+      expect(mockBundleApi.deleteBitstream).toHaveBeenCalledWith('old-bs-2');
+      expect(mockBundleApi.uploadBitstream).toHaveBeenCalledWith('existing-thumb', cover);
+      // Los deletes deben ocurrir antes del upload (orden de invocación).
+      const deleteOrder = mockBundleApi.deleteBitstream.mock.invocationCallOrder;
+      const uploadOrder = mockBundleApi.uploadBitstream.mock.invocationCallOrder;
+      expect(Math.max(...deleteOrder)).toBeLessThan(uploadOrder[0]);
+    });
+
+    /** Verifica que un bundle THUMBNAIL recién creado no dispare listBitstreams ni deleteBitstream. */
+    it('should NOT list or delete bitstreams when the THUMBNAIL bundle is created fresh', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      const cover = new File([''], 'cover.jpg', { type: 'image/jpeg' });
+
+      await firstValueFrom(
+        facade.editItem$(
+          'item-uuid',
+          { patch: [], coverFile: cover, item: archivedItem },
+          'ED_BASICA',
+        ),
+      );
+
+      expect(mockBundleApi.listBitstreams).not.toHaveBeenCalled();
+      expect(mockBundleApi.deleteBitstream).not.toHaveBeenCalled();
+      expect(mockBundleApi.uploadBitstream).toHaveBeenCalledWith('thumb-bundle-uuid', cover);
+    });
+
+    /** Verifica que el scope se valide antes de cualquier HTTP en el flujo de edit. */
+    it('should reject with OUT_OF_SCOPE before any HTTP call when scope rejects', async () => {
+      setupFacadeWithCaller('admin_subdireccion', 'ED_BASICA');
+      mockScope.assertWithinScope.mockImplementation(() => {
+        throw new BusinessRuleError('OUT_OF_SCOPE', 'rejected');
+      });
+
+      await expect(
+        firstValueFrom(
+          facade.editItem$(
+            'item-uuid',
+            { patch: [], visibility: 'private', item: archivedItem },
+            'ED_TRABAJO',
+          ),
+        ),
+      ).rejects.toBeInstanceOf(BusinessRuleError);
+      expect(mockItemApi.updateMetadata).not.toHaveBeenCalled();
+      expect(mockBundleApi.uploadBitstream).not.toHaveBeenCalled();
     });
   });
 

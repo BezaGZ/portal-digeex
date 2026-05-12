@@ -28,6 +28,7 @@ export const COMMUNITIES_PATH = '/core/communities';
 export const COLLECTIONS_PATH = '/core/collections';
 export const ITEMS_PATH = '/core/items';
 export const BUNDLES_PATH = '/core/bundles';
+export const BITSTREAMS_PATH = '/core/bitstreams';
 export const WORKSPACEITEMS_PATH = '/submission/workspaceitems';
 export const WORKFLOWITEMS_PATH = '/workflow/workflowitems';
 

@@ -1,0 +1,28 @@
+<div class="p-6">
+  <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Editar envío</h1>
+  <p class="text-gray-600 dark:text-gray-400 mb-6">
+    Ajustá los datos del recurso. Los archivos del item se gestionan en el
+    siguiente ciclo del sprint.
+  </p>
+
+  @if (loading()) {
+    <app-loading-spinner minHeight="320px" />
+  } @else if (item(); as it) {
+    @switch (entityType()) {
+      @case ('Documento') {
+        <app-document-submission-form [item]="it" [caller]="caller()!" />
+      }
+      @case ('Galeria') {
+        <app-gallery-submission-form [item]="it" [caller]="caller()!" />
+      }
+      @case ('Estadistica') {
+        <app-stats-submission-form [item]="it" [caller]="caller()!" />
+      }
+      @default {
+        <div class="p-4 rounded bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200">
+          Este tipo de entidad ({{ entityType() || '—' }}) no tiene formulario de edición.
+        </div>
+      }
+    }
+  }
+</div>
