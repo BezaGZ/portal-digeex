@@ -58,6 +58,10 @@ export class DiscoveryService {
       httpParams = httpParams.set('sort', params.sort);
     }
 
+    if (params.configuration) {
+      httpParams = httpParams.set('configuration', params.configuration);
+    }
+
     if (params.filters) {
       for (const filter of params.filters) {
         httpParams = httpParams.append(`f.${filter.name}`, `${filter.value},${filter.operator}`);

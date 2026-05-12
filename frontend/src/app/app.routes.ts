@@ -112,6 +112,11 @@ export const routes: Routes = [
         data: { breadcrumb: 'Editar envío' }
       },
       {
+        path: 'recursos',
+        loadComponent: () => import('./features/administration/resources/resources-admin').then(m => m.ResourcesAdmin),
+        data: { breadcrumb: 'Recursos' }
+      },
+      {
         path: 'usuarios',
         canActivate: [superadminGuard],
         loadComponent: () => import('./features/administration/users/users').then(m => m.Users),

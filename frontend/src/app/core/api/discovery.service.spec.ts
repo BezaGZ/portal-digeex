@@ -137,6 +137,19 @@ describe('DiscoveryService', () => {
     await promise;
   });
 
+  /** Verifica que search() pase el param configuration cuando se provee. */
+  it('should pass configuration param to the backend when provided', async () => {
+    service.search({ configuration: 'administrativeView' }).subscribe();
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/server/api/discover/search/objects' &&
+        r.params.get('configuration') === 'administrativeView',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(mockSearchResponse);
+  });
+
   /** Verifica que search() pida embed=thumbnail al endpoint Discovery. */
   it('should request embed=thumbnail on every search', async () => {
     service.search({}).subscribe();

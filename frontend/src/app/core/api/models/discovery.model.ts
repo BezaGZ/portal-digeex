@@ -23,6 +23,8 @@ export interface SearchParams {
   page?: number;
   size?: number;
   sort?: string;
+  /** Configuration bean del backend (`default`, `administrativeView`, etc.). */
+  configuration?: string;
 }
 
 export interface SearchResult {

@@ -1,0 +1,205 @@
+<p-confirmDialog />
+
+<div class="p-6">
+  <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Recursos</h1>
+  <p class="text-gray-600 dark:text-gray-400 mb-6">
+    Listado global de recursos del portal. Filtrá por estado, tipo, año o texto libre.
+  </p>
+
+  <div class="flex gap-2 mb-4" role="tablist">
+    <p-button
+      label="Activos"
+      data-testid="tab-activos"
+      [severity]="tab() === 'activos' ? 'primary' : 'secondary'"
+      [outlined]="tab() !== 'activos'"
+      [rounded]="true"
+      (onClick)="onTabChange('activos')" />
+    <p-button
+      label="Eliminados"
+      data-testid="tab-eliminados"
+      [severity]="tab() === 'eliminados' ? 'primary' : 'secondary'"
+      [outlined]="tab() !== 'eliminados'"
+      [rounded]="true"
+      (onClick)="onTabChange('eliminados')" />
+  </div>
+
+  <p-card class="mb-6 shadow-sm">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div class="md:col-span-2 xl:col-span-2">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Buscar</label>
+        <input
+          pInputText
+          type="text"
+          class="w-full"
+          placeholder="Título, autor o palabra clave"
+          (input)="onQueryInput($any($event.target).value)" />
+      </div>
+      <div>
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Recurso</label>
+        <p-select
+          [ngModel]="entityType()"
+          (ngModelChange)="entityType.set($event); onFiltersChange()"
+          [options]="entityTypeOptions"
+          optionLabel="label"
+          optionValue="value"
+          [style]="{ width: '100%' }" />
+      </div>
+      <div>
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Año desde</label>
+        <p-inputNumber
+          [ngModel]="dateFrom()"
+          (ngModelChange)="dateFrom.set($event); onFiltersChange()"
+          [useGrouping]="false"
+          [min]="1900"
+          [max]="2100"
+          placeholder="—"
+          [style]="{ width: '100%' }"
+          styleClass="w-full" />
+      </div>
+      <div>
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Año hasta</label>
+        <p-inputNumber
+          [ngModel]="dateTo()"
+          (ngModelChange)="dateTo.set($event); onFiltersChange()"
+          [useGrouping]="false"
+          [min]="1900"
+          [max]="2100"
+          placeholder="—"
+          [style]="{ width: '100%' }"
+          styleClass="w-full" />
+      </div>
+    </div>
+    <div class="mt-3">
+      <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">Ordenar por</label>
+      <p-select
+        [ngModel]="sortBy()"
+        (ngModelChange)="sortBy.set($event); onFiltersChange()"
+        [options]="sortOptions"
+        optionLabel="label"
+        optionValue="value"
+        [style]="{ width: '100%' }" />
+    </div>
+  </p-card>
+
+  @if (loading()) {
+    <app-loading-spinner minHeight="240px" />
+  } @else {
+    <p-card class="shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-700 text-left uppercase tracking-wide text-xs text-gray-600 dark:text-gray-300">
+              <th class="px-3 py-3 w-14"></th>
+              <th class="px-3 py-3">Título</th>
+              <th class="px-3 py-3">Recurso</th>
+              <th class="px-3 py-3">Tipo</th>
+              <th class="px-3 py-3">Fecha</th>
+              <th class="px-3 py-3">Estado</th>
+              <th class="px-3 py-3 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (o of objects(); track o.indexableObject.uuid) {
+              <tr
+                data-testid="resource-row"
+                class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                <td class="px-3 py-2">
+                  @if (coverUrlOf(o); as url) {
+                    @if (!hasImageError(o)) {
+                      <img
+                        [src]="url"
+                        [alt]="titleOf(o)"
+                        loading="lazy"
+                        decoding="async"
+                        (error)="onImageError(o.indexableObject.uuid)"
+                        class="w-10 h-10 object-cover rounded border border-gray-200 dark:border-gray-700" />
+                    } @else {
+                      <div class="w-10 h-10 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                        <i class="pi pi-image text-gray-400 dark:text-gray-500 text-sm"></i>
+                      </div>
+                    }
+                  } @else {
+                    <div class="w-10 h-10 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                      <i class="pi pi-image text-gray-400 dark:text-gray-500 text-sm"></i>
+                    </div>
+                  }
+                </td>
+                <td class="px-3 py-3 font-medium text-gray-800 dark:text-gray-100">{{ titleOf(o) }}</td>
+                <td class="px-3 py-3 text-gray-700 dark:text-gray-200">{{ resourceTypeOf(o) }}</td>
+                <td class="px-3 py-3 text-gray-700 dark:text-gray-200">{{ entityTypeOf(o) }}</td>
+                <td class="px-3 py-3 text-gray-700 dark:text-gray-200">{{ issuedOf(o) }}</td>
+                <td class="px-3 py-3">
+                  <span
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                    [class.bg-emerald-100]="stateOf(o) === 'Pública'"
+                    [class.text-emerald-700]="stateOf(o) === 'Pública'"
+                    [class.bg-amber-100]="stateOf(o) === 'Privada'"
+                    [class.text-amber-700]="stateOf(o) === 'Privada'"
+                    [class.bg-red-100]="stateOf(o) === 'Eliminada'"
+                    [class.text-red-700]="stateOf(o) === 'Eliminada'">
+                    {{ stateOf(o) }}
+                  </span>
+                </td>
+                <td class="px-3 py-3 text-right whitespace-nowrap">
+                  <div class="flex gap-2 justify-end">
+                    @if (tab() === 'activos') {
+                      <span data-testid="action-edit">
+                        <p-button
+                          icon="pi pi-pencil"
+                          severity="secondary"
+                          [text]="true"
+                          [rounded]="true"
+                          (onClick)="onEdit(o.indexableObject.uuid)"
+                          pTooltip="Editar"
+                          tooltipPosition="top" />
+                      </span>
+                      <span data-testid="action-delete">
+                        <p-button
+                          icon="pi pi-trash"
+                          severity="danger"
+                          [text]="true"
+                          [rounded]="true"
+                          (onClick)="onDelete(o.indexableObject.uuid)"
+                          pTooltip="Eliminar"
+                          tooltipPosition="top" />
+                      </span>
+                    } @else {
+                      <span data-testid="action-restore">
+                        <p-button
+                          icon="pi pi-replay"
+                          severity="success"
+                          [text]="true"
+                          [rounded]="true"
+                          (onClick)="onRestore(o.indexableObject.uuid)"
+                          pTooltip="Restaurar"
+                          tooltipPosition="top" />
+                      </span>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <i class="pi pi-inbox text-4xl mb-3 block"></i>
+                  No hay recursos para mostrar con los filtros actuales.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (totalElements() > 0) {
+        <div class="mt-4">
+          <p-paginator
+            [first]="currentPage() * pageSize()"
+            [rows]="pageSize()"
+            [totalRecords]="totalElements()"
+            [rowsPerPageOptions]="[10, 20, 50]"
+            (onPageChange)="onPageChange($event)" />
+        </div>
+      }
+    </p-card>
+  }
+</div>

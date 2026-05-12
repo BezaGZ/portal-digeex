@@ -16,10 +16,18 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { MyDSpaceApiService } from '../../../../core/api/my-dspace-api.service';
 import { MyDSpaceObject } from '../../../../core/api/models/my-dspace.model';
-import { parseIsoDateLocal } from '../../../../core/i18n/iso-date.util';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemAdminFacade } from '../../content/services/item-admin-facade';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
+import {
+  coverUrlOf as coverUrlOfUtil,
+  entityTypeOf as entityTypeOfUtil,
+  isWithdrawn as isWithdrawnUtil,
+  issuedOf as issuedOfUtil,
+  resourceTypeOf as resourceTypeOfUtil,
+  stateOf as stateOfUtil,
+  titleOf as titleOfUtil,
+} from '../../shared/services/my-dspace-object.util';
 
 /** Opciones del dropdown de orden; coinciden con los `sortFields` declarados en `workspaceConfiguration`. */
 const SORT_OPTIONS: { label: string; value: string }[] = [
@@ -152,11 +160,6 @@ export class MySubmissions {
     });
   }
 
-  /** Devuelve true cuando el item está retirado del archivo público. */
-  isWithdrawn(o: MyDSpaceObject): boolean {
-    return o.indexableObject.withdrawn === true;
-  }
-
   /** Restaura un item retirado; PATCH /withdrawn=false vía ItemAdminFacade. */
   onRestore(uuid: string): void {
     this.confirmation.confirm({
@@ -194,19 +197,6 @@ export class MySubmissions {
       });
   }
 
-  titleOf(o: MyDSpaceObject): string {
-    return o.indexableObject.metadata?.['dc.title']?.[0]?.value ?? o.indexableObject.name;
-  }
-
-  /**
-   * URL del thumbnail embebido del item; null si DSpace aún no generó el
-   * derivado o el item nunca tuvo portada (el `<img>` cae al placeholder).
-   */
-  coverUrlOf(o: MyDSpaceObject): string | null {
-    const uuid = o.indexableObject.thumbnail?.uuid;
-    return uuid ? `/server/api/core/bitstreams/${uuid}/content` : null;
-  }
-
   /** El template lo usa para mostrar el placeholder cuando el bitstream del thumbnail no carga. */
   hasImageError(o: MyDSpaceObject): boolean {
     return this.imageErrors().has(o.indexableObject.uuid);
@@ -219,42 +209,11 @@ export class MySubmissions {
     this.imageErrors.set(next);
   }
 
-  /** Fecha legible para la columna. Devuelve string vacío si no viene dc.date.issued. */
-  issuedOf(o: MyDSpaceObject): string {
-    const raw = o.indexableObject.metadata?.['dc.date.issued']?.[0]?.value ?? '';
-    if (!raw) return '';
-    const d = parseIsoDateLocal(raw);
-    return d ? d.toLocaleDateString('es-GT') : raw;
-  }
-
-  /** Etiqueta de la columna Recurso: el entity-type del item (Documento, Galeria, Estadistica). */
-  resourceTypeOf(o: MyDSpaceObject): string {
-    return o.indexableObject.metadata?.['dspace.entity.type']?.[0]?.value ?? '—';
-  }
-
-  /**
-   * Etiqueta de la columna Tipo. Prioriza `dc.type` (categoría granular del
-   * recurso) y cae a `dspace.entity.type` cuando el item no lo trae.
-   */
-  entityTypeOf(o: MyDSpaceObject): string {
-    return (
-      o.indexableObject.metadata?.['dc.type']?.[0]?.value ??
-      o.indexableObject.metadata?.['dspace.entity.type']?.[0]?.value ??
-      '—'
-    );
-  }
-
-  /**
-   * Derivación del badge visible en cada card a partir de los flags nativos
-   * del item: `withdrawn` corta primero porque oculta también el acceso
-   * directo por URL; entre los no-withdrawn, `discoverable=false` indica
-   * privacidad nivel discovery (el item sigue accesible con el UUID pero
-   * fuera de búsqueda y listados).
-   */
-  stateOf(o: MyDSpaceObject): 'Pública' | 'Privada' | 'Eliminada' {
-    const item = o.indexableObject;
-    if (item.withdrawn) return 'Eliminada';
-    if (!item.discoverable) return 'Privada';
-    return 'Pública';
-  }
+  readonly titleOf = titleOfUtil;
+  readonly coverUrlOf = coverUrlOfUtil;
+  readonly issuedOf = issuedOfUtil;
+  readonly resourceTypeOf = resourceTypeOfUtil;
+  readonly entityTypeOf = entityTypeOfUtil;
+  readonly stateOf = stateOfUtil;
+  readonly isWithdrawn = isWithdrawnUtil;
 }

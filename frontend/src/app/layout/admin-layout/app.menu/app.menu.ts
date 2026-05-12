@@ -77,6 +77,13 @@ export class AppMenu {
         routerLink: ['/administrador/cargar'],
       });
     }
+    if (isSuperadmin || isAdminSub) {
+      repositorioItems.push({
+        label: 'Recursos',
+        icon: 'pi pi-fw pi-book',
+        routerLink: ['/administrador/recursos'],
+      });
+    }
     if (repositorioItems.length > 0) {
       sections.push({ label: 'Repositorio', items: repositorioItems });
     }
