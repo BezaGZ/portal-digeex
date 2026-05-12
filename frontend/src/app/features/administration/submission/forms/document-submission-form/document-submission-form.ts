@@ -17,7 +17,11 @@ import { LoadingSpinnerComponent } from '../../../../../shared/components/loadin
 import { BaseSubmissionForm } from '../../base-submission-form';
 import { registerSubmissionForm } from '../../submission-form-registry';
 import { mv } from '../../metadata-value.util';
+import { buildMetadataPatch } from '../../metadata-patch.util';
+import { toLocalIsoDate } from '../../../../../core/i18n/iso-date.util';
 import { MetadataValue } from '../../../../../core/api/models/metadata.model';
+import { Item } from '../../../../../core/api/models/item.model';
+import { JsonPatchEntry } from '../../../../../core/api/json-patch.util';
 import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
 
@@ -109,10 +113,13 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
   /**
    * Habilita el botón Submit. Combina la validez del FormGroup con la regla
    * de archivo: en modo Documento se requiere al menos un PDF; en modo Video
-   * la URL reemplaza al archivo y no se exige bitstream.
+   * la URL reemplaza al archivo y no se exige bitstream. En modo edición no
+   * se piden archivos (los bitstreams se gestionan en el ciclo siguiente),
+   * basta con que el form sea válido.
    */
   readonly canSubmit = computed(() => {
     if (this.formStatus() !== 'VALID') return false;
+    if (this.isEditMode()) return true;
     const isVideo = this.form.controls.isVideo.value;
     if (!isVideo && this.files().length === 0) return false;
     return true;
@@ -186,7 +193,7 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
       'dc.description.abstract': [mv(v.abstract)],
       'dc.type': [mv(v.isVideo ? 'Video' : v.type)],
       'dc.audience': [mv(v.audience)],
-      'dc.date.issued': [mv(v.issued)],
+      'dc.date.issued': [mv(toLocalIsoDate(v.issued))],
       'dc.contributor.author': [mv(v.author)],
       'dc.subject': subjects,
       'dc.language.iso': [mv(v.language)],
@@ -200,8 +207,22 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
     return md;
   }
 
+  /** Nombre del bitstream "marcador" que se sube al ORIGINAL en modo Video. */
+  static readonly VIDEO_LINK_BITSTREAM_NAME = '_video_link.txt';
+
   override getFiles(): File[] {
-    if (this.form.controls.isVideo.value) return [];
+    if (this.form.controls.isVideo.value) {
+      // El step `upload` de DSpace exige al menos un bitstream para commitear.
+      // Subimos un .txt con la URL como marcador; la URL real vive en dc.relation.uri
+      // y el detail oculta este bitstream del listado de archivos descargables.
+      const url = this.form.controls.relationUri.value;
+      if (!url) return [];
+      return [
+        new File([url], DocumentSubmissionForm.VIDEO_LINK_BITSTREAM_NAME, {
+          type: 'text/plain',
+        }),
+      ];
+    }
     return this.files();
   }
 
@@ -210,7 +231,8 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
   }
 
   override getCoverFile(): File | null {
-    if (this.form.controls.isVideo.value) return null;
+    // Portada opcional en ambos modos; en video reemplaza al thumbnail
+    // autogenerado por DSpace (que no aplica a un bitstream marcador .txt).
     return this.coverFile();
   }
 
@@ -219,8 +241,10 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
    * pueda subir otro item al mismo programa sin recargar la pantalla.
    * Resetea form, archivos, portada y visibilidad; deja isVideo en false
    * (modo Documento por default) y vuelve a la collection seleccionada.
+   * En modo edición el reset no aplica: la base navega a Mis envíos.
    */
   protected override afterSuccess(): void {
+    if (this.isEditMode()) return;
     this.form.reset({
       title: '',
       abstract: '',
@@ -252,9 +276,86 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
     this.files.set(files);
   }
 
-  /** Vuelve al listado de programas; descarta cualquier dato sin enviar. */
+  /** Vuelve al listado de programas en creación, o a Mis envíos en edición. */
   cancel(): void {
-    this.router.navigate(['/administrador/cargar']);
+    const target = this.isEditMode()
+      ? ['/administrador/envios']
+      : ['/administrador/cargar'];
+    this.router.navigate(target);
+  }
+
+  /**
+   * Pre-llena el form con los valores actuales del item. Los dropdowns
+   * conservan el stored value (e.g. `acr` para idioma) que es lo que DSpace
+   * almacena en `dc.*`; el label visible se resuelve por la opción del select.
+   */
+  override applyItemToForm(item: Item): void {
+    const m = item.metadata;
+    const first = (k: string): string => m?.[k]?.[0]?.value ?? '';
+    const subjects = (m?.['dc.subject'] ?? []).map((v) => v.value).filter((s) => !!s).join(', ');
+    this.form.patchValue({
+      title: first('dc.title'),
+      abstract: first('dc.description.abstract'),
+      type: first('dc.type'),
+      audience: first('dc.audience'),
+      issued: first('dc.date.issued'),
+      author: first('dc.contributor.author'),
+      publisher: first('dc.publisher'),
+      subject: subjects,
+      language: first('dc.language.iso'),
+      relationUri: first('dc.relation.uri'),
+      isVideo: first('dc.type') === 'Video',
+    });
+    // El toggle visible se sincroniza con el flag nativo del item.
+    this.visibility.set(item.discoverable ? 'public' : 'private');
+    this.form.controls.isVideo.disable({ emitEvent: false });
+  }
+
+  /**
+   * Construye el JSON Patch contra la metadata original del item. dc.subject
+   * se trata aparte: es repeatable, así que cuando el usuario cambió la lista
+   * separada por comas reemplazamos el campo completo (remove + add); si la
+   * lista coincide con la original no emitimos op.
+   */
+  override buildPatchFromForm(item: Item): JsonPatchEntry[] {
+    const v = this.form.getRawValue();
+    const subjectsNew = v.subject
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    const scalarFields: Record<string, string> = {
+      'dc.title': v.title,
+      'dc.description.abstract': v.abstract,
+      'dc.type': v.isVideo ? 'Video' : v.type,
+      'dc.audience': v.audience,
+      'dc.date.issued': toLocalIsoDate(v.issued),
+      'dc.contributor.author': v.author,
+      'dc.publisher': v.publisher,
+      'dc.language.iso': v.language,
+      'dc.relation.uri': v.isVideo ? v.relationUri : '',
+    };
+
+    const ops = buildMetadataPatch(scalarFields, item.metadata ?? {});
+
+    const subjectsOld = (item.metadata?.['dc.subject'] ?? []).map((x) => x.value);
+    const sameSubjects =
+      subjectsOld.length === subjectsNew.length &&
+      subjectsOld.every((s, i) => s === subjectsNew[i]);
+    if (!sameSubjects) {
+      if (subjectsOld.length > 0) {
+        ops.push({ op: 'remove', path: '/metadata/dc.subject' });
+      }
+      if (subjectsNew.length > 0) {
+        ops.push({
+          op: 'add',
+          path: '/metadata/dc.subject',
+          value: subjectsNew.map((s) => ({ value: s })),
+        });
+      }
+    }
+
+    return ops;
   }
 }
 

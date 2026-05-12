@@ -4,7 +4,11 @@ import { FormBuilder } from '@angular/forms';
 import { BaseSubmissionForm } from '../../base-submission-form';
 import { registerSubmissionForm } from '../../submission-form-registry';
 import { mv } from '../../metadata-value.util';
+import { buildMetadataPatch } from '../../metadata-patch.util';
+import { toLocalIsoDate } from '../../../../../core/i18n/iso-date.util';
 import { MetadataValue } from '../../../../../core/api/models/metadata.model';
+import { Item } from '../../../../../core/api/models/item.model';
+import { JsonPatchEntry } from '../../../../../core/api/json-patch.util';
 
 /**
  * Formulario de submission para colecciones de tipo Estadística. El item
@@ -40,7 +44,7 @@ export class StatsSubmissionForm extends BaseSubmissionForm {
     return {
       'dc.title': [mv(v.title)],
       'dc.description.abstract': [mv(v.abstract)],
-      'dc.date.issued': [mv(v.issued)],
+      'dc.date.issued': [mv(toLocalIsoDate(v.issued))],
     };
   }
 
@@ -50,6 +54,31 @@ export class StatsSubmissionForm extends BaseSubmissionForm {
 
   override getVisibility(): 'public' | 'private' {
     return this.visibility();
+  }
+
+  /** Pre-llena el form desde la metadata del item; F-05 todavía no expone UI completa. */
+  override applyItemToForm(item: Item): void {
+    const m = item.metadata;
+    const first = (k: string): string => m?.[k]?.[0]?.value ?? '';
+    this.form.patchValue({
+      title: first('dc.title'),
+      abstract: first('dc.description.abstract'),
+      issued: first('dc.date.issued'),
+    });
+    this.visibility.set(item.discoverable ? 'public' : 'private');
+  }
+
+  /** Diff form vs metadata original del item. */
+  override buildPatchFromForm(item: Item): JsonPatchEntry[] {
+    const v = this.form.getRawValue();
+    return buildMetadataPatch(
+      {
+        'dc.title': v.title,
+        'dc.description.abstract': v.abstract,
+        'dc.date.issued': toLocalIsoDate(v.issued),
+      },
+      item.metadata ?? {},
+    );
   }
 }
 

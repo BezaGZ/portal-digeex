@@ -8,7 +8,9 @@ import { Subject, of } from 'rxjs';
 
 import { DocumentSubmissionForm } from './document-submission-form';
 import { Collection } from '../../../../../core/api/models/collection.model';
+import { Item } from '../../../../../core/api/models/item.model';
 import { SubmissionFacade } from '../../../content/services/submission-facade';
+import { ItemAdminFacade } from '../../../content/services/item-admin-facade';
 import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
 import { getSubmissionFormComponent } from '../../submission-form-registry';
 
@@ -37,15 +39,18 @@ describe('DocumentSubmissionForm', () => {
   }
 
   let getEntriesFn: ReturnType<typeof vi.fn>;
+  let editItemFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getEntriesFn = vi.fn().mockReturnValue(of([]));
+    editItemFn = vi.fn().mockReturnValue(of({ uuid: 'item-1' }));
     TestBed.configureTestingModule({
       imports: [DocumentSubmissionForm],
       providers: [
         provideNoopAnimations(),
         provideHttpClient(),
         { provide: SubmissionFacade, useValue: { submitItem$: vi.fn() } },
+        { provide: ItemAdminFacade, useValue: { editItem$: editItemFn } },
         { provide: MessageService, useValue: { add: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: VocabularyApiService, useValue: { getEntries: getEntriesFn } },
@@ -423,8 +428,6 @@ describe('DocumentSubmissionForm', () => {
     });
 
     const metadata = c.buildMetadata();
-    // Vacío no debe persistir; DSpace recibiría una entry con value="" si no
-    // se filtra, ensuciando el item con metadata sin sentido.
     expect(metadata['dc.publisher']).toBeUndefined();
   });
 
@@ -436,9 +439,6 @@ describe('DocumentSubmissionForm', () => {
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
-    // Lista canonica de formatos ofimaticos permitidos (Word, Excel, PowerPoint,
-    // OpenDocument, plain text). dc.format en DSpace queda libre porque el
-    // bitstream registry detecta el mimetype al subir.
     const expected = [
       '.pdf',
       '.doc',
@@ -499,8 +499,8 @@ describe('DocumentSubmissionForm', () => {
     expect(c.visibility()).toBe('public');
   });
 
-  /** Verifica que getCoverFile exponga el cover seleccionado y devuelva null en modo Video. */
-  it('should expose the selected cover file via getCoverFile and return null in video mode', () => {
+  /** Verifica que getCoverFile exponga el cover elegido tanto en modo Documento como en modo Video. */
+  it('should expose the selected cover file via getCoverFile in both Documento and Video modes', () => {
     const fixture = TestBed.createComponent(DocumentSubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
     fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
@@ -513,10 +513,8 @@ describe('DocumentSubmissionForm', () => {
     c.onCoverChange([cover]);
     expect(c.getCoverFile()).toBe(cover);
 
-    // Modo Video descarta la portada para que el facade no intente subir
-    // un thumbnail al item del video externo.
     c.form.patchValue({ isVideo: true });
-    expect(c.getCoverFile()).toBeNull();
+    expect(c.getCoverFile()).toBe(cover);
   });
 
   /** Verifica que acceptedFileTypes se aplique al input nativo del p-fileupload del formulario. */
@@ -527,15 +525,211 @@ describe('DocumentSubmissionForm', () => {
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
-    // PrimeNG aplica el accept al <input type="file"> interno del fileupload.
-    // Buscamos ese input y verificamos que su accept coincide con la propiedad
-    // del componente y contiene un formato de la lista ampliada (no es solo
-    // un undefined === undefined que pase por accidente).
     const nativeInput = fixture.nativeElement.querySelector(
       'p-fileupload input[type="file"]',
     ) as HTMLInputElement | null;
     expect(nativeInput).not.toBeNull();
     expect(nativeInput!.accept).toBe(c.acceptedFileTypes);
     expect(nativeInput!.accept).toContain('.xlsx');
+  });
+
+  /** Verifica que con el input `item` el form se pre-llene desde item.metadata. */
+  it('should pre-fill the form from item.metadata when the item input is provided', () => {
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Manual',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.title': [{ value: 'Manual original', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.description.abstract': [{ value: 'Resumen original', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.type': [{ value: 'Manual', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.audience': [{ value: 'Primaria', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.date.issued': [{ value: '2025-01-01', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.contributor.author': [{ value: 'PEAC', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.subject': [
+          { value: 'educación', language: null, authority: null, confidence: -1, place: 0 },
+          { value: 'adultos', language: null, authority: null, confidence: -1, place: 1 },
+        ],
+        'dc.language.iso': [{ value: 'es', language: null, authority: null, confidence: -1, place: 0 }],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    // getRawValue incluye el toggle isVideo que en edición queda disabled.
+    const v = c.form.getRawValue();
+    expect(v.title).toBe('Manual original');
+    expect(v.abstract).toBe('Resumen original');
+    expect(v.type).toBe('Manual');
+    expect(v.audience).toBe('Primaria');
+    expect(v.author).toBe('PEAC');
+    expect(v.subject).toBe('educación, adultos');
+    expect(v.language).toBe('es');
+    expect(v.isVideo).toBe(false);
+    // Visibility se inicializa desde el flag nativo discoverable; un item
+    // con discoverable=true entra al form como 'public'.
+    expect(c.visibility()).toBe('public');
+  });
+
+  /** Verifica que el signal visibility se inicialice desde item.discoverable al entrar a edit. */
+  it('should sync visibility to private when entering edit mode with discoverable=false', () => {
+    const item: Item = {
+      uuid: 'item-priv',
+      name: 'Privado',
+      handle: '123/2',
+      inArchive: true,
+      discoverable: false,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.title': [{ value: 'Privado', language: null, authority: null, confidence: -1, place: 0 }],
+      },
+    };
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.visibility()).toBe('private');
+  });
+
+  /** Verifica que en modo edición submit dispare ItemAdminFacade.editItem$ con el JSON Patch del diff. */
+  it('should dispatch editItem$ with the JSON Patch derived from the form when submit is called in edit mode', () => {
+    const item: Item = {
+      uuid: 'item-42',
+      name: 'Manual',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.title': [{ value: 'Título viejo', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.description.abstract': [{ value: 'Resumen', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.type': [{ value: 'Manual', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.audience': [{ value: 'Primaria', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.date.issued': [{ value: '2025-01-01', language: null, authority: null, confidence: -1, place: 0 }],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({ title: 'Título nuevo' });
+    c.submit();
+
+    expect(editItemFn).toHaveBeenCalledTimes(1);
+    const [uuid, payload, sufijo] = editItemFn.mock.calls[0];
+    expect(uuid).toBe('item-42');
+    expect(sufijo).toBe('PEAC');
+    expect(payload.patch).toEqual(
+      expect.arrayContaining([
+        { op: 'replace', path: '/metadata/dc.title/0/value', value: 'Título nuevo' },
+      ]),
+    );
+    expect(payload.item.uuid).toBe('item-42');
+  });
+
+  /** Verifica que un cambio aislado de visibility dispare editItem$ aunque no haya diff de metadata. */
+  it('should dispatch editItem$ when only visibility changed, without showing the "Sin cambios" toast', () => {
+    const item: Item = {
+      uuid: 'item-pv',
+      name: 'X',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.title': [{ value: 'X', language: null, authority: null, confidence: -1, place: 0 }],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.visibility.set('private');
+    c.submit();
+
+    expect(editItemFn).toHaveBeenCalledTimes(1);
+    const [, payload] = editItemFn.mock.calls[0];
+    expect(payload.visibility).toBe('private');
+  });
+
+  /** Verifica que un Date en `issued` se serialice como YYYY-MM-DD local en buildMetadata. */
+  it('should serialize a Date in issued as local YYYY-MM-DD in buildMetadata', () => {
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({
+      title: 'Manual PEAC',
+      abstract: 'Resumen',
+      type: 'Manual',
+      audience: 'Primaria',
+      issued: new Date(2026, 3, 27) as unknown as string,
+      author: '',
+      publisher: '',
+      subject: '',
+      language: '',
+      relationUri: '',
+      isVideo: false,
+    });
+
+    expect(c.buildMetadata()['dc.date.issued']?.[0]?.value).toBe('2026-04-27');
+  });
+
+  /** Verifica que un Date en `issued` se serialice como YYYY-MM-DD local en buildPatchFromForm. */
+  it('should serialize a Date in issued as local YYYY-MM-DD in buildPatchFromForm', () => {
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Manual',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.date.issued': [
+          { value: '2025-01-01', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({ issued: new Date(2026, 3, 27) as unknown as string });
+    const patch = c.buildPatchFromForm(item);
+
+    expect(patch).toEqual(
+      expect.arrayContaining([
+        { op: 'replace', path: '/metadata/dc.date.issued/0/value', value: '2026-04-27' },
+      ]),
+    );
   });
 });

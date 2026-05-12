@@ -6,7 +6,9 @@ import { vi } from 'vitest';
 
 import { StatsSubmissionForm } from './stats-submission-form';
 import { Collection } from '../../../../../core/api/models/collection.model';
+import { Item } from '../../../../../core/api/models/item.model';
 import { SubmissionFacade } from '../../../content/services/submission-facade';
+import { ItemAdminFacade } from '../../../content/services/item-admin-facade';
 import { getSubmissionFormComponent } from '../../submission-form-registry';
 
 /**
@@ -38,6 +40,7 @@ describe('StatsSubmissionForm', () => {
       providers: [
         provideNoopAnimations(),
         { provide: SubmissionFacade, useValue: { submitItem$: vi.fn() } },
+        { provide: ItemAdminFacade, useValue: { editItem$: vi.fn() } },
         { provide: MessageService, useValue: { add: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
       ],
@@ -106,5 +109,56 @@ describe('StatsSubmissionForm', () => {
 
   it('should register itself in the submission form registry under the Estadistica entity-type', () => {
     expect(getSubmissionFormComponent('Estadistica')).toBe(StatsSubmissionForm);
+  });
+
+  /** Verifica que un Date en `issued` se serialice como YYYY-MM-DD local en buildMetadata. */
+  it('should serialize a Date in issued as local YYYY-MM-DD in buildMetadata', () => {
+    const fixture = TestBed.createComponent(StatsSubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({
+      title: 'Matrícula 2026',
+      abstract: '',
+      issued: new Date(2026, 3, 27) as unknown as string,
+    });
+
+    expect(c.buildMetadata()['dc.date.issued']?.[0]?.value).toBe('2026-04-27');
+  });
+
+  /** Verifica que un Date en `issued` se serialice como YYYY-MM-DD local en buildPatchFromForm. */
+  it('should serialize a Date in issued as local YYYY-MM-DD in buildPatchFromForm', () => {
+    const item: Item = {
+      uuid: 'stat-1',
+      name: 'Matrícula',
+      handle: '123/8',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.date.issued': [
+          { value: '2025-01-01', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(StatsSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({ issued: new Date(2026, 3, 27) as unknown as string });
+    const patch = c.buildPatchFromForm(item);
+
+    expect(patch).toEqual(
+      expect.arrayContaining([
+        { op: 'replace', path: '/metadata/dc.date.issued/0/value', value: '2026-04-27' },
+      ]),
+    );
   });
 });

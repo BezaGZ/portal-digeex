@@ -14,7 +14,11 @@ import { ButtonModule } from 'primeng/button';
 import { BaseSubmissionForm } from '../../base-submission-form';
 import { registerSubmissionForm } from '../../submission-form-registry';
 import { mv } from '../../metadata-value.util';
+import { buildMetadataPatch } from '../../metadata-patch.util';
+import { toLocalIsoDate } from '../../../../../core/i18n/iso-date.util';
 import { MetadataValue } from '../../../../../core/api/models/metadata.model';
+import { Item } from '../../../../../core/api/models/item.model';
+import { JsonPatchEntry } from '../../../../../core/api/json-patch.util';
 import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
 import { FileDropzoneComponent } from '../../../../../shared';
@@ -99,11 +103,13 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
 
   /**
    * Habilita el botón Submit. Galería requiere form válido, al menos una
-   * foto en el bundle ORIGINAL y una portada explícita: sin portada el
-   * álbum se vería con placeholder gris en listados y detail.
+   * foto en el bundle ORIGINAL y una portada explícita en modo creación.
+   * En modo edición basta con el form válido (los bitstreams se gestionan
+   * en el ciclo siguiente).
    */
   readonly canSubmit = computed(() => {
     if (this.formStatus() !== 'VALID') return false;
+    if (this.isEditMode()) return true;
     if (this.files().length === 0) return false;
     return this.coverFile() !== null;
   });
@@ -138,7 +144,7 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
     const md: Record<string, MetadataValue[]> = {
       'dc.title': [mv(v.title)],
       'dc.type': [mv(v.type)],
-      'dc.date.issued': [mv(v.issued)],
+      'dc.date.issued': [mv(toLocalIsoDate(v.issued))],
       'dc.subject.classification': [mv(v.classification)],
     };
     if (v.abstract.trim().length > 0) md['dc.description.abstract'] = [mv(v.abstract.trim())];
@@ -170,8 +176,10 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
    * Tras un submit exitoso volvemos al estado inicial para que el usuario
    * pueda armar otro álbum en el mismo programa sin recargar. Resetea form,
    * fotos y visibilidad; deja la collection seleccionada.
+   * En modo edición el reset no aplica: la base navega a Mis envíos.
    */
   protected override afterSuccess(): void {
+    if (this.isEditMode()) return;
     this.form.reset({
       title: '',
       abstract: '',
@@ -200,9 +208,45 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
     this.coverFile.set(files[0] ?? null);
   }
 
-  /** Vuelve al listado de programas; descarta cualquier dato sin enviar. */
+  /** Vuelve al listado de programas en creación, o a Mis envíos en edición. */
   cancel(): void {
-    this.router.navigate(['/administrador/cargar']);
+    const target = this.isEditMode()
+      ? ['/administrador/envios']
+      : ['/administrador/cargar'];
+    this.router.navigate(target);
+  }
+
+  /** Pre-llena el form desde la metadata del item. Los dropdowns conservan el stored value. */
+  override applyItemToForm(item: Item): void {
+    const m = item.metadata;
+    const first = (k: string): string => m?.[k]?.[0]?.value ?? '';
+    this.form.patchValue({
+      title: first('dc.title'),
+      abstract: first('dc.description.abstract'),
+      type: first('dc.type'),
+      issued: first('dc.date.issued'),
+      author: first('dc.contributor.author'),
+      classification: first('dc.subject.classification'),
+      populationType: first('digeex.populationType'),
+      imageFocus: first('digeex.imageFocus'),
+    });
+    this.visibility.set(item.discoverable ? 'public' : 'private');
+  }
+
+  /** Diff form vs metadata original del item; emite el JSON Patch mínimo. */
+  override buildPatchFromForm(item: Item): JsonPatchEntry[] {
+    const v = this.form.getRawValue();
+    const scalarFields: Record<string, string> = {
+      'dc.title': v.title,
+      'dc.description.abstract': v.abstract,
+      'dc.type': v.type,
+      'dc.date.issued': toLocalIsoDate(v.issued),
+      'dc.contributor.author': v.author,
+      'dc.subject.classification': v.classification,
+      'digeex.populationType': v.populationType,
+      'digeex.imageFocus': v.imageFocus,
+    };
+    return buildMetadataPatch(scalarFields, item.metadata ?? {});
   }
 }
 

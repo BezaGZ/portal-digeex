@@ -8,7 +8,9 @@ import { Subject, of } from 'rxjs';
 
 import { GallerySubmissionForm } from './gallery-submission-form';
 import { Collection } from '../../../../../core/api/models/collection.model';
+import { Item } from '../../../../../core/api/models/item.model';
 import { SubmissionFacade } from '../../../content/services/submission-facade';
+import { ItemAdminFacade } from '../../../content/services/item-admin-facade';
 import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
 import { getSubmissionFormComponent } from '../../submission-form-registry';
 
@@ -36,15 +38,18 @@ describe('GallerySubmissionForm', () => {
   }
 
   let getEntriesFn: ReturnType<typeof vi.fn>;
+  let editItemFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getEntriesFn = vi.fn().mockReturnValue(of([]));
+    editItemFn = vi.fn().mockReturnValue(of({ uuid: 'item-1' }));
     TestBed.configureTestingModule({
       imports: [GallerySubmissionForm],
       providers: [
         provideNoopAnimations(),
         provideHttpClient(),
         { provide: SubmissionFacade, useValue: { submitItem$: vi.fn() } },
+        { provide: ItemAdminFacade, useValue: { editItem$: editItemFn } },
         { provide: MessageService, useValue: { add: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: VocabularyApiService, useValue: { getEntries: getEntriesFn } },
@@ -323,5 +328,93 @@ describe('GallerySubmissionForm', () => {
     expect(getEntriesFn).toHaveBeenCalledWith('programas-digeex');
     expect(getEntriesFn).toHaveBeenCalledWith('tipo-poblacion');
     expect(getEntriesFn).toHaveBeenCalledWith('enfoque-imagen');
+  });
+
+  /** Verifica que con el input `item` el form se pre-llene desde item.metadata. */
+  it('should pre-fill the form from item.metadata when the item input is provided', () => {
+    const item: Item = {
+      uuid: 'album-1',
+      name: 'Álbum',
+      handle: '123/9',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.title': [{ value: 'Álbum original', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.description.abstract': [{ value: 'Descripción', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.type': [{ value: 'Capacitación', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.date.issued': [{ value: '2025-09-01', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.subject.classification': [{ value: 'PEAC', language: null, authority: null, confidence: -1, place: 0 }],
+      },
+    };
+
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.form.value.title).toBe('Álbum original');
+    expect(c.form.value.abstract).toBe('Descripción');
+    expect(c.form.value.type).toBe('Capacitación');
+    expect(c.form.value.classification).toBe('PEAC');
+  });
+
+  /** Verifica que un Date en `issued` se serialice como YYYY-MM-DD local en buildMetadata. */
+  it('should serialize a Date in issued as local YYYY-MM-DD in buildMetadata', () => {
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({
+      title: 'Álbum',
+      abstract: '',
+      type: 'Capacitación',
+      issued: new Date(2026, 3, 27) as unknown as string,
+      author: '',
+      classification: 'PEAC',
+      populationType: '',
+      imageFocus: '',
+    });
+
+    expect(c.buildMetadata()['dc.date.issued']?.[0]?.value).toBe('2026-04-27');
+  });
+
+  /** Verifica que un Date en `issued` se serialice como YYYY-MM-DD local en buildPatchFromForm. */
+  it('should serialize a Date in issued as local YYYY-MM-DD in buildPatchFromForm', () => {
+    const item: Item = {
+      uuid: 'album-1',
+      name: 'Álbum',
+      handle: '123/9',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.date.issued': [
+          { value: '2025-01-01', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({ issued: new Date(2026, 3, 27) as unknown as string });
+    const patch = c.buildPatchFromForm(item);
+
+    expect(patch).toEqual(
+      expect.arrayContaining([
+        { op: 'replace', path: '/metadata/dc.date.issued/0/value', value: '2026-04-27' },
+      ]),
+    );
   });
 });

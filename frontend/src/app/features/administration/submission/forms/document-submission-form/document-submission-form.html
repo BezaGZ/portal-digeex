@@ -86,6 +86,7 @@
         inputId="issued"
         formControlName="issued"
         dateFormat="yy-mm-dd"
+        dataType="string"
         placeholder="Año-Mes-Día"
         appendTo="body"
         styleClass="w-full" />
@@ -127,7 +128,7 @@
         styleClass="w-full" />
     </div>
 
-    @if (!form.controls.isVideo.value) {
+    @if (!isEditMode() && !form.controls.isVideo.value) {
       <div class="flex flex-col gap-2">
         <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
           Archivos <span class="text-red-600">*</span>
@@ -140,20 +141,22 @@
           dropMessage="Arrastrá los documentos aquí o usá el botón de elegir."
           (filesChange)="onFilesChange($event)" />
       </div>
-
-      <div class="flex flex-col gap-2">
-        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-          Portada del documento
-          <span class="text-gray-400 font-normal">(opcional, JPG o PNG)</span>
-        </label>
-        <app-file-dropzone
-          accept="image/*"
-          [multiple]="false"
-          chooseLabel="Seleccionar portada"
-          dropMessage="Arrastrá la portada aquí o usá el botón de elegir."
-          (filesChange)="onCoverChange($event)" />
-      </div>
     }
+
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Portada
+        <span class="text-gray-400 font-normal">
+          (opcional, JPG o PNG{{ isEditMode() ? '; subir para reemplazar la actual' : '' }})
+        </span>
+      </label>
+      <app-file-dropzone
+        accept="image/*"
+        [multiple]="false"
+        chooseLabel="Seleccionar portada"
+        dropMessage="Arrastrá la portada aquí o usá el botón de elegir."
+        (filesChange)="onCoverChange($event)" />
+    </div>
 
     <div class="flex flex-col gap-1">
       <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -185,8 +188,8 @@
         (onClick)="cancel()" />
       <p-button
         type="submit"
-        label="Subir contenido"
-        icon="pi pi-upload"
+        [label]="isEditMode() ? 'Guardar cambios' : 'Subir contenido'"
+        [icon]="isEditMode() ? 'pi pi-save' : 'pi pi-upload'"
         severity="success"
         styleClass="!text-white !font-medium"
         [rounded]="true"

@@ -25,6 +25,7 @@
         inputId="issued"
         formControlName="issued"
         dateFormat="yy-mm-dd"
+        dataType="string"
         placeholder="Año-Mes-Día"
         appendTo="body"
         styleClass="w-full" />
@@ -99,23 +100,30 @@
         styleClass="w-full" />
     </div>
 
-    <div class="flex flex-col gap-2">
-      <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Fotos del álbum <span class="text-red-600">*</span>
-        <span class="text-gray-400 font-normal">(JPG o PNG; podés subir varias)</span>
-      </label>
-      <app-file-dropzone
-        accept="image/*"
-        [multiple]="true"
-        chooseLabel="Seleccionar fotos"
-        dropMessage="Arrastrá las fotos aquí o usá el botón de elegir."
-        (filesChange)="onFilesChange($event)" />
-    </div>
+    @if (!isEditMode()) {
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Fotos del álbum <span class="text-red-600">*</span>
+          <span class="text-gray-400 font-normal">(JPG o PNG; podés subir varias)</span>
+        </label>
+        <app-file-dropzone
+          accept="image/*"
+          [multiple]="true"
+          chooseLabel="Seleccionar fotos"
+          dropMessage="Arrastrá las fotos aquí o usá el botón de elegir."
+          (filesChange)="onFilesChange($event)" />
+      </div>
+    }
 
     <div class="flex flex-col gap-2">
       <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Portada del álbum <span class="text-red-600">*</span>
-        <span class="text-gray-400 font-normal">(JPG o PNG; aparece en el listado y en el detalle)</span>
+        Portada del álbum
+        @if (!isEditMode()) {
+          <span class="text-red-600">*</span>
+        }
+        <span class="text-gray-400 font-normal">
+          (JPG o PNG{{ isEditMode() ? '; subir para reemplazar la actual' : '; aparece en el listado y en el detalle' }})
+        </span>
       </label>
       <app-file-dropzone
         accept="image/*"
@@ -155,8 +163,8 @@
         (onClick)="cancel()" />
       <p-button
         type="submit"
-        label="Subir álbum"
-        icon="pi pi-upload"
+        [label]="isEditMode() ? 'Guardar cambios' : 'Subir álbum'"
+        [icon]="isEditMode() ? 'pi pi-save' : 'pi pi-upload'"
         severity="success"
         styleClass="!text-white !font-medium"
         [rounded]="true"
