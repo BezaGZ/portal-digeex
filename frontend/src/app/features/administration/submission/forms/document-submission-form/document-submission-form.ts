@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -9,6 +10,7 @@ import { TextareaModule } from 'primeng/textarea';
 import { Select } from 'primeng/select';
 import { DatePickerModule } from 'primeng/datepicker';
 import { FileUploadModule } from 'primeng/fileupload';
+import { PaginatorModule } from 'primeng/paginator';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
@@ -20,6 +22,7 @@ import { mv } from '../../metadata-value.util';
 import { buildMetadataPatch } from '../../metadata-patch.util';
 import { toLocalIsoDate } from '../../../../../core/i18n/iso-date.util';
 import { MetadataValue } from '../../../../../core/api/models/metadata.model';
+import { Bitstream } from '../../../../../core/api/models/bitstream.model';
 import { Item } from '../../../../../core/api/models/item.model';
 import { JsonPatchEntry } from '../../../../../core/api/json-patch.util';
 import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
@@ -44,11 +47,13 @@ import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry
     Select,
     DatePickerModule,
     FileUploadModule,
+    PaginatorModule,
     ToggleSwitchModule,
     ButtonModule,
     MessageModule,
     FileDropzoneComponent,
     LoadingSpinnerComponent,
+    DecimalPipe,
   ],
 })
 export class DocumentSubmissionForm extends BaseSubmissionForm {
@@ -63,6 +68,24 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
 
   /** Imagen opcional de portada que el facade pondrá en el bundle THUMBNAIL. */
   readonly coverFile = signal<File | null>(null);
+
+  /** Página visible de bitstreams del bundle ORIGINAL; se llena al entrar a edit y al cambiar de página. */
+  readonly currentBitstreams = signal<Bitstream[]>([]);
+  readonly currentBitstreamsTotal = signal(0);
+  readonly currentBitstreamsPage = signal(0);
+  readonly currentBitstreamsSize = signal(20);
+
+  /**
+   * UUIDs marcados para borrar; viven aparte de la lista paginada para que el
+   * estado sobreviva al cambiar de página. El borrado real ocurre recién en
+   * el Submit (`getBitstreamsToRemove`); hasta entonces es un toggle visual.
+   */
+  readonly pendingDeletes = signal<ReadonlySet<string>>(new Set());
+
+  /** Archivos nuevos en la pila de "subir al ORIGINAL" del próximo Submit. */
+  readonly pendingAdds = signal<File[]>([]);
+
+  private readonly destroyRef = inject(DestroyRef);
 
   /**
    * Lista canonica de formatos ofimaticos que acepta el bitstream principal
@@ -119,7 +142,16 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
    */
   readonly canSubmit = computed(() => {
     if (this.formStatus() !== 'VALID') return false;
-    if (this.isEditMode()) return true;
+    if (this.isEditMode()) {
+      // En modo Video el ORIGINAL es un .txt marcador autogenerado: no se
+      // gestiona manualmente, así que no aplicamos el check de archivos.
+      if (this.form.controls.isVideo.value) return true;
+      const effective =
+        this.currentBitstreamsTotal() -
+        this.pendingDeletes().size +
+        this.pendingAdds().length;
+      return effective > 0;
+    }
     const isVideo = this.form.controls.isVideo.value;
     if (!isVideo && this.files().length === 0) return false;
     return true;
@@ -309,6 +341,110 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
     // El toggle visible se sincroniza con el flag nativo del item.
     this.visibility.set(item.discoverable ? 'public' : 'private');
     this.form.controls.isVideo.disable({ emitEvent: false });
+
+    const isVideo = first('dc.type') === 'Video';
+    if (isVideo) {
+      // En Video pedimos un solo bitstream del ORIGINAL para capturar el uuid
+      // del marcador `_video_link.txt`; si el usuario cambia la URL después,
+      // los hooks emitirán remove(uuid) + add(.txt nuevo).
+      this.itemFacade
+        .listOriginalBitstreams$(item.uuid, 0, 1)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((p) => {
+          this.videoLinkBitstreamUuid = p.items[0]?.uuid ?? null;
+        });
+    } else {
+      this.loadOriginalBitstreams(item.uuid, 0, this.currentBitstreamsSize());
+    }
+  }
+
+  /** UUID del bitstream marcador en modo Video; se captura al entrar a edit. */
+  private videoLinkBitstreamUuid: string | null = null;
+
+  /**
+   * Handler del `<p-paginator>` de la sección Archivos actuales. El widget
+   * emite page como índice 0-based y rows como tamaño elegido en el selector.
+   */
+  onBitstreamPageChange(ev: { page?: number; rows?: number | null }): void {
+    const item = this.item();
+    if (!item) return;
+    const page = ev.page ?? 0;
+    const size = ev.rows ?? this.currentBitstreamsSize();
+    this.loadOriginalBitstreams(item.uuid, page, size);
+  }
+
+  /** Toggle del set de marcados para borrar; el template lo invoca por fila. */
+  togglePendingDelete(uuid: string): void {
+    const next = new Set(this.pendingDeletes());
+    if (next.has(uuid)) {
+      next.delete(uuid);
+    } else {
+      next.add(uuid);
+    }
+    this.pendingDeletes.set(next);
+  }
+
+  /** True si el uuid está marcado para borrar; el template lo usa para el strikethrough. */
+  isPendingDelete(uuid: string): boolean {
+    return this.pendingDeletes().has(uuid);
+  }
+
+  /** Suma archivos a la pila de subida; recibe el array completo del dropzone. */
+  onAddBitstreams(files: File[]): void {
+    this.pendingAdds.set([...this.pendingAdds(), ...files]);
+  }
+
+  /** Quita un archivo de la pila de subida antes de confirmar el Submit. */
+  removePendingAdd(file: File): void {
+    this.pendingAdds.set(this.pendingAdds().filter((f) => f !== file));
+  }
+
+  protected override getBitstreamsToRemove(): string[] {
+    if (this.isEditMode() && this.form.controls.isVideo.value) {
+      // En Video el "borrado" solo aplica cuando la URL cambió: hay que dejar
+      // el .txt actual fuera para que el nuevo lo reemplace.
+      return this.videoUrlChanged() && this.videoLinkBitstreamUuid
+        ? [this.videoLinkBitstreamUuid]
+        : [];
+    }
+    return Array.from(this.pendingDeletes());
+  }
+
+  protected override getBitstreamsToAdd(): File[] {
+    if (this.isEditMode() && this.form.controls.isVideo.value) {
+      // Si la URL cambió, regeneramos el `_video_link.txt` para mantener el
+      // bitstream del ORIGINAL alineado con `dc.relation.uri`.
+      if (!this.videoUrlChanged()) return [];
+      const newUri = this.form.controls.relationUri.value;
+      return [
+        new File([newUri], DocumentSubmissionForm.VIDEO_LINK_BITSTREAM_NAME, {
+          type: 'text/plain',
+        }),
+      ];
+    }
+    return this.pendingAdds();
+  }
+
+  /** True si el form tiene una URL distinta a la del item (modo Video, edit). */
+  private videoUrlChanged(): boolean {
+    const item = this.item();
+    if (!item) return false;
+    const original = item.metadata?.['dc.relation.uri']?.[0]?.value ?? '';
+    const current = this.form.controls.relationUri.value ?? '';
+    return current.length > 0 && current !== original;
+  }
+
+  /** Pide al facade una página del bundle ORIGINAL y llena las signals visibles. */
+  private loadOriginalBitstreams(itemUuid: string, page: number, size: number): void {
+    this.itemFacade
+      .listOriginalBitstreams$(itemUuid, page, size)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((paginated) => {
+        this.currentBitstreams.set(paginated.items);
+        this.currentBitstreamsTotal.set(paginated.totalElements);
+        this.currentBitstreamsPage.set(paginated.page);
+        this.currentBitstreamsSize.set(paginated.size);
+      });
   }
 
   /**

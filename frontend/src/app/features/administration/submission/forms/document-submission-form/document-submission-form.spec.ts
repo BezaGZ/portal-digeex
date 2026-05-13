@@ -24,7 +24,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * (Video externo) según la decisión de Sprint 6 de no duplicar maquinaria
  * de submission para algo que tiene el mismo entity-type.
  *
- * Ciclo 23 TDD — Sprint 6
+ * Ciclo 23 TDD — Sprint 6. Ajustado en Ciclo 34.
  */
 describe('DocumentSubmissionForm', () => {
   function buildCollection(uuid: string): Collection {
@@ -40,17 +40,29 @@ describe('DocumentSubmissionForm', () => {
 
   let getEntriesFn: ReturnType<typeof vi.fn>;
   let editItemFn: ReturnType<typeof vi.fn>;
+  let listOriginalFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getEntriesFn = vi.fn().mockReturnValue(of([]));
     editItemFn = vi.fn().mockReturnValue(of({ uuid: 'item-1' }));
+    listOriginalFn = vi
+      .fn()
+      .mockReturnValue(
+        of({ items: [], totalElements: 0, totalPages: 0, size: 20, page: 0 }),
+      );
     TestBed.configureTestingModule({
       imports: [DocumentSubmissionForm],
       providers: [
         provideNoopAnimations(),
         provideHttpClient(),
         { provide: SubmissionFacade, useValue: { submitItem$: vi.fn() } },
-        { provide: ItemAdminFacade, useValue: { editItem$: editItemFn } },
+        {
+          provide: ItemAdminFacade,
+          useValue: {
+            editItem$: editItemFn,
+            listOriginalBitstreams$: listOriginalFn,
+          },
+        },
         { provide: MessageService, useValue: { add: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: VocabularyApiService, useValue: { getEntries: getEntriesFn } },
@@ -697,6 +709,321 @@ describe('DocumentSubmissionForm', () => {
     });
 
     expect(c.buildMetadata()['dc.date.issued']?.[0]?.value).toBe('2026-04-27');
+  });
+
+  /** Verifica que currentBitstreams y los contadores de paginación se llenen desde la respuesta del facade. */
+  it('should populate currentBitstreams and pagination signals from the facade response', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [
+          { uuid: 'bs-1', name: 'a.pdf', sizeBytes: 1024 },
+          { uuid: 'bs-2', name: 'b.pdf', sizeBytes: 2048 },
+        ],
+        totalElements: 47,
+        totalPages: 3,
+        size: 20,
+        page: 0,
+      }),
+    );
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Manual',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.type': [
+          { value: 'Manual', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.currentBitstreams().map((b) => b.uuid)).toEqual(['bs-1', 'bs-2']);
+    expect(c.currentBitstreamsTotal()).toBe(47);
+    expect(c.currentBitstreamsPage()).toBe(0);
+    expect(c.currentBitstreamsSize()).toBe(20);
+  });
+
+  /** Verifica que canSubmit bloquee el envío en edit no-Video cuando todo está marcado para borrar y no hay agregados. */
+  it('should block canSubmit in edit mode when effective file count drops to zero (non-Video)', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [
+          { uuid: 'bs-1', name: 'a.pdf', sizeBytes: 1000 },
+          { uuid: 'bs-2', name: 'b.pdf', sizeBytes: 2000 },
+        ],
+        totalElements: 2,
+        totalPages: 1,
+        size: 20,
+        page: 0,
+      }),
+    );
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Manual',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.type': [
+          { value: 'Manual', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'dc.title': [
+          { value: 'Manual', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'dc.description.abstract': [
+          { value: 'Resumen', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'dc.audience': [
+          { value: 'Primaria', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'dc.date.issued': [
+          { value: '2026-04-15', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.canSubmit()).toBe(true);
+
+    c.togglePendingDelete('bs-1');
+    c.togglePendingDelete('bs-2');
+    expect(c.canSubmit()).toBe(false);
+
+    c.onAddBitstreams([new File(['x'], 'nuevo.pdf', { type: 'application/pdf' })]);
+    expect(c.canSubmit()).toBe(true);
+  });
+
+  /** Verifica que onBitstreamPageChange dispare una nueva carga con el page y size que llega del paginator. */
+  it('should reload original bitstreams with the page and size from onBitstreamPageChange', () => {
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Manual',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.type': [
+          { value: 'Manual', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    // La primera invocación ya quedó: page=0,size=20 al entrar a edit.
+    listOriginalFn.mockClear();
+
+    c.onBitstreamPageChange({ page: 2, rows: 50 });
+    expect(listOriginalFn).toHaveBeenCalledWith('item-1', 2, 50);
+  });
+
+  /** Verifica que onAddBitstreams acumule archivos y getBitstreamsToAdd los devuelva. */
+  it('should accumulate files in pendingAdds and expose them via getBitstreamsToAdd', () => {
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.getBitstreamsToAdd()).toEqual([]);
+
+    const f1 = new File(['a'], 'a.pdf', { type: 'application/pdf' });
+    const f2 = new File(['b'], 'b.pdf', { type: 'application/pdf' });
+    c.onAddBitstreams([f1]);
+    c.onAddBitstreams([f2]);
+    expect(c.getBitstreamsToAdd()).toEqual([f1, f2]);
+
+    c.removePendingAdd(f1);
+    expect(c.getBitstreamsToAdd()).toEqual([f2]);
+  });
+
+  /** Verifica que togglePendingDelete agregue/quite uuids y getBitstreamsToRemove devuelva la lista. */
+  it('should toggle uuids in pendingDeletes and expose them via getBitstreamsToRemove', () => {
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.getBitstreamsToRemove()).toEqual([]);
+
+    c.togglePendingDelete('bs-1');
+    c.togglePendingDelete('bs-2');
+    expect(c.getBitstreamsToRemove().sort()).toEqual(['bs-1', 'bs-2']);
+    expect(c.isPendingDelete('bs-1')).toBe(true);
+
+    c.togglePendingDelete('bs-1');
+    expect(c.getBitstreamsToRemove()).toEqual(['bs-2']);
+    expect(c.isPendingDelete('bs-1')).toBe(false);
+  });
+
+  /**
+   * Verifica que en edit Video se pida un único bitstream del ORIGINAL para
+   * capturar el uuid del marcador _video_link.txt y poder reemplazarlo si la
+   * URL cambia. El usuario no ve la lista en UI; es metadata interna.
+   */
+  it('should fetch a single bitstream of the ORIGINAL bundle in Video edit mode to capture the marker uuid', () => {
+    const item: Item = {
+      uuid: 'item-vid',
+      name: 'Charla',
+      handle: '123/9',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.type': [
+          { value: 'Video', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+
+    expect(listOriginalFn).toHaveBeenCalledWith('item-vid', 0, 1);
+  });
+
+  /**
+   * Verifica que en edit Video, si la URL no cambió, los hooks devuelven listas
+   * vacías: nada que subir, nada que borrar.
+   */
+  it('should return empty add/remove lists in Video edit mode when the URL is unchanged', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [{ uuid: 'marker-uuid', name: '_video_link.txt', sizeBytes: 30 }],
+        totalElements: 1,
+        totalPages: 1,
+        size: 1,
+        page: 0,
+      }),
+    );
+    const item: Item = {
+      uuid: 'item-vid',
+      name: 'Charla',
+      handle: '123/9',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.type': [
+          { value: 'Video', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'dc.relation.uri': [
+          { value: 'https://example.com/video1', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.getBitstreamsToAdd()).toEqual([]);
+    expect(c.getBitstreamsToRemove()).toEqual([]);
+  });
+
+  /**
+   * Verifica que en edit Video con URL modificada los hooks pidan: subir un
+   * .txt nuevo con la URL al ORIGINAL y borrar el uuid del marcador previo.
+   */
+  it('should add a new marker file and remove the previous uuid when the Video URL changes in edit mode', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [{ uuid: 'marker-uuid', name: '_video_link.txt', sizeBytes: 30 }],
+        totalElements: 1,
+        totalPages: 1,
+        size: 1,
+        page: 0,
+      }),
+    );
+    const item: Item = {
+      uuid: 'item-vid',
+      name: 'Charla',
+      handle: '123/9',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.type': [
+          { value: 'Video', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'dc.relation.uri': [
+          { value: 'https://example.com/video1', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({ relationUri: 'https://example.com/video2' });
+
+    const adds = c.getBitstreamsToAdd();
+    expect(adds.length).toBe(1);
+    expect(adds[0].name).toBe('_video_link.txt');
+    expect(c.getBitstreamsToRemove()).toEqual(['marker-uuid']);
+  });
+
+  /** Verifica que al entrar a edit con un Documento no-Video se pida la primera página del bundle ORIGINAL. */
+  it('should fetch the first page of ORIGINAL bitstreams when entering edit mode for a non-Video document', () => {
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Manual',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.type': [
+          { value: 'Manual', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+
+    expect(listOriginalFn).toHaveBeenCalledWith('item-1', 0, 20);
   });
 
   /** Verifica que un Date en `issued` se serialice como YYYY-MM-DD local en buildPatchFromForm. */

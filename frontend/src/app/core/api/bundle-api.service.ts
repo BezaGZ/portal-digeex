@@ -1,11 +1,11 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { Bundle, BundlesResponse } from './models/search.model';
 import { Bitstream } from './models/bitstream.model';
-import { HalListResponse } from './models/hal.model';
+import { HalListResponse, Paginated } from './models/hal.model';
 import { DSPACE_API_BASE, BUNDLES_PATH, BITSTREAMS_PATH, ITEMS_PATH } from './dspace-rest.util';
 
 /**
@@ -39,13 +39,32 @@ export class BundleApiService {
     );
   }
 
-  /** Lista los bitstreams de un bundle (THUMBNAIL, ORIGINAL, etc.). */
-  listBitstreams(bundleUuid: string): Observable<Bitstream[]> {
+  /**
+   * Lista los bitstreams de un bundle (THUMBNAIL, ORIGINAL, etc.) paginados.
+   * Defaults a `page=0&size=20`; los consumidores que necesiten otra ventana
+   * pasan los params explícitos. Devuelve el shape `Paginated` aplanado para
+   * que la UI no tenga que conocer HAL.
+   */
+  listBitstreams(
+    bundleUuid: string,
+    page = 0,
+    size = 20,
+  ): Observable<Paginated<Bitstream>> {
+    const params = new HttpParams().set('page', page).set('size', size);
     return this.http
       .get<HalListResponse<Bitstream>>(
         `${DSPACE_API_BASE}${BUNDLES_PATH}/${bundleUuid}/bitstreams`,
+        { params },
       )
-      .pipe(map((res) => res._embedded?.['bitstreams'] ?? []));
+      .pipe(
+        map((res) => ({
+          items: res._embedded?.['bitstreams'] ?? [],
+          totalElements: res.page?.totalElements ?? 0,
+          totalPages: res.page?.totalPages ?? 0,
+          size: res.page?.size ?? size,
+          page: res.page?.number ?? page,
+        })),
+      );
   }
 
   /** Borra un bitstream del repositorio. */

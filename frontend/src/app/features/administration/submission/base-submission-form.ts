@@ -86,6 +86,16 @@ export abstract class BaseSubmissionForm {
     return null;
   }
 
+  /** Archivos nuevos a subir al bundle ORIGINAL en modo edición. Default vacío. */
+  protected getBitstreamsToAdd(): File[] {
+    return [];
+  }
+
+  /** UUIDs de bitstreams a borrar del bundle ORIGINAL en modo edición. Default vacío. */
+  protected getBitstreamsToRemove(): string[] {
+    return [];
+  }
+
   /**
    * Orquesta create o update según el modo. Idempotente: si ya hay un submit
    * en vuelo, el segundo llamado se ignora para que un doble click del botón
@@ -143,7 +153,16 @@ export abstract class BaseSubmissionForm {
     const visibility = this.getVisibility();
     const coverFile = this.getCoverFile() ?? undefined;
     const visibilityChanged = (visibility === 'public') !== it.discoverable;
-    if (patch.length === 0 && !visibilityChanged && !coverFile) {
+    const bitstreamsToAdd = this.getBitstreamsToAdd();
+    const bitstreamsToRemove = this.getBitstreamsToRemove();
+    const bitstreamsChanged =
+      bitstreamsToAdd.length > 0 || bitstreamsToRemove.length > 0;
+    if (
+      patch.length === 0 &&
+      !visibilityChanged &&
+      !coverFile &&
+      !bitstreamsChanged
+    ) {
       this.toast.add({
         severity: 'info',
         summary: 'Sin cambios',
@@ -156,7 +175,14 @@ export abstract class BaseSubmissionForm {
     this.itemFacade
       .editItem$(
         it.uuid,
-        { patch, visibility, coverFile, item: it },
+        {
+          patch,
+          visibility,
+          coverFile,
+          bitstreamsToAdd,
+          bitstreamsToRemove,
+          item: it,
+        },
         this.caller().sufijo ?? '',
       )
       .subscribe({

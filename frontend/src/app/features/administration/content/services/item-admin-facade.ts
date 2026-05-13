@@ -1,11 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
-import { last, switchMap } from 'rxjs/operators';
+import { last, map, switchMap } from 'rxjs/operators';
 import { ItemApiService } from '../../../../core/api/item-api.service';
 import { BundleApiService } from '../../../../core/api/bundle-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { Item } from '../../../../core/api/models/item.model';
+import { Bitstream } from '../../../../core/api/models/bitstream.model';
+import { Paginated } from '../../../../core/api/models/hal.model';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
 import { resolveCaller$ } from './facade-utils';
 
@@ -17,6 +19,10 @@ export interface EditItemPayload {
   patch: JsonPatchEntry[];
   visibility?: 'public' | 'private';
   coverFile?: File;
+  /** UUIDs de bitstreams del bundle ORIGINAL a borrar antes de subir los nuevos. */
+  bitstreamsToRemove?: string[];
+  /** Archivos a subir al bundle ORIGINAL después de los borrados. */
+  bitstreamsToAdd?: File[];
   /** El item actual sirve para comparar discoverable y decidir si visibility cambió. */
   item: Item;
 }
@@ -73,11 +79,54 @@ export class ItemAdminFacade {
       if (payload.coverFile) {
         steps$.push(this.applyCover$(uuid, payload.coverFile));
       }
+      const removes = payload.bitstreamsToRemove ?? [];
+      if (removes.length > 0) {
+        steps$.push(this.removeBitstreams$(removes));
+      }
+      const adds = payload.bitstreamsToAdd ?? [];
+      if (adds.length > 0) {
+        steps$.push(this.addBitstreams$(uuid, adds));
+      }
       if (steps$.length === 0) {
         return of(payload.item);
       }
       return this.runStepsSequential$(steps$, uuid);
     });
+  }
+
+  /**
+   * Borra los uuids indicados secuencialmente. Misma cautela que `replaceCover$`:
+   * deletes paralelos al mismo bundle disparaban 500 intermitentes en DSpace 9.
+   */
+  private removeBitstreams$(uuids: string[]): Observable<unknown> {
+    return uuids
+      .map((uuid) => this.bundleApi.deleteBitstream(uuid))
+      .reduce(
+        (acc, step) => acc.pipe(switchMap(() => step)),
+        of(null as unknown),
+      );
+  }
+
+  /**
+   * Resuelve el bundle ORIGINAL del item (un único `listForItem`) y sube cada
+   * archivo secuencial. Todo item archivado tiene ORIGINAL desde el flujo
+   * de submission; si falta, propagamos el error en lugar de crearlo silenciosamente.
+   */
+  private addBitstreams$(itemUuid: string, files: File[]): Observable<unknown> {
+    return this.bundleApi.listForItem(itemUuid).pipe(
+      switchMap((response) => {
+        const original = (response._embedded?.bundles ?? []).find((b) => b.name === 'ORIGINAL');
+        if (!original) {
+          return throwError(() => new Error('ORIGINAL bundle no encontrado en el item.'));
+        }
+        return files
+          .map((file) => this.bundleApi.uploadBitstream(original.uuid, file))
+          .reduce(
+            (acc, step) => acc.pipe(switchMap(() => step)),
+            of(null as unknown),
+          );
+      }),
+    );
   }
 
   /**
@@ -123,6 +172,7 @@ export class ItemAdminFacade {
    */
   private replaceCover$(bundleUuid: string, coverFile: File): Observable<unknown> {
     return this.bundleApi.listBitstreams(bundleUuid).pipe(
+      map((p) => p.items),
       switchMap((bitstreams) => {
         const deletes$ = bitstreams
           .map((b) => this.bundleApi.deleteBitstream(b.uuid))
@@ -133,6 +183,32 @@ export class ItemAdminFacade {
         return deletes$.pipe(
           switchMap(() => this.bundleApi.uploadBitstream(bundleUuid, coverFile)),
         );
+      }),
+    );
+  }
+
+  /**
+   * Lista paginada de bitstreams del bundle ORIGINAL del item. La consume el
+   * form de edición para mostrar la tabla "Archivos actuales" con paginator.
+   * No valida scope: es una lectura sobre un item al que el usuario ya tiene
+   * acceso por ruta protegida.
+   */
+  listOriginalBitstreams$(
+    itemUuid: string,
+    page: number,
+    size: number,
+  ): Observable<Paginated<Bitstream>> {
+    return this.bundleApi.listForItem(itemUuid).pipe(
+      switchMap((response) => {
+        const original = (response._embedded?.bundles ?? []).find(
+          (b) => b.name === 'ORIGINAL',
+        );
+        if (!original) {
+          return throwError(
+            () => new Error('ORIGINAL bundle no encontrado en el item.'),
+          );
+        }
+        return this.bundleApi.listBitstreams(original.uuid, page, size);
       }),
     );
   }

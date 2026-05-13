@@ -143,6 +143,85 @@
       </div>
     }
 
+    @if (isEditMode() && !form.controls.isVideo.value) {
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Archivos actuales
+          <span class="text-gray-400 font-normal">
+            (clic en Quitar para marcar; el cambio se aplica al guardar)
+          </span>
+        </label>
+
+        @if (currentBitstreams().length > 0) {
+          <ul class="rounded-md border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
+            @for (bs of currentBitstreams(); track bs.uuid) {
+              <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <span [class.line-through]="isPendingDelete(bs.uuid)"
+                      [class.text-gray-400]="isPendingDelete(bs.uuid)"
+                      class="truncate">
+                  {{ bs.name ?? '(sin nombre)' }}
+                  <span class="text-gray-400 ml-2">{{ (bs.sizeBytes / 1024) | number: '1.0-0' }} KB</span>
+                </span>
+                <p-button
+                  type="button"
+                  [label]="isPendingDelete(bs.uuid) ? 'Restaurar' : 'Quitar'"
+                  [icon]="isPendingDelete(bs.uuid) ? 'pi pi-undo' : 'pi pi-times'"
+                  size="small"
+                  severity="secondary"
+                  [outlined]="true"
+                  [rounded]="true"
+                  (onClick)="togglePendingDelete(bs.uuid)" />
+              </li>
+            }
+          </ul>
+        } @else {
+          <div class="text-sm text-gray-500 italic">No hay archivos cargados.</div>
+        }
+
+        @if (currentBitstreamsTotal() > currentBitstreamsSize()) {
+          <p-paginator
+            [rows]="currentBitstreamsSize()"
+            [totalRecords]="currentBitstreamsTotal()"
+            [first]="currentBitstreamsPage() * currentBitstreamsSize()"
+            [rowsPerPageOptions]="[20, 50, 100]"
+            (onPageChange)="onBitstreamPageChange($event)" />
+        }
+
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-2">
+          Agregar archivos
+          <span class="text-gray-400 font-normal">(los nuevos se suben al guardar)</span>
+        </label>
+        <app-file-dropzone
+          [accept]="acceptedFileTypes"
+          [multiple]="true"
+          chooseLabel="Seleccionar archivos"
+          dropMessage="Arrastrá los documentos aquí o usá el botón de elegir."
+          (filesChange)="onAddBitstreams($event)" />
+
+        @if (pendingAdds().length > 0) {
+          <ul class="rounded-md border border-emerald-200 dark:border-emerald-800 divide-y divide-emerald-100 dark:divide-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/30">
+            @for (f of pendingAdds(); track f) {
+              <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <span class="truncate">
+                  {{ f.name }}
+                  <span class="text-gray-400 ml-2">{{ (f.size / 1024) | number: '1.0-0' }} KB</span>
+                </span>
+                <p-button
+                  type="button"
+                  label="Quitar"
+                  icon="pi pi-times"
+                  size="small"
+                  severity="secondary"
+                  [outlined]="true"
+                  [rounded]="true"
+                  (onClick)="removePendingAdd(f)" />
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
+
     <div class="flex flex-col gap-2">
       <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
         Portada

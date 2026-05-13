@@ -23,7 +23,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * subir las fotos del álbum. Usa los vocabularios programas-digeex,
  * tipo-poblacion, enfoque-imagen y tipos-evento.
  *
- * Ciclo 24 TDD — Sprint 6. Ajustado en Ciclos 29 y 30.
+ * Ciclo 24 TDD — Sprint 6. Ajustado en Ciclos 29, 30 y 34.
  */
 describe('GallerySubmissionForm', () => {
   function buildCollection(uuid: string): Collection {
@@ -39,17 +39,29 @@ describe('GallerySubmissionForm', () => {
 
   let getEntriesFn: ReturnType<typeof vi.fn>;
   let editItemFn: ReturnType<typeof vi.fn>;
+  let listOriginalFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getEntriesFn = vi.fn().mockReturnValue(of([]));
     editItemFn = vi.fn().mockReturnValue(of({ uuid: 'item-1' }));
+    listOriginalFn = vi
+      .fn()
+      .mockReturnValue(
+        of({ items: [], totalElements: 0, totalPages: 0, size: 20, page: 0 }),
+      );
     TestBed.configureTestingModule({
       imports: [GallerySubmissionForm],
       providers: [
         provideNoopAnimations(),
         provideHttpClient(),
         { provide: SubmissionFacade, useValue: { submitItem$: vi.fn() } },
-        { provide: ItemAdminFacade, useValue: { editItem$: editItemFn } },
+        {
+          provide: ItemAdminFacade,
+          useValue: {
+            editItem$: editItemFn,
+            listOriginalBitstreams$: listOriginalFn,
+          },
+        },
         { provide: MessageService, useValue: { add: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: VocabularyApiService, useValue: { getEntries: getEntriesFn } },
@@ -416,5 +428,171 @@ describe('GallerySubmissionForm', () => {
         { op: 'replace', path: '/metadata/dc.date.issued/0/value', value: '2026-04-27' },
       ]),
     );
+  });
+
+  /** Verifica que al entrar a edit con un álbum se pida la primera página de fotos del ORIGINAL. */
+  it('should fetch the first page of ORIGINAL bitstreams when entering edit mode', () => {
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Álbum',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {},
+    };
+
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+
+    expect(listOriginalFn).toHaveBeenCalledWith('item-1', 0, 20);
+  });
+
+  /** Verifica que currentBitstreams y contadores de paginación se llenen desde la respuesta del facade. */
+  it('should populate currentBitstreams and pagination signals from the facade response', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [
+          { uuid: 'bs-1', name: 'foto1.jpg', sizeBytes: 12345 },
+          { uuid: 'bs-2', name: 'foto2.jpg', sizeBytes: 67890 },
+        ],
+        totalElements: 150,
+        totalPages: 8,
+        size: 20,
+        page: 0,
+      }),
+    );
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Álbum',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {},
+    };
+
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.currentBitstreams().map((b) => b.uuid)).toEqual(['bs-1', 'bs-2']);
+    expect(c.currentBitstreamsTotal()).toBe(150);
+  });
+
+  /** Verifica que togglePendingDelete maneje el set de uuids y getBitstreamsToRemove devuelva la lista. */
+  it('should toggle uuids in pendingDeletes and expose them via getBitstreamsToRemove', () => {
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.togglePendingDelete('bs-1');
+    c.togglePendingDelete('bs-2');
+    expect(c.getBitstreamsToRemove().sort()).toEqual(['bs-1', 'bs-2']);
+
+    c.togglePendingDelete('bs-1');
+    expect(c.getBitstreamsToRemove()).toEqual(['bs-2']);
+  });
+
+  /** Verifica que onAddBitstreams acumule archivos y getBitstreamsToAdd los devuelva. */
+  it('should accumulate files in pendingAdds and expose them via getBitstreamsToAdd', () => {
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    const f1 = new File(['a'], 'a.jpg', { type: 'image/jpeg' });
+    const f2 = new File(['b'], 'b.jpg', { type: 'image/jpeg' });
+    c.onAddBitstreams([f1, f2]);
+    expect(c.getBitstreamsToAdd()).toEqual([f1, f2]);
+
+    c.removePendingAdd(f1);
+    expect(c.getBitstreamsToAdd()).toEqual([f2]);
+  });
+
+  /** Verifica que onBitstreamPageChange recargue la página solicitada con el size elegido. */
+  it('should reload original bitstreams with the page and size from onBitstreamPageChange', () => {
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Álbum',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {},
+    };
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    listOriginalFn.mockClear();
+    c.onBitstreamPageChange({ page: 3, rows: 100 });
+    expect(listOriginalFn).toHaveBeenCalledWith('item-1', 3, 100);
+  });
+
+  /** Verifica que canSubmit bloquee el envío cuando el conteo efectivo de fotos queda en cero. */
+  it('should block canSubmit in edit mode when effective file count drops to zero', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [
+          { uuid: 'bs-1', name: 'foto1.jpg', sizeBytes: 1000 },
+        ],
+        totalElements: 1,
+        totalPages: 1,
+        size: 20,
+        page: 0,
+      }),
+    );
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Álbum',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.title': [
+          { value: 'Álbum', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'dc.type': [
+          { value: 'Acto', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'dc.date.issued': [
+          { value: '2026-04-15', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'dc.subject.classification': [
+          { value: 'PEAC', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.canSubmit()).toBe(true);
+
+    c.togglePendingDelete('bs-1');
+    expect(c.canSubmit()).toBe(false);
+
+    c.onAddBitstreams([new File(['x'], 'nueva.jpg', { type: 'image/jpeg' })]);
+    expect(c.canSubmit()).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -8,6 +9,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { Select } from 'primeng/select';
 import { DatePickerModule } from 'primeng/datepicker';
+import { PaginatorModule } from 'primeng/paginator';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ButtonModule } from 'primeng/button';
 
@@ -17,6 +19,7 @@ import { mv } from '../../metadata-value.util';
 import { buildMetadataPatch } from '../../metadata-patch.util';
 import { toLocalIsoDate } from '../../../../../core/i18n/iso-date.util';
 import { MetadataValue } from '../../../../../core/api/models/metadata.model';
+import { Bitstream } from '../../../../../core/api/models/bitstream.model';
 import { Item } from '../../../../../core/api/models/item.model';
 import { JsonPatchEntry } from '../../../../../core/api/json-patch.util';
 import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
@@ -41,10 +44,12 @@ import { LoadingSpinnerComponent } from '../../../../../shared/components/loadin
     TextareaModule,
     Select,
     DatePickerModule,
+    PaginatorModule,
     ToggleSwitchModule,
     ButtonModule,
     FileDropzoneComponent,
     LoadingSpinnerComponent,
+    DecimalPipe,
   ],
 })
 export class GallerySubmissionForm extends BaseSubmissionForm {
@@ -58,6 +63,20 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
 
   /** Imagen de portada que el facade coloca en el bundle THUMBNAIL post-archive. Required en Galería. */
   readonly coverFile = signal<File | null>(null);
+
+  /** Página visible de fotos del bundle ORIGINAL en edit; se mueve con el paginator. */
+  readonly currentBitstreams = signal<Bitstream[]>([]);
+  readonly currentBitstreamsTotal = signal(0);
+  readonly currentBitstreamsPage = signal(0);
+  readonly currentBitstreamsSize = signal(20);
+
+  /** UUIDs marcados para borrar; persisten al cambiar de página y se aplican en Submit. */
+  readonly pendingDeletes = signal<ReadonlySet<string>>(new Set());
+
+  /** Archivos nuevos en la pila de "subir al ORIGINAL" del próximo Submit. */
+  readonly pendingAdds = signal<File[]>([]);
+
+  private readonly destroyRef = inject(DestroyRef);
 
   /**
    * Form de los campos del schema digeex-galeria. Required: title, issued,
@@ -109,7 +128,13 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
    */
   readonly canSubmit = computed(() => {
     if (this.formStatus() !== 'VALID') return false;
-    if (this.isEditMode()) return true;
+    if (this.isEditMode()) {
+      const effective =
+        this.currentBitstreamsTotal() -
+        this.pendingDeletes().size +
+        this.pendingAdds().length;
+      return effective > 0;
+    }
     if (this.files().length === 0) return false;
     return this.coverFile() !== null;
   });
@@ -231,6 +256,66 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
       imageFocus: first('digeex.imageFocus'),
     });
     this.visibility.set(item.discoverable ? 'public' : 'private');
+    this.loadOriginalBitstreams(item.uuid, 0, this.currentBitstreamsSize());
+  }
+
+  /**
+   * Handler del `<p-paginator>` de la sección Fotos actuales. El widget emite
+   * page como índice 0-based y rows como tamaño elegido en el selector.
+   */
+  onBitstreamPageChange(ev: { page?: number; rows?: number | null }): void {
+    const item = this.item();
+    if (!item) return;
+    const page = ev.page ?? 0;
+    const size = ev.rows ?? this.currentBitstreamsSize();
+    this.loadOriginalBitstreams(item.uuid, page, size);
+  }
+
+  /** Toggle del set de marcados para borrar; el template lo invoca por fila. */
+  togglePendingDelete(uuid: string): void {
+    const next = new Set(this.pendingDeletes());
+    if (next.has(uuid)) {
+      next.delete(uuid);
+    } else {
+      next.add(uuid);
+    }
+    this.pendingDeletes.set(next);
+  }
+
+  /** True si el uuid está marcado para borrar; el template lo usa para el strikethrough. */
+  isPendingDelete(uuid: string): boolean {
+    return this.pendingDeletes().has(uuid);
+  }
+
+  /** Suma archivos a la pila de subida; recibe el array completo del dropzone. */
+  onAddBitstreams(files: File[]): void {
+    this.pendingAdds.set([...this.pendingAdds(), ...files]);
+  }
+
+  /** Quita un archivo de la pila de subida antes de confirmar el Submit. */
+  removePendingAdd(file: File): void {
+    this.pendingAdds.set(this.pendingAdds().filter((f) => f !== file));
+  }
+
+  protected override getBitstreamsToRemove(): string[] {
+    return Array.from(this.pendingDeletes());
+  }
+
+  protected override getBitstreamsToAdd(): File[] {
+    return this.pendingAdds();
+  }
+
+  /** Pide al facade una página del bundle ORIGINAL y llena las signals visibles. */
+  private loadOriginalBitstreams(itemUuid: string, page: number, size: number): void {
+    this.itemFacade
+      .listOriginalBitstreams$(itemUuid, page, size)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((paginated) => {
+        this.currentBitstreams.set(paginated.items);
+        this.currentBitstreamsTotal.set(paginated.totalElements);
+        this.currentBitstreamsPage.set(paginated.page);
+        this.currentBitstreamsSize.set(paginated.size);
+      });
   }
 
   /** Diff form vs metadata original del item; emite el JSON Patch mínimo. */

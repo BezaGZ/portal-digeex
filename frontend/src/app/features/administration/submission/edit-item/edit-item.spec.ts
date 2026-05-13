@@ -23,7 +23,7 @@ import { MessageService } from 'primeng/api';
  * monta DocumentSubmissionForm, GallerySubmissionForm o StatsSubmissionForm
  * en modo edición pasándoles el item como input.
  *
- * Ciclo 32 TDD — Sprint 6.
+ * Ciclo 32 TDD — Sprint 6. Ajustado en Ciclo 34.
  */
 describe('EditItem', () => {
   function buildItem(entityType: string, uuid = 'item-1'): Item {
@@ -59,7 +59,17 @@ describe('EditItem', () => {
         { provide: ItemApiService, useValue: { getOne: getOneFn } },
         { provide: AuthCallerService, useValue: { currentCaller$: of({ role: 'superadmin', sufijo: 'PEAC' }) } },
         { provide: SubmissionFacade, useValue: { submitItem$: vi.fn() } },
-        { provide: ItemAdminFacade, useValue: { editItem$: vi.fn() } },
+        {
+          provide: ItemAdminFacade,
+          useValue: {
+            editItem$: vi.fn(),
+            listOriginalBitstreams$: vi
+              .fn()
+              .mockReturnValue(
+                of({ items: [], totalElements: 0, totalPages: 0, size: 20, page: 0 }),
+              ),
+          },
+        },
         { provide: VocabularyApiService, useValue: { getEntries: vi.fn().mockReturnValue(of([])) } },
         { provide: MessageService, useValue: { add: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },

@@ -49,13 +49,31 @@ class FakeSubmissionForm extends BaseSubmissionForm {
 }
 
 /**
+ * Variante de la subclase con los hooks de bitstreams sobrescritos. El test
+ * de edit la usa para verificar que la base reenvía las listas a editItem$.
+ */
+@Component({
+  selector: 'app-fake-edit-form',
+  template: '',
+})
+class FakeEditForm extends FakeSubmissionForm {
+  readonly newFile = new File(['x'], 'nuevo.pdf', { type: 'application/pdf' });
+  protected override getBitstreamsToAdd(): File[] {
+    return [this.newFile];
+  }
+  protected override getBitstreamsToRemove(): string[] {
+    return ['old-bs-1'];
+  }
+}
+
+/**
  * La base abstracta orquesta el submission de cualquier formulario:
  * arma el SubmitItemRequest desde los hooks de la subclase, lo pasa al
  * SubmissionFacade y maneja el estado de submitting + el toast de éxito o
  * error. Los tests cubren el camino feliz, la propagación del error del
  * facade, el guard contra doble submit y la lectura del sufijo del caller.
  *
- * Ciclo 22 TDD — Sprint 6
+ * Ciclo 22 TDD — Sprint 6. Ajustado en Ciclo 34.
  */
 describe('BaseSubmissionForm', () => {
   let submitItemFn: ReturnType<typeof vi.fn>;
@@ -167,5 +185,30 @@ describe('BaseSubmissionForm', () => {
     fixture.componentInstance.submit();
 
     expect(submitItemFn).toHaveBeenCalledTimes(1);
+  });
+
+  /** Verifica que en modo edit la base reenvía las listas de bitstreams al facade. */
+  it('should pass bitstreamsToAdd and bitstreamsToRemove from the hooks to editItem$ in edit mode', () => {
+    const editItemFn = vi.fn(() => of({ uuid: 'item-1' } as Item));
+    TestBed.overrideProvider(ItemAdminFacade, { useValue: { editItem$: editItemFn } });
+    const fixture = TestBed.createComponent(FakeEditForm);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('item', {
+      uuid: 'item-1',
+      discoverable: true,
+      metadata: {},
+    } as Item);
+    fixture.detectChanges();
+
+    fixture.componentInstance.submit();
+
+    expect(editItemFn).toHaveBeenCalledWith(
+      'item-1',
+      expect.objectContaining({
+        bitstreamsToAdd: [fixture.componentInstance.newFile],
+        bitstreamsToRemove: ['old-bs-1'],
+      }),
+      '',
+    );
   });
 });

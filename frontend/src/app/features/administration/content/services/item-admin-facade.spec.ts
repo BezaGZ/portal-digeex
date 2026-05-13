@@ -35,7 +35,7 @@ type AuthCallerMock = { currentCaller$: ReturnType<typeof of> };
  * desde el item al árbol jerárquico no se hace acá: la UI lo conoce
  * porque navega desde la colección y se lo pasa al facade.
  *
- * Ciclo 15 TDD — Sprint 6
+ * Ciclo 15 TDD — Sprint 6. Ajustado en Ciclo 34.
  */
 describe('ItemAdminFacade', () => {
   let facade: ItemAdminFacade;
@@ -82,7 +82,9 @@ describe('ItemAdminFacade', () => {
       listForItem: vi.fn(() => of({ _embedded: { bundles: [] } })),
       createBundle: vi.fn(() => of({ uuid: 'thumb-bundle-uuid', name: 'THUMBNAIL' })),
       uploadBitstream: vi.fn(() => of({ uuid: 'cover-bs-uuid' })),
-      listBitstreams: vi.fn(() => of([])),
+      listBitstreams: vi.fn(() =>
+        of({ items: [], totalElements: 0, totalPages: 0, size: 20, page: 0 }),
+      ),
       deleteBitstream: vi.fn(() => of(undefined)),
     };
     mockScope = { assertWithinScope: vi.fn() };
@@ -273,7 +275,13 @@ describe('ItemAdminFacade', () => {
         of({ _embedded: { bundles: [{ uuid: 'existing-thumb', name: 'THUMBNAIL' }] } }),
       );
       mockBundleApi.listBitstreams.mockReturnValueOnce(
-        of([{ uuid: 'old-bs-1' }, { uuid: 'old-bs-2' }]),
+        of({
+          items: [{ uuid: 'old-bs-1' }, { uuid: 'old-bs-2' }],
+          totalElements: 2,
+          totalPages: 1,
+          size: 20,
+          page: 0,
+        }),
       );
       const cover = new File([''], 'cover.jpg', { type: 'image/jpeg' });
 
@@ -311,6 +319,118 @@ describe('ItemAdminFacade', () => {
       expect(mockBundleApi.listBitstreams).not.toHaveBeenCalled();
       expect(mockBundleApi.deleteBitstream).not.toHaveBeenCalled();
       expect(mockBundleApi.uploadBitstream).toHaveBeenCalledWith('thumb-bundle-uuid', cover);
+    });
+
+    /** Verifica que editItem$ borre cada uuid listado en bitstreamsToRemove. */
+    it('should DELETE each bitstream listed in bitstreamsToRemove', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(
+        facade.editItem$(
+          'item-uuid',
+          {
+            patch: [],
+            bitstreamsToRemove: ['old-bs-1', 'old-bs-2'],
+            item: archivedItem,
+          },
+          'ED_BASICA',
+        ),
+      );
+
+      expect(mockBundleApi.deleteBitstream).toHaveBeenCalledWith('old-bs-1');
+      expect(mockBundleApi.deleteBitstream).toHaveBeenCalledWith('old-bs-2');
+    });
+
+    /** Verifica que editItem$ resuelva ORIGINAL y suba cada File de bitstreamsToAdd. */
+    it('should POST each file in bitstreamsToAdd to the ORIGINAL bundle', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockBundleApi.listForItem.mockReturnValueOnce(
+        of({
+          _embedded: {
+            bundles: [
+              { uuid: 'original-bundle-uuid', name: 'ORIGINAL' },
+              { uuid: 'thumb-bundle-uuid', name: 'THUMBNAIL' },
+            ],
+          },
+        }),
+      );
+      const f1 = new File(['a'], 'a.pdf', { type: 'application/pdf' });
+      const f2 = new File(['b'], 'b.pdf', { type: 'application/pdf' });
+
+      await firstValueFrom(
+        facade.editItem$(
+          'item-uuid',
+          { patch: [], bitstreamsToAdd: [f1, f2], item: archivedItem },
+          'ED_BASICA',
+        ),
+      );
+
+      expect(mockBundleApi.listForItem).toHaveBeenCalledWith('item-uuid');
+      expect(mockBundleApi.uploadBitstream).toHaveBeenCalledWith('original-bundle-uuid', f1);
+      expect(mockBundleApi.uploadBitstream).toHaveBeenCalledWith('original-bundle-uuid', f2);
+    });
+
+    /** Verifica que los borrados se ejecuten antes de las subidas cuando ambos arrays están presentes. */
+    it('should run deletes before uploads when both bitstreamsToRemove and bitstreamsToAdd are present', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockBundleApi.listForItem.mockReturnValueOnce(
+        of({ _embedded: { bundles: [{ uuid: 'original-bundle-uuid', name: 'ORIGINAL' }] } }),
+      );
+      const newFile = new File(['x'], 'new.pdf', { type: 'application/pdf' });
+
+      await firstValueFrom(
+        facade.editItem$(
+          'item-uuid',
+          {
+            patch: [],
+            bitstreamsToRemove: ['old-bs-1'],
+            bitstreamsToAdd: [newFile],
+            item: archivedItem,
+          },
+          'ED_BASICA',
+        ),
+      );
+
+      const deleteOrder = mockBundleApi.deleteBitstream.mock.invocationCallOrder;
+      const uploadOrder = mockBundleApi.uploadBitstream.mock.invocationCallOrder;
+      expect(Math.max(...deleteOrder)).toBeLessThan(uploadOrder[0]);
+    });
+
+    /** Verifica que listOriginalBitstreams$ resuelva ORIGINAL y delegue al wrapper paginado. */
+    it('should resolve the ORIGINAL bundle and return its bitstreams paginated', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockBundleApi.listForItem.mockReturnValueOnce(
+        of({
+          _embedded: {
+            bundles: [
+              { uuid: 'original-bundle-uuid', name: 'ORIGINAL' },
+              { uuid: 'thumb-bundle-uuid', name: 'THUMBNAIL' },
+            ],
+          },
+        }),
+      );
+      mockBundleApi.listBitstreams.mockReturnValueOnce(
+        of({
+          items: [{ uuid: 'bs-1', name: 'a.pdf', sizeBytes: 1000 }],
+          totalElements: 1,
+          totalPages: 1,
+          size: 20,
+          page: 0,
+        }),
+      );
+
+      const result = await firstValueFrom(
+        facade.listOriginalBitstreams$('item-uuid', 0, 20),
+      );
+
+      expect(mockBundleApi.listForItem).toHaveBeenCalledWith('item-uuid');
+      expect(mockBundleApi.listBitstreams).toHaveBeenCalledWith(
+        'original-bundle-uuid',
+        0,
+        20,
+      );
+      expect(result.items[0].uuid).toBe('bs-1');
+      expect(result.totalElements).toBe(1);
     });
 
     /** Verifica que el scope se valide antes de cualquier HTTP en el flujo de edit. */
