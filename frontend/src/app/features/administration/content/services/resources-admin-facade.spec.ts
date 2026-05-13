@@ -12,7 +12,6 @@ type CommunityApiMock = {
   searchTop: Mock;
   listSubcommunities: Mock;
 };
-type AuthCallerMock = { currentCaller$: ReturnType<typeof of> };
 
 /**
  * Tests de `ResourcesAdminFacade`.
