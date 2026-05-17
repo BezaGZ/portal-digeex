@@ -3,8 +3,16 @@ import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterModule } from '@angular/router';
 import { MenuItem } from 'primeng/api';
+
 import { AppMenuitem } from '../app.menuitem/app.menuitem';
-import { UserManagementService } from '../../../features/administration/users/services/user-management.service';
+import { AuthCallerService } from '../../../features/administration/shared/services/auth-caller.service';
+import { UserRole } from '../../../features/administration/users/models/user-view.model';
+import { SCOPE_ANY_AUTHENTICATED } from '../../../core/auth/role-scopes';
+import {
+  ADMIN_MENU,
+  ADMIN_MENU_SECTION_ORDER,
+  AdminMenuItem,
+} from './admin-menu.config';
 
 @Component({
   selector: 'app-menu',
@@ -13,100 +21,55 @@ import { UserManagementService } from '../../../features/administration/users/se
   templateUrl: './app.menu.html',
 })
 export class AppMenu {
-  private userService = inject(UserManagementService);
+  private authCaller = inject(AuthCallerService);
 
   /**
-   * Vista del usuario logueado con el rol resuelto. Null mientras carga o si
-   * el eperson no tiene grupo de rol del portal; en ese caso se muestran los
-   * ítems comunes pero no los reservados a site admin.
+   * Rol del caller resuelto. `null` mientras `AuthCallerService` aún no emite
+   * el primer valor (la vista del usuario logueado se carga después del
+   * login). En ese intervalo solo se rinden los items con scope
+   * `SCOPE_ANY_AUTHENTICATED`, ningún item de rol.
    */
-  private currentUser = toSignal(this.userService.currentUserView$, {
+  private caller = toSignal(this.authCaller.currentCaller$, {
     initialValue: null,
   });
 
   /**
-   * Menú filtrado por rol del caller (RN-32, RN-40, RN-41).
-   *  - superadmin: ve todo (Subdirecciones, Programas, Cargar contenido, Reportes, Usuarios).
-   *  - admin_subdireccion: ve Programas filtrado a su sub, Cargar contenido, Reportes.
-   *    No ve Subdirecciones top-level (RN-40) ni Usuarios (Sprint 5 ya bloquea con superadminGuard).
-   *  - personal_delegado: solo Cargar contenido. No ve Programas ni Subdirecciones ni Usuarios.
-   *
-   * El filtrado del sidebar es UX, no autorización: defensa real corre en
-   * los guards y en los facades (ContentScopeService.assertWithinScope).
+   * Modelo del sidebar agrupado por sección. Filtra `ADMIN_MENU` por el scope
+   * del rol del caller (RN-32, RN-40, RN-41) y reagrupa los items que pasan
+   * según el orden canónico de `ADMIN_MENU_SECTION_ORDER`. La defensa real
+   * corre en `roleGuard` (rutas) y en `ContentScopeService.assertWithinScope`
+   * (facades); este filtrado es solo UX.
    */
   model = computed<MenuItem[]>(() => {
-    const role = this.currentUser()?.role;
-    const isSuperadmin = role === 'superadmin';
-    const isAdminSub = role === 'admin_subdireccion';
-    const isDelegado = role === 'personal_delegado';
-
-    const sections: MenuItem[] = [];
-
-    // Administración (Estadísticas) — la ven todos los logueados.
-    sections.push({
-      label: 'Administración',
-      items: [
-        {
-          label: 'Estadísticas',
-          icon: 'pi pi-fw pi-home',
-          routerLink: ['/administrador/estadisticas'],
-        },
-      ],
-    });
-
-    // Repositorio — varía por rol.
-    const repositorioItems: MenuItem[] = [];
-    if (isSuperadmin) {
-      repositorioItems.push({
-        label: 'Subdirecciones',
-        icon: 'pi pi-fw pi-sitemap',
-        routerLink: ['/administrador/subdirecciones'],
-      });
-    }
-    if (isSuperadmin || isAdminSub) {
-      repositorioItems.push({
-        label: 'Programas',
-        icon: 'pi pi-fw pi-folder',
-        routerLink: ['/administrador/programas'],
-      });
-    }
-    if (isSuperadmin || isAdminSub || isDelegado) {
-      repositorioItems.push({
-        label: 'Cargar contenido',
-        icon: 'pi pi-fw pi-upload',
-        routerLink: ['/administrador/cargar'],
-      });
-    }
-    if (isSuperadmin || isAdminSub) {
-      repositorioItems.push({
-        label: 'Recursos',
-        icon: 'pi pi-fw pi-book',
-        routerLink: ['/administrador/recursos'],
-      });
-    }
-    if (repositorioItems.length > 0) {
-      sections.push({ label: 'Repositorio', items: repositorioItems });
-    }
-
-    const gestionItems: MenuItem[] = [];
-    if (isSuperadmin || isAdminSub) {
-      gestionItems.push({
-        label: 'Reportes',
-        icon: 'pi pi-fw pi-chart-bar',
-        routerLink: ['/administrador/reportes'],
-      });
-    }
-    if (isSuperadmin) {
-      gestionItems.unshift({
-        label: 'Usuarios',
-        icon: 'pi pi-fw pi-users',
-        routerLink: ['/administrador/usuarios'],
-      });
-    }
-    if (gestionItems.length > 0) {
-      sections.push({ label: 'Gestión', items: gestionItems });
-    }
-
-    return sections;
+    const role = this.caller()?.role;
+    const visible = ADMIN_MENU.filter((item) => isVisibleFor(item, role));
+    return ADMIN_MENU_SECTION_ORDER
+      .map((section) => ({
+        label: section,
+        items: visible
+          .filter((item) => item.section === section)
+          .map(toPrimeNgItem),
+      }))
+      .filter((section) => (section.items?.length ?? 0) > 0);
   });
+}
+
+/**
+ * Un item es visible si su scope es `SCOPE_ANY_AUTHENTICATED` o si la lista
+ * de roles incluye el rol actual. El caller `null` solo deja pasar los
+ * universales — ningún item de rol se filtra contra `undefined`.
+ */
+function isVisibleFor(item: AdminMenuItem, role: UserRole | undefined): boolean {
+  if (item.scope === SCOPE_ANY_AUTHENTICATED) {
+    return true;
+  }
+  return role !== undefined && item.scope.includes(role);
+}
+
+function toPrimeNgItem(item: AdminMenuItem): MenuItem {
+  return {
+    label: item.label,
+    icon: item.icon,
+    routerLink: [item.routerLink],
+  };
 }

@@ -13,7 +13,7 @@ import { UserView } from '../../administration/users/models/user-view.model';
 /**
  * Tests de `LoginComponent`. Conecta el formulario con `AuthService` y, tras un login exitoso,
  * consulta `UserManagementService.currentUserView$` para resolver el rol del eperson autenticado.
- * Si el rol es válido navega a `/administrador/estadisticas`; si la resolución falla cierra la
+ * Si el rol es válido navega a `/administrador`; si la resolución falla cierra la
  * sesión y muestra el mensaje "sin rol asignado".
  *
  * Ciclo 4 TDD — Sprint 5. Ajustado en Ciclo 13.
@@ -41,7 +41,7 @@ describe('LoginComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([
-          { path: 'administrador/estadisticas', component: {} as any },
+          { path: 'administrador', component: {} as any },
           { path: 'login', component: LoginComponent },
         ]),
         AuthService,
@@ -114,8 +114,8 @@ describe('LoginComponent', () => {
   });
 
   describe('login exitoso', () => {
-    /** Con rol resuelto válido (`superadmin`), el componente navega a `/administrador/estadisticas`. */
-    it('should navigate to /administrador/estadisticas when the resolved role is superadmin', async () => {
+    /** Con rol resuelto válido (`superadmin`), el componente navega a `/administrador`. */
+    it('should navigate to /administrador when the resolved role is superadmin', async () => {
       currentUserView$.next({
         uuid: 'eperson-001',
         email: 'juan@mineduc.gob.gt',
@@ -136,7 +136,7 @@ describe('LoginComponent', () => {
 
       await fixture.whenStable();
 
-      expect(router.navigate).toHaveBeenCalledWith(['/administrador/estadisticas']);
+      expect(router.navigate).toHaveBeenCalledWith(['/administrador']);
       expect(component.errorMessage()).toBe('');
     });
   });
@@ -179,7 +179,7 @@ describe('LoginComponent', () => {
 
       expect(logoutSpy).toHaveBeenCalled();
       expect(component.errorMessage()).toBe(LOGIN_MISSING_ROLE_MESSAGE);
-      expect(router.navigate).not.toHaveBeenCalledWith(['/administrador/estadisticas']);
+      expect(router.navigate).not.toHaveBeenCalledWith(['/administrador']);
     });
   });
 });

@@ -51,7 +51,7 @@ export class LoginComponent {
         firstValueFrom(this.userManagement.currentUserView$).then(
           () => {
             this.isLoading.set(false);
-            this.router.navigate(['/administrador/estadisticas']);
+            this.router.navigate(['/administrador']);
           },
           () => {
             this.authService.logout().subscribe();

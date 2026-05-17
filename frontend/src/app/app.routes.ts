@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
-import { superadminGuard } from './features/administration/users/guards/superadmin.guard';
+import { roleGuard } from './core/auth/role.guard';
+import { ROLE_SCOPES } from './core/auth/role-scopes';
 
 export const routes: Routes = [
 
@@ -64,6 +65,12 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/admin-layout/app.layout/app.layout').then(m => m.AppLayout),
     data: { breadcrumb: 'Administrador' },
     children: [
+   
+      {
+        path: '',
+        loadComponent: () => import('./features/administration/welcome/welcome').then(m => m.Welcome),
+        pathMatch: 'full',
+      },
       {
         path: 'estadisticas',
         loadComponent: () => import('./features/administration/dashboard/dashboard').then(m => m.Dashboard),
@@ -71,16 +78,19 @@ export const routes: Routes = [
       },
       {
         path: 'subdirecciones',
+        canActivate: [roleGuard(ROLE_SCOPES.SUPERADMIN_ONLY)],
         loadComponent: () => import('./features/administration/communities/communities').then(m => m.Communities),
         data: { breadcrumb: 'Subdirecciones' }
       },
       {
         path: 'programas',
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
         loadComponent: () => import('./features/administration/collections/collections').then(m => m.Collections),
         data: { breadcrumb: 'Programas' }
       },
       {
         path: 'programas/:uuid/cargar',
+        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
         /**
          * Importar primero el bootstrap garantiza que registerSubmissionForm()
          * de cada formulario corrió antes de que el host intente montar el
@@ -95,16 +105,19 @@ export const routes: Routes = [
       },
       {
         path: 'cargar',
+        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
         loadComponent: () => import('./features/administration/submission/upload-content/upload-content').then(m => m.UploadContent),
         data: { breadcrumb: 'Cargar contenido' }
       },
       {
         path: 'envios',
+        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
         loadComponent: () => import('./features/administration/submission/my-submissions/my-submissions').then(m => m.MySubmissions),
         data: { breadcrumb: 'Mis envíos' }
       },
       {
         path: 'envios/:uuid/editar',
+        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
         loadComponent: () =>
           import('./features/administration/submission/submission-forms-bootstrap')
             .then(() => import('./features/administration/submission/edit-item/edit-item'))
@@ -113,12 +126,13 @@ export const routes: Routes = [
       },
       {
         path: 'recursos',
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
         loadComponent: () => import('./features/administration/resources/resources-admin').then(m => m.ResourcesAdmin),
         data: { breadcrumb: 'Recursos' }
       },
       {
         path: 'usuarios',
-        canActivate: [superadminGuard],
+        canActivate: [roleGuard(ROLE_SCOPES.SUPERADMIN_ONLY)],
         loadComponent: () => import('./features/administration/users/users').then(m => m.Users),
         data: { breadcrumb: 'Usuarios' }
       },
@@ -129,6 +143,7 @@ export const routes: Routes = [
       },
       {
         path: 'reportes',
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
         loadComponent: () => import('./features/administration/reports/reports').then(m => m.Reports),
         data: { breadcrumb: 'Reportes' }
       }
