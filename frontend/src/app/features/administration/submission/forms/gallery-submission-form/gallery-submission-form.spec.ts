@@ -23,7 +23,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * subir las fotos del álbum. Usa los vocabularios programas-digeex,
  * tipo-poblacion, enfoque-imagen y tipos-evento.
  *
- * Ciclo 24 TDD — Sprint 6. Ajustado en Ciclos 29, 30 y 34.
+ * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclos 29, 30 y 34.
  */
 describe('GallerySubmissionForm', () => {
   function buildCollection(uuid: string): Collection {

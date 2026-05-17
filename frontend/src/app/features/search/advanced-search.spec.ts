@@ -23,6 +23,8 @@ import { SearchStateService } from './services/search-state.service';
  * es community o sub-community.
  *
  * Ciclos del Sprint 4. Ajustado en Sprint 6.
+  *
+ * Ciclo 37 TDD — Sprint 6.
  */
 describe('AdvancedSearch', () => {
   let component: AdvancedSearch;

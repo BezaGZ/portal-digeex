@@ -13,6 +13,7 @@ import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
 type CollectionApiMock = {
   create: Mock;
   createSubmittersGroup: Mock;
+  createAdminGroup: Mock;
   updateMetadata: Mock;
   delete: Mock;
 };
@@ -62,6 +63,14 @@ describe('CollectionFacade', () => {
     _links: {},
   };
 
+  const techAdminGroup = {
+    uuid: 'tech-admin-uuid',
+    name: 'COLLECTION_coll-new_admin',
+    permanent: false,
+    type: 'group',
+    _links: {},
+  };
+
   const sharedSubmitters = {
     uuid: 'shared-subm-uuid',
     name: 'SUBMITTERS_ED_BASICA',
@@ -101,6 +110,7 @@ describe('CollectionFacade', () => {
     mockCollectionApi = {
       create: vi.fn(() => of(newCollection)),
       createSubmittersGroup: vi.fn(() => of(techSubmittersGroup)),
+      createAdminGroup: vi.fn(() => of(techAdminGroup)),
       updateMetadata: vi.fn(() => of({ ...newCollection, name: 'Renombrada' })),
       delete: vi.fn(() => of(undefined)),
     };
@@ -150,6 +160,29 @@ describe('CollectionFacade', () => {
       expect(mockCollectionApi.createSubmittersGroup).not.toHaveBeenCalled();
     });
 
+    /**
+     * Ciclo 40.3 — extiende el pipeline con el enlace al adminGroup técnico
+     * para mantener simetría con el seed. Después de enlazar SUBMITTERS al
+     * `_SUBMIT` técnico, el facade crea el `_admin` técnico y enlaza el mismo
+     * SUBMITTERS shared como subgroup, reusando el `getByName` previo (sin
+     * pegarlo dos veces a DSpace).
+     */
+    it('should also create the adminGroup and link SUBMITTERS, reusing the getByName result (single lookup)', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(
+        facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA'),
+      );
+
+      expect(mockCollectionApi.createAdminGroup).toHaveBeenCalledWith('coll-new', expect.any(Object));
+      expect(mockGroupApi.addSubgroup).toHaveBeenCalledWith(
+        'tech-admin-uuid',
+        expect.stringContaining('shared-subm-uuid'),
+      );
+      expect(mockGroupApi.getByName).toHaveBeenCalledTimes(1);
+      expect(mockGroupApi.addSubgroup).toHaveBeenCalledTimes(2);
+    });
+
     it('should rollback the created collection when SUBMITTERS lookup fails', async () => {
       setupFacadeWithCaller('superadmin', null);
       mockGroupApi.getByName = vi.fn(() =>
@@ -159,6 +192,50 @@ describe('CollectionFacade', () => {
       await expect(
         firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA')),
       ).rejects.toThrow();
+      expect(mockCollectionApi.delete).toHaveBeenCalledWith('coll-new');
+    });
+
+    /**
+     * Ciclo 40.3 — si falla la creación del adminGroup técnico, el cleanup
+     * debe deshacer el submittersGroup técnico ya creado y la collection. No
+     * intenta borrar un techAdmin que no existe.
+     */
+    it('should rollback techSubmit and collection when createAdminGroup fails', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockCollectionApi.createAdminGroup = vi.fn(() =>
+        throwError(() => new Error('500 creating adminGroup')),
+      );
+
+      await expect(
+        firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA')),
+      ).rejects.toThrow();
+      expect(mockGroupApi.delete).toHaveBeenCalledWith('tech-subm-uuid');
+      expect(mockGroupApi.delete).not.toHaveBeenCalledWith('tech-admin-uuid');
+      expect(mockCollectionApi.delete).toHaveBeenCalledWith('coll-new');
+    });
+
+    /**
+     * Ciclo 40.3 — si el segundo addSubgroup (el de SUBMITTERS al admin
+     * técnico) falla, el cleanup debe deshacer en cascada inversa: admin
+     * técnico, submit técnico y collection. Es el escenario que más residuos
+     * podría dejar.
+     */
+    it('should rollback techAdmin, techSubmit and collection when admin addSubgroup fails', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      let addSubgroupCalls = 0;
+      mockGroupApi.addSubgroup = vi.fn(() => {
+        addSubgroupCalls += 1;
+        if (addSubgroupCalls === 2) {
+          return throwError(() => new Error('500 linking SUBMITTERS to admin'));
+        }
+        return of(undefined);
+      });
+
+      await expect(
+        firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA')),
+      ).rejects.toThrow();
+      expect(mockGroupApi.delete).toHaveBeenCalledWith('tech-admin-uuid');
+      expect(mockGroupApi.delete).toHaveBeenCalledWith('tech-subm-uuid');
       expect(mockCollectionApi.delete).toHaveBeenCalledWith('coll-new');
     });
   });

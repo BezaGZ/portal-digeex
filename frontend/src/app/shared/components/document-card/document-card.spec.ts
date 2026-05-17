@@ -12,7 +12,7 @@ import { ItemView } from '../../../core/api/models';
  * 204/404 al endpoint nativo /thumbnail), y el botón Descargar emite el
  * ItemView para que el padre maneje el lazy lookup de bitstreams.
  *
- * Ciclo 21 TDD - Sprint 6.
+ * Ciclo 36 TDD — Sprint 6.
  */
 describe('DocumentCardComponent', () => {
   function buildItem(): ItemView {

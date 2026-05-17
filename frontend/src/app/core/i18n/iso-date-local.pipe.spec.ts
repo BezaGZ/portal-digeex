@@ -11,6 +11,8 @@ import { IsoDateLocalPipe } from './iso-date-local.pipe';
  * Formatea un string ISO date-only respetando el día local. Combina
  * `parseIsoDateLocal` con `formatDate` de Angular usando el `LOCALE_ID`
  * inyectado.
+  *
+ * Ciclo 36 TDD — Sprint 6.
  */
 describe('IsoDateLocalPipe', () => {
   beforeAll(() => registerLocaleData(localeEsGT));

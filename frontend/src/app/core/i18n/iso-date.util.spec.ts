@@ -6,6 +6,8 @@ import { parseIsoDateLocal, toLocalIsoDate } from './iso-date.util';
  * Helpers para mover fechas entre el string ISO date-only que persiste
  * DSpace (`dc.date.issued`) y el `Date` de JS conservando los
  * componentes locales.
+  *
+ * Ciclo 35 TDD — Sprint 6.
  */
 describe('toLocalIsoDate', () => {
   /** Verifica que un string ISO date-only se devuelva sin tocar. */

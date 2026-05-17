@@ -17,7 +17,7 @@ import { VocabularyDisplayService } from '../../../core/api/vocabulary-display.s
  * DSpace por UUID, muestra thumbnail, bitstreams descargables,
  * y soporta documentos PDF y videos (MovingImage).
  *
- * Ciclo 4 TDD — Sprint 4
+ * Ciclo 4 TDD — Sprint 4. Ajustado en Ciclo 36 — Sprint 6.
  */
 
 describe('DocumentDetailComponent', () => {

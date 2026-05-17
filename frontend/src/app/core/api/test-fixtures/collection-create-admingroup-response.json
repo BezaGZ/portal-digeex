@@ -1,0 +1,33 @@
+{
+  "id": "4f1a2c8b-3d72-4ab9-9e1c-7f4d2c1e8b3a",
+  "uuid": "4f1a2c8b-3d72-4ab9-9e1c-7f4d2c1e8b3a",
+  "name": "COLLECTION_8d55e068-4354-4620-9f80-faf4dbe933c1_admin",
+  "handle": null,
+  "metadata": {
+    "dc.description": [
+      {
+        "value": "AdminGroup técnico auto-asociado vía POST",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ]
+  },
+  "permanent": false,
+  "type": "group",
+  "_links": {
+    "subgroups": {
+      "href": "http://localhost:8080/server/api/eperson/groups/4f1a2c8b-3d72-4ab9-9e1c-7f4d2c1e8b3a/subgroups"
+    },
+    "epersons": {
+      "href": "http://localhost:8080/server/api/eperson/groups/4f1a2c8b-3d72-4ab9-9e1c-7f4d2c1e8b3a/epersons"
+    },
+    "object": {
+      "href": "http://localhost:8080/server/api/eperson/groups/4f1a2c8b-3d72-4ab9-9e1c-7f4d2c1e8b3a/object"
+    },
+    "self": {
+      "href": "http://localhost:8080/server/api/eperson/groups/4f1a2c8b-3d72-4ab9-9e1c-7f4d2c1e8b3a"
+    }
+  }
+}

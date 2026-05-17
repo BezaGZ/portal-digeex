@@ -13,6 +13,8 @@ import { Album } from '../../models';
  * Card del listado público de álbumes: muestra portada, fecha y tipo de
  * evento. La fecha se renderiza con `isoDateLocal` para respetar el día
  * local.
+  *
+ * Ciclo 36 TDD — Sprint 6.
  */
 describe('AlbumCardComponent', () => {
   function buildAlbum(date: string): Album {

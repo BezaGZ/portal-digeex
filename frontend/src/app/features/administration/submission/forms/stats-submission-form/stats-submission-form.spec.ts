@@ -20,7 +20,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * en la vista pública lee `dc.title` como label de cada estadística, por
  * eso ese título también es la etiqueta de la gráfica.
  *
- * Ciclo 25 TDD — Sprint 6
+ * Ciclo 35 TDD — Sprint 6.
  */
 describe('StatsSubmissionForm', () => {
   function buildCollection(uuid: string): Collection {

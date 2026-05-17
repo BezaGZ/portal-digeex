@@ -10,7 +10,7 @@ import { DiscoveryService } from './discovery.service';
  * (`/api/discover/search/objects`). Soporta query de texto
  * y filtros por facetas.
  *
- * Ciclo 1 TDD — Sprint 4
+ * Ciclo 1 TDD — Sprint 4. Ajustado en Ciclo 37 — Sprint 6.
  */
 describe('DiscoveryService', () => {
   let service: DiscoveryService;

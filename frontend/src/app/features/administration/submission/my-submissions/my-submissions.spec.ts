@@ -23,7 +23,7 @@ import { ConfirmationService } from 'primeng/api';
  * facade pre-existente `ItemAdminFacade.withdrawItem$` con el sufijo del
  * caller logueado y recarga la página actual.
  *
- * Ciclo 31 TDD — Sprint 6.
+ * Ciclo 39 TDD — Sprint 6.
  */
 describe('MySubmissions', () => {
   let searchFn: ReturnType<typeof vi.fn>;

@@ -132,4 +132,22 @@ export class CollectionApiService {
       body,
     );
   }
+
+  /**
+   * Crea el adminGroup asociado a la collection indicada. DSpace lo nombra
+   * automáticamente (`COLLECTION_<uuid>_admin`) — mismo patrón del
+   * `createSubmittersGroup`: el contrato 9.x prohíbe fijar nombre, el body
+   * solo lleva metadata opcional. El facade del Ciclo 40 enlaza
+   * `SUBMITTERS_<sufijo>` como subgrupo del Group resultante para que los
+   * delegados hereden ADMIN sobre la coll recién creada.
+   */
+  createAdminGroup(
+    collectionUuid: string,
+    body: AssociatedGroupCreateBody = {},
+  ): Observable<Group> {
+    return this.http.post<Group>(
+      `${DSPACE_API_BASE}${COLLECTIONS_PATH}/${collectionUuid}/adminGroup`,
+      body,
+    );
+  }
 }

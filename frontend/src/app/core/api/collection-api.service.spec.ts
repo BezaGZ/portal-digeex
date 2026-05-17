@@ -8,6 +8,7 @@ import { JsonPatchEntry } from './json-patch.util';
 import collectionCreateFixture from './test-fixtures/collection-create-response.json';
 import collectionPatchFixture from './test-fixtures/collection-patch-response.json';
 import collectionCreateSubmittersgroupFixture from './test-fixtures/collection-create-submittersgroup-response.json';
+import collectionCreateAdmingroupFixture from './test-fixtures/collection-create-admingroup-response.json';
 
 /**
  * Tests de `CollectionApiService`.
@@ -256,6 +257,47 @@ describe('CollectionApiService', () => {
     expect(result).toBeDefined();
     expect(result!.uuid).toBe('309d5464-6e12-49bc-b1d8-b927b79e701b');
     expect(result!.name).toBe('COLLECTION_8d55e068-4354-4620-9f80-faf4dbe933c1_SUBMIT');
+    expect(result!.permanent).toBe(false);
+  });
+
+  /**
+   * Ciclo 40.3 — sub-tarea del Ciclo 40 grande. Replica del submittersGroup
+   * sobre el endpoint adminGroup. DSpace auto-nombra el grupo resultante
+   * `COLLECTION_<uuid>_admin` y `CollectionFacade.createColeccion$` lo va a
+   * enlazar al `SUBMITTERS_<sufijo>` compartido como subgroup, igual que con
+   * el submittersGroup, para que los delegados hereden ADMIN sobre la coll
+   * recién creada y puedan subir cover post-archive.
+   */
+  it('createAdminGroup() should POST to /collections/{uuid}/adminGroup with metadata body and return the auto-named Group', () => {
+    const body = {
+      metadata: {
+        'dc.description': [
+          {
+            value: 'AdminGroup técnico auto-asociado vía POST',
+            language: null,
+            authority: null,
+            confidence: -1,
+            place: 0,
+          },
+        ],
+      },
+    };
+    let result: Group | undefined;
+
+    service
+      .createAdminGroup('8d55e068-4354-4620-9f80-faf4dbe933c1', body)
+      .subscribe((g) => (result = g));
+
+    const req = httpMock.expectOne(
+      '/server/api/core/collections/8d55e068-4354-4620-9f80-faf4dbe933c1/adminGroup',
+    );
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(body);
+    req.flush(collectionCreateAdmingroupFixture);
+
+    expect(result).toBeDefined();
+    expect(result!.uuid).toBe('4f1a2c8b-3d72-4ab9-9e1c-7f4d2c1e8b3a');
+    expect(result!.name).toBe('COLLECTION_8d55e068-4354-4620-9f80-faf4dbe933c1_admin');
     expect(result!.permanent).toBe(false);
   });
 });

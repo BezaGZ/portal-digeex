@@ -807,7 +807,33 @@ echo "$COLLECTIONS_BASICA" | jq -r '._embedded.collections[] | "\(.uuid)|\(.name
     -H "Content-Type: text/uri-list" \
     -d "$BASE_URL/api/eperson/groups/$SUBMITTERS_GROUP_BASICA_UUID" \
     "$BASE_URL/api/eperson/groups/$TECH_SUBM_UUID/subgroups" > /dev/null
-  echo "  ✓ $COLL_NAME"
+
+  # adminGroup técnico de la colección. SUBMITTERS_<sufijo> entra como subgroup
+  # para que el delegado herede ADMIN sobre la colección y la propagación nativa
+  # de DSpace lo extienda a items, bundles y bitstreams. Esto desbloquea
+  # POST /items/{uuid}/bundles (cover en THUMBNAIL) y los PATCH post-archive sin
+  # crear policies custom.
+  TECH_ADMIN_RESP=$(curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"metadata":{"dc.description":[{"value":"adminGroup técnico de la collection"}]}}' \
+    "$BASE_URL/api/core/collections/$COLL_UUID/adminGroup")
+  TECH_ADMIN_UUID=$(echo "$TECH_ADMIN_RESP" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+  if [ -z "$TECH_ADMIN_UUID" ]; then
+    echo "  ✗ $COLL_NAME (POST adminGroup no devolvió uuid)"
+    continue
+  fi
+  curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: text/uri-list" \
+    -d "$BASE_URL/api/eperson/groups/$SUBMITTERS_GROUP_BASICA_UUID" \
+    "$BASE_URL/api/eperson/groups/$TECH_ADMIN_UUID/subgroups" > /dev/null
+
+  echo "  ✓ $COLL_NAME (submit + admin)"
 done
 
 # Obtener todas las colecciones de Educacion para el Trabajo y vincular el submittersGroup
@@ -836,7 +862,28 @@ echo "$COLLECTIONS_TRABAJO" | jq -r '._embedded.collections[] | "\(.uuid)|\(.nam
     -H "Content-Type: text/uri-list" \
     -d "$BASE_URL/api/eperson/groups/$SUBMITTERS_GROUP_TRABAJO_UUID" \
     "$BASE_URL/api/eperson/groups/$TECH_SUBM_UUID/subgroups" > /dev/null
-  echo "  ✓ $COLL_NAME"
+
+  TECH_ADMIN_RESP=$(curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"metadata":{"dc.description":[{"value":"adminGroup técnico de la collection"}]}}' \
+    "$BASE_URL/api/core/collections/$COLL_UUID/adminGroup")
+  TECH_ADMIN_UUID=$(echo "$TECH_ADMIN_RESP" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+  if [ -z "$TECH_ADMIN_UUID" ]; then
+    echo "  ✗ $COLL_NAME (POST adminGroup no devolvió uuid)"
+    continue
+  fi
+  curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: text/uri-list" \
+    -d "$BASE_URL/api/eperson/groups/$SUBMITTERS_GROUP_TRABAJO_UUID" \
+    "$BASE_URL/api/eperson/groups/$TECH_ADMIN_UUID/subgroups" > /dev/null
+
+  echo "  ✓ $COLL_NAME (submit + admin)"
 done
 
 # Obtener todas las colecciones de Formacion e Investigacion y vincular el submittersGroup
@@ -865,10 +912,31 @@ echo "$COLLECTIONS_INVESTIGACION" | jq -r '._embedded.collections[] | "\(.uuid)|
     -H "Content-Type: text/uri-list" \
     -d "$BASE_URL/api/eperson/groups/$SUBMITTERS_GROUP_INVESTIGACION_UUID" \
     "$BASE_URL/api/eperson/groups/$TECH_SUBM_UUID/subgroups" > /dev/null
-  echo "  ✓ $COLL_NAME"
+
+  TECH_ADMIN_RESP=$(curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"metadata":{"dc.description":[{"value":"adminGroup técnico de la collection"}]}}' \
+    "$BASE_URL/api/core/collections/$COLL_UUID/adminGroup")
+  TECH_ADMIN_UUID=$(echo "$TECH_ADMIN_RESP" | grep -o '"uuid" : "[^"]*"' | head -1 | sed 's/"uuid" : "//; s/"$//')
+  if [ -z "$TECH_ADMIN_UUID" ]; then
+    echo "  ✗ $COLL_NAME (POST adminGroup no devolvió uuid)"
+    continue
+  fi
+  curl -s -X POST \
+    -b "$COOKIES_FILE" \
+    -H "Authorization: Bearer $JWT" \
+    -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
+    -H "Content-Type: text/uri-list" \
+    -d "$BASE_URL/api/eperson/groups/$SUBMITTERS_GROUP_INVESTIGACION_UUID" \
+    "$BASE_URL/api/eperson/groups/$TECH_ADMIN_UUID/subgroups" > /dev/null
+
+  echo "  ✓ $COLL_NAME (submit + admin)"
 done
 
-log_success "submittersGroups vinculados a todas las colecciones"
+log_success "SUBMITTERS vinculados como subgroup de submit + admin en todas las colecciones"
 
 # ----------------------------------------------------------------------------
 # Resumen

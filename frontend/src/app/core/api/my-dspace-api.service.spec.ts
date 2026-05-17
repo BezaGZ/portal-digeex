@@ -18,7 +18,7 @@ import { MyDSpaceObject } from './models/my-dspace.model';
  * `_embedded.indexableObject`; el wrapper aplana esa envoltura a
  * `Paginated<MyDSpaceObject>` para que la UI no tenga que conocer HAL.
  *
- * Ciclo 31 TDD — Sprint 6.
+ * Ciclo 37 TDD — Sprint 6.
  */
 describe('MyDSpaceApiService', () => {
   let service: MyDSpaceApiService;

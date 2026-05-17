@@ -24,7 +24,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * (Video externo) según la decisión de Sprint 6 de no duplicar maquinaria
  * de submission para algo que tiene el mismo entity-type.
  *
- * Ciclo 23 TDD — Sprint 6. Ajustado en Ciclo 34.
+ * Ciclo 23 TDD — Sprint 6. Ajustado en Ciclo 35.
  */
 describe('DocumentSubmissionForm', () => {
   function buildCollection(uuid: string): Collection {

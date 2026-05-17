@@ -56,21 +56,58 @@ export class CollectionFacade {
                 metadata: this.descriptionMetadata(`submittersGroup técnico de ${body.name}`),
               })
               .pipe(
-                catchError((err) => this.rollback$(collection.uuid, null, err)),
-                switchMap((tech) =>
+                catchError((err) => this.rollback$(collection.uuid, null, null, err)),
+                switchMap((techSubmit) =>
                   this.groupApi.getByName(`SUBMITTERS_${sufijoSubdireccion}`).pipe(
-                    catchError((err) => this.rollback$(collection.uuid, tech.uuid, err)),
-                    switchMap((shared) =>
-                      this.groupApi
-                        .addSubgroup(
-                          tech.uuid,
-                          buildAbsoluteApiUrl(`${GROUPS_COLLECTION_PATH}/${shared.uuid}`),
-                        )
+                    catchError((err) => this.rollback$(collection.uuid, techSubmit.uuid, null, err)),
+                    switchMap((shared) => {
+                      const sharedUri = buildAbsoluteApiUrl(
+                        `${GROUPS_COLLECTION_PATH}/${shared.uuid}`,
+                      );
+                      /**
+                       * El SUBMITTERS_<sufijo> se enlaza dos veces sobre la misma
+                       * colección: como subgroup del _SUBMIT técnico (da SUBMIT a
+                       * los delegados) y como subgroup del _admin técnico (les da
+                       * ADMIN heredado, necesario para POST bundles del cover y
+                       * PATCH metadata del item post-archive). Mismo patrón que
+                       * setup-dspace.sh Ciclo 40.
+                       */
+                      return this.groupApi
+                        .addSubgroup(techSubmit.uuid, sharedUri)
                         .pipe(
-                          catchError((err) => this.rollback$(collection.uuid, tech.uuid, err)),
-                          map(() => collection),
-                        ),
-                    ),
+                          catchError((err) =>
+                            this.rollback$(collection.uuid, techSubmit.uuid, null, err),
+                          ),
+                          switchMap(() =>
+                            this.collectionApi
+                              .createAdminGroup(collection.uuid, {
+                                metadata: this.descriptionMetadata(
+                                  `adminGroup técnico de ${body.name}`,
+                                ),
+                              })
+                              .pipe(
+                                catchError((err) =>
+                                  this.rollback$(collection.uuid, techSubmit.uuid, null, err),
+                                ),
+                                switchMap((techAdmin) =>
+                                  this.groupApi
+                                    .addSubgroup(techAdmin.uuid, sharedUri)
+                                    .pipe(
+                                      catchError((err) =>
+                                        this.rollback$(
+                                          collection.uuid,
+                                          techSubmit.uuid,
+                                          techAdmin.uuid,
+                                          err,
+                                        ),
+                                      ),
+                                      map(() => collection),
+                                    ),
+                                ),
+                              ),
+                          ),
+                        );
+                    }),
                   ),
                 ),
               ),
@@ -128,12 +165,20 @@ export class CollectionFacade {
     );
   }
 
+  /**
+   * Cascada inversa: lo último creado se borra primero. El admin técnico
+   * se creó después del submit técnico, así que su DELETE va antes.
+   */
   private rollback$(
     collectionUuid: string | null,
     techSubmittersUuid: string | null,
+    techAdminUuid: string | null,
     originalError: unknown,
   ): Observable<never> {
     const cleanup$: Observable<unknown>[] = [];
+    if (techAdminUuid) {
+      cleanup$.push(this.groupApi.delete(techAdminUuid));
+    }
     if (techSubmittersUuid) {
       cleanup$.push(this.groupApi.delete(techSubmittersUuid));
     }
