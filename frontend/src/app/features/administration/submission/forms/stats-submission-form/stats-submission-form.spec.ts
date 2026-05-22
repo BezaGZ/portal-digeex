@@ -36,6 +36,8 @@ describe('StatsSubmissionForm', () => {
   ];
 
   let vocabApi: { getEntries: ReturnType<typeof vi.fn> };
+  let listOriginalFn: ReturnType<typeof vi.fn>;
+  let toastAddFn: ReturnType<typeof vi.fn>;
 
   function buildCollection(uuid: string): Collection {
     return {
@@ -48,10 +50,38 @@ describe('StatsSubmissionForm', () => {
     };
   }
 
+  function buildItem(uuid: string): Item {
+    return {
+      uuid,
+      name: 'Matrícula',
+      handle: '123/8',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.title': [
+          { value: 'Matrícula', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'dc.date.issued': [
+          { value: '2026-04-30', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+        'digeex.statsDataset': [
+          { value: 'docentes', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+  }
+
   beforeEach(() => {
     vocabApi = {
       getEntries: vi.fn().mockReturnValue(of(DATASET_VOCAB)),
     };
+    listOriginalFn = vi.fn().mockReturnValue(
+      of({ items: [], totalElements: 0, totalPages: 0, size: 20, page: 0 }),
+    );
+    toastAddFn = vi.fn();
 
     TestBed.configureTestingModule({
       imports: [StatsSubmissionForm],
@@ -60,8 +90,14 @@ describe('StatsSubmissionForm', () => {
         provideHttpClientTesting(),
         provideNoopAnimations(),
         { provide: SubmissionFacade, useValue: { submitItem$: vi.fn() } },
-        { provide: ItemAdminFacade, useValue: { editItem$: vi.fn() } },
-        { provide: MessageService, useValue: { add: vi.fn() } },
+        {
+          provide: ItemAdminFacade,
+          useValue: {
+            editItem$: vi.fn(),
+            listOriginalBitstreams$: listOriginalFn,
+          },
+        },
+        { provide: MessageService, useValue: { add: toastAddFn } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: VocabularyApiService, useValue: vocabApi },
       ],
@@ -227,5 +263,189 @@ describe('StatsSubmissionForm', () => {
         { op: 'replace', path: '/metadata/dc.date.issued/0/value', value: '2026-04-27' },
       ]),
     );
+  });
+
+  /** Verifica que al entrar en modo edición se pida la primera página del bundle ORIGINAL con size 1 (el Excel es único). */
+  it('should fetch the first page of the ORIGINAL bitstream when entering edit mode', () => {
+    const fixture = TestBed.createComponent(StatsSubmissionForm);
+    fixture.componentRef.setInput('item', buildItem('item-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+
+    expect(listOriginalFn).toHaveBeenCalledWith('item-1', 0, 1);
+  });
+
+  /** Verifica que `currentBitstreams` se llene desde la respuesta del facade al entrar a edit. */
+  it('should populate currentBitstreams from the facade response', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [{ uuid: 'bs-xlsx', name: 'matricula.xlsx', sizeBytes: 47024 }],
+        totalElements: 1,
+        totalPages: 1,
+        size: 1,
+        page: 0,
+      }),
+    );
+
+    const fixture = TestBed.createComponent(StatsSubmissionForm);
+    fixture.componentRef.setInput('item', buildItem('item-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.currentBitstreams().length).toBe(1);
+    expect(c.currentBitstreams()[0].uuid).toBe('bs-xlsx');
+  });
+
+  /** Verifica que `togglePendingDelete` marque/desmarque uuids y se reflejen en getBitstreamsToRemove. */
+  it('should toggle the bitstream uuid in pendingDeletes and expose it via getBitstreamsToRemove', () => {
+    const c = mountForCreate();
+
+    c.togglePendingDelete('bs-xlsx');
+    expect(c.getBitstreamsToRemove()).toEqual(['bs-xlsx']);
+
+    c.togglePendingDelete('bs-xlsx');
+    expect(c.getBitstreamsToRemove()).toEqual([]);
+  });
+
+  /**
+   * El dropzone gobierna la pila: una emisión con archivos llena pendingAdds
+   * y una emisión vacía (X roja del dropzone) la limpia. Sin un metodo paralelo
+   * `removePendingAdd`: el componente del dropzone es la única UI del archivo
+   * seleccionado.
+   */
+  it('should reflect the dropzone state in pendingAdds and clear it when the dropzone emits empty', () => {
+    const c = mountForCreate();
+
+    const nuevo = new File(['x'], 'matricula-actualizada.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    c.onAddBitstreams([nuevo]);
+    expect(c.getBitstreamsToAdd()).toEqual([nuevo]);
+
+    c.onAddBitstreams([]);
+    expect(c.getBitstreamsToAdd()).toEqual([]);
+  });
+
+  /** Verifica que canSubmit bloquee el envío cuando el conteo efectivo (current - deletes + adds) cae a cero. */
+  it('should block canSubmit in edit mode when the effective bitstream count drops to zero', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [{ uuid: 'bs-xlsx', name: 'matricula.xlsx', sizeBytes: 47024 }],
+        totalElements: 1,
+        totalPages: 1,
+        size: 1,
+        page: 0,
+      }),
+    );
+
+    const fixture = TestBed.createComponent(StatsSubmissionForm);
+    fixture.componentRef.setInput('item', buildItem('item-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.canSubmit()).toBe(true);
+
+    c.togglePendingDelete('bs-xlsx');
+    expect(c.canSubmit()).toBe(false);
+
+    c.onAddBitstreams([new File(['x'], 'matricula-nueva.xlsx')]);
+    expect(c.canSubmit()).toBe(true);
+  });
+
+  /**
+   * Verifica que `onAddBitstreams` marque automáticamente el Excel actual
+   * para borrar cuando el admin sube uno nuevo, manteniendo la invariante
+   * "un Excel por item" sin pedir dos clicks al admin (quitar + agregar).
+   */
+  it('should auto-mark the current Excel for deletion when adding a new one (single-bitstream invariant)', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [{ uuid: 'bs-xlsx', name: 'matricula.xlsx', sizeBytes: 47024 }],
+        totalElements: 1,
+        totalPages: 1,
+        size: 1,
+        page: 0,
+      }),
+    );
+
+    const fixture = TestBed.createComponent(StatsSubmissionForm);
+    fixture.componentRef.setInput('item', buildItem('item-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    const nuevo = new File(['x'], 'matricula-nueva.xlsx');
+    c.onAddBitstreams([nuevo]);
+
+    expect(c.isPendingDelete('bs-xlsx')).toBe(true);
+    expect(c.getBitstreamsToAdd()).toEqual([nuevo]);
+    expect(c.getBitstreamsToRemove()).toEqual(['bs-xlsx']);
+  });
+
+  /**
+   * Cuando el admin quita el archivo desde la X roja del dropzone (emisión
+   * vacía), si la única marca de borrado fue la auto-marca del Excel actual,
+   * hay que revertirla. Si no, el item quedaría sin Excel al guardar pese a
+   * que el admin canceló el reemplazo.
+   */
+  it('should revert the auto-mark when the dropzone empties after a new file was queued', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [{ uuid: 'bs-xlsx', name: 'matricula.xlsx', sizeBytes: 47024 }],
+        totalElements: 1,
+        totalPages: 1,
+        size: 1,
+        page: 0,
+      }),
+    );
+
+    const fixture = TestBed.createComponent(StatsSubmissionForm);
+    fixture.componentRef.setInput('item', buildItem('item-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    const nuevo = new File(['x'], 'matricula-nueva.xlsx');
+    c.onAddBitstreams([nuevo]);
+    expect(c.isPendingDelete('bs-xlsx')).toBe(true);
+    expect(c.getBitstreamsToAdd()).toEqual([nuevo]);
+
+    c.onAddBitstreams([]);
+    expect(c.isPendingDelete('bs-xlsx')).toBe(false);
+    expect(c.getBitstreamsToAdd()).toEqual([]);
+  });
+
+  /**
+   * Verifica que al restaurar un bitstream auto-marcado (clic en Restaurar) se
+   * limpie `pendingAdds`: el admin canceló el reemplazo, el archivo nuevo deja
+   * de tener sentido y no puede quedar pendiente porque romperia la invariante.
+   */
+  it('should clear pendingAdds when restoring a current bitstream that was auto-marked for replacement', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [{ uuid: 'bs-xlsx', name: 'matricula.xlsx', sizeBytes: 47024 }],
+        totalElements: 1,
+        totalPages: 1,
+        size: 1,
+        page: 0,
+      }),
+    );
+
+    const fixture = TestBed.createComponent(StatsSubmissionForm);
+    fixture.componentRef.setInput('item', buildItem('item-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    const nuevo = new File(['x'], 'matricula-nueva.xlsx');
+    c.onAddBitstreams([nuevo]);
+    expect(c.getBitstreamsToAdd()).toEqual([nuevo]);
+    expect(c.isPendingDelete('bs-xlsx')).toBe(true);
+
+    c.togglePendingDelete('bs-xlsx');
+    expect(c.isPendingDelete('bs-xlsx')).toBe(false);
+    expect(c.getBitstreamsToAdd()).toEqual([]);
   });
 });

@@ -1,4 +1,5 @@
 <p-fileupload
+  #pfu
   mode="advanced"
   [chooseLabel]="chooseLabel"
   [accept]="accept"
@@ -23,7 +24,7 @@
     </div>
   </ng-template>
 
-  <ng-template pTemplate="file" let-file let-index="index" let-removeFn="removeFileCallback">
+  <ng-template pTemplate="file" let-file let-index="index">
     <div class="flex items-center gap-3 px-3 py-2 border-b"
          style="border-color: var(--color-border, #e5e7eb)">
       <i [class]="iconFor(file.name)"
@@ -45,7 +46,7 @@
         [text]="true"
         [rounded]="true"
         size="small"
-        (onClick)="removeFn($event, index)" />
+        (onClick)="pfu.remove($event, index)" />
     </div>
   </ng-template>
 </p-fileupload>
