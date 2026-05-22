@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { EMPTY, Observable } from 'rxjs';
+import { expand, reduce } from 'rxjs/operators';
 import { VocabularyEntry } from './models/vocabulary-entry.model';
 import { DSPACE_API_BASE, VOCABULARIES_PATH } from './dspace-rest.util';
 
@@ -31,34 +31,60 @@ interface VocabularyEntriesResponse {
 /**
  * Wrapper HTTP del recurso `/api/submission/vocabularies` de DSpace.
  *
- * Devuelve array plano de `VocabularyEntry`. Decisión asumida: si algún
- * vocabulario DIGEEX crece más allá de 20 entries (page size por defecto
- * de DSpace), cambiar la firma a `Paginated<VocabularyEntry>` y agregar
- * parámetros page/size. Hoy todos los vocabularios DIGEEX caben en una
- * sola página (el más grande es `tipos-documento` con 15 entries).
+ * `getEntries` devuelve el universo completo del vocabulario iterando todas
+ * las páginas con `expand` + `reduce` sin pasar `size`; el backend usa su
+ * default configurado (`spring.data.rest.default-page-size`) y reporta
+ * `totalPages` coherente. La firma sin parámetros `page/size` ya promete
+ * "todas las entries"; la implementación honra esa promesa sin imponer un
+ * tamaño de página arbitrario desde el frontend.
  */
 @Injectable({ providedIn: 'root' })
 export class VocabularyApiService {
   private readonly http = inject(HttpClient);
 
   /**
-   * Devuelve los pares display/value del vocabulario `vocabularyName`.
+   * Devuelve los pares display/value del vocabulario `vocabularyName`
+   * iterando todas las páginas del endpoint hasta agotar `totalPages`.
    * Endpoint público en DSpace 9.x (no requiere autenticación). Descarta
    * `otherInformation` y `type` porque el frontend solo usa el par para
    * poblar los dropdowns de los formularios de submission.
    */
   getEntries(vocabularyName: string): Observable<VocabularyEntry[]> {
-    return this.http
-      .get<VocabularyEntriesResponse>(
-        `${DSPACE_API_BASE}${VOCABULARIES_PATH}${vocabularyName}/entries`,
-      )
-      .pipe(
-        map((response) =>
-          response._embedded.entries.map((entry) => ({
+    return this.fetchPage$(vocabularyName, 0).pipe(
+      expand((response) => {
+        const next = response.page.number + 1;
+        return next < response.page.totalPages
+          ? this.fetchPage$(vocabularyName, next)
+          : EMPTY;
+      }),
+      reduce(
+        (acc, response) => [
+          ...acc,
+          ...response._embedded.entries.map((entry) => ({
             display: entry.display,
             value: entry.value,
           })),
-        ),
-      );
+        ],
+        [] as VocabularyEntry[],
+      ),
+    );
+  }
+
+  /**
+   * GET de una página específica del endpoint paginado HAL. La página 0 va
+   * sin parámetros para preservar la URL canónica del recurso; las páginas
+   * posteriores agregan `?page=N`. Spring Data REST acepta `page` sin `size`
+   * y aplica su default configurado.
+   */
+  private fetchPage$(
+    vocabularyName: string,
+    page: number,
+  ): Observable<VocabularyEntriesResponse> {
+    const url = `${DSPACE_API_BASE}${VOCABULARIES_PATH}${vocabularyName}/entries`;
+    return page === 0
+      ? this.http.get<VocabularyEntriesResponse>(url)
+      : this.http.get<VocabularyEntriesResponse>(url, {
+          params: new HttpParams().set('page', String(page)),
+        });
   }
 }

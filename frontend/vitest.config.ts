@@ -43,11 +43,27 @@ export default defineConfig({
         'src/app/features/auth/**/*.ts',
 
         /** Sprint 5 — Shell admin tocado puntualmente */
-        'src/app/layout/admin-layout/app.menu/app.menu.ts',
+        'src/app/layout/admin-layout/app.menu/**/*.ts',
         'src/app/layout/admin-layout/app.topbar/app.topbar.ts',
 
         /** Sprint 5 — Modal de aviso de inactividad */
         'src/app/shared/components/session-warning-modal/**/*.ts',
+
+        /** Sprint 6 — Wrappers HTTP */
+        'src/app/core/api/bundle-api.service.ts',
+        'src/app/core/api/collection-api.service.ts',
+        'src/app/core/api/community-api.service.ts',
+        'src/app/core/api/item-api.service.ts',
+        'src/app/core/api/json-patch.util.ts',
+        'src/app/core/api/my-dspace-api.service.ts',
+        'src/app/core/api/submission-form-api.service.ts',
+        'src/app/core/api/vocabulary-api.service.ts',
+        'src/app/core/api/vocabulary-display.service.ts',
+        'src/app/core/api/workspaceitem-api.service.ts',
+        'src/app/core/api/bitstream-download.service.ts',
+
+        /** Sprint 6 — Fechas ISO locales */
+        'src/app/core/i18n/**/*.ts',
       ],
       exclude: [
         'node_modules/',
