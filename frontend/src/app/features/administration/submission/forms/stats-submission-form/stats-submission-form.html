@@ -1,0 +1,120 @@
+<p-card>
+  @if (vocabulariesLoading()) {
+    <app-loading-spinner minHeight="320px" />
+  } @else {
+  <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+      <label for="title" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Título <span class="text-red-600">*</span>
+      </label>
+      <input id="title" pInputText formControlName="title" maxlength="200" class="w-full" />
+      @if (form.controls.title.touched && form.controls.title.invalid) {
+        <small class="text-red-600">El título es obligatorio.</small>
+      }
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="abstract" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Descripción <span class="text-gray-400 font-normal">(opcional)</span>
+      </label>
+      <textarea
+        id="abstract"
+        pTextarea
+        formControlName="abstract"
+        rows="3"
+        maxlength="1000"
+        placeholder="Contexto de los datos de la gráfica"
+        class="w-full"></textarea>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="issued" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Fecha de corte <span class="text-red-600">*</span>
+      </label>
+      <p-datepicker
+        inputId="issued"
+        formControlName="issued"
+        dateFormat="yy-mm-dd"
+        dataType="string"
+        placeholder="Año-Mes-Día"
+        appendTo="body"
+        styleClass="w-full" />
+      @if (form.controls.issued.touched && form.controls.issued.invalid) {
+        <small class="text-red-600">La fecha es obligatoria.</small>
+      }
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label for="dataset" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Dataset <span class="text-red-600">*</span>
+      </label>
+      <p-select
+        inputId="dataset"
+        formControlName="dataset"
+        [options]="datasetOptions()"
+        optionLabel="display"
+        optionValue="value"
+        placeholder="Elegí el tipo de dataset"
+        appendTo="body"
+        styleClass="w-full" />
+      @if (form.controls.dataset.touched && form.controls.dataset.invalid) {
+        <small class="text-red-600">El dataset es obligatorio.</small>
+      }
+    </div>
+
+    @if (!isEditMode()) {
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Archivo Excel <span class="text-red-600">*</span>
+          <span class="text-gray-400 font-normal">(un único .xlsx)</span>
+        </label>
+        <app-file-dropzone
+          accept=".xlsx"
+          [multiple]="false"
+          chooseLabel="Seleccionar archivo"
+          dropMessage="Arrastrá el Excel aquí o usá el botón de elegir."
+          (filesChange)="onFilesChange($event)" />
+      </div>
+    }
+
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Visibilidad
+      </label>
+      <div class="flex items-center gap-3">
+        <p-toggleswitch
+          inputId="visibility"
+          [ngModel]="visibility() === 'public'"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="visibility.set($event ? 'public' : 'private')" />
+        <label for="visibility" class="text-sm text-gray-700 dark:text-gray-300">
+          {{ visibility() === 'public'
+              ? 'Pública: aparece en búsqueda y listados.'
+              : 'Oculta: no aparece en búsqueda; solo accesible por URL directa.' }}
+        </label>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-2 pt-2">
+      <p-button
+        type="button"
+        label="Regresar"
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        [outlined]="true"
+        [rounded]="true"
+        [disabled]="submitting()"
+        (onClick)="cancel()" />
+      <p-button
+        type="submit"
+        [label]="isEditMode() ? 'Guardar cambios' : 'Subir Estadística'"
+        [icon]="isEditMode() ? 'pi pi-save' : 'pi pi-upload'"
+        severity="success"
+        styleClass="!text-white !font-medium"
+        [rounded]="true"
+        [disabled]="!canSubmit() || submitting()"
+        [loading]="submitting()" />
+    </div>
+  </form>
+  }
+</p-card>
