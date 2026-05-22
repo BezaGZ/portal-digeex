@@ -37,7 +37,7 @@ export class Home implements OnInit {
       next: (menuCollections) => {
         this.children = menuCollections.map((collection) => ({
           id: collection.uuid,
-          name: collection.metadata?.['dc.subject']?.[0]?.value || collection.name,
+          name: collection.metadata?.['dc.title.alternative']?.[0]?.value || collection.name,
           description: collection.metadata?.['dc.title']?.[0]?.value || '',
           type: 'collection',
           format: collection.metadata?.['dspace.entity.type']?.[0]?.value || ENTITY_TYPE.DOCUMENTO,
