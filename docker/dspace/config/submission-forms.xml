@@ -278,11 +278,22 @@
             <required>La fecha es obligatoria.</required>
         </field>
     </row>
+    <row>
+        <field>
+            <dc-schema>digeex</dc-schema>
+            <dc-element>statsDataset</dc-element>
+            <repeatable>false</repeatable>
+            <label>Dataset</label>
+            <input-type value-pairs-name="tipos-dataset-estadistica">dropdown</input-type>
+            <hint>Tipo de dataset que el portal interpretará para producir el dashboard.</hint>
+            <required>El dataset es obligatorio.</required>
+        </field>
+    </row>
 </form>
 
 
 <!-- =========================================================================
-  Bloque 2 — Cinco <value-pairs> DIGEEX (listas planas para los dropdowns)
+  Bloque 2 — Ocho <value-pairs> DIGEEX (listas planas para los dropdowns)
 
   Va dentro de <form-value-pairs>
   Antes del cierre </form-value-pairs>
@@ -395,4 +406,9 @@
     <pair><displayed-value>Francés</displayed-value><stored-value>fr</stored-value></pair>
     <pair><displayed-value>Portugués</displayed-value><stored-value>pt</stored-value></pair>
     <pair><displayed-value>Otro</displayed-value><stored-value>other</stored-value></pair>
+</value-pairs>
+
+<value-pairs value-pairs-name="tipos-dataset-estadistica" dc-term="statsDataset">
+    <pair><displayed-value>Docentes</displayed-value><stored-value>docentes</stored-value></pair>
+    <pair><displayed-value>Estudiantes</displayed-value><stored-value>estudiantes</stored-value></pair>
 </value-pairs>

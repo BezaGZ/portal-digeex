@@ -207,6 +207,7 @@ DIGEEX_FIELDS=(
   'populationType|Tipo de poblacion predominante en fotografia institucional'
   'imageFocus|Contexto visual de la imagen: Infraestructura, Tecnologia, Agricultura'
   'sufijo|Sufijo identificador de la subdireccion (ej: ED_BASICA) usado para nombrar los grupos ADMIN_<sufijo> y SUBMITTERS_<sufijo>'
+  'statsDataset|Tipo de dataset estadistico del item (ej: docentes, estudiantes). Determina que renderer del portal interpreta el Excel adjunto.'
 )
 
 for field_entry in "${DIGEEX_FIELDS[@]}"; do
