@@ -265,14 +265,19 @@ describe('StatsSubmissionForm', () => {
     );
   });
 
-  /** Verifica que al entrar en modo edición se pida la primera página del bundle ORIGINAL con size 1 (el Excel es único). */
-  it('should fetch the first page of the ORIGINAL bitstream when entering edit mode', () => {
+  /**
+   * Al entrar en modo edición se pide la primera página del bundle ORIGINAL
+   * con size 20: la invariante de negocio es 1 Excel por item, pero si el
+   * bundle quedó con más de uno (bug previo, fallo intermedio), el form los
+   * muestra todos para que el admin pueda limpiarlos.
+   */
+  it('should fetch the first page of the ORIGINAL bundle with size 20 when entering edit mode', () => {
     const fixture = TestBed.createComponent(StatsSubmissionForm);
     fixture.componentRef.setInput('item', buildItem('item-1'));
     fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
     fixture.detectChanges();
 
-    expect(listOriginalFn).toHaveBeenCalledWith('item-1', 0, 1);
+    expect(listOriginalFn).toHaveBeenCalledWith('item-1', 0, 20);
   });
 
   /** Verifica que `currentBitstreams` se llene desde la respuesta del facade al entrar a edit. */
