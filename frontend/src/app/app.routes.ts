@@ -32,8 +32,13 @@ export const routes: Routes = [
       },
       {
         path: 'estadistica',
-        loadComponent: () => import('./features/administration/dashboard/dashboard').then(m => m.Dashboard),
-        data: { breadcrumb: 'Estadística' }
+        data: { breadcrumb: 'Estadística' },
+        children: [
+          {
+            path: '',
+            loadComponent: () => import('./features/stats/stats-list/stats-list').then(m => m.StatsList),
+          },
+        ],
       },
       {
         path: 'galeria',
