@@ -1,4 +1,9 @@
-import { normalizeHeader, resolveHeaders, readCell } from './normalize-headers.util';
+import {
+  normalizeHeader,
+  resolveHeaders,
+  resolveHeaderFuzzy,
+  readCell,
+} from './normalize-headers.util';
 
 /**
  * Tests del helper `normalize-headers.util`.
@@ -41,6 +46,21 @@ describe('normalize-headers.util', () => {
   /** Si falta una columna requerida, lanza un Error claro con la lista de faltantes. */
   it('should throw when a required logical key has no matching header', () => {
     expect(() => resolveHeaders(['Sexo'], ['sexo', 'contrato'])).toThrow(/contrato/);
+  });
+
+  /**
+   * resolveHeaderFuzzy busca el header cuyo normalizado contenga todos los
+   * fragmentos pasados (en cualquier orden). Resiliencia para columnas con
+   * encoding sospechoso (e.g. `COMUNIDAD LING¿ISTICA` donde la Ü se corrompió);
+   * matchea hoy con el `¿` y mañana si DIGEEX limpia el Excel a `Ü` o sin acento.
+   */
+  it('should find a header that contains all given fragments after normalization', () => {
+    const headers = ['SEXO', 'COMUNIDAD LING¿ISTICA', 'EDAD'];
+
+    expect(resolveHeaderFuzzy(headers, ['comunidad', 'ling'])).toBe('COMUNIDAD LING¿ISTICA');
+    expect(resolveHeaderFuzzy(headers, ['SEXO'])).toBe('SEXO');
+    expect(resolveHeaderFuzzy(headers, ['comunidad', 'edad'])).toBeNull();
+    expect(resolveHeaderFuzzy(headers, ['nada'])).toBeNull();
   });
 
   /** Lee la celda del row y trimea solo si el valor es string. */

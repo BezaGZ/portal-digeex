@@ -45,6 +45,29 @@ export function resolveHeaders(
 }
 
 /**
+ * Busca el header cuyo normalizado contenga todos los fragmentos pasados (en
+ * cualquier orden). Pensado para columnas con encoding sospechoso o nombres
+ * inestables donde el matching exacto se rompe: el renderer declara las
+ * "palabras ancla" que esperamos siempre estén presentes (e.g. `'comunidad'` +
+ * `'ling'` para `COMUNIDAD LING¿ISTICA` o `COMUNIDAD LINGÜISTICA`) y este
+ * helper devuelve el header físico que coincida. Retorna `null` si no
+ * encuentra coincidencia.
+ */
+export function resolveHeaderFuzzy(
+  headers: readonly string[],
+  fragments: readonly string[],
+): string | null {
+  const normalizedFragments = fragments.map((f) => f.toLowerCase());
+  for (const h of headers) {
+    const normalized = normalizeHeader(h);
+    if (normalizedFragments.every((frag) => normalized.includes(frag))) {
+      return h;
+    }
+  }
+  return null;
+}
+
+/**
  * Lee una celda de la fila por header físico y trimea si el valor es string;
  * preserva el case original del valor (los renderers agrupan por valor
  * exacto, pero los datos del Excel suelen venir con espacios sobrantes).
