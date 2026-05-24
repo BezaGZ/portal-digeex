@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
 import { ChartConfig } from '../../../models/stats-dashboard.model';
+import { readChartColors } from '../chart-colors.util';
 
 /**
  * Wrapper de `<p-chart type="treemap">` usando `chartjs-chart-treemap`.
@@ -24,6 +25,7 @@ import { ChartConfig } from '../../../models/stats-dashboard.model';
 })
 export class TreemapChartComponent {
   private readonly _config = signal<ChartConfig | null>(null);
+  private readonly colors = readChartColors();
 
   @Input({ required: true })
   set config(value: ChartConfig) {
@@ -52,16 +54,16 @@ export class TreemapChartComponent {
           tree: cfg.data.map((d) => ({ label: d.label, value: d.value })),
           key: 'value',
           backgroundColor: (ctx: { dataIndex?: number }) => {
-            const palette = ['#1E3159', '#233E72', '#5879B6', '#7691C3', '#9DB1D4', '#C4D0E5'];
+            const palette = this.colors.treemapPalette;
             const index = ctx.dataIndex ?? 0;
             return palette[index % palette.length];
           },
-          borderColor: '#FFFFFF',
+          borderColor: this.colors.surface,
           borderWidth: 2,
           spacing: 1,
           labels: {
             display: true,
-            color: '#FFFFFF',
+            color: this.colors.surface,
             font: { weight: 'bold' as const, size: 12 },
             formatter: (ctx: { raw?: { _data?: { label?: string; value?: number } } }) => {
               const data = ctx.raw?._data;

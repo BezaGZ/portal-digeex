@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
 import { ChartConfig } from '../../../models/stats-dashboard.model';
+import { readChartColors } from '../chart-colors.util';
 
 /**
  * Wrapper de `<p-chart type="bar">` con `indexAxis: 'y'` para mostrar
@@ -18,6 +19,7 @@ import { ChartConfig } from '../../../models/stats-dashboard.model';
 })
 export class HorizontalBarChartComponent {
   private readonly _config = signal<ChartConfig | null>(null);
+  private readonly colors = readChartColors();
 
   @Input({ required: true })
   set config(value: ChartConfig) {
@@ -35,8 +37,8 @@ export class HorizontalBarChartComponent {
         {
           label: cfg.title,
           data: cfg.data.map((d) => d.value),
-          backgroundColor: '#026961',
-          hoverBackgroundColor: '#235558',
+          backgroundColor: this.colors.secondary,
+          hoverBackgroundColor: this.colors.secondaryHover,
           borderRadius: 4,
         },
       ],
@@ -59,7 +61,7 @@ export class HorizontalBarChartComponent {
       datalabels: {
         anchor: 'end' as const,
         align: 'right' as const,
-        color: '#1E3159',
+        color: this.colors.primary,
         font: { weight: 'bold' as const, size: 11 },
         formatter: (value: number) => value.toLocaleString('es-GT'),
       },
@@ -68,7 +70,7 @@ export class HorizontalBarChartComponent {
       x: {
         beginAtZero: true,
         grace: '10%',
-        grid: { color: 'rgba(0,0,0,0.05)' },
+        grid: { color: this.colors.axisGrid },
       },
       y: {
         grid: { display: false },

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
 import { ChartConfig } from '../../../models/stats-dashboard.model';
+import { readChartColors } from '../chart-colors.util';
 
 /**
  * Wrapper de `<p-chart type="pie">`. Transforma el `ChartConfig` agnóstico
@@ -19,6 +20,7 @@ import { ChartConfig } from '../../../models/stats-dashboard.model';
 })
 export class PieChartComponent {
   private readonly _config = signal<ChartConfig | null>(null);
+  private readonly colors = readChartColors();
 
   @Input({ required: true })
   set config(value: ChartConfig) {
@@ -36,8 +38,8 @@ export class PieChartComponent {
       datasets: [
         {
           data: cfg.data.map((d) => d.value),
-          backgroundColor: PALETTE,
-          hoverBackgroundColor: PALETTE,
+          backgroundColor: this.colors.piePalette,
+          hoverBackgroundColor: this.colors.piePalette,
         },
       ],
     };
@@ -73,8 +75,8 @@ export class PieChartComponent {
               const pct = total ? ((value / total) * 100).toFixed(1) : '0.0';
               return {
                 text: `${label}  ${value.toLocaleString('es-GT')} (${pct}%)`,
-                fillStyle: colors[i] ?? '#1E3159',
-                strokeStyle: colors[i] ?? '#1E3159',
+                fillStyle: colors[i] ?? this.colors.primary,
+                strokeStyle: colors[i] ?? this.colors.primary,
                 hidden: false,
                 index: i,
               };
@@ -88,19 +90,3 @@ export class PieChartComponent {
     },
   };
 }
-
-/**
- * Paleta para slices del pie. Tomada de la línea oficial de macrotemas de
- * gobierno (`--color-gob-primary`, `--color-gob-accent`, etc.) pero
- * resolviendo a HEX porque Chart.js no lee CSS vars en runtime.
- */
-const PALETTE = [
-  '#1E3159', // gob-primary
-  '#F2A119', // gob-accent
-  '#026961', // seguridad
-  '#9F0B30', // competitividad
-  '#FE8B5A', // oportunidad
-  '#888EA5', // modernidad
-  '#233E72', // gob-primary-light
-  '#A8723A', // gob-accent-dark
-];

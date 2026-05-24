@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
 import { ChartConfig } from '../../../models/stats-dashboard.model';
+import { readChartColors } from '../chart-colors.util';
 
 /**
  * Wrapper de `<p-chart type="bar">` para distribuciones de frecuencia con
@@ -20,6 +21,7 @@ import { ChartConfig } from '../../../models/stats-dashboard.model';
 })
 export class HistogramChartComponent {
   private readonly _config = signal<ChartConfig | null>(null);
+  private readonly colors = readChartColors();
 
   @Input({ required: true })
   set config(value: ChartConfig) {
@@ -37,9 +39,11 @@ export class HistogramChartComponent {
         {
           label: cfg.title,
           data: cfg.data.map((d) => d.value),
-          backgroundColor: '#5879B6',
-          hoverBackgroundColor: '#1E3159',
-          borderColor: '#1E3159',
+          // Tint medio del gradiente azul para distinguirlo del BarChart
+          // (que usa primary puro) y darle el look de densidad continua.
+          backgroundColor: this.colors.treemapPalette[2],
+          hoverBackgroundColor: this.colors.primary,
+          borderColor: this.colors.primary,
           borderWidth: 1,
           barPercentage: 1.0,
           categoryPercentage: 1.0,
@@ -69,7 +73,7 @@ export class HistogramChartComponent {
       y: {
         beginAtZero: true,
         grace: '5%',
-        grid: { color: 'rgba(0,0,0,0.05)' },
+        grid: { color: this.colors.axisGrid },
       },
     },
   };

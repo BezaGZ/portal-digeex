@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
 import { ChartConfig } from '../../../models/stats-dashboard.model';
+import { readChartColors } from '../chart-colors.util';
 
 /**
  * Wrapper de `<p-chart type="bar">` (barras verticales). Mismo patrón que
@@ -19,6 +20,7 @@ import { ChartConfig } from '../../../models/stats-dashboard.model';
 })
 export class BarChartComponent {
   private readonly _config = signal<ChartConfig | null>(null);
+  private readonly colors = readChartColors();
 
   @Input({ required: true })
   set config(value: ChartConfig) {
@@ -36,8 +38,8 @@ export class BarChartComponent {
         {
           label: cfg.title,
           data: cfg.data.map((d) => d.value),
-          backgroundColor: '#1E3159',
-          hoverBackgroundColor: '#233E72',
+          backgroundColor: this.colors.primary,
+          hoverBackgroundColor: this.colors.primaryHover,
           borderRadius: 4,
         },
       ],
@@ -58,7 +60,7 @@ export class BarChartComponent {
       datalabels: {
         anchor: 'end' as const,
         align: 'top' as const,
-        color: '#1E3159',
+        color: this.colors.primary,
         font: { weight: 'bold' as const, size: 11 },
         formatter: (value: number) => value.toLocaleString('es-GT'),
       },
@@ -71,7 +73,7 @@ export class BarChartComponent {
       y: {
         beginAtZero: true,
         grace: '10%',
-        grid: { color: 'rgba(0,0,0,0.05)' },
+        grid: { color: this.colors.axisGrid },
       },
     },
   };
