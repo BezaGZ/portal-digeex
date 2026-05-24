@@ -8,13 +8,14 @@ import { BarChartComponent } from '../bar-chart/bar-chart';
 import { HorizontalBarChartComponent } from '../horizontal-bar-chart/horizontal-bar-chart';
 import { ListChartComponent } from '../list-chart/list-chart';
 import { TagsChartComponent } from '../tags-chart/tags-chart';
+import { HistogramChartComponent } from '../histogram-chart/histogram-chart';
+import { TreemapChartComponent } from '../treemap-chart/treemap-chart';
 
 /**
  * Renderiza una sección del dashboard como una `<p-card>` con título y todas
  * sus gráficas. Despacha cada `ChartConfig` al componente concreto según
  * `type`. Los KPIs van en una fila densa (varias columnas), el resto se
- * apila vertical. `histogram` y `treemap` muestran un placeholder hasta que
- * sus componentes concretos aterricen.
+ * apila vertical.
  */
 @Component({
   selector: 'app-chart-section',
@@ -28,6 +29,8 @@ import { TagsChartComponent } from '../tags-chart/tags-chart';
     HorizontalBarChartComponent,
     ListChartComponent,
     TagsChartComponent,
+    HistogramChartComponent,
+    TreemapChartComponent,
   ],
   templateUrl: './chart-section.html',
   host: {

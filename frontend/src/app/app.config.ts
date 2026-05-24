@@ -9,14 +9,16 @@ import Aura from '@primeuix/themes/aura';
 import { firstValueFrom } from 'rxjs';
 import { Chart } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
+import { TreemapController, TreemapElement } from 'chartjs-chart-treemap';
 
 /**
- * Registra `chartjs-plugin-datalabels` globalmente para que los chart
- * components de Stats puedan mostrar el valor de cada slice/barra siempre
- * (no solo al hover). Cada componente decide en sus options si activarlo y
- * con qué formato.
+ * Registra los plugins/controllers globales de Chart.js que usan los chart
+ * components de Stats. `chartjs-plugin-datalabels` muestra el valor sobre
+ * cada slice/barra siempre, no solo al hover. `chartjs-chart-treemap` suma
+ * el tipo `treemap` al universo de Chart.js (no es nativo del core); cada
+ * componente decide en sus options si activarlo y con qué formato.
  */
-Chart.register(ChartDataLabels);
+Chart.register(ChartDataLabels, TreemapController, TreemapElement);
 
 import { registerLocaleData } from '@angular/common';
 import localeEsGT from '@angular/common/locales/es-GT';

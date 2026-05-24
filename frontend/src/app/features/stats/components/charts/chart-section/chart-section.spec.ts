@@ -7,16 +7,18 @@ import { KpiCardComponent } from '../kpi-card/kpi-card';
 import { PieChartComponent } from '../pie-chart/pie-chart';
 import { BarChartComponent } from '../bar-chart/bar-chart';
 import { HorizontalBarChartComponent } from '../horizontal-bar-chart/horizontal-bar-chart';
+import { HistogramChartComponent } from '../histogram-chart/histogram-chart';
+import { TreemapChartComponent } from '../treemap-chart/treemap-chart';
 
 /**
  * Tests de `ChartSectionComponent`.
  *
  * Renderiza una sección del `StatsDashboard` despachando cada `ChartConfig`
  * al componente concreto según `type`. KPIs van en grid horizontal; pie,
- * bar y horizontal-bar se apilan. `histogram` y `treemap` muestran un
- * placeholder textual hasta que sus componentes concretos aterricen.
+ * bar, horizontal-bar, list, tags, histogram y treemap se apilan vertical.
  *
- * Ciclo 11 TDD — Sprint 7.
+ * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclo 12 (Sprint 7) cuando aterrizaron
+ * los wrappers concretos de `histogram` y `treemap`.
  */
 
 describe('ChartSectionComponent', () => {
@@ -72,14 +74,14 @@ describe('ChartSectionComponent', () => {
   });
 
   /**
-   * Tipos de chart sin componente registrado (histogram, treemap) no
-   * renderizan nada: el header de la sección queda visible pero el cuerpo
-   * vacío. Es preferible el silencio a un placeholder textual que ensucia
-   * la UI; cuando el componente concreto aterrice el switch lo dispacha.
+   * Histogram y treemap despachan a `HistogramChartComponent` y
+   * `TreemapChartComponent`. Antes del Ciclo 12 estos dos types eran
+   * silencio intencional; ahora que sus wrappers existen, el dispatcher los
+   * pinta como cualquier otro chart-type del `@switch`.
    */
-  it('should not render any placeholder for chart types without a concrete component', () => {
+  it('should dispatch histogram and treemap charts to their respective wrappers', () => {
     const section: ChartSection = {
-      title: 'Pendientes',
+      title: 'Demografía y programas',
       charts: [
         { type: 'histogram', title: 'Edad', data: [{ label: '10', value: 1 }] },
         { type: 'treemap', title: 'Programas', data: [{ label: 'A', value: 1 }] },
@@ -89,8 +91,7 @@ describe('ChartSectionComponent', () => {
     fixture.componentRef.setInput('section', section);
     fixture.detectChanges();
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).not.toContain('pendiente');
-    expect(text).not.toContain('Tipo de gráfica');
+    expect(fixture.debugElement.query(By.directive(HistogramChartComponent))).toBeTruthy();
+    expect(fixture.debugElement.query(By.directive(TreemapChartComponent))).toBeTruthy();
   });
 });
