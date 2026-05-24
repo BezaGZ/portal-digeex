@@ -9,6 +9,14 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
     include: ['src/**/*.{test,spec}.{js,ts}'],
+    /** 
+     * Usar 'forks' para aislar cada archivo de test y evitar OOM en CI;
+     * maxForks: 2 equilibra uso de RAM y concurrencia.
+     */
+    pool: 'forks',
+    poolOptions: {
+      forks: { maxForks: 2, minForks: 1 },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

@@ -53,6 +53,10 @@ jobs:
       # Paso 6: correr tests
       # Ejecuta el script "test" del package.json
       # El flag --run hace que Vitest corra una vez y salga (no se queda en watch mode)
+      # NODE_OPTIONS sube el heap de cada worker a 4 GB; el runner de ubuntu-latest
+      # tiene ~7 GB y Vitest con Angular + jsdom + Chart.js satura el default (~1.7 GB).
       - name: Tests unitarios (Vitest)
         run: npm run test -- --run
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
