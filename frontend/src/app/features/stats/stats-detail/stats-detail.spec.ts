@@ -52,7 +52,7 @@ class FakeRenderer implements StatsRenderer {
   applySpy = vi.fn((d: StatsDashboard) => d);
   filtersSpy = vi.fn(() => FILTERS_CONFIG as readonly FilterConfig[]);
 
-  parse(workbook: unknown): StatsDashboard {
+  parse(_workbook: unknown): StatsDashboard {
     return this.parseSpy();
   }
   getFilters(): readonly FilterConfig[] {
