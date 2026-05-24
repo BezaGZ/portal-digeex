@@ -8,6 +8,7 @@ import { ButtonModule } from 'primeng/button';
 
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { BundleApiService } from '../../../core/api/bundle-api.service';
+import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { ExcelReaderService } from '../services/excel-reader.service';
 import { getStatsRenderer } from '../stats-dataset-registry';
 import { StatsRenderer } from '../renderers/stats-renderer.interface';
@@ -50,6 +51,7 @@ export class StatsDetail implements OnInit {
   private readonly dspaceApi = inject(DSpaceApiService);
   private readonly bundleApi = inject(BundleApiService);
   private readonly excelReader = inject(ExcelReaderService);
+  private readonly breadcrumbService = inject(BreadcrumbService);
   private readonly injector = inject(Injector);
 
   readonly item = signal<Item | null>(null);
@@ -98,7 +100,10 @@ export class StatsDetail implements OnInit {
     this.dspaceApi
       .getItem(uuid)
       .pipe(
-        tap((item) => this.item.set(item)),
+        tap((item) => {
+          this.item.set(item);
+          this.updateBreadcrumb(item);
+        }),
         switchMap((item) => this.resolveRendererAndExcel$(item)),
       )
       .subscribe({
@@ -162,6 +167,19 @@ export class StatsDetail implements OnInit {
     if (typeof window !== 'undefined') {
       setTimeout(() => window.dispatchEvent(new Event('resize')), 0);
     }
+  }
+
+  /**
+   * Publica el trail con el `dc.title` real del item para que el breadcrumb
+   * global muestre el título en lugar del literal de `route.data`. Mismo
+   * patrón que `DocumentDetailComponent`.
+   */
+  private updateBreadcrumb(item: Item): void {
+    const title = item.metadata?.['dc.title']?.[0]?.value ?? 'Detalle';
+    this.breadcrumbService.setTrail([
+      { label: 'Estadística', routerLink: '/estadistica' },
+      { label: title },
+    ]);
   }
 
   private classifyError(err: unknown): void {

@@ -52,7 +52,6 @@ export const routes: Routes = [
                 .then(() => import('./features/stats/renderers/estudiantes-renderer'))
                 .then(() => import('./features/stats/stats-detail/stats-detail'))
                 .then(m => m.StatsDetail),
-            data: { breadcrumb: 'Dashboard' },
           },
         ],
       },
