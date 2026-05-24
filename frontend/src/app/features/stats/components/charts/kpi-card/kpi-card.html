@@ -1,0 +1,10 @@
+<div class="flex flex-col items-center justify-center text-center gap-1 py-3 px-2">
+  <span class="text-2xl sm:text-3xl font-bold leading-none tabular-nums whitespace-nowrap"
+        style="color: var(--gob-azul-gobierno); font-family: var(--font-display)">
+    {{ value() | number: '1.0-0' }}
+  </span>
+  <span class="text-xs sm:text-sm mt-1 leading-tight"
+        style="color: var(--color-text-secondary); font-family: var(--font-body)">
+    {{ label() }}
+  </span>
+</div>

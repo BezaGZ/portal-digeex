@@ -1,0 +1,63 @@
+<section class="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6 flex flex-col gap-5">
+  <header class="flex flex-col gap-2">
+    <div>
+      <p-button
+        label=" Regresar"
+        icon="pi pi-arrow-left"
+        severity="primary"
+        [rounded]="true"
+        styleClass="!text-white !font-medium !px-4 !py-2 transition-all duration-200"
+        (onClick)="goBack()" />
+    </div>
+
+    @if (item(); as it) {
+      <h1 class="text-2xl sm:text-3xl font-bold leading-tight"
+          style="color: var(--color-text-primary); font-family: var(--font-heading)">
+        {{ it.metadata['dc.title']?.[0]?.value ?? 'Estadística' }}
+      </h1>
+      @if (it.metadata['dc.description.abstract']?.[0]?.value; as abstract) {
+        <p class="text-sm text-justify"
+           style="color: var(--color-text-secondary); font-family: var(--font-body)">
+          {{ abstract }}
+        </p>
+      }
+      @if (it.metadata['dc.date.issued']?.[0]?.value; as issued) {
+        <div class="flex items-center gap-2 text-sm mt-1"
+             style="color: var(--color-text-secondary)">
+          <i class="pi pi-calendar"></i>
+          <span>{{ issued }}</span>
+        </div>
+      }
+    }
+  </header>
+
+  @if (isLoading()) {
+    <app-loading-spinner minHeight="320px" />
+  } @else if (errorState() === 'not-found') {
+    <app-empty-state
+      icon="pi pi-question-circle"
+      title="Estadística no encontrada"
+      message="El dataset que solicitaste no existe o fue retirado del repositorio." />
+  } @else if (errorState() === 'unsupported') {
+    <app-empty-state
+      icon="pi pi-exclamation-triangle"
+      title="Tipo de dataset no soportado"
+      message="Este item está asociado a un dataset que aún no tiene visualización disponible." />
+  } @else if (dashboard(); as d) {
+    @if (d.sections.length > 0) {
+      @if (filters().length > 0) {
+        <app-stats-filters
+          [filters]="filters()"
+          (filtersChange)="onFiltersChange($event)" />
+      }
+
+      <div class="rounded-xl overflow-hidden bg-white shadow-md border border-gray-100">
+        <div class="grid grid-cols-1 md:grid-cols-2">
+          @for (section of d.sections; track section.title) {
+            <app-chart-section [section]="section" />
+          }
+        </div>
+      </div>
+    }
+  }
+</section>

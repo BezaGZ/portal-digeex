@@ -8,7 +8,6 @@ import {
 } from '../models/stats-dashboard.model';
 import { ParsedExcel } from '../models/parsed-excel.model';
 import {
-  normalizeHeader,
   resolveHeaders,
   resolveHeaderFuzzy,
   readCell,
@@ -35,36 +34,37 @@ export abstract class BaseStatsRenderer implements StatsRenderer {
   protected latestRows: readonly Record<string, unknown>[] | null = null;
   protected latestHeaderMap: Record<string, string> | null = null;
 
+  /**
+   * Resiliente por contrato: si el Excel no calza con lo que el renderer
+   * espera, devuelve `{ sections: [] }` en vez de lanzar. La vista pública
+   * suprime el panel cuando no hay secciones; el visitante ve el header del
+   * item sin un mensaje de error que delate al admin que el archivo está
+   * mal armado.
+   */
   parse(workbook: unknown): StatsDashboard {
-    const excel = workbook as ParsedExcel;
-    const sheet = excel.sheets[excel.sheetNames[0]];
-    const headers = sheet.headers;
-    const rows = sheet.rows;
+    try {
+      const excel = workbook as ParsedExcel;
+      const sheet = excel.sheets[excel.sheetNames[0]];
+      const headers = sheet.headers;
+      const rows = sheet.rows;
 
-    // Guardia anti-PII: antes que nada, rechazar archivos con columnas identificatorias.
-    const normalized = headers.map((h) => normalizeHeader(h));
-    const forbidden = this.getForbiddenColumns();
-    const piiFound = normalized.filter((h) => forbidden.includes(h));
-    if (piiFound.length > 0) {
-      throw new Error(
-        `PII no permitido: el Excel contiene las columnas ${piiFound.join(', ')}.`,
-      );
+      const headerMap = resolveHeaders(headers, this.getRequiredColumns());
+
+      const fuzzy = this.getFuzzyColumns();
+      for (const [logicalKey, fragments] of Object.entries(fuzzy)) {
+        const physical = resolveHeaderFuzzy(headers, fragments);
+        if (physical !== null) headerMap[logicalKey] = physical;
+      }
+
+      this.latestRows = rows;
+      this.latestHeaderMap = headerMap;
+
+      return { sections: this.buildSections(rows, headerMap) };
+    } catch {
+      this.latestRows = null;
+      this.latestHeaderMap = null;
+      return { sections: [] };
     }
-
-    // Resolución de headers requeridos (matching exacto normalizado).
-    const headerMap = resolveHeaders(headers, this.getRequiredColumns());
-
-    // Resolución fuzzy opcional (e.g. columnas con encoding sospechoso).
-    const fuzzy = this.getFuzzyColumns();
-    for (const [logicalKey, fragments] of Object.entries(fuzzy)) {
-      const physical = resolveHeaderFuzzy(headers, fragments);
-      if (physical !== null) headerMap[logicalKey] = physical;
-    }
-
-    this.latestRows = rows;
-    this.latestHeaderMap = headerMap;
-
-    return { sections: this.buildSections(rows, headerMap) };
   }
 
   getFilters(_dashboard: StatsDashboard): readonly FilterConfig[] {
@@ -123,12 +123,6 @@ export abstract class BaseStatsRenderer implements StatsRenderer {
   protected getFilterColumnKey(filterKey: string): string {
     return filterKey;
   }
-
-  /**
-   * Lista negra de columnas en su forma normalizada (lowercase, trim). El
-   * renderer concreto la declara y la base la aplica al inicio de `parse`.
-   */
-  abstract getForbiddenColumns(): readonly string[];
 
   /**
    * Keys lógicas de las columnas que el renderer espera en el Excel

@@ -9,11 +9,7 @@ import { StatsDashboard, FilterConfig } from '../models/stats-dashboard.model';
  * runtime contra `stats-dataset-registry` por el valor de `digeex.statsDataset`.
  */
 export interface StatsRenderer {
-  /**
-   * Parsea el workbook y produce el dashboard. Si el workbook trae columnas
-   * listadas en `getForbiddenColumns()`, debe lanzar `ValidationError('PII
-   * no permitido')` con la lista de columnas detectadas (guardia anti-PII).
-   */
+  /** Parsea el workbook y produce el dashboard. */
   parse(workbook: unknown): StatsDashboard;
 
   /**
@@ -32,11 +28,4 @@ export interface StatsRenderer {
     dashboard: StatsDashboard,
     filters: Record<string, string | string[]>,
   ): StatsDashboard;
-
-  /**
-   * Lista negra de columnas que no deben aparecer en el workbook (PII
-   * identificatoria). El renderer la usa al inicio de `parse()` para
-   * cancelar el procesamiento si el archivo trae alguna.
-   */
-  getForbiddenColumns(): readonly string[];
 }

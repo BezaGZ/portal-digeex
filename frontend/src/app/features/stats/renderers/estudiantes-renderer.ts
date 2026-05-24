@@ -23,16 +23,6 @@ const REQUIRED = [
   'resultado',
 ] as const;
 
-const FORBIDDEN = [
-  'nombres',
-  'apellidos',
-  'dpi',
-  'cui',
-  'telefono',
-  'correo',
-  'email',
-] as const;
-
 /**
  * Renderer del dataset `estudiantes`. Construye diez secciones desde `Hoja1`
  * del Excel para reproducir el dashboard de PowerBI: tres KPIs (Mujer, Hombre,
@@ -44,10 +34,6 @@ const FORBIDDEN = [
  */
 @Injectable({ providedIn: 'root' })
 export class EstudiantesRenderer extends BaseStatsRenderer {
-  override getForbiddenColumns(): readonly string[] {
-    return FORBIDDEN;
-  }
-
   protected override getRequiredColumns(): readonly string[] {
     return REQUIRED;
   }
@@ -80,6 +66,7 @@ export class EstudiantesRenderer extends BaseStatsRenderer {
 
     let mujer = 0;
     let hombre = 0;
+    let sinDiscapacidad = 0;
     const rangoEdadCount = new Map<string, number>();
     const edadCount = new Map<number, number>();
     const comunidadCount = new Map<string, number>();
@@ -95,7 +82,16 @@ export class EstudiantesRenderer extends BaseStatsRenderer {
       else if (sexo === 'HOMBRE') hombre++;
 
       incrementString(rangoEdadCount, readCell(row, rangoEdadCol));
-      incrementString(discapacidadCount, readCell(row, discapacidadCol));
+
+      const disc = readCell(row, discapacidadCol);
+      if (typeof disc === 'string' && disc.length > 0) {
+        if (disc.toUpperCase() === 'SIN DISCAPACIDAD') {
+          sinDiscapacidad++;
+        } else {
+          discapacidadCount.set(disc, (discapacidadCount.get(disc) ?? 0) + 1);
+        }
+      }
+
       incrementString(programaCount, readCell(row, programaCol));
       incrementString(nivelCount, readCell(row, nivelCol));
       incrementString(areaCount, readCell(row, areaCol));
@@ -115,6 +111,7 @@ export class EstudiantesRenderer extends BaseStatsRenderer {
           kpi('Mujer', mujer),
           kpi('Hombre', hombre),
           kpi('Total de Estudiantes', rows.length),
+          kpi('Sin discapacidad', sinDiscapacidad),
         ],
       },
       {
@@ -162,7 +159,7 @@ export class EstudiantesRenderer extends BaseStatsRenderer {
         title: 'Tipos de discapacidad',
         charts: [
           {
-            type: 'bar',
+            type: 'list',
             title: 'Tipos de discapacidad',
             data: sortDesc(mapToData(discapacidadCount)),
           },

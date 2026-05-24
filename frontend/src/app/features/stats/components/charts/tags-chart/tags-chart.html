@@ -1,0 +1,16 @@
+@if (items().length === 0) {
+  <p class="text-sm text-center italic py-4"
+     style="color: var(--color-text-secondary)">
+    Sin registros para mostrar.
+  </p>
+} @else {
+  <div class="grid gap-3"
+       style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr))">
+    @for (item of items(); track item.label) {
+      <div class="rounded-lg px-4 py-4 text-center font-semibold text-sm sm:text-base shadow-sm"
+           style="background-color: var(--gob-azul-gobierno); color: white; font-family: var(--font-heading)">
+        {{ item.label }}
+      </div>
+    }
+  </div>
+}

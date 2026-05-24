@@ -83,29 +83,15 @@ describe('DocentesRenderer', () => {
     expect(getStatsRenderer('docentes')).toBe(DocentesRenderer);
   });
 
-  /** La blacklist anti-PII incluye los identificadores típicos en su forma normalizada. */
-  it('should expose the normalized PII blacklist via getForbiddenColumns', () => {
-    const forbidden = renderer.getForbiddenColumns();
-
-    expect(forbidden).toEqual(
-      expect.arrayContaining(['nombres', 'apellidos', 'dpi', 'cui', 'telefono', 'correo']),
-    );
-    // La normalización implica que están en lowercase sin espacios.
-    expect(forbidden.every((c) => c === c.trim().toLowerCase())).toBe(true);
-  });
-
-  /** parse() lanza si el Excel trae alguna columna en la blacklist anti-PII. */
-  it('should throw when the workbook contains a PII column', () => {
-    const wb = buildExcel(SAMPLE_ROWS, [...HEADERS, 'Nombres']);
-
-    expect(() => renderer.parse(wb)).toThrow(/PII/i);
-  });
-
-  /** parse() lanza si faltan columnas requeridas (e.g. el Excel viene sin `Sexo`). */
-  it('should throw when a required column is missing', () => {
+  /**
+   * Si faltan columnas requeridas (e.g. el Excel viene sin `Sexo`), `parse`
+   * devuelve un dashboard sin secciones en vez de lanzar. La vista pública
+   * suprime el panel y el visitante no ve un error feo.
+   */
+  it('should return an empty dashboard when a required column is missing', () => {
     const wb = buildExcel(SAMPLE_ROWS, ['Departamento', 'Departamentales', 'Contrato  ', 'Programa']);
 
-    expect(() => renderer.parse(wb)).toThrow(/sexo/i);
+    expect(renderer.parse(wb).sections).toEqual([]);
   });
 
   /** Sección "Indicadores" con tres KPIs: femeninas, masculinos y total general. */
@@ -141,14 +127,19 @@ describe('DocentesRenderer', () => {
     );
   });
 
-  /** Sección "Distribución por tipo de contrato" con bar ordenado descendente. */
-  it('should build the bar chart of Contrato ordered desc by count', () => {
+  /**
+   * Sección "Distribución por tipo de contrato" con horizontal-bar ordenado
+   * desc. Es horizontal porque los nombres de contrato son largos (e.g.
+   * "TECNICO ITINERANTE DE EDUCACION EXTRAESCOLAR") y en vertical el eje X
+   * se aplasta y los labels se vuelven ilegibles.
+   */
+  it('should build the horizontal-bar chart of Contrato ordered desc by count', () => {
     const dashboard = renderer.parse(buildExcel());
     const section = findSection(dashboard.sections, 'Distribución por tipo de contrato');
 
     expect(section.charts.length).toBe(1);
     const bar = section.charts[0];
-    expect(bar.type).toBe('bar');
+    expect(bar.type).toBe('horizontal-bar');
     // En SAMPLE_ROWS: TECNICO ITINERANTE x2, TECNICO PRONEA x2, TECNICO DE EDUCACION II x1.
     expect(bar.data[0].value).toBeGreaterThanOrEqual(bar.data[bar.data.length - 1].value);
     expect(bar.data.find((d) => d.label === 'TECNICO ITINERANTE')!.value).toBe(2);
@@ -156,18 +147,22 @@ describe('DocentesRenderer', () => {
     expect(bar.data.find((d) => d.label === 'TECNICO DE EDUCACION II')!.value).toBe(1);
   });
 
-  /** Sección "Programas registrados" con horizontal-bar de los programas únicos. */
-  it('should build the horizontal-bar chart of Programa with counts', () => {
+  /**
+   * Sección "Programas registrados" con tags y widthHint `wide`: los
+   * programas se ven como tarjetas azules en una franja horizontal, sin
+   * conteo, replicando la banda inferior del dashboard de PowerBI de DIGEEX.
+   */
+  it('should build the tags chart of Programa as a wide section', () => {
     const dashboard = renderer.parse(buildExcel());
     const section = findSection(dashboard.sections, 'Programas registrados');
 
+    expect(section.widthHint).toBe('wide');
     expect(section.charts.length).toBe(1);
-    const bar = section.charts[0];
-    expect(bar.type).toBe('horizontal-bar');
-    // SAMPLE_ROWS: PEAC x2, CEMUCAF x1, PRONEA x2.
-    expect(bar.data.find((d) => d.label === 'PEAC')!.value).toBe(2);
-    expect(bar.data.find((d) => d.label === 'PRONEA')!.value).toBe(2);
-    expect(bar.data.find((d) => d.label === 'CEMUCAF')!.value).toBe(1);
+    const tags = section.charts[0];
+    expect(tags.type).toBe('tags');
+    expect(tags.data.find((d) => d.label === 'PEAC')).toBeDefined();
+    expect(tags.data.find((d) => d.label === 'PRONEA')).toBeDefined();
+    expect(tags.data.find((d) => d.label === 'CEMUCAF')).toBeDefined();
   });
 
   /** getFilters expone un select `departamentales` con las opciones únicas extraídas del Excel. */

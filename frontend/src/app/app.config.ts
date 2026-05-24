@@ -7,6 +7,16 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import { firstValueFrom } from 'rxjs';
+import { Chart } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+
+/**
+ * Registra `chartjs-plugin-datalabels` globalmente para que los chart
+ * components de Stats puedan mostrar el valor de cada slice/barra siempre
+ * (no solo al hover). Cada componente decide en sus options si activarlo y
+ * con qué formato.
+ */
+Chart.register(ChartDataLabels);
 
 import { registerLocaleData } from '@angular/common';
 import localeEsGT from '@angular/common/locales/es-GT';

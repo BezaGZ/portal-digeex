@@ -38,6 +38,22 @@ export const routes: Routes = [
             path: '',
             loadComponent: () => import('./features/stats/stats-list/stats-list').then(m => m.StatsList),
           },
+          {
+            path: ':uuid',
+            /**
+             * Importar primero los renderers garantiza que `registerStatsRenderer`
+             * de cada dataset (`docentes`, `estudiantes`, etc.) corrió antes de
+             * que el detalle intente resolver el `digeex.statsDataset` contra el
+             * registry; sin esto el registry queda vacío en runtime con lazy
+             * loading y aparece "Tipo de dataset no soportado" para cualquier item.
+             */
+            loadComponent: () =>
+              import('./features/stats/renderers/docentes-renderer')
+                .then(() => import('./features/stats/renderers/estudiantes-renderer'))
+                .then(() => import('./features/stats/stats-detail/stats-detail'))
+                .then(m => m.StatsDetail),
+            data: { breadcrumb: 'Dashboard' },
+          },
         ],
       },
       {

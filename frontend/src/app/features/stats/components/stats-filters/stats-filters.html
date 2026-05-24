@@ -1,0 +1,46 @@
+@if (filterList().length > 0) {
+  <div class="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4 flex-wrap">
+    @for (filter of filterList(); track filter.key) {
+      <div class="flex flex-col gap-1 flex-1 min-w-[180px]">
+        <label class="text-xs font-semibold uppercase tracking-wide"
+               style="color: var(--color-text-secondary)">
+          {{ filter.label }}
+        </label>
+
+        @if (filter.type === 'multi-select') {
+          <p-multiSelect
+            [options]="filter.options.slice()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Todas"
+            display="chip"
+            [maxSelectedLabels]="2"
+            [ngModel]="valueOf(filter.key)"
+            (ngModelChange)="setValue(filter.key, $event)"
+            styleClass="w-full" />
+        } @else {
+          <p-select
+            [options]="filter.options.slice()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Todas"
+            [showClear]="true"
+            [ngModel]="valueOf(filter.key)"
+            (ngModelChange)="setValue(filter.key, $event ?? '')"
+            styleClass="w-full" />
+        }
+      </div>
+    }
+
+    @if (hasActive()) {
+      <p-button
+        type="button"
+        label="Limpiar"
+        icon="pi pi-times"
+        severity="secondary"
+        [outlined]="true"
+        [rounded]="true"
+        (onClick)="clear()" />
+    }
+  </div>
+}

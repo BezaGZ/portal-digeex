@@ -12,16 +12,6 @@ import { readCell } from '../utils/normalize-headers.util';
 
 const REQUIRED = ['sexo', 'departamento', 'departamentales', 'contrato', 'programa'] as const;
 
-const FORBIDDEN = [
-  'nombres',
-  'apellidos',
-  'dpi',
-  'cui',
-  'telefono',
-  'correo',
-  'email',
-] as const;
-
 /**
  * Renderer del dataset `docentes`. Construye cuatro secciones desde `Hoja1`
  * del Excel: tres KPIs de género (FEMENINO / MASCULINO / Total), pie de sexo,
@@ -33,10 +23,6 @@ const FORBIDDEN = [
  */
 @Injectable({ providedIn: 'root' })
 export class DocentesRenderer extends BaseStatsRenderer {
-  override getForbiddenColumns(): readonly string[] {
-    return FORBIDDEN;
-  }
-
   protected override getRequiredColumns(): readonly string[] {
     return REQUIRED;
   }
@@ -93,15 +79,17 @@ export class DocentesRenderer extends BaseStatsRenderer {
       },
       {
         title: 'Distribución por tipo de contrato',
+        widthHint: 'wide',
         charts: [
-          { type: 'bar', title: 'Tipos de contrato', data: sortDesc(mapToData(contratoCount)) },
+          { type: 'horizontal-bar', title: 'Tipos de contrato', data: sortDesc(mapToData(contratoCount)) },
         ],
       },
       {
         title: 'Programas registrados',
+        widthHint: 'wide',
         charts: [
           {
-            type: 'horizontal-bar',
+            type: 'tags',
             title: 'Programas',
             data: sortDesc(mapToData(programaCount)),
           },

@@ -1,0 +1,29 @@
+<article class="bg-white p-5 sm:p-6 flex flex-col gap-4 h-full border-b border-r border-gray-100">
+  <header class="flex items-center justify-between">
+    <h3 class="text-sm font-semibold uppercase tracking-wide leading-tight"
+        style="color: var(--color-text-secondary); font-family: var(--font-heading)">
+      {{ title() }}
+    </h3>
+  </header>
+
+  @if (isKpiSection()) {
+    <div class="flex-1 grid gap-3 content-center"
+         style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr))">
+      @for (chart of charts(); track $index) {
+        <app-kpi-card [config]="chart" />
+      }
+    </div>
+  } @else {
+    <div class="flex-1 flex flex-col justify-center gap-4">
+      @for (chart of charts(); track $index) {
+        @switch (chart.type) {
+          @case ('pie') { <app-pie-chart [config]="chart" /> }
+          @case ('bar') { <app-bar-chart [config]="chart" /> }
+          @case ('horizontal-bar') { <app-horizontal-bar-chart [config]="chart" /> }
+          @case ('list') { <app-list-chart [config]="chart" /> }
+          @case ('tags') { <app-tags-chart [config]="chart" /> }
+        }
+      }
+    </div>
+  }
+</article>

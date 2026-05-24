@@ -170,40 +170,53 @@ describe('EstudiantesRenderer', () => {
     expect(getStatsRenderer('estudiantes')).toBe(EstudiantesRenderer);
   });
 
-  /** La blacklist anti-PII normalizada incluye los identificadores estándar. */
-  it('should expose the normalized PII blacklist via getForbiddenColumns', () => {
-    expect(renderer.getForbiddenColumns()).toEqual(
-      expect.arrayContaining(['nombres', 'apellidos', 'dpi', 'cui', 'telefono', 'correo']),
-    );
-  });
-
-  /** parse() lanza si el Excel trae una columna en la blacklist anti-PII. */
-  it('should throw when the workbook contains a PII column', () => {
-    const wb = buildExcel(SAMPLE_ROWS, [...HEADERS, 'Nombres']);
-    expect(() => renderer.parse(wb)).toThrow(/PII/i);
-  });
-
-  /** parse() lanza si falta una columna requerida. */
-  it('should throw when a required column is missing', () => {
+  /**
+   * Si faltan columnas requeridas, `parse` devuelve dashboard sin secciones
+   * en vez de lanzar. La vista pública suprime el panel para no exponer
+   * errores del archivo al visitante.
+   */
+  it('should return an empty dashboard when a required column is missing', () => {
     const headersSinSexo = HEADERS.filter((h) => h !== 'SEXO');
-    expect(() => renderer.parse(buildExcel(SAMPLE_ROWS, headersSinSexo))).toThrow(/sexo/i);
+    expect(renderer.parse(buildExcel(SAMPLE_ROWS, headersSinSexo)).sections).toEqual([]);
   });
 
-  /** Tres KPIs en Indicadores: Mujer, Hombre y Total de Estudiantes. */
-  it('should build the Indicadores section with three KPI cards', () => {
+  /**
+   * Cuatro KPIs en Indicadores: Mujer, Hombre, Total y Sin discapacidad.
+   * Este último se extrae de TIPO_DISCAPACIDAD para que el bar de tipos no
+   * quede dominado por la categoría mayoritaria y las discapacidades reales
+   * sean legibles a simple vista.
+   */
+  it('should build the Indicadores section with four KPI cards', () => {
     const dashboard = renderer.parse(buildExcel());
     const section = findSection(dashboard.sections, 'Indicadores');
 
-    expect(section.charts.length).toBe(3);
+    expect(section.charts.length).toBe(4);
     expect(section.charts.every((c) => c.type === 'kpi')).toBe(true);
 
     const mujer = findChart(section.charts, 'Mujer');
     const hombre = findChart(section.charts, 'Hombre');
     const total = findChart(section.charts, 'Total de Estudiantes');
+    const sinDisc = findChart(section.charts, 'Sin discapacidad');
 
     expect(mujer.data[0].value).toBe(3);
     expect(hombre.data[0].value).toBe(2);
     expect(total.data[0].value).toBe(5);
+    expect(sinDisc.data[0].value).toBe(4);
+  });
+
+  /**
+   * Tipos de discapacidad se renderiza como lista pura (sin números), igual
+   * que en el PowerBI original, y excluye SIN DISCAPACIDAD que ya viaja como
+   * KPI separado en Indicadores.
+   */
+  it('should render Tipos de discapacidad as a list without SIN DISCAPACIDAD', () => {
+    const dashboard = renderer.parse(buildExcel());
+    const section = findSection(dashboard.sections, 'Tipos de discapacidad');
+    const chart = section.charts[0];
+
+    expect(chart.type).toBe('list');
+    expect(chart.data.find((d) => d.label === 'SIN DISCAPACIDAD')).toBeUndefined();
+    expect(chart.data.find((d) => d.label === 'DISCAPACIDAD AUDITIVA')).toBeDefined();
   });
 
   /** Pie de género con MUJER y HOMBRE. */

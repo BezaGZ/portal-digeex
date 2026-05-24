@@ -16,10 +16,16 @@ export interface StatsDashboard {
 export interface ChartSection {
   readonly title: string;
   readonly charts: readonly ChartConfig[];
+  /**
+   * Hint declarativo para que la vista decida cuánto ancho debe ocupar la
+   * sección en el grid del detalle. `wide` ocupa 2 columnas en desktop;
+   * default `normal` ocupa 1. Útil para charts con muchos labels largos.
+   */
+  readonly widthHint?: 'normal' | 'wide';
 }
 
 /** Tipo discriminante que la vista usa para elegir el chart-component. */
-export type ChartType = 'pie' | 'bar' | 'horizontal-bar' | 'histogram' | 'treemap' | 'kpi';
+export type ChartType = 'pie' | 'bar' | 'horizontal-bar' | 'histogram' | 'treemap' | 'kpi' | 'list' | 'tags';
 
 /** Configuración de una gráfica: tipo, título, datos y metadatos opcionales. */
 export interface ChartConfig {
