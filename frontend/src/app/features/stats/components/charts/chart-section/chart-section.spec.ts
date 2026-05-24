@@ -9,16 +9,15 @@ import { BarChartComponent } from '../bar-chart/bar-chart';
 import { HorizontalBarChartComponent } from '../horizontal-bar-chart/horizontal-bar-chart';
 import { HistogramChartComponent } from '../histogram-chart/histogram-chart';
 import { TreemapChartComponent } from '../treemap-chart/treemap-chart';
+import { MapChartComponent } from '../map-chart/map-chart';
 
 /**
  * Tests de `ChartSectionComponent`.
  *
- * Renderiza una sección del `StatsDashboard` despachando cada `ChartConfig`
- * al componente concreto según `type`. KPIs van en grid horizontal; pie,
- * bar, horizontal-bar, list, tags, histogram y treemap se apilan vertical.
+ * Despacha cada `ChartConfig` al componente concreto según `type`. KPIs en
+ * grid horizontal, el resto se apila vertical.
  *
- * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclo 12 (Sprint 7) cuando aterrizaron
- * los wrappers concretos de `histogram` y `treemap`.
+ * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclos 12 y 15.
  */
 
 describe('ChartSectionComponent', () => {
@@ -93,5 +92,18 @@ describe('ChartSectionComponent', () => {
 
     expect(fixture.debugElement.query(By.directive(HistogramChartComponent))).toBeTruthy();
     expect(fixture.debugElement.query(By.directive(TreemapChartComponent))).toBeTruthy();
+  });
+
+  /** map despacha al MapChartComponent para pintar el choropleth de Guatemala. */
+  it('should dispatch a map chart to MapChartComponent', () => {
+    const section: ChartSection = {
+      title: 'Distribución geográfica',
+      charts: [{ type: 'map', title: 'Departamentos', data: [{ label: 'GUATEMALA', value: 1 }] }],
+    };
+    const fixture = TestBed.createComponent(ChartSectionComponent);
+    fixture.componentRef.setInput('section', section);
+    fixture.detectChanges();
+
+    expect(fixture.debugElement.query(By.directive(MapChartComponent))).toBeTruthy();
   });
 });

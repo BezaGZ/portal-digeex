@@ -8,17 +8,11 @@ import { ChartConfig, ChartSection } from '../models/stats-dashboard.model';
 /**
  * Tests del `EstudiantesRenderer`.
  *
- * Renderer del dataset `estudiantes`. Lee `Hoja1` del Excel con 21 columnas y
- * construye un `StatsDashboard` con diez secciones replicando el dashboard de
- * PowerBI de DIGEEX: tres KPIs de género (MUJER/HOMBRE/Total), pie de
- * género, pie de rango de edad, histogram de edad, bar de comunidad
- * lingüística (matching fuzzy por el encoding sospechoso del header `LING¿`),
- * bar de tipos de discapacidad, treemap de programas, bar de nivel,
- * horizontal-bar de área geográfica y pie de resultados. Dos filtros
- * (`departamental` y `municipios`) que reconstruyen el dashboard al
- * aplicarlos. Auto-registrado bajo `estudiantes` en `stats-dataset-registry`.
+ * Lee `Hoja1` del Excel y arma el dashboard de Estudiantes replicando el de
+ * PowerBI de DIGEEX. Auto-registrado bajo `estudiantes` con dos filtros
+ * (`departamental`, `municipios`) que reconstruyen las secciones al aplicar.
  *
- * Ciclo 9 TDD — Sprint 7.
+ * Ciclo 9 TDD — Sprint 7. Ajustado en Ciclo 15.
  */
 
 const HEADERS = [
@@ -279,6 +273,123 @@ describe('EstudiantesRenderer', () => {
     expect(bar.type).toBe('horizontal-bar');
     expect(bar.data.find((d) => d.label === 'URBANA')!.value).toBe(3);
     expect(bar.data.find((d) => d.label === 'RURAL')!.value).toBe(2);
+  });
+
+  /**
+   * Verifica que arme la sección map wide con conteos por departamento_sede.
+   * Agrupa por sede (no por municipio) y entrega los counts al MapChartComponent.
+   */
+  it('should build the map section with counts per departamento_sede and wide widthHint', () => {
+    const dashboard = renderer.parse(buildExcel());
+    const section = findSection(dashboard.sections, 'Distribución geográfica');
+
+    expect(section.widthHint).toBe('wide');
+    expect(section.charts.length).toBe(1);
+    const map = section.charts[0];
+    expect(map.type).toBe('map');
+    // En SAMPLE_ROWS: GUATEMALA x3, ALTA VERAPAZ x2.
+    expect(map.data.find((d) => d.label === 'GUATEMALA')!.value).toBe(3);
+    expect(map.data.find((d) => d.label === 'ALTA VERAPAZ')!.value).toBe(2);
+  });
+
+  /**
+   * Verifica que colapse las subdivisiones DIDEDUC (Norte/Sur/Oriente/Occidente)
+   * a su departamento padre antes de contarse para el mapa.
+   */
+  it('should consolidate DIDEDUC subdivisions (Norte/Sur/Oriente/Occidente) into their parent departamento for the map', () => {
+    const rows: Record<string, unknown>[] = [
+      row({
+        sexo: 'MUJER',
+        depSede: 'DIDEDUC DE GUATEMALA NORTE',
+        municipio: 'MIXCO',
+        edad: 18,
+        comunidad: 'LADINO',
+        programa: 'MODALIDADES FLEXIBLES',
+        nivel: 'BÁSICO',
+        discapacidad: 'SIN DISCAPACIDAD',
+        resultado: 'EN PROCESO',
+        area: 'URBANA',
+        rangoEdad: '13-30 años',
+      }),
+      row({
+        sexo: 'HOMBRE',
+        depSede: 'DIDEDUC DE GUATEMALA SUR',
+        municipio: 'AMATITLAN',
+        edad: 20,
+        comunidad: 'LADINO',
+        programa: 'PRONEA',
+        nivel: 'PRIMARIA',
+        discapacidad: 'SIN DISCAPACIDAD',
+        resultado: 'PROMOVIDO',
+        area: 'URBANA',
+        rangoEdad: '13-30 años',
+      }),
+      row({
+        sexo: 'MUJER',
+        depSede: 'DIDEDUC DE GUATEMALA OCCIDENTE',
+        municipio: 'VILLA NUEVA',
+        edad: 17,
+        comunidad: 'LADINO',
+        programa: 'CEMUCAF',
+        nivel: 'BÁSICO',
+        discapacidad: 'SIN DISCAPACIDAD',
+        resultado: 'EN PROCESO',
+        area: 'URBANA',
+        rangoEdad: '13-30 años',
+      }),
+      row({
+        sexo: 'HOMBRE',
+        depSede: 'DIDEDUC DE QUICHÉ NORTE',
+        municipio: 'IXCAN',
+        edad: 22,
+        comunidad: 'MAYA',
+        programa: 'PRONEA',
+        nivel: 'BÁSICO',
+        discapacidad: 'SIN DISCAPACIDAD',
+        resultado: 'EN PROCESO',
+        area: 'RURAL',
+        rangoEdad: '13-30 años',
+      }),
+    ];
+    const dashboard = renderer.parse(buildExcel(rows));
+    const section = findSection(dashboard.sections, 'Distribución geográfica');
+    const map = section.charts[0];
+
+    expect(map.data.find((d) => d.label === 'GUATEMALA')!.value).toBe(3);
+    expect(map.data.find((d) => d.label === 'QUICHÉ')!.value).toBe(1);
+    expect(map.data.find((d) => d.label === 'GUATEMALA NORTE')).toBeUndefined();
+    expect(map.data.find((d) => d.label === 'GUATEMALA SUR')).toBeUndefined();
+    expect(map.data.find((d) => d.label === 'GUATEMALA OCCIDENTE')).toBeUndefined();
+    expect(map.data.find((d) => d.label === 'QUICHÉ NORTE')).toBeUndefined();
+  });
+
+  /**
+   * Verifica que preserve "EL" al strippear "DIDEDUC DEL PROGRESO" → "EL PROGRESO".
+   * Sin esto el resultado "PROGRESO" no matchearía contra "El Progreso" del TopoJSON.
+   */
+  it('should preserve the article EL when stripping the DEL contraction in DIDEDUC DEL PROGRESO', () => {
+    const rows: Record<string, unknown>[] = [
+      row({
+        sexo: 'MUJER',
+        depSede: 'DIDEDUC DEL PROGRESO',
+        municipio: 'GUASTATOYA',
+        edad: 18,
+        comunidad: 'LADINO',
+        programa: 'PEAC',
+        nivel: 'BÁSICO',
+        discapacidad: 'SIN DISCAPACIDAD',
+        resultado: 'EN PROCESO',
+        area: 'URBANA',
+        rangoEdad: '13-30 años',
+      }),
+    ];
+    const dashboard = renderer.parse(buildExcel(rows));
+    const section = findSection(dashboard.sections, 'Distribución geográfica');
+    const map = section.charts[0];
+
+    expect(map.data.find((d) => d.label === 'EL PROGRESO')!.value).toBe(1);
+    expect(map.data.find((d) => d.label === 'PROGRESO')).toBeUndefined();
+    expect(map.data.find((d) => d.label === 'DIDEDUC DEL PROGRESO')).toBeUndefined();
   });
 
   /** Filtros declarativos: departamental + municipios, ambos single-select con opciones únicas. */

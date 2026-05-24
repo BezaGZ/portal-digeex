@@ -64,6 +64,8 @@ export class EstudiantesRenderer extends BaseStatsRenderer {
     const areaCol = headerMap['area geografica'];
     const resultadoCol = headerMap['resultado'];
 
+    const departamentoCol = headerMap['departamento_sede'];
+
     let mujer = 0;
     let hombre = 0;
     let sinDiscapacidad = 0;
@@ -75,6 +77,7 @@ export class EstudiantesRenderer extends BaseStatsRenderer {
     const nivelCount = new Map<string, number>();
     const areaCount = new Map<string, number>();
     const resultadoCount = new Map<string, number>();
+    const departamentoCount = new Map<string, number>();
 
     for (const row of rows) {
       const sexo = String(readCell(row, sexoCol) ?? '').toUpperCase();
@@ -96,6 +99,7 @@ export class EstudiantesRenderer extends BaseStatsRenderer {
       incrementString(nivelCount, readCell(row, nivelCol));
       incrementString(areaCount, readCell(row, areaCol));
       incrementString(resultadoCount, readCell(row, resultadoCol));
+      incrementString(departamentoCount, stripDideduc(readCell(row, departamentoCol)));
       if (comunidadCol) incrementString(comunidadCount, readCell(row, comunidadCol));
 
       const edad = readCell(row, edadCol);
@@ -193,6 +197,13 @@ export class EstudiantesRenderer extends BaseStatsRenderer {
           { type: 'pie', title: 'Resultados', data: sortDesc(mapToData(resultadoCount)) },
         ],
       },
+      {
+        title: 'Distribución geográfica',
+        widthHint: 'wide',
+        charts: [
+          { type: 'map', title: 'Estudiantes por departamento', data: mapToData(departamentoCount) },
+        ],
+      },
     );
 
     return sections;
@@ -249,6 +260,20 @@ function incrementString(map: Map<string, number>, value: unknown): void {
   if (typeof value === 'string' && value.length > 0) {
     map.set(value, (map.get(value) ?? 0) + 1);
   }
+}
+
+/**
+ * Limpia `departamento_sede` para matchear contra el TopoJSON: strippa el
+ * prefijo "DIDEDUC DE/DEL" (preservando "EL" en la contracción "DEL") y
+ * colapsa las subdivisiones cardinales de Guatemala y Quiché al padre.
+ */
+function stripDideduc(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  return value
+    .replace(/^DIDEDUC\s+DEL\s+/i, 'EL ')
+    .replace(/^DIDEDUC\s+DE\s+/i, '')
+    .replace(/\s+(NORTE|SUR|ORIENTE|OCCIDENTE)$/i, '')
+    .trim();
 }
 
 function buildSelectFilter(

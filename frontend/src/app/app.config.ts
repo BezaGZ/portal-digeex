@@ -7,18 +7,30 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import { firstValueFrom } from 'rxjs';
-import { Chart } from 'chart.js';
+import Chart from 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { TreemapController, TreemapElement } from 'chartjs-chart-treemap';
+import {
+  ChoroplethController,
+  GeoFeature,
+  ProjectionScale,
+  ColorScale,
+} from 'chartjs-chart-geo';
 
 /**
- * Registra los plugins/controllers globales de Chart.js que usan los chart
- * components de Stats. `chartjs-plugin-datalabels` muestra el valor sobre
- * cada slice/barra siempre, no solo al hover. `chartjs-chart-treemap` suma
- * el tipo `treemap` al universo de Chart.js (no es nativo del core); cada
- * componente decide en sus options si activarlo y con qué formato.
+ * Plugins y controllers de Chart.js usados por los chart components de Stats:
+ * datalabels (valores sobre slices/barras), treemap (tipo `treemap`) y
+ * geo (tipo `choropleth` con sus escalas `projection` y `color`).
  */
-Chart.register(ChartDataLabels, TreemapController, TreemapElement);
+Chart.register(
+  ChartDataLabels,
+  TreemapController,
+  TreemapElement,
+  ChoroplethController,
+  GeoFeature,
+  ProjectionScale,
+  ColorScale,
+);
 
 import { registerLocaleData } from '@angular/common';
 import localeEsGT from '@angular/common/locales/es-GT';

@@ -10,6 +10,7 @@ import { ListChartComponent } from '../list-chart/list-chart';
 import { TagsChartComponent } from '../tags-chart/tags-chart';
 import { HistogramChartComponent } from '../histogram-chart/histogram-chart';
 import { TreemapChartComponent } from '../treemap-chart/treemap-chart';
+import { MapChartComponent } from '../map-chart/map-chart';
 
 /**
  * Renderiza una sección del dashboard como una `<p-card>` con título y todas
@@ -31,6 +32,7 @@ import { TreemapChartComponent } from '../treemap-chart/treemap-chart';
     TagsChartComponent,
     HistogramChartComponent,
     TreemapChartComponent,
+    MapChartComponent,
   ],
   templateUrl: './chart-section.html',
   host: {
@@ -52,4 +54,6 @@ export class ChartSectionComponent {
   );
   /** True cuando el renderer declaró `widthHint: 'wide'` para esta sección. */
   readonly isWide = computed(() => this._section()?.widthHint === 'wide');
+  /** True cuando hay un chart `map`; suprime `justify-center` para no dejar aire muerto. */
+  readonly isMapSection = computed(() => this.charts().some((c) => c.type === 'map'));
 }

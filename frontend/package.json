@@ -37,6 +37,7 @@
     "@primeuix/themes": "^2.0.3",
     "@tailwindcss/postcss": "^4.1.18",
     "chart.js": "^4.5.1",
+    "chartjs-chart-geo": "^4.3.6",
     "chartjs-chart-treemap": "^3.1.0",
     "chartjs-plugin-datalabels": "^2.2.0",
     "js-cookie": "^3.0.5",

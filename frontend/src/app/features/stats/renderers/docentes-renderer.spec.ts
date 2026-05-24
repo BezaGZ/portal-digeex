@@ -8,18 +8,11 @@ import { ChartConfig, ChartSection } from '../models/stats-dashboard.model';
 /**
  * Tests del `DocentesRenderer`.
  *
- * Renderer del dataset `docentes`. Lee `Hoja1` del Excel del item con los
- * headers `Sexo`, `Departamento`, `Departamentales`, `Contrato`, `Programa`
- * (matching case y whitespace insensitive vía `normalize-headers.util`) y
- * construye un `StatsDashboard` con cuatro secciones: KPIs de género,
- * distribución por sexo (pie), distribución por tipo de contrato (bar) y
- * programas registrados (horizontal-bar). Auto-registrado bajo la clave
- * `docentes` en `stats-dataset-registry`. Guardia anti-PII rechaza el
- * workbook si trae columnas como `Nombres`, `Apellidos`, `DPI`, `CUI`,
- * `Teléfono` o `Correo`. `applyFilters` filtra por `departamentales` y
- * reconstruye el dashboard con las filas que matchean.
+ * Lee `Hoja1` del Excel y arma el dashboard de Docentes (KPIs de género,
+ * pie de sexo, contratos, programas, mapa). Auto-registrado bajo `docentes`
+ * con filtro `departamentales` que reconstruye al aplicar.
  *
- * Ciclo 8 TDD — Sprint 7.
+ * Ciclo 8 TDD — Sprint 7. Ajustado en Ciclo 15.
  */
 
 const HEADERS = ['Sexo', 'Departamento', 'Departamentales', 'Contrato  ', 'Programa'];
@@ -163,6 +156,19 @@ describe('DocentesRenderer', () => {
     expect(tags.data.find((d) => d.label === 'PEAC')).toBeDefined();
     expect(tags.data.find((d) => d.label === 'PRONEA')).toBeDefined();
     expect(tags.data.find((d) => d.label === 'CEMUCAF')).toBeDefined();
+  });
+
+  /** Verifica que arme la sección map wide con conteos por departamento. */
+  it('should build the map section with counts per departamento and wide widthHint', () => {
+    const dashboard = renderer.parse(buildExcel());
+    const section = findSection(dashboard.sections, 'Distribución geográfica');
+
+    expect(section.widthHint).toBe('wide');
+    expect(section.charts.length).toBe(1);
+    const map = section.charts[0];
+    expect(map.type).toBe('map');
+    expect(map.data.find((d) => d.label === 'QUETZALTENANGO')!.value).toBe(2);
+    expect(map.data.find((d) => d.label === 'GUATEMALA')!.value).toBe(3);
   });
 
   /** getFilters expone un select `departamentales` con las opciones únicas extraídas del Excel. */

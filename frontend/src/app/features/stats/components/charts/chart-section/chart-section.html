@@ -14,7 +14,8 @@
       }
     </div>
   } @else {
-    <div class="flex-1 flex flex-col justify-center gap-4">
+    <div class="flex-1 flex flex-col gap-4"
+         [class.justify-center]="!isMapSection()">
       @for (chart of charts(); track $index) {
         @switch (chart.type) {
           @case ('pie') { <app-pie-chart [config]="chart" /> }
@@ -24,6 +25,7 @@
           @case ('tags') { <app-tags-chart [config]="chart" /> }
           @case ('histogram') { <app-histogram-chart [config]="chart" /> }
           @case ('treemap') { <app-treemap-chart [config]="chart" /> }
+          @case ('map') { <app-map-chart [config]="chart" /> }
         }
       }
     </div>

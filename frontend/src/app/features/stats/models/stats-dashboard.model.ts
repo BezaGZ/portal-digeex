@@ -25,7 +25,16 @@ export interface ChartSection {
 }
 
 /** Tipo discriminante que la vista usa para elegir el chart-component. */
-export type ChartType = 'pie' | 'bar' | 'horizontal-bar' | 'histogram' | 'treemap' | 'kpi' | 'list' | 'tags';
+export type ChartType =
+  | 'pie'
+  | 'bar'
+  | 'horizontal-bar'
+  | 'histogram'
+  | 'treemap'
+  | 'map'
+  | 'kpi'
+  | 'list'
+  | 'tags';
 
 /** Configuración de una gráfica: tipo, título, datos y metadatos opcionales. */
 export interface ChartConfig {

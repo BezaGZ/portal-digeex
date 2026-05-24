@@ -34,11 +34,13 @@ export class DocentesRenderer extends BaseStatsRenderer {
     const sexoCol = headerMap['sexo'];
     const contratoCol = headerMap['contrato'];
     const programaCol = headerMap['programa'];
+    const departamentoCol = headerMap['departamento'];
 
     let femenino = 0;
     let masculino = 0;
     const contratoCount = new Map<string, number>();
     const programaCount = new Map<string, number>();
+    const departamentoCount = new Map<string, number>();
 
     for (const row of rows) {
       const sexo = String(readCell(row, sexoCol) ?? '').toUpperCase();
@@ -52,6 +54,10 @@ export class DocentesRenderer extends BaseStatsRenderer {
       const programa = readCell(row, programaCol);
       if (typeof programa === 'string' && programa.length > 0) {
         programaCount.set(programa, (programaCount.get(programa) ?? 0) + 1);
+      }
+      const departamento = readCell(row, departamentoCol);
+      if (typeof departamento === 'string' && departamento.length > 0) {
+        departamentoCount.set(departamento, (departamentoCount.get(departamento) ?? 0) + 1);
       }
     }
 
@@ -93,6 +99,13 @@ export class DocentesRenderer extends BaseStatsRenderer {
             title: 'Programas',
             data: sortDesc(mapToData(programaCount)),
           },
+        ],
+      },
+      {
+        title: 'Distribución geográfica',
+        widthHint: 'wide',
+        charts: [
+          { type: 'map', title: 'Técnicos por departamento', data: mapToData(departamentoCount) },
         ],
       },
     ];
