@@ -3,9 +3,9 @@
     @if (caller(); as c) {
       <app-submission-form-host [collection]="col" [caller]="c" />
     } @else {
-      <p class="text-gray-500 dark:text-gray-400">Resolviendo sesión...</p>
+      <app-loading-spinner minHeight="320px" />
     }
   } @else {
-    <p class="text-gray-500 dark:text-gray-400">Cargando programa...</p>
+    <app-loading-spinner minHeight="320px" />
   }
 </div>
