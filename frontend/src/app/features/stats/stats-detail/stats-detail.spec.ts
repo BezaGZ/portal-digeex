@@ -7,6 +7,7 @@ import { of, throwError } from 'rxjs';
 import { StatsDetail } from './stats-detail';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { BundleApiService } from '../../../core/api/bundle-api.service';
+import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { ExcelReaderService } from '../services/excel-reader.service';
 import {
   registerStatsRenderer,
@@ -25,7 +26,7 @@ import { Item } from '../../../core/api/models/item.model';
  * construcción del dashboard. Cubre los cuatro modos de error (`not-found`,
  * `unsupported`, `pii`, `network`) y el flujo feliz con filtros.
  *
- * Ciclo 11 TDD — Sprint 7.
+ * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclo 16.
  */
 
 const DASHBOARD: StatsDashboard = {
@@ -76,18 +77,23 @@ class FakeRendererEmpty implements StatsRenderer {
   }
 }
 
-function buildItem(uuid: string, datasetKey: string | undefined): Item {
+function buildItem(uuid: string, datasetKey: string | undefined, title?: string): Item {
+  const metadata: Record<string, Array<{ value: string; language: null; authority: null; confidence: number; place: number }>> = {};
+  if (datasetKey) {
+    metadata['digeex.statsDataset'] = [
+      { value: datasetKey, language: null, authority: null, confidence: -1, place: 0 },
+    ];
+  }
+  if (title) {
+    metadata['dc.title'] = [
+      { value: title, language: null, authority: null, confidence: -1, place: 0 },
+    ];
+  }
   return {
     uuid,
     name: 'Item',
     handle: null,
-    metadata: datasetKey
-      ? {
-          'digeex.statsDataset': [
-            { value: datasetKey, language: null, authority: null, confidence: -1, place: 0 },
-          ],
-        }
-      : {},
+    metadata,
     inArchive: true,
     discoverable: true,
     withdrawn: false,
@@ -107,6 +113,7 @@ describe('StatsDetail', () => {
   let listBitstreamsFn: ReturnType<typeof vi.fn>;
   let getParsedExcelFn: ReturnType<typeof vi.fn>;
   let navigateFn: ReturnType<typeof vi.fn>;
+  let setTrailFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     clearStatsRendererRegistry();
@@ -118,6 +125,7 @@ describe('StatsDetail', () => {
     listBitstreamsFn = vi.fn();
     getParsedExcelFn = vi.fn();
     navigateFn = vi.fn();
+    setTrailFn = vi.fn();
 
     TestBed.configureTestingModule({
       providers: [
@@ -132,6 +140,7 @@ describe('StatsDetail', () => {
           },
         },
         { provide: ExcelReaderService, useValue: { getParsedExcel$: getParsedExcelFn } },
+        { provide: BreadcrumbService, useValue: { setTrail: setTrailFn } },
       ],
     });
   });
@@ -244,6 +253,46 @@ describe('StatsDetail', () => {
     fixture.componentInstance.goBack();
 
     expect(navigateFn).toHaveBeenCalledWith(['/estadistica']);
+  });
+
+  /** Verifica que setTrail publique [{label:'Estadística', routerLink}, {label: dc.title}] tras resolver getItem. */
+  it('should publish the breadcrumb trail with the item dc.title after getItem resolves', () => {
+    getItemFn.mockReturnValue(of(buildItem('item-1', 'docentes', 'Estudiantes 2024')));
+    listForItemFn.mockReturnValue(
+      of({ _embedded: { bundles: [{ uuid: 'bundle-1', name: 'ORIGINAL' }] } }),
+    );
+    listBitstreamsFn.mockReturnValue(
+      of({ items: [{ uuid: 'bs-1' }], totalElements: 1, totalPages: 1, page: 0, size: 1 }),
+    );
+    getParsedExcelFn.mockReturnValue(of(PARSED_EXCEL));
+
+    const fixture = TestBed.createComponent(StatsDetail);
+    fixture.detectChanges();
+
+    expect(setTrailFn).toHaveBeenCalledWith([
+      { label: 'Estadística', routerLink: '/estadistica' },
+      { label: 'Estudiantes 2024' },
+    ]);
+  });
+
+  /** Verifica que el trail caiga al fallback 'Detalle' cuando el item no expone dc.title. */
+  it('should fall back to "Detalle" in the trail when the item has no dc.title', () => {
+    getItemFn.mockReturnValue(of(buildItem('item-1', 'docentes')));
+    listForItemFn.mockReturnValue(
+      of({ _embedded: { bundles: [{ uuid: 'bundle-1', name: 'ORIGINAL' }] } }),
+    );
+    listBitstreamsFn.mockReturnValue(
+      of({ items: [{ uuid: 'bs-1' }], totalElements: 1, totalPages: 1, page: 0, size: 1 }),
+    );
+    getParsedExcelFn.mockReturnValue(of(PARSED_EXCEL));
+
+    const fixture = TestBed.createComponent(StatsDetail);
+    fixture.detectChanges();
+
+    expect(setTrailFn).toHaveBeenCalledWith([
+      { label: 'Estadística', routerLink: '/estadistica' },
+      { label: 'Detalle' },
+    ]);
   });
 
   /** retry limpia errorState y vuelve a cargar; permite recuperarse de network error. */
