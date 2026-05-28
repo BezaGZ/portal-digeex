@@ -10,7 +10,7 @@
   [showCancelButton]="false"
   styleClass="digeex-dropzone"
   (onSelect)="onSelect($event)"
-  (onRemove)="onRemove($event)"
+  (onRemove)="onRemove($event, pfu.files)"
   (onClear)="onClear()">
 
   <ng-template pTemplate="empty">

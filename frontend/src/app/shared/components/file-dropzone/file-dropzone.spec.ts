@@ -79,4 +79,27 @@ describe('FileDropzoneComponent', () => {
     c.onClear();
     expect(emitted[emitted.length - 1]).toEqual([]);
   });
+
+  /**
+   * Verifica que al quitar un archivo de una selección múltiple emita los
+   * restantes, no la lista completa. `FileUpload.remove` de PrimeNG 20 emite
+   * onRemove ANTES de hacer el splice, así que `pfu.files` todavía trae el
+   * archivo removido; el wrapper lo descarta usando `event.file`.
+   */
+  it('should emit the remaining files (not the full list) when one file is removed from a multiple selection', () => {
+    const fixture = TestBed.createComponent(FileDropzoneComponent);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    const emitted: File[][] = [];
+    c.filesChange.subscribe((files) => emitted.push(files));
+
+    const f1 = new File(['a'], 'a.jpg', { type: 'image/jpeg' });
+    const f2 = new File(['b'], 'b.jpg', { type: 'image/jpeg' });
+    const f3 = new File(['c'], 'c.jpg', { type: 'image/jpeg' });
+    // PrimeNG emite el archivo removido (f1) con la lista aún sin recortar.
+    c.onRemove({ file: f1 }, [f1, f2, f3]);
+
+    expect(emitted[emitted.length - 1].map((f) => f.name)).toEqual(['b.jpg', 'c.jpg']);
+  });
 });

@@ -50,11 +50,15 @@ export class FileDropzoneComponent {
     this.filesChange.emit(Array.from(list));
   }
 
-  /** `(onRemove)` notifica el archivo que el usuario quitó individualmente. */
-  onRemove(event: { file: File; currentFiles?: File[] }): void {
-    const list =
-      event.currentFiles ?? [];
-    this.filesChange.emit(Array.from(list));
+  /**
+   * `FileUpload.remove` de PrimeNG emite onRemove ANTES del splice, así que
+   * `pfu.files` todavía trae el archivo removido; lo descartamos por referencia
+   * usando `event.file` y emitimos el resto.
+   */
+  onRemove(event: { file?: File }, files: File[]): void {
+    const removed = event.file;
+    const remaining = removed ? files.filter((f) => f !== removed) : [...files];
+    this.filesChange.emit(remaining);
   }
 
   /** El `(onClear)` del p-fileUpload notifica que el usuario limpió la selección. */
