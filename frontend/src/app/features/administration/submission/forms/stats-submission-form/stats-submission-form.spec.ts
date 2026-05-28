@@ -314,10 +314,8 @@ describe('StatsSubmissionForm', () => {
   });
 
   /**
-   * El dropzone gobierna la pila: una emisión con archivos llena pendingAdds
-   * y una emisión vacía (X roja del dropzone) la limpia. Sin un metodo paralelo
-   * `removePendingAdd`: el componente del dropzone es la única UI del archivo
-   * seleccionado.
+   * Verifica que el dropzone gobierne la pila: una emisión con archivos llena
+   * pendingAdds y una emisión vacía la limpia.
    */
   it('should reflect the dropzone state in pendingAdds and clear it when the dropzone emits empty', () => {
     const c = mountForCreate();

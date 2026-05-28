@@ -503,8 +503,11 @@ describe('GallerySubmissionForm', () => {
     expect(c.getBitstreamsToRemove()).toEqual(['bs-2']);
   });
 
-  /** Verifica que onAddBitstreams acumule archivos y getBitstreamsToAdd los devuelva. */
-  it('should accumulate files in pendingAdds and expose them via getBitstreamsToAdd', () => {
+  /**
+   * Verifica que onAddBitstreams reemplace pendingAdds con la lista que emite el dropzone.
+   * El dropzone es la única fuente: al quitar un archivo reemite su lista completa sin él.
+   */
+  it('should replace pendingAdds with the dropzone list and expose it via getBitstreamsToAdd', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
     fixture.detectChanges();
@@ -515,7 +518,7 @@ describe('GallerySubmissionForm', () => {
     c.onAddBitstreams([f1, f2]);
     expect(c.getBitstreamsToAdd()).toEqual([f1, f2]);
 
-    c.removePendingAdd(f1);
+    c.onAddBitstreams([f2]);
     expect(c.getBitstreamsToAdd()).toEqual([f2]);
   });
 

@@ -1,0 +1,43 @@
+<div class="flex flex-col gap-2">
+  <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+    {{ label }}
+    <span class="text-gray-400 font-normal">
+      (clic en Quitar para marcar; el cambio se aplica al guardar)
+    </span>
+  </label>
+
+  @if (bitstreams.length > 0) {
+    <ul class="rounded-md border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
+      @for (bs of bitstreams; track bs.uuid) {
+        <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+          <span [class.line-through]="isPending(bs.uuid)"
+                [class.text-gray-400]="isPending(bs.uuid)"
+                class="truncate">
+            {{ bs.name ?? '(sin nombre)' }}
+            <span class="text-gray-400 ml-2">{{ (bs.sizeBytes / 1024) | number: '1.0-0' }} KB</span>
+          </span>
+          <p-button
+            type="button"
+            [label]="isPending(bs.uuid) ? 'Restaurar' : 'Quitar'"
+            [icon]="isPending(bs.uuid) ? 'pi pi-undo' : 'pi pi-times'"
+            size="small"
+            severity="secondary"
+            [outlined]="true"
+            [rounded]="true"
+            (onClick)="onToggle(bs.uuid)" />
+        </li>
+      }
+    </ul>
+  } @else {
+    <div class="text-sm text-gray-500 italic">{{ emptyMessage }}</div>
+  }
+
+  @if (showPaginator) {
+    <p-paginator
+      [rows]="size"
+      [totalRecords]="total"
+      [first]="page * size"
+      [rowsPerPageOptions]="[20, 50, 100]"
+      (onPageChange)="onPage($event)" />
+  }
+</div>

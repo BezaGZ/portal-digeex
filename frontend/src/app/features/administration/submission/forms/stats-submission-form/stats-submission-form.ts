@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { startWith } from 'rxjs/operators';
@@ -14,6 +13,7 @@ import { MessageModule } from 'primeng/message';
 
 import { FileDropzoneComponent } from '../../../../../shared';
 import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { BitstreamBundleManagerComponent } from '../../../../../shared/components/bitstream-bundle-manager/bitstream-bundle-manager.component';
 import { BaseSubmissionForm } from '../../base-submission-form';
 import { registerSubmissionForm } from '../../submission-form-registry';
 import { mv } from '../../metadata-value.util';
@@ -53,7 +53,7 @@ import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry
     MessageModule,
     FileDropzoneComponent,
     LoadingSpinnerComponent,
-    DecimalPipe,
+    BitstreamBundleManagerComponent,
   ],
 })
 export class StatsSubmissionForm extends BaseSubmissionForm {

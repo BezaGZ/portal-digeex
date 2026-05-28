@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -9,7 +8,6 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { Select } from 'primeng/select';
 import { DatePickerModule } from 'primeng/datepicker';
-import { PaginatorModule } from 'primeng/paginator';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ButtonModule } from 'primeng/button';
 
@@ -26,6 +24,7 @@ import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.ser
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
 import { FileDropzoneComponent } from '../../../../../shared';
 import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { BitstreamBundleManagerComponent } from '../../../../../shared/components/bitstream-bundle-manager/bitstream-bundle-manager.component';
 
 /**
  * Formulario de submission para colecciones de tipo Galería. Persiste un
@@ -44,12 +43,11 @@ import { LoadingSpinnerComponent } from '../../../../../shared/components/loadin
     TextareaModule,
     Select,
     DatePickerModule,
-    PaginatorModule,
     ToggleSwitchModule,
     ButtonModule,
     FileDropzoneComponent,
     LoadingSpinnerComponent,
-    DecimalPipe,
+    BitstreamBundleManagerComponent,
   ],
 })
 export class GallerySubmissionForm extends BaseSubmissionForm {
@@ -287,14 +285,13 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
     return this.pendingDeletes().has(uuid);
   }
 
-  /** Suma archivos a la pila de subida; recibe el array completo del dropzone. */
+  /**
+   * Reemplaza la pila de subida con la lista completa que emite el dropzone.
+   * El dropzone es la única fuente: agregar o quitar archivos reemite su lista
+   * actual, así no quedan duplicados ni estado paralelo desincronizado.
+   */
   onAddBitstreams(files: File[]): void {
-    this.pendingAdds.set([...this.pendingAdds(), ...files]);
-  }
-
-  /** Quita un archivo de la pila de subida antes de confirmar el Submit. */
-  removePendingAdd(file: File): void {
-    this.pendingAdds.set(this.pendingAdds().filter((f) => f !== file));
+    this.pendingAdds.set([...files]);
   }
 
   protected override getBitstreamsToRemove(): string[] {
