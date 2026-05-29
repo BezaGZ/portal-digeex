@@ -174,43 +174,53 @@ const DigeexPreset = definePreset(Aura, {
     },
 
     /**
-     * Verde semántico para estado de éxito (severity="success").
+     * Verde Quetzal Esmeralda — Macrotema Seguridad. Mapea a la severity
+     * "success" de PrimeNG (botones, toasts, badges de estado exitoso).
+     * Reemplaza el emerald-500 de Tailwind por la paleta oficial del
+     * Gobierno de Guatemala según la Estrategia Visual 2026.
      *
-     * Valor clave:
-     * - 500: emerald-500 de Tailwind (#10B981)
+     * Valores clave:
+     * - 200: Quetzal Esmeralda claro (#8DD8D3)
+     * - 500: Quetzal Esmeralda principal (#026961)
+     * - 700: Quetzal Esmeralda oscuro (#235558)
      */
     emerald: {
-      50: '#ECFDF5',
-      100: '#D1FAE5',
-      200: '#A7F3D0',
-      300: '#6EE7B7',
-      400: '#34D399',
-      500: '#10B981',
-      600: '#059669',
-      700: '#047857',
-      800: '#065F46',
-      900: '#064E3B',
-      950: '#022C22'
+      50: '#E8F5F4',
+      100: '#C6E9E6',
+      200: '#8DD8D3',
+      300: '#5BBFB7',
+      400: '#2FA89E',
+      500: '#026961',
+      600: '#025651',
+      700: '#235558',
+      800: '#1B4147',
+      900: '#122B30',
+      950: '#0A1A1D'
     },
 
     /**
-     * Rojo semántico para estado de peligro (severity="danger").
+     * Rojo Baya Wachil — Macrotema Competitividad. Mapea a la severity
+     * "danger" de PrimeNG (botones de eliminar, toasts de error, estados
+     * críticos). Reemplaza el red-500 de Tailwind por la paleta oficial
+     * del Gobierno de Guatemala según la Estrategia Visual 2026.
      *
-     * Valor clave:
-     * - 500: red-500 de Tailwind (#EF4444)
+     * Valores clave:
+     * - 100: Baya Wachil claro (#FFE1E5)
+     * - 500: Baya Wachil principal (#9F0B30)
+     * - 700: Baya Wachil oscuro (#7B162F)
      */
     red: {
-      50: '#FEF2F2',
-      100: '#FEE2E2',
-      200: '#FECACA',
-      300: '#FCA5A5',
-      400: '#F87171',
-      500: '#EF4444',
-      600: '#DC2626',
-      700: '#B91C1C',
-      800: '#991B1B',
-      900: '#7F1D1D',
-      950: '#450A0A'
+      50: '#FFF5F7',
+      100: '#FFE1E5',
+      200: '#FFC6CD',
+      300: '#F08AA0',
+      400: '#D44D72',
+      500: '#9F0B30',
+      600: '#8A0A2A',
+      700: '#7B162F',
+      800: '#5E1126',
+      900: '#3F0C1A',
+      950: '#20060D'
     },
 
     /**
