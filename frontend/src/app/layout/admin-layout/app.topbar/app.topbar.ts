@@ -86,8 +86,8 @@ export class AppTopbar {
   onLogout() {
     this.isUserMenuOpen = false;
     this.authService.logout().subscribe({
-      next: () => this.router.navigate(['/login']),
-      error: () => this.router.navigate(['/login']),
+      next: () => this.router.navigate(['/iniciar-sesion']),
+      error: () => this.router.navigate(['/iniciar-sesion']),
     });
   }
 }

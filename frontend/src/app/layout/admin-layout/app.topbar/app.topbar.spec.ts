@@ -80,11 +80,11 @@ describe('AppTopbar', () => {
     component.onLogout();
 
     expect(logoutFn).toHaveBeenCalled();
-    expect(router.navigate).toHaveBeenCalledWith(['/login']);
+    expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
 
     logoutFn.mockReturnValue(throwError(() => new Error('boom')));
     (router.navigate as any).mockClear();
     component.onLogout();
-    expect(router.navigate).toHaveBeenCalledWith(['/login']);
+    expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
   });
 });

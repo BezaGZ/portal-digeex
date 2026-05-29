@@ -104,6 +104,38 @@ describe('jwtInterceptor', () => {
     });
   });
 
+  /** Endpoints públicos */
+
+  describe('public endpoints', () => {
+    /**
+     * Verifica que peticiones a `/eperson/registrations` NO lleven Bearer
+     * aunque el AuthService tenga un token. El endpoint es anónimo en
+     * DSpace 9 (`@PreAuthorize("permitAll()")` sobre `findByToken`), pero
+     * el filtro de seguridad valida el JWT antes de llegar al endpoint y
+     * rechaza con 401 cuando el token está stale o expirado, lo que cascada
+     * en un `router.navigate(['/iniciar-sesion'])` por `redirectOn401`.
+     * Excluir el path del Bearer mantiene la pantalla de reset utilizable
+     * desde una pestaña con sesión obsoleta.
+     */
+    it('should NOT attach Bearer on /eperson/registrations requests', async () => {
+      vi.spyOn(authService, 'getToken').mockReturnValue('stale-jwt');
+
+      const promise = new Promise<void>((resolve, reject) => {
+        httpClient
+          .get('/server/api/eperson/registrations/search/findByToken')
+          .subscribe({ next: () => resolve(), error: reject });
+      });
+
+      const req = httpMock.expectOne(
+        '/server/api/eperson/registrations/search/findByToken',
+      );
+      expect(req.request.headers.has('Authorization')).toBe(false);
+      req.flush({});
+
+      await promise;
+    });
+  });
+
   /** Refresh automático */
 
   describe('automatic refresh', () => {
@@ -254,7 +286,7 @@ describe('jwtInterceptor', () => {
       req.flush(null, { status: 401, statusText: 'Unauthorized' });
 
       await promise;
-      expect(router.navigate).toHaveBeenCalledWith(['/login']);
+      expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
     });
 
     /** Verifica que NO redirige cuando la respuesta es exitosa (200). */

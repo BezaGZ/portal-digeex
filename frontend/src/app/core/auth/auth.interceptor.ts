@@ -41,6 +41,15 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
+  // Endpoints anónimos de DSpace 9 que no deben llevar el JWT del caller.
+  // `/eperson/registrations` es `permitAll`, pero el filtro de seguridad
+  // valida el Bearer antes de llegar al endpoint y rechaza con 401 cuando
+  // el token está expirado. La pantalla de reset por token se rompía
+  // porque ese 401 cascadeaba en un redirect a `/iniciar-sesion`.
+  if (req.url.includes('/eperson/registrations')) {
+    return next(req);
+  }
+
   const authReq = req.clone({
     setHeaders: { Authorization: `Bearer ${token}` },
   });
@@ -88,7 +97,7 @@ function captureRotatedJwt<T>(authService: AuthService): OperatorFunction<HttpEv
 function redirectOn401<T>(router: Router): OperatorFunction<T, T> {
   return catchError((error: { status?: number }) => {
     if (error.status === 401) {
-      router.navigate(['/login']);
+      router.navigate(['/iniciar-sesion']);
     }
     return throwError(() => error);
   });

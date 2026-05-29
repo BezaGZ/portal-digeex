@@ -42,7 +42,7 @@ describe('LoginComponent', () => {
         provideHttpClientTesting(),
         provideRouter([
           { path: 'administrador', component: {} as any },
-          { path: 'login', component: LoginComponent },
+          { path: 'iniciar-sesion', component: LoginComponent },
         ]),
         AuthService,
         { provide: UserManagementService, useValue: userManagementStub },

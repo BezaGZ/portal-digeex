@@ -116,7 +116,7 @@ describe('SessionWarningModal', () => {
       button.click();
 
       expect(authService.logout).toHaveBeenCalled();
-      expect(router.navigate).toHaveBeenCalledWith(['/login']);
+      expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
     });
   });
 
@@ -138,7 +138,7 @@ describe('SessionWarningModal', () => {
       fixture.detectChanges();
 
       expect(authService.logout).toHaveBeenCalled();
-      expect(router.navigate).toHaveBeenCalledWith(['/login']);
+      expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
     });
   });
 });

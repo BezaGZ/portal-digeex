@@ -28,7 +28,7 @@ describe('authGuard', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([
-          { path: 'login', component: {} as any },
+          { path: 'iniciar-sesion', component: {} as any },
           { path: 'administrador', canActivate: [authGuard], component: {} as any },
         ]),
         AuthService,
@@ -61,8 +61,8 @@ describe('authGuard', () => {
   /** No autenticado */
 
   describe('unauthenticated user', () => {
-    /** Verifica que redirija a /login cuando no hay sesión activa. */
-    it('should redirect to /login when not authenticated', () => {
+    /** Verifica que redirija a /iniciar-sesion cuando no hay sesión activa. */
+    it('should redirect to /iniciar-sesion when not authenticated', () => {
       authService.isAuthenticated.set(false);
 
       const result = TestBed.runInInjectionContext(() =>
@@ -70,7 +70,7 @@ describe('authGuard', () => {
       );
 
       expect(result).not.toBe(true);
-      expect(result.toString()).toContain('/login');
+      expect(result.toString()).toContain('/iniciar-sesion');
     });
 
     /** Verifica que preserve la URL destino en el queryParam returnUrl
@@ -82,7 +82,7 @@ describe('authGuard', () => {
         authGuard({} as any, { url: '/administrador/usuarios' } as any)
       );
 
-      expect(result.toString()).toBe('/login?returnUrl=%2Fadministrador%2Fusuarios');
+      expect(result.toString()).toBe('/iniciar-sesion?returnUrl=%2Fadministrador%2Fusuarios');
     });
   });
 

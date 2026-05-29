@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { EPerson } from './models/eperson.model';
+import { Registration } from './models/registration.model';
 import { HalListResponse, Paginated } from './models/hal.model';
 import {
   DSPACE_API_BASE,
@@ -18,6 +19,16 @@ import { JsonPatchEntry, JsonPatchReplace, replaceOp, addOp } from './json-patch
 const ACCOUNT_REQUEST_FORGOT = 'forgot';
 const EPERSON_TYPE = 'eperson';
 const REGISTRATION_TYPE = 'registration';
+
+/**
+ * Error tipado para distinguir el caso "token inválido o expirado" del
+ * resto de errores HTTP. Lo emite `validateResetToken` cuando DSpace
+ * responde 404 en `/api/eperson/registrations/search/findByToken`.
+ * Permite que el componente consumidor decida UI sin parsear status codes.
+ */
+export class RegistrationTokenInvalidError extends Error {
+  override readonly name = 'RegistrationTokenInvalidError';
+}
 
 /**
  * Paths de JSON Patch sobre el recurso eperson (contrato DSpace 9.2).
@@ -177,6 +188,50 @@ export class EPersonApiService {
     }
 
     return this.sendPatch(uuid, patch);
+  }
+
+  /**
+   * Valida un token de reset/registro contra el endpoint nativo
+   * `/api/eperson/registrations/search/findByToken` de DSpace. Devuelve los
+   * datos del registro (incluido el UUID del eperson en flujo FORGOT) que
+   * el componente usa para el PATCH posterior de contraseña.
+   *
+   * Fuente del contrato: `RegistrationRestRepository.findByToken` del
+   * backend DSpace 9.x. Acceso anónimo (`permitAll`).
+   */
+  validateResetToken(token: string): Observable<Registration> {
+    const url = `${DSPACE_API_BASE}${REGISTRATIONS_COLLECTION_PATH}/search/findByToken`;
+    const params = new HttpParams().set('token', token);
+    return this.http.get<Registration>(url, { params }).pipe(
+      catchError((err: { status?: number }) => {
+        // 404: el backend confirmó que el token no existe o expiró.
+        // Resto de status: error genuino, se propaga sin transformar.
+        if (err?.status === 404) {
+          return throwError(
+            () => new RegistrationTokenInvalidError('Token de reset inválido o expirado.'),
+          );
+        }
+        return throwError(() => err);
+      }),
+    );
+  }
+
+  /**
+   * Fija una contraseña nueva usando el token del correo de reset. El token
+   * va como query param `?token=...`, no como header de autorización: así lo
+   * espera el backend de DSpace en `EPersonPasswordAddOperation.java:93-97`,
+   * que cuando detecta el query param valida el token y omite el chequeo de
+   * `current_password`. El token se invalida en el backend tras el éxito.
+   */
+  resetPasswordWithToken(
+    uuid: string,
+    token: string,
+    newPassword: string,
+  ): Observable<EPerson> {
+    const url = `${DSPACE_API_BASE}${EPERSONS_COLLECTION_PATH}/${uuid}`;
+    const params = new HttpParams().set('token', token);
+    const patch: JsonPatchEntry[] = [addOp(PATCH_PATH_PASSWORD, { new_password: newPassword })];
+    return this.http.patch<EPerson>(url, patch, { params });
   }
 
   /**

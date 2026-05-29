@@ -74,8 +74,16 @@ export const routes: Routes = [
   },
 
   {
-    path: 'login',
+    path: 'iniciar-sesion',
     loadComponent: () => import('./features/auth/login/login').then(m => m.LoginComponent)
+  },
+
+  {
+    path: 'restablecer-contrasena/:token',
+    loadComponent: () =>
+      import('./features/auth/password-reset-confirm/password-reset-confirm').then(
+        m => m.PasswordResetConfirm,
+      ),
   },
 
   {

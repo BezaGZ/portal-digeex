@@ -70,7 +70,7 @@ export class PublicHeader implements OnInit {
   }
 
   goToLogin() {
-    this.router.navigate(['/login']);
+    this.router.navigate(['/iniciar-sesion']);
   }
   goToSearch() {
     this.router.navigate(['/busqueda-avanzada']);

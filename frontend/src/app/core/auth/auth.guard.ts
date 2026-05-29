@@ -6,9 +6,9 @@ import { AuthService } from './auth.service';
  * Guard funcional que protege rutas de administración.
  *
  * Verifica si el usuario está autenticado antes de permitir el acceso. Sin
- * sesión, redirige a `/login` y guarda la URL destino en el queryParam
- * `returnUrl` para que el flujo de login, al terminar, devuelva al usuario
- * exactamente a la pantalla que quería abrir.
+ * sesión, redirige a `/iniciar-sesion` y guarda la URL destino en el
+ * queryParam `returnUrl` para que el flujo de login, al terminar, devuelva
+ * al usuario exactamente a la pantalla que quería abrir.
  *
  * Ciclo 3 TDD — Sprint 5
  */
@@ -20,7 +20,7 @@ export const authGuard: CanActivateFn = (_route, state) => {
     return true;
   }
 
-  return router.createUrlTree(['/login'], {
+  return router.createUrlTree(['/iniciar-sesion'], {
     queryParams: { returnUrl: state.url },
   });
 };

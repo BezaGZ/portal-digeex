@@ -45,6 +45,6 @@ export class SessionWarningModal {
   onLogout(): void {
     this.idleService.stop();
     this.authService.logout().subscribe();
-    this.router.navigate(['/login']);
+    this.router.navigate(['/iniciar-sesion']);
   }
 }

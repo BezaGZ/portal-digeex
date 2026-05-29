@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { EPersonApiService } from './eperson-api.service';
+import { EPersonApiService, RegistrationTokenInvalidError } from './eperson-api.service';
+import { Registration } from './models/registration.model';
 
 /**
  * Tests de `EPersonApiService`.
@@ -11,7 +12,8 @@ import { EPersonApiService } from './eperson-api.service';
  * registrations) y los métodos `update()`, `delete()`, `resendRegistration()`
  * y `setActive()` sobre JSON Patch según el contrato REST de DSpace 9.2.
  *
- * Ciclos 5, 6, 7 TDD — Sprint 5. Ajustado en Ciclo 13.
+ * Ciclos 5, 6, 7 TDD — Sprint 5. Ajustado en Ciclo 13. Extendido en
+ * Ciclo 1 TDD — Sprint 8 con `validateResetToken` y `resetPasswordWithToken`.
  */
 describe('EPersonApiService', () => {
   let service: EPersonApiService;
@@ -486,6 +488,115 @@ describe('EPersonApiService', () => {
       expect(req.request.body).toEqual([
         { op: 'replace', path: '/metadata/eperson.firstname/0/value', value: 'NuevoNombre' },
         { op: 'replace', path: '/metadata/eperson.lastname/0/value', value: 'NuevoApellido' },
+      ]);
+      req.flush({});
+
+      await promise;
+    });
+  });
+
+  /**
+   * validateResetToken(): GET /api/eperson/registrations/search/findByToken
+   * con el token como query param. Devuelve el Registration con el UUID del
+   * eperson (campo `user`) que el flujo de reset usa para el PATCH posterior.
+   * El backend devuelve 404 cuando el token no existe o expiró; el wrapper
+   * mapea ese caso a `RegistrationTokenInvalidError` para que el componente
+   * pueda discriminar UI sin parsear status codes.
+   */
+  describe('validateResetToken()', () => {
+    /**
+     * Verifica que el wrapper consulte el endpoint canónico
+     * `search/findByToken` pasando el token como query param y devuelva el
+     * Registration emitido por DSpace.
+     */
+    it('should GET registrations/search/findByToken with token as query param', async () => {
+      let result: Registration | undefined;
+      const promise = new Promise<void>((resolve, reject) => {
+        service.validateResetToken('reset-token-abc123').subscribe({
+          next: (reg) => {
+            result = reg;
+            resolve();
+          },
+          error: reject,
+        });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/registrations/search/findByToken' &&
+          r.method === 'GET' &&
+          r.params.get('token') === 'reset-token-abc123',
+      );
+      req.flush({
+        id: 42,
+        email: 'usuario@mineduc.gob.gt',
+        user: 'eperson-uuid-001',
+        registrationType: 'forgot',
+        netId: null,
+      });
+
+      await promise;
+      expect(result?.email).toBe('usuario@mineduc.gob.gt');
+      expect(result?.user).toBe('eperson-uuid-001');
+    });
+
+    /**
+     * Verifica que un 404 del backend se traduzca a `RegistrationTokenInvalidError`,
+     * para que la pantalla pueda distinguir "token inválido o expirado" del
+     * resto de errores HTTP sin parsear status codes.
+     */
+    it('should reject with RegistrationTokenInvalidError when DSpace responds 404', async () => {
+      let caught: unknown;
+      const promise = new Promise<void>((resolve) => {
+        service.validateResetToken('token-expirado').subscribe({
+          next: () => resolve(),
+          error: (err) => {
+            caught = err;
+            resolve();
+          },
+        });
+      });
+
+      const req = httpMock.expectOne(
+        (r) => r.url === '/server/api/eperson/registrations/search/findByToken',
+      );
+      req.flush(
+        { message: 'The token: token-expirado couldn\'t be found' },
+        { status: 404, statusText: 'Not Found' },
+      );
+
+      await promise;
+      expect(caught).toBeInstanceOf(RegistrationTokenInvalidError);
+    });
+  });
+
+  /**
+   * resetPasswordWithToken(): PATCH /api/eperson/epersons/{uuid}?token={TOKEN}.
+   * Reset de contraseña usando el token del correo como autorización (query
+   * param, no header). El body es un JSON Patch con `op:add` sobre `/password`
+   * y `value:{new_password}`, sin `current_password` (DSpace acepta omitirlo
+   * cuando el token está presente, ver EPersonPasswordAddOperation.java:93-97).
+   */
+  describe('resetPasswordWithToken()', () => {
+    /**
+     * Verifica que el wrapper mande el PATCH al uuid correcto, con el token
+     * como query param y el body de JSON Patch que el contrato exige.
+     */
+    it('should PATCH /api/eperson/epersons/{uuid}?token=... with add /password operation', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service
+          .resetPasswordWithToken('eperson-uuid-001', 'reset-token-xyz', 'NuevaSegura1')
+          .subscribe({ next: () => resolve(), error: reject });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/epersons/eperson-uuid-001' &&
+          r.method === 'PATCH' &&
+          r.params.get('token') === 'reset-token-xyz',
+      );
+      expect(req.request.body).toEqual([
+        { op: 'add', path: '/password', value: { new_password: 'NuevaSegura1' } },
       ]);
       req.flush({});
 
