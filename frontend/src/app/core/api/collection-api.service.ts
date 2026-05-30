@@ -1,8 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Collection, CollectionCreateBody } from './models/collection.model';
 import { Group, AssociatedGroupCreateBody } from './models/group.model';
+import { Bitstream } from './models/bitstream.model';
 import { HalListResponse } from './models/hal.model';
 import {
   DSPACE_API_BASE,
@@ -24,22 +26,41 @@ import { JsonPatchEntry } from './json-patch.util';
 export class CollectionApiService {
   private readonly http = inject(HttpClient);
 
-  /** Lista paginada de todas las colecciones del repositorio (sin filtrar por community). */
-  list(page = 0, size = 100): Observable<HalListResponse<Collection>> {
-    const params = new HttpParams().set('page', page).set('size', size);
+  /**
+   * Lista paginada de todas las colecciones del repositorio. `options.embed`
+   * proyecta subrecursos en la misma respuesta — p. ej. `'logo'` para evitar
+   * una llamada extra por collection desde home/listados públicos.
+   */
+  list(
+    page = 0,
+    size = 100,
+    options: { embed?: string } = {},
+  ): Observable<HalListResponse<Collection>> {
+    let params = new HttpParams().set('page', page).set('size', size);
+    if (options.embed) {
+      params = params.set('embed', options.embed);
+    }
     return this.http.get<HalListResponse<Collection>>(
       `${DSPACE_API_BASE}${COLLECTIONS_PATH}`,
       { params },
     );
   }
 
-  /** Lista paginada de colecciones que pertenecen a una community específica. */
+  /**
+   * Lista paginada de colecciones que pertenecen a una community específica.
+   * Mismo `options.embed` que `list` para que el admin precargue el logo en
+   * el listado por subdirección.
+   */
   listByCommunity(
     communityUuid: string,
     page = 0,
     size = 20,
+    options: { embed?: string } = {},
   ): Observable<HalListResponse<Collection>> {
-    const params = new HttpParams().set('page', page).set('size', size);
+    let params = new HttpParams().set('page', page).set('size', size);
+    if (options.embed) {
+      params = params.set('embed', options.embed);
+    }
     return this.http.get<HalListResponse<Collection>>(
       `${DSPACE_API_BASE}${COMMUNITIES_PATH}/${communityUuid}/collections`,
       { params },
@@ -148,6 +169,37 @@ export class CollectionApiService {
     return this.http.post<Group>(
       `${DSPACE_API_BASE}${COLLECTIONS_PATH}/${collectionUuid}/adminGroup`,
       body,
+    );
+  }
+
+  /**
+   * Devuelve el bitstream del logo de la collection, o `null` cuando aún no
+   * tiene uno. DSpace responde 204 sin body en ese caso y `observe: 'response'`
+   * permite distinguirlo del 200 con bitstream sin caer en `catchError`.
+   */
+  getLogo(uuid: string): Observable<Bitstream | null> {
+    return this.http
+      .get<Bitstream>(`${DSPACE_API_BASE}${COLLECTIONS_PATH}/${uuid}/logo`, {
+        observe: 'response',
+      })
+      .pipe(
+        map((res: HttpResponse<Bitstream>) =>
+          res.status === 204 ? null : res.body,
+        ),
+      );
+  }
+
+  /**
+   * Sube el logo de la collection. Multipart con el archivo en el campo `file`.
+   * DSpace tira 422 si la collection YA tiene logo, así que el caller debe
+   * borrarlo antes (eso lo orquesta `CollectionFacade.replaceLogo$`).
+   */
+  uploadLogo(uuid: string, file: File): Observable<Bitstream> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<Bitstream>(
+      `${DSPACE_API_BASE}${COLLECTIONS_PATH}/${uuid}/logo`,
+      form,
     );
   }
 }

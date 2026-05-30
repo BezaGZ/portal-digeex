@@ -4,6 +4,7 @@ import { Mock, vi } from 'vitest';
 import { CollectionFacade } from './collection-facade';
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
 import { GroupApiService } from '../../../../core/api/group-api.service';
+import { BundleApiService } from '../../../../core/api/bundle-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { BusinessRuleError } from '../../../../core/error/business-rule-error';
@@ -16,11 +17,16 @@ type CollectionApiMock = {
   createAdminGroup: Mock;
   updateMetadata: Mock;
   delete: Mock;
+  getLogo: Mock;
+  uploadLogo: Mock;
 };
 type GroupApiMock = {
   getByName: Mock;
   addSubgroup: Mock;
   delete: Mock;
+};
+type BundleApiMock = {
+  deleteBitstream: Mock;
 };
 type ScopeMock = { assertWithinScope: Mock };
 type AuthCallerMock = { currentCaller$: ReturnType<typeof of> };
@@ -36,12 +42,13 @@ type AuthCallerMock = { currentCaller$: ReturnType<typeof of> };
  * y solo lo enlaza como subgrupo del submittersGroup técnico de la nueva
  * colección, nunca lo crea ni lo borra.
  *
- * Ciclo 13 TDD — Sprint 6
+ * Ciclo 13 TDD — Sprint 6. Ajustado en Ciclo 3.
  */
 describe('CollectionFacade', () => {
   let facade: CollectionFacade;
   let mockCollectionApi: CollectionApiMock;
   let mockGroupApi: GroupApiMock;
+  let mockBundleApi: BundleApiMock;
   let mockScope: ScopeMock;
   let mockAuthCaller: AuthCallerMock;
 
@@ -99,6 +106,7 @@ describe('CollectionFacade', () => {
         CollectionFacade,
         { provide: CollectionApiService, useValue: mockCollectionApi },
         { provide: GroupApiService, useValue: mockGroupApi },
+        { provide: BundleApiService, useValue: mockBundleApi },
         { provide: ContentScopeService, useValue: mockScope },
         { provide: AuthCallerService, useValue: mockAuthCaller },
       ],
@@ -113,11 +121,16 @@ describe('CollectionFacade', () => {
       createAdminGroup: vi.fn(() => of(techAdminGroup)),
       updateMetadata: vi.fn(() => of({ ...newCollection, name: 'Renombrada' })),
       delete: vi.fn(() => of(undefined)),
+      getLogo: vi.fn(() => of(null)),
+      uploadLogo: vi.fn(() => of({ uuid: 'new-logo-bs' })),
     };
     mockGroupApi = {
       getByName: vi.fn(() => of(sharedSubmitters)),
       addSubgroup: vi.fn(() => of(undefined)),
       delete: vi.fn(() => of(undefined)),
+    };
+    mockBundleApi = {
+      deleteBitstream: vi.fn(() => of(undefined)),
     };
     mockScope = {
       assertWithinScope: vi.fn(),
@@ -215,6 +228,56 @@ describe('CollectionFacade', () => {
     });
 
     /**
+     * Verifica que el upload del logo vaya al final, tras cablear ambos grupos.
+     * No pasa por replaceLogo$ porque una collection recién creada nunca tiene logo previo.
+     */
+    it('should upload the cover file at the end of the pipeline when coverFile is provided', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      const cover = new File(['png'], 'cover.png', { type: 'image/png' });
+
+      await firstValueFrom(
+        facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA', cover),
+      );
+
+      expect(mockCollectionApi.uploadLogo).toHaveBeenCalledWith('coll-new', cover);
+      const uploadOrder = mockCollectionApi.uploadLogo.mock.invocationCallOrder[0];
+      const addSubgroupOrder = mockGroupApi.addSubgroup.mock.invocationCallOrder.at(-1);
+      expect(uploadOrder).toBeGreaterThan(addSubgroupOrder!);
+    });
+
+    /** Verifica que omitir coverFile no dispare uploadLogo y deje el flujo intacto. */
+    it('should NOT call uploadLogo when coverFile is omitted', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(
+        facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA'),
+      );
+
+      expect(mockCollectionApi.uploadLogo).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Verifica rollback cascada (admin → submit → collection) cuando falla el upload del logo.
+     * Mantiene la atomicidad del facade: un PNG mal subido no debe dejar grupos huérfanos.
+     */
+    it('should rollback techAdmin, techSubmit and collection when uploadLogo fails', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      const cover = new File(['png'], 'cover.png', { type: 'image/png' });
+      mockCollectionApi.uploadLogo = vi.fn(() =>
+        throwError(() => new Error('500 uploading logo')),
+      );
+
+      await expect(
+        firstValueFrom(
+          facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA', cover),
+        ),
+      ).rejects.toThrow();
+      expect(mockGroupApi.delete).toHaveBeenCalledWith('tech-admin-uuid');
+      expect(mockGroupApi.delete).toHaveBeenCalledWith('tech-subm-uuid');
+      expect(mockCollectionApi.delete).toHaveBeenCalledWith('coll-new');
+    });
+
+    /**
      * Ciclo 40.3 — si el segundo addSubgroup (el de SUBMITTERS al admin
      * técnico) falla, el cleanup debe deshacer en cascada inversa: admin
      * técnico, submit técnico y collection. Es el escenario que más residuos
@@ -271,6 +334,65 @@ describe('CollectionFacade', () => {
         firstValueFrom(facade.updateColeccion$('coll-1', patch, 'ED_TRABAJO')),
       ).rejects.toBeInstanceOf(BusinessRuleError);
       expect(mockCollectionApi.updateMetadata).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('replaceLogo$', () => {
+    const sampleFile = new File(['png'], 'logo.png', { type: 'image/png' });
+
+    /** Verifica que valide scope y, sin logo previo, suba directo el nuevo bitstream. */
+    it('should validate scope, upload directly when no logo exists, and return the new bitstream', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockCollectionApi.getLogo = vi.fn(() => of(null));
+
+      const result = await firstValueFrom(
+        facade.replaceLogo$('coll-1', sampleFile, 'ED_BASICA'),
+      );
+
+      expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
+        dsoType: 'collection',
+        resourceSufijo: 'ED_BASICA',
+        caller: { role: 'superadmin', sufijo: null },
+      });
+      expect(mockCollectionApi.getLogo).toHaveBeenCalledWith('coll-1');
+      expect(mockBundleApi.deleteBitstream).not.toHaveBeenCalled();
+      expect(mockCollectionApi.uploadLogo).toHaveBeenCalledWith('coll-1', sampleFile);
+      expect(result).toEqual({ uuid: 'new-logo-bs' });
+    });
+
+    /**
+     * Verifica el orden DELETE → POST cuando ya hay logo.
+     * DSpace 9 tira 422 si se hace POST sobre un logo existente, por eso el delete va primero.
+     */
+    it('should delete the existing logo bitstream before uploading the new one', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockCollectionApi.getLogo = vi.fn(() =>
+        of({ uuid: 'old-logo-bs', name: 'old.png' }),
+      );
+
+      await firstValueFrom(facade.replaceLogo$('coll-1', sampleFile, 'ED_BASICA'));
+
+      expect(mockBundleApi.deleteBitstream).toHaveBeenCalledWith('old-logo-bs');
+      expect(mockCollectionApi.uploadLogo).toHaveBeenCalledWith('coll-1', sampleFile);
+      // Orden: primero delete, después upload.
+      const deleteOrder = mockBundleApi.deleteBitstream.mock.invocationCallOrder[0];
+      const uploadOrder = mockCollectionApi.uploadLogo.mock.invocationCallOrder[0];
+      expect(deleteOrder).toBeLessThan(uploadOrder);
+    });
+
+    /** Verifica que OUT_OF_SCOPE corte el flujo antes de tocar HTTP. */
+    it('should throw OUT_OF_SCOPE without touching HTTP when scope rejects', async () => {
+      setupFacadeWithCaller('admin_subdireccion', 'ED_TRABAJO');
+      mockScope.assertWithinScope.mockImplementation(() => {
+        throw new BusinessRuleError('OUT_OF_SCOPE', 'rejected');
+      });
+
+      await expect(
+        firstValueFrom(facade.replaceLogo$('coll-1', sampleFile, 'ED_BASICA')),
+      ).rejects.toBeInstanceOf(BusinessRuleError);
+      expect(mockCollectionApi.getLogo).not.toHaveBeenCalled();
+      expect(mockCollectionApi.uploadLogo).not.toHaveBeenCalled();
+      expect(mockBundleApi.deleteBitstream).not.toHaveBeenCalled();
     });
   });
 

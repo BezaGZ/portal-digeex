@@ -1,11 +1,13 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, throwError } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
 import { GroupApiService } from '../../../../core/api/group-api.service';
+import { BundleApiService } from '../../../../core/api/bundle-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { Collection, CollectionCreateBody } from '../../../../core/api/models/collection.model';
+import { Bitstream } from '../../../../core/api/models/bitstream.model';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
 import {
   GROUPS_COLLECTION_PATH,
@@ -25,18 +27,20 @@ import { resolveCaller$, rollbackCascade } from './facade-utils';
 export class CollectionFacade {
   private readonly collectionApi = inject(CollectionApiService);
   private readonly groupApi = inject(GroupApiService);
+  private readonly bundleApi = inject(BundleApiService);
   private readonly scope = inject(ContentScopeService);
   private readonly authCaller = inject(AuthCallerService);
 
   /**
-   * Crea una colección bajo la subcomunidad indicada. Pipeline: POST
-   * collection → POST submittersGroup técnico → GET SUBMITTERS_<sufijo>
-   * compartido → POST subgroups link.
+   * Crea una colección bajo la subcomunidad indicada y enlaza el SUBMITTERS
+   * compartido al _SUBMIT y al _admin técnicos. Si `coverFile` viene, el
+   * logo se sube como paso final y un fallo dispara rollback completo.
    */
   createColeccion$(
     parentCommunityUuid: string,
     body: CollectionCreateBody,
     sufijoSubdireccion: string,
+    coverFile?: File,
   ): Observable<Collection> {
     return resolveCaller$(this.authCaller).pipe(
       switchMap((caller) => {
@@ -101,7 +105,24 @@ export class CollectionFacade {
                                           err,
                                         ),
                                       ),
-                                      map(() => collection),
+                                      switchMap(() => {
+                                        if (!coverFile) {
+                                          return of(collection);
+                                        }
+                                        return this.collectionApi
+                                          .uploadLogo(collection.uuid, coverFile)
+                                          .pipe(
+                                            catchError((err) =>
+                                              this.rollback$(
+                                                collection.uuid,
+                                                techSubmit.uuid,
+                                                techAdmin.uuid,
+                                                err,
+                                              ),
+                                            ),
+                                            map(() => collection),
+                                          );
+                                      }),
                                     ),
                                 ),
                               ),
@@ -161,6 +182,40 @@ export class CollectionFacade {
           return throwError(() => err);
         }
         return this.collectionApi.delete(uuid);
+      }),
+    );
+  }
+
+  /**
+   * Reemplaza la portada del programa. Si ya existe logo, el DELETE va antes
+   * del POST porque DSpace 9 tira 422 al hacer POST sobre logo existente.
+   */
+  replaceLogo$(
+    collectionUuid: string,
+    file: File,
+    sufijoSubdireccion: string,
+  ): Observable<Bitstream> {
+    return resolveCaller$(this.authCaller).pipe(
+      switchMap((caller) => {
+        try {
+          this.scope.assertWithinScope({
+            dsoType: 'collection',
+            resourceSufijo: sufijoSubdireccion,
+            caller,
+          });
+        } catch (err) {
+          return throwError(() => err);
+        }
+        return this.collectionApi.getLogo(collectionUuid).pipe(
+          switchMap((existing) => {
+            const delete$ = existing
+              ? this.bundleApi.deleteBitstream(existing.uuid)
+              : of(null as unknown);
+            return delete$.pipe(
+              switchMap(() => this.collectionApi.uploadLogo(collectionUuid, file)),
+            );
+          }),
+        );
       }),
     );
   }

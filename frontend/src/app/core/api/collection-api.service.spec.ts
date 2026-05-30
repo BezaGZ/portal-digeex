@@ -18,7 +18,7 @@ import collectionCreateAdmingroupFixture from './test-fixtures/collection-create
  * el listado completo, el listado por community padre, la lectura por UUID
  * y la collection dueña de un item.
  *
- * Ciclo 6 TDD — Sprint 6
+ * Ciclo 6 TDD — Sprint 6. Ajustado en Ciclo 3.
  */
 describe('CollectionApiService', () => {
   let service: CollectionApiService;
@@ -67,6 +67,44 @@ describe('CollectionApiService', () => {
     const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100');
     expect(req.request.method).toBe('GET');
     req.flush(mockResponse);
+
+    await promise;
+  });
+
+  /** Proyección embed */
+
+  /** Verifica que list() concatene el query param `embed` cuando viene en options. */
+  it('list() should append embed when provided in options', async () => {
+    const promise = new Promise((resolve, reject) => {
+      service.list(0, 100, { embed: 'logo' }).subscribe({
+        next: (r) => resolve(r),
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne(
+      '/server/api/core/collections?page=0&size=100&embed=logo',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({ _embedded: { collections: [] }, _links: {}, page: { totalElements: 0 } });
+
+    await promise;
+  });
+
+  /** Verifica que listByCommunity() concatene `embed` igual que list(). */
+  it('listByCommunity() should append embed when provided in options', async () => {
+    const promise = new Promise((resolve, reject) => {
+      service.listByCommunity('123-456', 0, 20, { embed: 'logo' }).subscribe({
+        next: (r) => resolve(r),
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne(
+      '/server/api/core/communities/123-456/collections?page=0&size=20&embed=logo',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({ _embedded: { collections: [] }, _links: {}, page: { totalElements: 0 } });
 
     await promise;
   });
@@ -268,6 +306,97 @@ describe('CollectionApiService', () => {
    * el submittersGroup, para que los delegados hereden ADMIN sobre la coll
    * recién creada y puedan subir cover post-archive.
    */
+  /** Logo subrecurso */
+
+  /** Verifica que getLogo() devuelva el bitstream cuando DSpace responde 200. */
+  it('getLogo() should GET /collections/{uuid}/logo and return the Bitstream when present', async () => {
+    const mockBitstream = {
+      uuid: 'logo-bs-1',
+      name: 'logo.png',
+      handle: null,
+      metadata: {},
+      sizeBytes: 1024,
+      checkSum: { checkSumAlgorithm: 'MD5', value: 'abc' },
+      sequenceId: 1,
+      type: 'bitstream',
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.getLogo('coll-with-logo').subscribe({
+        next: (bs) => {
+          expect(bs).not.toBeNull();
+          expect(bs!.uuid).toBe('logo-bs-1');
+          resolve(bs);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/collections/coll-with-logo/logo');
+    expect(req.request.method).toBe('GET');
+    req.flush(mockBitstream);
+
+    await promise;
+  });
+
+  /**
+   * Verifica que getLogo() mapee a null cuando DSpace responde 204.
+   * "Sin logo" es un estado válido del recurso; el wrapper lo expone sin error.
+   */
+  it('getLogo() should resolve with null when DSpace responds 204 No Content', async () => {
+    const promise = new Promise((resolve, reject) => {
+      service.getLogo('coll-without-logo').subscribe({
+        next: (bs) => {
+          expect(bs).toBeNull();
+          resolve(bs);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/collections/coll-without-logo/logo');
+    expect(req.request.method).toBe('GET');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+
+    await promise;
+  });
+
+  /**
+   * Verifica que uploadLogo() haga POST multipart con el archivo en `file`.
+   * HttpClient arma el boundary cuando recibe FormData; el wrapper no toca Content-Type.
+   */
+  it('uploadLogo() should POST multipart to /collections/{uuid}/logo and return the created Bitstream', async () => {
+    const file = new File(['fake-png-content'], 'logo.png', { type: 'image/png' });
+    const mockBitstream = {
+      uuid: 'logo-bs-new',
+      name: 'logo.png',
+      handle: null,
+      metadata: {},
+      sizeBytes: 16,
+      checkSum: { checkSumAlgorithm: 'MD5', value: 'def' },
+      sequenceId: 1,
+      type: 'bitstream',
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.uploadLogo('coll-1', file).subscribe({
+        next: (bs) => {
+          expect(bs.uuid).toBe('logo-bs-new');
+          resolve(bs);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/collections/coll-1/logo');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeInstanceOf(FormData);
+    expect((req.request.body as FormData).get('file')).toBe(file);
+    req.flush(mockBitstream, { status: 201, statusText: 'Created' });
+
+    await promise;
+  });
+
   it('createAdminGroup() should POST to /collections/{uuid}/adminGroup with metadata body and return the auto-named Group', () => {
     const body = {
       metadata: {

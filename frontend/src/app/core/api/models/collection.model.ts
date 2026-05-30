@@ -1,13 +1,15 @@
 import { MetadataMap } from './metadata.model';
 import { Group } from './group.model';
+import { Bitstream } from './bitstream.model';
 
 /**
  * Subrecursos que DSpace puede anidar en una Collection con ?embed=.
- * Por ahora solo se modela submittersGroup, que es el grupo al que se
- * agrega al personal_delegado al crear el eperson (Ciclo 11).
+ * Modela submittersGroup (delegado on-create) y logo (portada del programa
+ * embebida en listados para evitar una llamada extra por collection).
  */
 export interface CollectionEmbedded {
   submittersGroup?: Group | null;
+  logo?: Bitstream | null;
 }
 
 export interface Collection {
