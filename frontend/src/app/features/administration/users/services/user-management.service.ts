@@ -17,6 +17,8 @@ import {
   resolveRoleFromGroups,
 } from './role-resolver';
 import { BusinessRuleError } from '../../../../core/error/business-rule-error';
+import { isAllowedEmailDomain } from '../../../../core/validators/email-domain.validator';
+import { environment } from '../../../../../environments/environment';
 
 /**
  * Entrada del alta. El UI pasa el grupo concreto al que va el eperson (uuid + name).
@@ -69,8 +71,9 @@ const EMBED_GROUPS = 'groups';
 const METADATA_FIRSTNAME = 'eperson.firstname';
 const METADATA_LASTNAME = 'eperson.lastname';
 
-/** Dominio institucional exigido por RN-02. */
-const INSTITUTIONAL_EMAIL_DOMAIN = '@mineduc.gob.gt';
+/** Allowlist de dominios institucionales exigida por RN-02; el environment
+ *  decide si dev acepta dominios adicionales para testeo. */
+const ALLOWED_EMAIL_DOMAINS = environment.allowedEmailDomains;
 
 /**
  * Tope por página al traer el listado completo de grupos asignables. 100 es
@@ -281,12 +284,12 @@ export class UserManagementService {
    * Un fallo del correo no revierte: la cuenta ya tiene rol y el reset se puede reenviar.
    */
   createUser$(input: CreateUserInput): Observable<EPerson> {
-    if (!input.email.endsWith(INSTITUTIONAL_EMAIL_DOMAIN)) {
+    if (!isAllowedEmailDomain(input.email, ALLOWED_EMAIL_DOMAINS)) {
       return throwError(
         () =>
           new BusinessRuleError(
             'EMAIL_INVALID',
-            `El correo debe ser institucional (${INSTITUTIONAL_EMAIL_DOMAIN}).`,
+            `El correo debe ser institucional (${ALLOWED_EMAIL_DOMAINS.join(', ')}).`,
           ),
       );
     }
@@ -458,12 +461,12 @@ export class UserManagementService {
   updateUser$(input: UpdateUserInput): Observable<EPerson> {
     const { uuid, changes } = input;
 
-    if (changes.email !== undefined && !changes.email.endsWith(INSTITUTIONAL_EMAIL_DOMAIN)) {
+    if (changes.email !== undefined && !isAllowedEmailDomain(changes.email, ALLOWED_EMAIL_DOMAINS)) {
       return throwError(
         () =>
           new BusinessRuleError(
             'EMAIL_INVALID',
-            `El correo debe ser institucional (${INSTITUTIONAL_EMAIL_DOMAIN}).`,
+            `El correo debe ser institucional (${ALLOWED_EMAIL_DOMAINS.join(', ')}).`,
           ),
       );
     }

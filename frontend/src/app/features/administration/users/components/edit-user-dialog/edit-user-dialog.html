@@ -29,7 +29,7 @@
         <small style="color: var(--color-error)">{{ getErrorMessage('email') }}</small>
       }
       @if (!hasError('email')) {
-        <small style="color: var(--color-text-tertiary)">Debe terminar en @mineduc.gob.gt</small>
+        <small style="color: var(--color-text-tertiary)">Debe terminar en {{ allowedDomains.join(', ') }}</small>
       }
     </div>
 

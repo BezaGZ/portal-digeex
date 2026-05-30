@@ -9,11 +9,8 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import {
-  AbstractControl,
   FormBuilder,
   ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
   Validators,
 } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
@@ -31,6 +28,8 @@ import {
   ADMINISTRATOR_GROUP_NAME,
   SUBMITTERS_GROUP_NAME_PREFIX,
 } from '../../services/role-resolver';
+import { allowedEmailDomainsValidator } from '../../../../../core/validators/email-domain.validator';
+import { environment } from '../../../../../../environments/environment';
 
 /** Opción renderizada en el dropdown de rol: uuid + nombre real + label legible. */
 interface RoleOption {
@@ -38,23 +37,12 @@ interface RoleOption {
   label: string;
 }
 
-/** Dominio institucional exigido por RN-02 y validado también server-side en UserManagementService. */
-const INSTITUTIONAL_EMAIL_DOMAIN = '@mineduc.gob.gt';
-
 /**
- * Validador que exige que el correo termine con el dominio institucional.
- * Duplica en cliente la regla que ya aplica el servicio para evitar un
- * roundtrip al backend cuando el error es obvio desde el formulario.
+ * Lista de dominios institucionales permitidos por RN-02, leída del
+ * environment para que dev y prod puedan aceptar conjuntos distintos.
+ * Se exporta para que el HTML pueda renderizar el hint dinámico.
  */
-export function institutionalEmailDomainValidator(): ValidatorFn {
-  return (control: AbstractControl): ValidationErrors | null => {
-    const value = (control.value ?? '').toString().trim().toLowerCase();
-    if (!value) return null;
-    return value.endsWith(INSTITUTIONAL_EMAIL_DOMAIN)
-      ? null
-      : { institutionalDomain: { requiredDomain: INSTITUTIONAL_EMAIL_DOMAIN } };
-  };
-}
+export const ALLOWED_USER_EMAIL_DOMAINS = environment.allowedEmailDomains;
 
 /**
  * Diálogo de alta. Un solo dropdown "Rol" con los grupos reales del portal;
@@ -107,10 +95,13 @@ export class UserDialog {
 
   errorMessage = signal<string | null>(null);
 
+  /** Lista de dominios institucionales que el HTML renderiza como hint. */
+  readonly allowedDomains = ALLOWED_USER_EMAIL_DOMAINS;
+
   form = this.fb.group({
     email: [
       '',
-      [Validators.required, Validators.email, institutionalEmailDomainValidator()],
+      [Validators.required, Validators.email, allowedEmailDomainsValidator(ALLOWED_USER_EMAIL_DOMAINS)],
     ],
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
@@ -206,9 +197,9 @@ export class UserDialog {
     if (!field || !field.errors) return '';
     if (field.errors['required']) return 'Este campo es requerido';
     if (field.errors['email']) return 'Email inválido';
-    if (field.errors['institutionalDomain']) {
-      const required = field.errors['institutionalDomain'].requiredDomain;
-      return `El correo debe terminar en ${required}`;
+    if (field.errors['emailDomain']) {
+      const allowed = field.errors['emailDomain'].allowedDomains as readonly string[];
+      return `El correo debe terminar en ${allowed.join(', ')}`;
     }
     if (field.errors['minlength']) {
       const minLength = field.errors['minlength'].requiredLength;

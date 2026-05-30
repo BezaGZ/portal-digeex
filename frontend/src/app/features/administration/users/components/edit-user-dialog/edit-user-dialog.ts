@@ -16,6 +16,8 @@ import { FloatLabelModule } from 'primeng/floatlabel';
 import { MessageModule } from 'primeng/message';
 
 import { UserView } from '../../models/user-view.model';
+import { allowedEmailDomainsValidator } from '../../../../../core/validators/email-domain.validator';
+import { ALLOWED_USER_EMAIL_DOMAINS } from '../user-dialog/user-dialog';
 
 /** Campos del eperson que el diálogo permite editar. */
 export interface UpdateUserIdentityInput {
@@ -72,8 +74,18 @@ export class EditUserDialog {
 
   errorMessage = signal<string | null>(null);
 
+  /** Lista de dominios institucionales que el HTML renderiza como hint. */
+  readonly allowedDomains = ALLOWED_USER_EMAIL_DOMAINS;
+
   form = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
+    email: [
+      '',
+      [
+        Validators.required,
+        Validators.email,
+        allowedEmailDomainsValidator(ALLOWED_USER_EMAIL_DOMAINS),
+      ],
+    ],
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
   });
@@ -133,6 +145,10 @@ export class EditUserDialog {
     if (!field || !field.errors) return '';
     if (field.errors['required']) return 'Este campo es requerido';
     if (field.errors['email']) return 'Email inválido';
+    if (field.errors['emailDomain']) {
+      const allowed = field.errors['emailDomain'].allowedDomains as readonly string[];
+      return `El correo debe terminar en ${allowed.join(', ')}`;
+    }
     if (field.errors['minlength']) {
       const minLength = field.errors['minlength'].requiredLength;
       return `Debe tener al menos ${minLength} caracteres`;

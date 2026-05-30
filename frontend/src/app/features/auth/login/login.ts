@@ -1,14 +1,14 @@
 import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { CheckboxModule } from 'primeng/checkbox';
 import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
 import { AuthService } from '../../../core/auth/auth.service';
 import { UserManagementService } from '../../administration/users/services/user-management.service';
+import { AuthCardShell } from '../../../shared/components/auth-card-shell/auth-card-shell';
 
 /** Mensaje que se muestra cuando el eperson autenticado no tiene un grupo de rol del portal. */
 export const LOGIN_MISSING_ROLE_MESSAGE =
@@ -21,7 +21,7 @@ export const LOGIN_INVALID_CREDENTIALS_MESSAGE =
 @Component({
   selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, InputTextModule, PasswordModule, CheckboxModule, ButtonModule, CardModule],
+  imports: [FormsModule, RouterLink, InputTextModule, PasswordModule, CheckboxModule, ButtonModule, AuthCardShell],
   templateUrl: './login.html',
 })
 export class LoginComponent {

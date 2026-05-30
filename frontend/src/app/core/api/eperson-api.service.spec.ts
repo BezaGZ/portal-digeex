@@ -605,6 +605,34 @@ describe('EPersonApiService', () => {
   });
 
   /**
+   * requestPasswordReset(): POST /api/eperson/registrations?accountRequestType=forgot.
+   * Punto de entrada público del flujo "olvidé mi contraseña". Mismo
+   * endpoint que `resendRegistration`, distinto consumidor (público vs admin).
+   */
+  describe('requestPasswordReset()', () => {
+    /** Verifica que dispare el POST con email y accountRequestType=forgot. */
+    it('should POST registrations?accountRequestType=forgot with the email', async () => {
+      const promise = new Promise((resolve, reject) => {
+        service
+          .requestPasswordReset('persona@mineduc.gob.gt')
+          .subscribe({ next: resolve, error: reject });
+      });
+
+      const req = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/registrations' &&
+          r.method === 'POST' &&
+          r.params.get('accountRequestType') === 'forgot',
+      );
+      expect(req.request.body.email).toBe('persona@mineduc.gob.gt');
+      expect(req.request.body.type).toBe('registration');
+      req.flush({});
+
+      await promise;
+    });
+  });
+
+  /**
    * resendRegistration(): POST /api/eperson/registrations?accountRequestType=forgot.
    * Reenvía el correo con token para que el usuario fije su contraseña cuando
    * el original se perdió o expiró.

@@ -79,11 +79,27 @@ export const routes: Routes = [
   },
 
   {
+    path: 'restablecer-contrasena',
+    loadComponent: () =>
+      import('./features/auth/password-reset-request/password-reset-request').then(
+        m => m.PasswordResetRequest,
+      ),
+  },
+
+  {
     path: 'restablecer-contrasena/:token',
     loadComponent: () =>
       import('./features/auth/password-reset-confirm/password-reset-confirm').then(
         m => m.PasswordResetConfirm,
       ),
+  },
+
+  // El backend de DSpace arma el link del correo de reset con el path
+  // hardcoded `/forgot/{token}` (ver `AccountServiceImpl.fillAndSendEmail`).
+  // Redirigimos al destino en español preservando el token del paramMap.
+  {
+    path: 'forgot/:token',
+    redirectTo: 'restablecer-contrasena/:token',
   },
 
   {

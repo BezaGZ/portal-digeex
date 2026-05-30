@@ -13,11 +13,11 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { MessageService } from 'primeng/api';
+import { AuthCardShell } from '../../../shared/components/auth-card-shell/auth-card-shell';
 import { take } from 'rxjs/operators';
 
 import {
@@ -61,7 +61,7 @@ export type PasswordResetConfirmStatus =
   imports: [
     ReactiveFormsModule,
     RouterLink,
-    CardModule,
+    AuthCardShell,
     ButtonModule,
     InputTextModule,
     PasswordModule,

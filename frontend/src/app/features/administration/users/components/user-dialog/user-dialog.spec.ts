@@ -4,8 +4,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { outputToObservable } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 
-import { UserDialog, labelForGroup, institutionalEmailDomainValidator } from './user-dialog';
-import { FormControl } from '@angular/forms';
+import { UserDialog, labelForGroup } from './user-dialog';
 import { UserView } from '../../models/user-view.model';
 import { Group } from '../../../../../core/api/models/group.model';
 
@@ -140,31 +139,8 @@ describe('UserDialog', () => {
     });
   });
 
-  describe('institutionalEmailDomainValidator', () => {
-    /** Verifica que correos fuera del dominio institucional produzcan error institutionalDomain. */
-    it('should flag emails outside @mineduc.gob.gt with institutionalDomain error', () => {
-      const validator = institutionalEmailDomainValidator();
-      const external = new FormControl('alguien@gmail.com');
-      const fake = new FormControl('malo@mineduc.gob.gt.attacker.com');
-      expect(validator(external)).toEqual({
-        institutionalDomain: { requiredDomain: '@mineduc.gob.gt' },
-      });
-      expect(validator(fake)).toEqual({
-        institutionalDomain: { requiredDomain: '@mineduc.gob.gt' },
-      });
-    });
-
-    /** Verifica que correos institucionales y control vacío pasen el validador. */
-    it('should pass for institutional emails and empty control', () => {
-      const validator = institutionalEmailDomainValidator();
-      expect(validator(new FormControl('nuevo@mineduc.gob.gt'))).toBeNull();
-      expect(validator(new FormControl('NUEVO@MINEDUC.GOB.GT'))).toBeNull();
-      expect(validator(new FormControl(''))).toBeNull();
-    });
-  });
-
-  /** Verifica que el form bloquee submit cuando el correo no es institucional. */
-  it('should block submit when the email is outside @mineduc.gob.gt', () => {
+  /** Verifica que el form bloquee submit cuando el correo no está en el allowlist institucional. */
+  it('should block submit when the email is outside the institutional allowlist', () => {
     fixture.detectChanges();
     (component as any).form.patchValue({
       email: 'ajeno@gmail.com',
@@ -174,9 +150,7 @@ describe('UserDialog', () => {
     });
     expect((component as any).canSubmit()).toBe(false);
     const emailCtrl = (component as any).form.get('email');
-    expect(emailCtrl.errors).toEqual({
-      institutionalDomain: { requiredDomain: '@mineduc.gob.gt' },
-    });
+    expect(emailCtrl.errors?.['emailDomain']).toBeTruthy();
   });
 
   describe('labelForGroup', () => {

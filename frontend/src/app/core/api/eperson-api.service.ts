@@ -245,6 +245,15 @@ export class EPersonApiService {
   }
 
   /**
+   * Punto de entrada público del flujo "olvidé mi contraseña". Anónimo;
+   * mismo POST que `resendRegistration`, expuesto con nombre semántico
+   * distinto para separar el consumidor admin del público.
+   */
+  requestPasswordReset(email: string): Observable<unknown> {
+    return this.triggerPasswordSetupEmail(email);
+  }
+
+  /**
    * Activa o desactiva la capacidad de login del eperson conmutando canLogIn.
    * No borra al usuario: RN-11 exige preservarlo para trazabilidad histórica.
    */

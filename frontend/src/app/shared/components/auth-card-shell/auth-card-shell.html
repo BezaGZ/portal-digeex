@@ -1,0 +1,21 @@
+<div class="min-h-screen flex items-center justify-center bg-[var(--color-background)] p-4">
+  <div class="w-full max-w-md">
+    <p-card>
+      <div class="text-center mb-6">
+        <img [src]="logoSrc()" [alt]="logoAlt()" class="h-16 mx-auto mb-4" />
+        <h1 class="page-title mb-1">{{ title() }}</h1>
+        <p class="text-lg text-[var(--color-text-secondary)]">
+          {{ subtitle() }}
+        </p>
+      </div>
+
+      <ng-content></ng-content>
+    </p-card>
+
+    <div class="text-center mt-6">
+      <p class="text-sm text-[var(--color-text-tertiary)]">
+        {{ footer() }}
+      </p>
+    </div>
+  </div>
+</div>
