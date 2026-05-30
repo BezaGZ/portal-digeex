@@ -74,6 +74,23 @@
         rows="3"
         class="w-full"></textarea>
     </div>
+    @if (mode() !== 'closed') {
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Portada del programa
+          <span class="text-gray-400 font-normal">
+            (JPG o PNG{{ mode() === 'edit' ? '; subir para reemplazar la actual' : '; aparece en el listado y en home' }})
+          </span>
+        </label>
+        <app-file-dropzone
+          accept="image/*"
+          [multiple]="false"
+          chooseLabel="Seleccionar portada"
+          dropMessage="Arrastrá la portada aquí o usá el botón de elegir."
+          (filesChange)="onCoverChange($event)" />
+      </div>
+    }
+
     <div class="flex justify-end gap-2 pt-2">
       <p-button
         label="Cancelar"
@@ -88,7 +105,7 @@
         styleClass="!text-white !font-medium"
         [rounded]="true"
         type="submit"
-        [disabled]="form.invalid || !hasChanges()" />
+        [disabled]="form.invalid || !canSubmit()" />
     </div>
   </form>
 </p-dialog>

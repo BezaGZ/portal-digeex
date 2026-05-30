@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 import { EMPTY, of } from 'rxjs';
@@ -22,7 +23,7 @@ import { Collection } from '../../../core/api/models/collection.model';
  * subdirecciones; admin_subdireccion solo la suya y queda bloqueado en
  * ese sufijo. Cada acción mutativa delega al CollectionFacade existente.
  *
- * Ciclo 18 TDD — Sprint 6
+ * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4.
  */
 describe('Collections (contenedor)', () => {
   let searchTopFn: ReturnType<typeof vi.fn>;
@@ -32,6 +33,7 @@ describe('Collections (contenedor)', () => {
   let createColeccionFn: ReturnType<typeof vi.fn>;
   let updateColeccionFn: ReturnType<typeof vi.fn>;
   let deleteColeccionFn: ReturnType<typeof vi.fn>;
+  let replaceLogoFn: ReturnType<typeof vi.fn>;
   let confirmFn: ReturnType<typeof vi.fn>;
   let messageAddFn: ReturnType<typeof vi.fn>;
 
@@ -104,12 +106,14 @@ describe('Collections (contenedor)', () => {
     createColeccionFn = vi.fn().mockReturnValue(of(buildCollection('Nueva', 'coll-new')));
     updateColeccionFn = vi.fn().mockReturnValue(of(buildCollection('Renombrada', 'coll-peac')));
     deleteColeccionFn = vi.fn().mockReturnValue(of(undefined));
+    replaceLogoFn = vi.fn().mockReturnValue(of({ uuid: 'logo-bs' }));
     messageAddFn = vi.fn();
 
     TestBed.configureTestingModule({
       imports: [Collections],
       providers: [
         provideNoopAnimations(),
+          provideHttpClient(),
         {
           provide: CommunityApiService,
           useValue: { searchTop: searchTopFn, listSubcommunities: listSubcommunitiesFn },
@@ -128,6 +132,7 @@ describe('Collections (contenedor)', () => {
             createColeccion$: createColeccionFn,
             updateColeccion$: updateColeccionFn,
             deleteColeccion$: deleteColeccionFn,
+            replaceLogo$: replaceLogoFn,
           },
         },
         {
@@ -168,6 +173,7 @@ describe('Collections (contenedor)', () => {
         imports: [Collections],
         providers: [
           provideNoopAnimations(),
+          provideHttpClient(),
           {
             provide: CommunityApiService,
             useValue: { searchTop: searchTopFn, listSubcommunities: listSubcommunitiesFn },
@@ -208,6 +214,7 @@ describe('Collections (contenedor)', () => {
         imports: [Collections],
         providers: [
           provideNoopAnimations(),
+          provideHttpClient(),
           {
             provide: CommunityApiService,
             useValue: { searchTop: searchTopFn, listSubcommunities: listSubcommunitiesFn },
@@ -286,7 +293,7 @@ describe('Collections (contenedor)', () => {
 
       c.selectSubdireccion(sub);
 
-      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100);
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100, { embed: 'logo' });
       expect(c.collections().map((coll) => coll.name)).toEqual(['PEAC', 'PRONEA']);
       expect(c.selectedSubdireccion()?.uuid).toBe('sub-1');
     });
@@ -308,6 +315,7 @@ describe('Collections (contenedor)', () => {
         entityType: 'Documento',
         navLocation: 'menu-principal',
         orden: '5',
+        coverFile: null,
       });
 
       expect(createColeccionFn).toHaveBeenCalledWith(
@@ -331,9 +339,10 @@ describe('Collections (contenedor)', () => {
           }),
         }),
         'ED_BASICA',
+        undefined,
       );
       expect(c.dialogMode()).toBe('closed');
-      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100);
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100, { embed: 'logo' });
       expect(messageAddFn).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
     });
 
@@ -353,6 +362,7 @@ describe('Collections (contenedor)', () => {
         entityType: 'Documento',
         navLocation: 'menu-secundario',
         orden: '1',
+        coverFile: null,
       });
 
       expect(updateColeccionFn).toHaveBeenCalledWith(
@@ -376,6 +386,80 @@ describe('Collections (contenedor)', () => {
       expect(c.dialogMode()).toBe('closed');
     });
 
+    /** Verifica que al crear con cover el facade reciba el File en el cuarto argumento. */
+    it('should forward coverFile to createColeccion$ when present in the payload', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      c.selectSubdireccion(sub);
+      const cover = new File(['png'], 'logo.png', { type: 'image/png' });
+
+      c.handleCreateSubmit({
+        siglas: 'NUEVO',
+        titulo: 'Nuevo programa',
+        description: '',
+        entityType: 'Documento',
+        navLocation: 'menu-principal',
+        orden: '5',
+        coverFile: cover,
+      });
+
+      expect(createColeccionFn).toHaveBeenCalledWith(
+        'sub-1',
+        expect.any(Object),
+        'ED_BASICA',
+        cover,
+      );
+    });
+
+    /**
+     * Verifica que en edit con cover el facade reciba el patch y replaceLogo$ se encadene después.
+     * El patch de metadata ya quedó aplicado aunque falle el logo; por eso el toast es de éxito completo solo si ambos pasos van bien.
+     */
+    it('should chain replaceLogo$ after updateColeccion$ when coverFile is present in edit', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      c.selectSubdireccion(sub);
+      const target = buildCollection('PEAC', 'coll-peac');
+      c.openEditDialog(target);
+      const cover = new File(['png'], 'logo.png', { type: 'image/png' });
+
+      c.handleEditSubmit({
+        siglas: 'PEAC',
+        titulo: 'PEAC (renombrado)',
+        description: '',
+        entityType: 'Documento',
+        navLocation: 'menu-principal',
+        orden: '1',
+        coverFile: cover,
+      });
+
+      expect(updateColeccionFn).toHaveBeenCalled();
+      expect(replaceLogoFn).toHaveBeenCalledWith('coll-peac', cover, 'ED_BASICA');
+      const updateOrder = updateColeccionFn.mock.invocationCallOrder[0];
+      const replaceOrder = replaceLogoFn.mock.invocationCallOrder[0];
+      expect(updateOrder).toBeLessThan(replaceOrder);
+    });
+
+    /**
+     * Verifica que pase embed=logo en listByCommunity para precargar el logo del listado admin.
+     * Sin el embed, la columna de avatar del Ciclo 5 tendría que hacer una llamada por colección.
+     */
+    it('should request listByCommunity with embed=logo when selecting a sub', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      listByCommunityFn.mockClear();
+
+      c.selectSubdireccion(sub);
+
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100, { embed: 'logo' });
+    });
+
     it('should ask for confirmation, then call deleteColeccion$, refresh y toast on accept', () => {
       const fixture = TestBed.createComponent(Collections);
       fixture.detectChanges();
@@ -391,7 +475,7 @@ describe('Collections (contenedor)', () => {
 
       expect(confirmFn).toHaveBeenCalled();
       expect(deleteColeccionFn).toHaveBeenCalledWith('coll-peac', 'ED_BASICA');
-      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100);
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100, { embed: 'logo' });
       expect(messageAddFn).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
     });
   });

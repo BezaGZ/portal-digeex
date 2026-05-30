@@ -39,6 +39,7 @@ interface ProgramaFormPayload {
   entityType: string;
   navLocation: string;
   orden: string;
+  coverFile: File | null;
 }
 
 /**
@@ -96,7 +97,7 @@ export class Collections {
       return;
     }
     this.collectionApi
-      .listByCommunity(sub.uuid, 0, 100)
+      .listByCommunity(sub.uuid, 0, 100, { embed: 'logo' })
       .pipe(
         switchMap((resp) => {
           const colls: Collection[] = resp._embedded?.['collections'] ?? [];
@@ -220,7 +221,7 @@ export class Collections {
       type: 'collection',
       metadata,
     };
-    this.facade.createColeccion$(sub.uuid, body, sufijo).subscribe({
+    this.facade.createColeccion$(sub.uuid, body, sufijo, payload.coverFile ?? undefined).subscribe({
       next: () => {
         this.closeDialog();
         this.refreshCollections();
@@ -265,6 +266,29 @@ export class Collections {
     ];
     this.facade.updateColeccion$(target.uuid, patch, sufijo).subscribe({
       next: () => {
+        if (payload.coverFile) {
+          // El patch ya quedó aplicado: si el logo falla, mostramos toast
+          // parcial y dejamos el metadata. Acá no hay rollback razonable.
+          this.facade
+            .replaceLogo$(target.uuid, payload.coverFile, sufijo)
+            .subscribe({
+              next: () => {
+                this.closeDialog();
+                this.refreshCollections();
+                this.toast.add({ severity: 'success', summary: 'Programa actualizado' });
+              },
+              error: (err) => {
+                this.closeDialog();
+                this.refreshCollections();
+                this.toast.add({
+                  severity: 'warn',
+                  summary: 'Programa actualizado, pero el logo falló',
+                  detail: err instanceof Error ? err.message : 'Reintentá la subida.',
+                });
+              },
+            });
+          return;
+        }
         this.closeDialog();
         this.refreshCollections();
         this.toast.add({ severity: 'success', summary: 'Programa actualizado' });

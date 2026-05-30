@@ -16,6 +16,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { Select } from 'primeng/select';
 import { ENTITY_TYPE, NAV_LOCATION } from '../../../../../core/config/digeex-values.config';
+import { FileDropzoneComponent } from '../../../../../shared';
 
 export type CollectionDialogMode = 'closed' | 'create' | 'edit';
 
@@ -26,6 +27,8 @@ export interface CollectionDialogPayload {
   entityType: string;
   navLocation: string;
   orden: string;
+  /** Portada del programa cuando el usuario eligió una; null si no se tocó el dropzone. */
+  coverFile: File | null;
 }
 
 interface SelectOption {
@@ -43,7 +46,7 @@ interface SelectOption {
   selector: 'app-collection-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './collection-dialog.html',
-  imports: [ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, TextareaModule, Select],
+  imports: [ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, TextareaModule, Select, FileDropzoneComponent],
 })
 export class CollectionDialog {
   private readonly fb = inject(FormBuilder);
@@ -79,6 +82,9 @@ export class CollectionDialog {
     orden: ['', [Validators.required, Validators.pattern(/^\d+$/)]],
   });
 
+  /** Portada elegida desde el dropzone; null cuando el usuario no tocó la selección. */
+  readonly coverFile = signal<File | null>(null);
+
   private readonly snapshot = signal<{ titulo: string; description: string; navLocation: string; orden: string }>({
     titulo: '',
     description: '',
@@ -106,6 +112,9 @@ export class CollectionDialog {
       || s.orden !== v.orden;
   });
 
+  /** El submit habilita cuando hubo cambios en algún campo o se eligió un cover nuevo. */
+  readonly canSubmit = computed(() => this.hasChanges() || this.coverFile() !== null);
+
   constructor() {
     // El effect solo depende de `mode()` para resetear el form al
     // abrir/cerrar el dialog. Las señales `initial*` se leen con
@@ -123,6 +132,7 @@ export class CollectionDialog {
         };
         this.snapshot.set(baseline);
         this.formValue.set(baseline);
+        this.coverFile.set(null);
         this.form.reset({
           siglas: this.initialSiglas(),
           titulo: this.initialTitulo(),
@@ -152,7 +162,7 @@ export class CollectionDialog {
   }
 
   onSubmit(): void {
-    if (this.form.invalid || !this.hasChanges()) {
+    if (this.form.invalid || !this.canSubmit()) {
       return;
     }
     this.submitForm.emit({
@@ -162,7 +172,13 @@ export class CollectionDialog {
       entityType: this.form.controls.entityType.value || this.initialEntityType(),
       navLocation: this.form.controls.navLocation.value,
       orden: this.form.controls.orden.value,
+      coverFile: this.coverFile(),
     });
+  }
+
+  /** Selección de la portada desde el app-file-dropzone (single, image/*). */
+  onCoverChange(files: File[]): void {
+    this.coverFile.set(files[0] ?? null);
   }
 
   onCancel(): void {
