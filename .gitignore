@@ -6,23 +6,16 @@
 # Docker data
 .dspace-cookies
 
-# Scripts - archivos SAF temporales (solo para desarrollo)
-scripts/saf-peac/
-scripts/saf-albums/
-scripts/saf-videos/
-scripts/saf-mf-bachillerato/
-scripts/saf-mf-ciclobasico/
-scripts/ACUERDOS GENERALES DIGEEX/
-scripts/ACUERDOS PROGRAMAS DIGEEX/
-scripts/capture-dspace-anchor.sh
-
+# Scripts: solo se versionan cleanup-*.sh y setup-*.sh
+# (los SAFs, captures con JWT, imports SAF y outputs locales no se commitean)
+scripts/*
+!scripts/cleanup-*.sh
+!scripts/setup-*.sh
 
 # Sistema
 .DS_Store
 Thumbs.db
+.idea/
 
 # Logs
 *.log
-
-# Scripts con credenciales DSpace (JWT hardcoded para anclajes empíricos)
-scripts/capture-*-mutations.sh
