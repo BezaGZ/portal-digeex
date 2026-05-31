@@ -89,7 +89,7 @@ export class ProgramViewComponent implements OnInit {
 
         this.currentNode = {
           id: collection.uuid,
-          name: collection.metadata?.['dc.subject']?.[0]?.value || collection.name,
+          name: collection.metadata?.['dc.title.alternative']?.[0]?.value || collection.name,
           description: collection.metadata?.['dc.title']?.[0]?.value || '',
           type: 'collection',
         };

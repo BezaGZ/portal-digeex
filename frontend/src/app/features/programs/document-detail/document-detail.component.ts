@@ -164,7 +164,7 @@ export class DocumentDetailComponent implements OnInit {
   private loadProgramForBreadcrumb(collectionUuid: string) {
     this.collectionApi.getOne(collectionUuid).subscribe({
       next: (collection) => {
-        const programName = collection.metadata?.['dc.subject']?.[0]?.value || collection.name;
+        const programName = collection.metadata?.['dc.title.alternative']?.[0]?.value || collection.name;
         this.breadcrumbService.setTrail([
           { label: programName, routerLink: `/programas/${collectionUuid}` },
           { label: this.documentTitle },

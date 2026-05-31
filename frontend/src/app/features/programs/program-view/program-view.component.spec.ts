@@ -27,10 +27,11 @@ describe('ProgramViewComponent', () => {
 
   const MOCK_COLLECTION = {
     uuid: 'col-1',
-    name: 'PEAC',
+    name: 'fallback',
     metadata: {
       'dspace.entity.type': [{ value: 'Documento' }],
-      'dc.subject': [{ value: 'PEAC' }],
+      'dc.title.alternative': [{ value: 'PEAC' }],
+      'dc.subject': [{ value: 'tag-irrelevante' }],
       'dc.title': [{ value: 'Programa PEAC' }],
     },
   };
@@ -89,6 +90,18 @@ describe('ProgramViewComponent', () => {
   it('should create', () => {
     const fixture = TestBed.createComponent(ProgramViewComponent);
     expect(fixture.componentInstance).toBeTruthy();
+  });
+
+  /**
+   * Verifica que el nombre del programa salga de dc.title.alternative (sigla), no de dc.subject.
+   * `dc.subject` quedó reservado para tags libres del item desde el refactor del Sprint 6 C19.
+   */
+  it('should read the program acronym from dc.title.alternative not from dc.subject', () => {
+    const fixture = TestBed.createComponent(ProgramViewComponent);
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.currentNode?.name).toBe('PEAC');
   });
 
   /** Verifica que el listado lazy no dispare llamadas a getBundles ni getBitstreamsFromBundle. */

@@ -132,7 +132,7 @@ describe('DocumentDetailComponent', () => {
       if (bundleUuid === 'orig-bundle-001') return of(MOCK_ORIGINAL_BITSTREAMS as any);
       return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any);
     });
-    vi.spyOn(collectionApi, 'getOne').mockReturnValue(of({ name: 'PEAC', metadata: { 'dc.subject': [{ value: 'PEAC' }] } } as any));
+    vi.spyOn(collectionApi, 'getOne').mockReturnValue(of({ name: 'fallback', metadata: { 'dc.title.alternative': [{ value: 'PEAC' }], 'dc.subject': [{ value: 'tag-irrelevante' }] } } as any));
     vi.spyOn(breadcrumbService, 'setTrail');
     // Mock del servicio de vocabularios: traduce los pares conocidos y cae al
     // value crudo para cualquier otro, replicando el contrato del servicio real.
@@ -203,6 +203,20 @@ describe('DocumentDetailComponent', () => {
       expect(dspaceApi.getBitstreamsFromBundle).toHaveBeenCalledWith('thumb-bundle-001');
       expect(dspaceApi.getBitstreamsFromBundle).toHaveBeenCalledWith('orig-bundle-001');
       expect(component.documentCoverImage).toBe('/server/api/core/bitstreams/thumb-bs-001/content');
+    });
+
+    /**
+     * Verifica que el primer label del breadcrumb sea la sigla del programa (`dc.title.alternative`), no `dc.subject`.
+     * `dc.subject` quedó reservado para tags libres del item desde el refactor del Sprint 6 C19.
+     */
+    it('should label the breadcrumb with dc.title.alternative not dc.subject', () => {
+      component.ngOnInit();
+
+      expect(breadcrumbService.setTrail).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ label: 'PEAC' }),
+        ]),
+      );
     });
 
     /** Verifica que se construyan URLs de descarga y se mapeen a BitstreamView. */

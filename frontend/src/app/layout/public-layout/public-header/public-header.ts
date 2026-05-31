@@ -39,7 +39,7 @@ export class PublicHeader implements OnInit {
           const format = collection.metadata?.['dspace.entity.type']?.[0]?.value || ENTITY_TYPE.DOCUMENTO;
 
           this.menuItems.push({
-            label: collection.metadata?.['dc.subject']?.[0]?.value || collection.name,
+            label: collection.metadata?.['dc.title.alternative']?.[0]?.value || collection.name,
             routerLink: getCollectionRoute(format, collection.uuid)
           });
 
