@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, OnInit, ChangeDetectorRef } from '@
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { CollectionCacheService } from '../../core/api/collection-cache.service';
+import { extractLogoUrl } from '../../core/api/collection-logo.util';
 import { CollectionView, ItemView } from '../../core/api/models';
 import { getCollectionRoute } from '../../core/config/collection-format.config';
 import { NAV_LOCATION, ENTITY_TYPE } from '../../core/config/digeex-values.config';
@@ -41,6 +42,7 @@ export class Home implements OnInit {
           description: collection.metadata?.['dc.title']?.[0]?.value || '',
           type: 'collection',
           format: collection.metadata?.['dspace.entity.type']?.[0]?.value || ENTITY_TYPE.DOCUMENTO,
+          logoUrl: extractLogoUrl(collection),
         }));
 
         this.items = [];

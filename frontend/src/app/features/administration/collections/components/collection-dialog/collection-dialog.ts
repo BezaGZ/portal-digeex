@@ -99,10 +99,10 @@ export class CollectionDialog {
     orden: '',
   });
 
-  /** True si algún campo editable cambió respecto al estado inicial.
-   * Las siglas no entran en el cómputo: en edit están bloqueadas igual
-   * que el sufijo de subdirección, porque cambiarlas rompería los SAFs
-   * y la URL del recurso. */
+  /**
+   * True si algún campo editable cambió respecto al estado inicial.
+   * Las siglas no entran porque en edit están bloqueadas: cambiarlas rompería los SAFs y la URL del recurso.
+   */
   readonly hasChanges = computed(() => {
     const s = this.snapshot();
     const v = this.formValue();

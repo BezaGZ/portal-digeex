@@ -54,10 +54,19 @@
               (click)="navigateToChild(child)"
             >
               <div
-                class="w-full aspect-[16/9] sm:aspect-[16/10] md:aspect-[16/10] lg:aspect-[16/10] bg-cover bg-center flex items-center justify-center"
+                class="w-full aspect-[16/9] sm:aspect-[16/10] md:aspect-[16/10] lg:aspect-[16/10] bg-cover bg-center flex items-center justify-center overflow-hidden"
                 style="background-color: #f5f2ee"
               >
-                <i class="pi pi-image text-6xl" style="color: #d9d5d0"></i>
+                @if (child.logoUrl) {
+                  <img
+                    [src]="child.logoUrl"
+                    [alt]="'Portada del programa ' + child.name"
+                    loading="lazy"
+                    class="w-full h-full object-cover"
+                  />
+                } @else {
+                  <i class="pi pi-image text-6xl" style="color: #d9d5d0"></i>
+                }
               </div>
 
               <div class="flex flex-col items-center justify-center p-4 flex-grow">

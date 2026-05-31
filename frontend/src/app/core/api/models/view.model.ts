@@ -14,6 +14,8 @@ export interface CollectionView {
   type: 'collection' | 'community';
   /** Valor de dspace.entity.type de la colección en DSpace (ej: documento, galeria, estadistica) */
   format?: string;
+  /** URL relativa del logo del programa, null cuando la collection no tiene portada. */
+  logoUrl?: string | null;
 }
 
 /**

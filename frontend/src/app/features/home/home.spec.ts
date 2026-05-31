@@ -14,7 +14,7 @@ import { CollectionCacheService } from '../../core/api/collection-cache.service'
  * (`dc.title.alternative`) arriba y título largo (`dc.title`) abajo. Lee
  * la metadata vía `CollectionCacheService.getByMenuType`.
  *
- * Sprint 6. Ajustado en Ciclo 2 (Sprint 7).
+ * Sprint 6. Ajustado en Ciclo 2 (Sprint 7) y Ciclo 5 (Sprint 8).
  */
 describe('Home', () => {
   let collectionCacheStub: { getByMenuType: ReturnType<typeof vi.fn> };
@@ -64,5 +64,41 @@ describe('Home', () => {
 
     expect(component.children[0].name).toBe('PEAC');
     expect(component.children[0].description).toBe('Programa de Educación de Adultos por Correspondencia');
+  });
+
+  /**
+   * Verifica que cuando la collection trae logo embebido, el view model exponga la URL relativa.
+   * Sin esto el template no podría renderizar la portada y dejaría siempre el placeholder.
+   */
+  it('should expose logoUrl in the view model when the embedded logo is present', () => {
+    const mockCollection = {
+      uuid: 'uuid-eva',
+      name: 'EVA',
+      metadata: { 'dc.title.alternative': [{ value: 'EVA' }] },
+      _embedded: { logo: { uuid: 'logo-bs-eva', type: 'bitstream' } },
+    };
+    collectionCacheStub.getByMenuType.mockReturnValue(of([mockCollection]));
+
+    const fixture = TestBed.createComponent(Home);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.children[0].logoUrl)
+      .toBe('/server/api/core/bitstreams/logo-bs-eva/content');
+  });
+
+  /** Verifica que sin logo embebido el view model exponga logoUrl null para mostrar el placeholder. */
+  it('should expose logoUrl null when the collection has no embedded logo', () => {
+    const mockCollection = {
+      uuid: 'uuid-x',
+      name: 'X',
+      metadata: { 'dc.title.alternative': [{ value: 'X' }] },
+      _embedded: { logo: null },
+    };
+    collectionCacheStub.getByMenuType.mockReturnValue(of([mockCollection]));
+
+    const fixture = TestBed.createComponent(Home);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.children[0].logoUrl).toBeNull();
   });
 });

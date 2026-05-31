@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, input, output } from '@angular/core
 import { TableLazyLoadEvent, TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { Collection } from '../../../../../core/api/models/collection.model';
+import { extractLogoUrl } from '../../../../../core/api/collection-logo.util';
 import { ProgramaView } from '../../models/programa-view.model';
 
 /**
@@ -49,5 +50,10 @@ export class CollectionTable {
   /** Orden en el menú; convención DIGEEX guarda el número en dc.identifier.other. */
   getOrden(c: Collection): string {
     return c.metadata?.['dc.identifier.other']?.[0]?.value ?? '—';
+  }
+
+  /** URL relativa del logo cuando viene embebido; null para mostrar placeholder. */
+  getLogoUrl(c: Collection): string | null {
+    return extractLogoUrl(c);
   }
 }

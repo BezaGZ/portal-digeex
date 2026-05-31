@@ -30,7 +30,7 @@ export class CollectionCacheService {
     }
 
     if (!this.cache$) {
-      this.cache$ = this.collectionApi.list(0, 100).pipe(
+      this.cache$ = this.collectionApi.list(0, 100, { embed: 'logo' }).pipe(
         map((response) => response._embedded?.['collections'] || []),
         tap((cols) => {
           this.collections.set(cols);

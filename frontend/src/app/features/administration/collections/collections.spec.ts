@@ -446,7 +446,7 @@ describe('Collections (contenedor)', () => {
 
     /**
      * Verifica que pase embed=logo en listByCommunity para precargar el logo del listado admin.
-     * Sin el embed, la columna de avatar del Ciclo 5 tendría que hacer una llamada por colección.
+     * Sin el embed, la columna de avatar tendría que hacer una llamada por colección al cargar la tabla.
      */
     it('should request listByCommunity with embed=logo when selecting a sub', () => {
       const fixture = TestBed.createComponent(Collections);
