@@ -377,9 +377,11 @@ export class UserManagementService {
   }
 
   /**
-   * Cambio de grupo de un eperson existente. Solo superadmin (RN-13). Orden atómico:
-   * add al nuevo antes de remove de los previos, para que un fallo del add no deje
-   * al target sin grupo de rol. Protege RN-27 (autocambio) y RN-28 (último superadmin).
+   * Cambio de grupo de un eperson existente. Solo superadmin (RN-13). Reconciliation
+   * loop idempotente: lee los grupos actuales, salta el add si el target ya pertenece
+   * al grupo destino, y limpia el resto de grupos de rol. Orden atómico add-antes-de-remove
+   * para que un fallo del add no deje al target sin rol. Protege RN-27 (autocambio) y
+   * RN-28 (último superadmin).
    */
   changeUserRole$(input: ChangeUserRoleInput): Observable<EPerson> {
     return this.getCallerContext$().pipe(
@@ -427,13 +429,25 @@ export class UserManagementService {
                 )
               : of(undefined);
 
+            // Si el target ya pertenece al grupo destino, saltar el add: evita
+            // el 422 de DSpace por duplicate membership y que el rollback remueva
+            // el grupo destino dejando al usuario sin rol.
+            const alreadyInTarget = targetGroups.some(
+              (group) => group.uuid === input.newGroup.uuid,
+            );
+            const add$: Observable<unknown> = alreadyInTarget
+              ? of(undefined)
+              : this.groupApi.addMemberToGroup(input.newGroup.uuid, target.uuid);
+
             return guard$.pipe(
               switchMap(() =>
-                this.groupApi.addMemberToGroup(input.newGroup.uuid, target.uuid).pipe(
+                add$.pipe(
                   switchMap(() =>
                     this.removeFromPreviousRoleGroups$(target.uuid, targetGroups, input.newGroup.uuid).pipe(
                       catchError((removeErr: unknown) =>
-                        this.rollbackAddToGroup$(input.newGroup.uuid, target.uuid, removeErr),
+                        alreadyInTarget
+                          ? throwError(() => removeErr)
+                          : this.rollbackAddToGroup$(input.newGroup.uuid, target.uuid, removeErr),
                       ),
                     ),
                   ),

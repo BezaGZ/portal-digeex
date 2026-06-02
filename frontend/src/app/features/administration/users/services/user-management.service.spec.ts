@@ -684,6 +684,119 @@ describe('UserManagementService', () => {
         ),
       ).rejects.toMatchObject({ message: 'original remove failed' });
     });
+
+    /**
+     * Cubre la idempotencia de `changeUserRole$`: cuando el target ya pertenece
+     * al grupo destino, la operación salta el add y solo limpia los otros
+     * grupos de rol.
+     */
+    describe('self-healing reconciliation', () => {
+      /** Verifica que cuando el target ya pertenece al grupo destino, no se llame al add y se limpie el otro grupo de rol. */
+      it('should skip the add when the target is already a member of the new group and only clean up the other role groups', async () => {
+        const target = buildEPerson({
+          uuid: 'uuid-t',
+          email: 't@mineduc.gob.gt',
+          groups: [adminBasica, adminTrabajo], // residuo de un cambio anterior fallido
+        });
+        getOneEPersonFn.mockImplementation((uuid: string) => {
+          if (uuid === 'uuid-caller') {
+            return of(buildEPerson({ uuid: 'uuid-caller', email: 'c@mineduc.gob.gt' }));
+          }
+          return of(target);
+        });
+        getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
+          if (uuid === 'uuid-caller') return of(paginated([adminGlobal]));
+          return of(paginated([adminBasica, adminTrabajo]));
+        });
+
+        await firstValueFrom(
+          service.changeUserRole$({
+            uuid: 'uuid-t',
+            newGroup: { uuid: adminTrabajo.uuid, name: adminTrabajo.name },
+          }),
+        );
+
+        // add NO debe dispararse: el target ya pertenece al grupo destino,
+        // así que no hay nada que agregar. Llamarlo arriesga 422 de DSpace
+        // por duplicate membership y rompería la idempotencia.
+        expect(addMemberToGroupFn).not.toHaveBeenCalledWith(adminTrabajo.uuid, 'uuid-t');
+        // remove SÍ debe limpiar el grupo residual.
+        expect(removeMemberFromGroupFn).toHaveBeenCalledWith(adminBasica.uuid, 'uuid-t');
+      });
+
+      /** Verifica que cuando el target tiene varios grupos de rol asignados, todos se limpian salvo el destino. */
+      it('should clean up every residual portal role group except the new one', async () => {
+        const adminAlfa = buildGroup('ADMIN_ED_ALFABETIZACION', 'group-admin-alfa');
+        const target = buildEPerson({
+          uuid: 'uuid-t',
+          email: 't@mineduc.gob.gt',
+          groups: [adminBasica, adminTrabajo, adminAlfa, submitBasica], // 4 grupos de rol residuales
+        });
+        getOneEPersonFn.mockImplementation((uuid: string) => {
+          if (uuid === 'uuid-caller') {
+            return of(buildEPerson({ uuid: 'uuid-caller', email: 'c@mineduc.gob.gt' }));
+          }
+          return of(target);
+        });
+        getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
+          if (uuid === 'uuid-caller') return of(paginated([adminGlobal]));
+          return of(paginated([adminBasica, adminTrabajo, adminAlfa, submitBasica]));
+        });
+
+        await firstValueFrom(
+          service.changeUserRole$({
+            uuid: 'uuid-t',
+            newGroup: { uuid: adminTrabajo.uuid, name: adminTrabajo.name },
+          }),
+        );
+
+        // Los 3 grupos residuales (adminBasica, adminAlfa, submitBasica) deben removerse.
+        expect(removeMemberFromGroupFn).toHaveBeenCalledWith(adminBasica.uuid, 'uuid-t');
+        expect(removeMemberFromGroupFn).toHaveBeenCalledWith(adminAlfa.uuid, 'uuid-t');
+        expect(removeMemberFromGroupFn).toHaveBeenCalledWith(submitBasica.uuid, 'uuid-t');
+        // El grupo destino NO se debe remover.
+        expect(removeMemberFromGroupFn).not.toHaveBeenCalledWith(adminTrabajo.uuid, 'uuid-t');
+      });
+
+      /** Verifica que si el add se saltó y una remove falla, el rollback no remueva el grupo destino. */
+      it('should NOT trigger the add rollback when the add was skipped and a remove fails', async () => {
+        const target = buildEPerson({
+          uuid: 'uuid-t',
+          email: 't@mineduc.gob.gt',
+          groups: [adminBasica, adminTrabajo],
+        });
+        getOneEPersonFn.mockImplementation((uuid: string) => {
+          if (uuid === 'uuid-caller') {
+            return of(buildEPerson({ uuid: 'uuid-caller', email: 'c@mineduc.gob.gt' }));
+          }
+          return of(target);
+        });
+        getGroupsOfEPersonFn.mockImplementation((uuid: string) => {
+          if (uuid === 'uuid-caller') return of(paginated([adminGlobal]));
+          return of(paginated([adminBasica, adminTrabajo]));
+        });
+        removeMemberFromGroupFn.mockImplementation((groupUuid: string) => {
+          if (groupUuid === adminBasica.uuid) {
+            return throwError(() => new Error('remove failed'));
+          }
+          return of(undefined);
+        });
+
+        await expect(
+          firstValueFrom(
+            service.changeUserRole$({
+              uuid: 'uuid-t',
+              newGroup: { uuid: adminTrabajo.uuid, name: adminTrabajo.name },
+            }),
+          ),
+        ).rejects.toMatchObject({ message: 'remove failed' });
+
+        // Nunca debe llamarse remove sobre adminTrabajo: el add se saltó, así
+        // que el rollback no aplica. Si el código viejo intentara remover el
+        // grupo destino como rollback, dejaría al target SIN ningún rol.
+        expect(removeMemberFromGroupFn).not.toHaveBeenCalledWith(adminTrabajo.uuid, 'uuid-t');
+      });
+    });
   });
 
   describe('resetPassword$()', () => {

@@ -2,7 +2,7 @@ import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
+import { NavigationEnd, Router, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 import { EMPTY, Subject, of } from 'rxjs';
 
@@ -498,6 +498,49 @@ describe('MySubmissions', () => {
       const tipo = headers.indexOf('Tipo');
       expect(recurso).toBeGreaterThan(titulo);
       expect(recurso).toBeLessThan(tipo);
+    });
+  });
+
+  /**
+   * Cubre el refresh automático de la bandeja cuando el usuario vuelve a
+   * `/administrador/envios` desde la pantalla de edición o de carga.
+   */
+  describe('refresh on route re-entry', () => {
+    /** Arma un stub de Router con `Subject` de eventos para emitir NavigationEnd a demanda. */
+    function setupWithRouterStub() {
+      const events$ = new Subject<NavigationEnd>();
+      const navigateFn = vi.fn();
+      TestBed.overrideProvider(Router, {
+        useValue: {
+          events: events$.asObservable(),
+          navigate: navigateFn,
+          url: '/administrador/envios',
+        },
+      });
+      const fixture = TestBed.createComponent(MySubmissions);
+      fixture.detectChanges();
+      return { fixture, events$, navigateFn };
+    }
+
+    /** Verifica que al emitir NavigationEnd a `/administrador/envios` después del montaje inicial, la bandeja vuelva a pegar a `search$` con la página actual. */
+    it('should reload the list when a NavigationEnd targets /administrador/envios after the initial mount', () => {
+      const { events$ } = setupWithRouterStub();
+      expect(searchFn).toHaveBeenCalledTimes(1);
+      searchFn.mockClear();
+
+      events$.next(new NavigationEnd(1, '/administrador/envios', '/administrador/envios'));
+
+      expect(searchFn).toHaveBeenCalledWith(0, 20, expect.anything());
+    });
+
+    /** Verifica que NavigationEnd a una ruta distinta (ej. perfil) no dispare reload — el listener debe estar acotado a la propia URL. */
+    it('should not reload when NavigationEnd targets a different route', () => {
+      const { events$ } = setupWithRouterStub();
+      searchFn.mockClear();
+
+      events$.next(new NavigationEnd(2, '/administrador/perfil', '/administrador/perfil'));
+
+      expect(searchFn).not.toHaveBeenCalled();
     });
   });
 });

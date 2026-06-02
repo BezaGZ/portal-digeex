@@ -409,6 +409,154 @@ describe('GroupApiService', () => {
 
       expect(errorMessage).toBe('Grupo NONEXISTENT_GROUP no encontrado');
     });
+
+    /** Paginación de search/byMetadata */
+
+    /** Arma una página HAL del listado de grupos para los specs de iteración. */
+    function buildPageResponse(
+      groups: { uuid: string; name: string }[],
+      pageNumber: number,
+      totalPages: number,
+      totalElements: number,
+    ) {
+      return {
+        _embedded: {
+          groups: groups.map((g) => ({
+            uuid: g.uuid,
+            name: g.name,
+            permanent: false,
+            type: 'group',
+            _links: {
+              self: { href: '' },
+              object: { href: '' },
+              epersons: { href: '' },
+              subgroups: { href: '' },
+            },
+          })),
+        },
+        page: { size: 20, totalElements, totalPages, number: pageNumber },
+        _links: { self: { href: '' } },
+      };
+    }
+
+    /** Verifica que itere hasta la página donde aparece el match exacto y lo devuelva. */
+    it('should iterate paginated results and return the exact match on a later page', () => {
+      let result: Group | undefined;
+      service.getByName('SUBMITTERS_ED_INVESTIGACION').subscribe((g) => (result = g));
+
+      const page0 = buildPageResponse(
+        [
+          { uuid: 'g-a', name: 'SUBMITTERS_ED_INVESTIGACION_ALPHA' },
+          { uuid: 'g-b', name: 'SUBMITTERS_ED_INVESTIGACION_BETA' },
+        ],
+        0,
+        2,
+        25,
+      );
+      const req0 = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/groups/search/byMetadata' &&
+          r.params.get('query') === 'SUBMITTERS_ED_INVESTIGACION' &&
+          r.params.get('page') === '0',
+      );
+      req0.flush(page0);
+
+      const page1 = buildPageResponse(
+        [
+          { uuid: 'g-exact', name: 'SUBMITTERS_ED_INVESTIGACION' },
+          { uuid: 'g-c', name: 'SUBMITTERS_ED_INVESTIGACION_DELTA' },
+        ],
+        1,
+        2,
+        25,
+      );
+      const req1 = httpMock.expectOne(
+        (r) =>
+          r.url === '/server/api/eperson/groups/search/byMetadata' &&
+          r.params.get('query') === 'SUBMITTERS_ED_INVESTIGACION' &&
+          r.params.get('page') === '1',
+      );
+      req1.flush(page1);
+
+      expect(result).toBeDefined();
+      expect(result!.uuid).toBe('g-exact');
+      expect(result!.name).toBe('SUBMITTERS_ED_INVESTIGACION');
+    });
+
+    /** Verifica que tras agotar todas las páginas sin match exacto se lance `Grupo X no encontrado`. */
+    it('should throw after exhausting all pages when the exact match never appears', () => {
+      let errorMessage: string | undefined;
+      service.getByName('SUBMITTERS_NO_EXISTE').subscribe({
+        next: () => {
+          throw new Error('No debería emitir valor cuando el match no existe en ninguna página');
+        },
+        error: (err: Error) => {
+          errorMessage = err.message;
+        },
+      });
+
+      const page0 = buildPageResponse(
+        [{ uuid: 'g1', name: 'SUBMITTERS_NO_EXISTE_X' }],
+        0,
+        2,
+        2,
+      );
+      httpMock
+        .expectOne(
+          (r) =>
+            r.url === '/server/api/eperson/groups/search/byMetadata' &&
+            r.params.get('query') === 'SUBMITTERS_NO_EXISTE' &&
+            r.params.get('page') === '0',
+        )
+        .flush(page0);
+
+      const page1 = buildPageResponse(
+        [{ uuid: 'g2', name: 'SUBMITTERS_NO_EXISTE_Y' }],
+        1,
+        2,
+        2,
+      );
+      httpMock
+        .expectOne(
+          (r) =>
+            r.url === '/server/api/eperson/groups/search/byMetadata' &&
+            r.params.get('query') === 'SUBMITTERS_NO_EXISTE' &&
+            r.params.get('page') === '1',
+        )
+        .flush(page1);
+
+      expect(errorMessage).toBe('Grupo SUBMITTERS_NO_EXISTE no encontrado');
+    });
+
+    /** Verifica que cuando el match aparece en página 0 NO se haga un fetch extra de páginas posteriores (early exit). */
+    it('should short-circuit and not fetch later pages when the exact match appears on page 0', () => {
+      let result: Group | undefined;
+      service.getByName('SUBMITTERS_ED_INVESTIGACION').subscribe((g) => (result = g));
+
+      const page0 = buildPageResponse(
+        [
+          { uuid: 'g-exact', name: 'SUBMITTERS_ED_INVESTIGACION' },
+          { uuid: 'g-x', name: 'SUBMITTERS_ED_INVESTIGACION_ALPHA' },
+        ],
+        0,
+        3,
+        50,
+      );
+      httpMock
+        .expectOne(
+          (r) =>
+            r.url === '/server/api/eperson/groups/search/byMetadata' &&
+            r.params.get('query') === 'SUBMITTERS_ED_INVESTIGACION' &&
+            r.params.get('page') === '0',
+        )
+        .flush(page0);
+
+      // No debería haber requests pendientes: el wrapper cortocircuita al encontrar el match.
+      httpMock.verify();
+
+      expect(result).toBeDefined();
+      expect(result!.uuid).toBe('g-exact');
+    });
   });
 
   /**

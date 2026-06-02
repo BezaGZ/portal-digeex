@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { EMPTY, Observable } from 'rxjs';
+import { expand, first, map } from 'rxjs/operators';
 import { EPerson } from './models/eperson.model';
 import { Group, GroupCreateBody } from './models/group.model';
 import { Paginated, HalListResponse } from './models/hal.model';
@@ -110,29 +110,39 @@ export class GroupApiService {
   }
 
   /**
-   * Resuelve un grupo por su nombre exacto vía el endpoint nativo de
-   * búsqueda por metadata. DSpace 9.x hace `byMetadata` con LIKE sobre
-   * UUID y nombre, por lo que puede devolver más de un grupo cuyo nombre
-   * empieza por el mismo prefijo; se filtra en código para quedarse con
-   * el match exacto y se lanza error si no aparece. Lo consumen tanto el
-   * resolver del grupo Administrator (RN-07) como los facades del Bloque 1
-   * que necesitan resolver `SUBMITTERS_<sufijo>` para enlazarlo a las
-   * collections nuevas (Camino B / Opción 3 — ver bitácora 3.5).
+   * Resuelve un grupo por nombre exacto. DSpace 9.x hace `byMetadata` con LIKE
+   * sobre UUID y nombre y devuelve los resultados paginados, así que itera con
+   * `expand` hasta el match exacto o agotar `totalPages`; `first` cortocircuita
+   * en cuanto aparece. Lanza `Grupo X no encontrado` si nunca aparece. Consumido
+   * por el resolver del grupo Administrator (RN-07) y por los facades que
+   * enlazan `SUBMITTERS_<sufijo>` a collections.
    */
   getByName(name: string): Observable<Group> {
-    const url = `${DSPACE_API_BASE}${GROUPS_SEARCH_BY_METADATA_PATH}`;
-    const params = new HttpParams().set('query', name);
-
-    return this.http.get<HalListResponse<Group>>(url, { params }).pipe(
-      map((response) => {
-        const groups = response._embedded?.[EMBEDDED_KEY_GROUPS] ?? [];
-        const exact = groups.find((group) => group.name === name);
-        if (!exact) {
+    return this.fetchGroupsPage$(name, 0).pipe(
+      expand((response) => {
+        const nextPage = response.page.number + 1;
+        const hasMore = nextPage < response.page.totalPages;
+        return hasMore ? this.fetchGroupsPage$(name, nextPage) : EMPTY;
+      }),
+      map(
+        (response) =>
+          response._embedded?.[EMBEDDED_KEY_GROUPS]?.find((g) => g.name === name) ?? null,
+      ),
+      first((g): g is Group => g !== null, null),
+      map((found) => {
+        if (!found) {
           throw new Error(`Grupo ${name} no encontrado`);
         }
-        return exact;
+        return found;
       }),
     );
+  }
+
+  /** GET de una página específica de `search/byMetadata` para que `getByName` itere con `expand`. */
+  private fetchGroupsPage$(name: string, page: number): Observable<HalListResponse<Group>> {
+    const url = `${DSPACE_API_BASE}${GROUPS_SEARCH_BY_METADATA_PATH}`;
+    const params = new HttpParams().set('query', name).set('page', String(page));
+    return this.http.get<HalListResponse<Group>>(url, { params });
   }
 
   /** Atajo para el grupo global Administrator (RN-07). */

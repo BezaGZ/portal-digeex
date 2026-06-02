@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -12,7 +12,7 @@ import { PaginatorModule } from 'primeng/paginator';
 import { SelectModule } from 'primeng/select';
 import { TooltipModule } from 'primeng/tooltip';
 import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, filter } from 'rxjs/operators';
 
 import { MyDSpaceApiService } from '../../../../core/api/my-dspace-api.service';
 import { MyDSpaceObject } from '../../../../core/api/models/my-dspace.model';
@@ -108,6 +108,20 @@ export class MySubmissions {
       .subscribe((q) => {
         this.query.set(q);
         this.load(0);
+      });
+
+    // Recarga la bandeja cuando el usuario vuelve a `/administrador/envios`.
+    // El check de `loading` evita un doble-load durante el NavigationEnd de
+    // la activación inicial del componente.
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        filter((e) => e.urlAfterRedirects === '/administrador/envios'),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        if (this.loading()) return;
+        this.load(this.currentPage());
       });
 
     this.load(0);
