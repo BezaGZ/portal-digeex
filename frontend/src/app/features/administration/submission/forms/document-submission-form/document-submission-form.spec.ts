@@ -852,15 +852,15 @@ describe('DocumentSubmissionForm', () => {
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
-    expect(c.getBitstreamsToAdd()).toEqual([]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([]);
 
     const f1 = new File(['a'], 'a.pdf', { type: 'application/pdf' });
     const f2 = new File(['b'], 'b.pdf', { type: 'application/pdf' });
     c.onAddBitstreams([f1, f2]);
-    expect(c.getBitstreamsToAdd()).toEqual([f1, f2]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([f1, f2]);
 
     c.onAddBitstreams([f2]);
-    expect(c.getBitstreamsToAdd()).toEqual([f2]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([f2]);
   });
 
   /** Verifica que togglePendingDelete agregue/quite uuids y getBitstreamsToRemove devuelva la lista. */
@@ -870,15 +870,15 @@ describe('DocumentSubmissionForm', () => {
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
-    expect(c.getBitstreamsToRemove()).toEqual([]);
+    expect((c as unknown as { getBitstreamsToRemove(): string[] }).getBitstreamsToRemove()).toEqual([]);
 
     c.togglePendingDelete('bs-1');
     c.togglePendingDelete('bs-2');
-    expect(c.getBitstreamsToRemove().sort()).toEqual(['bs-1', 'bs-2']);
+    expect((c as unknown as { getBitstreamsToRemove(): string[] }).getBitstreamsToRemove().sort()).toEqual(['bs-1', 'bs-2']);
     expect(c.isPendingDelete('bs-1')).toBe(true);
 
     c.togglePendingDelete('bs-1');
-    expect(c.getBitstreamsToRemove()).toEqual(['bs-2']);
+    expect((c as unknown as { getBitstreamsToRemove(): string[] }).getBitstreamsToRemove()).toEqual(['bs-2']);
     expect(c.isPendingDelete('bs-1')).toBe(false);
   });
 
@@ -951,8 +951,8 @@ describe('DocumentSubmissionForm', () => {
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
-    expect(c.getBitstreamsToAdd()).toEqual([]);
-    expect(c.getBitstreamsToRemove()).toEqual([]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([]);
+    expect((c as unknown as { getBitstreamsToRemove(): string[] }).getBitstreamsToRemove()).toEqual([]);
   });
 
   /**
@@ -996,10 +996,10 @@ describe('DocumentSubmissionForm', () => {
 
     c.form.patchValue({ relationUri: 'https://example.com/video2' });
 
-    const adds = c.getBitstreamsToAdd();
+    const adds = (c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd();
     expect(adds.length).toBe(1);
     expect(adds[0].name).toBe('_video_link.txt');
-    expect(c.getBitstreamsToRemove()).toEqual(['marker-uuid']);
+    expect((c as unknown as { getBitstreamsToRemove(): string[] }).getBitstreamsToRemove()).toEqual(['marker-uuid']);
   });
 
   /** Verifica que al entrar a edit con un Documento no-Video se pida la primera página del bundle ORIGINAL. */

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { firstValueFrom, of, throwError } from 'rxjs';
+import { Observable, firstValueFrom, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 import { CommunityFacade } from './community-facade';
 import { CommunityApiService } from '../../../../core/api/community-api.service';
@@ -9,6 +9,8 @@ import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { BusinessRuleError } from '../../../../core/error/business-rule-error';
 import { CommunityCreateBody } from '../../../../core/api/models/community.model';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
+import { Caller } from '../specifications/scope-context.model';
+import { UserRole } from '../../users/models/user-view.model';
 
 type CommunityApiMock = {
   searchTop: Mock;
@@ -24,7 +26,7 @@ type GroupApiMock = {
   getByName: Mock;
 };
 type ScopeMock = { assertWithinScope: Mock };
-type AuthCallerMock = { currentCaller$: ReturnType<typeof of> };
+type AuthCallerMock = { currentCaller$: Observable<Caller | null> };
 
 /**
  * Tests de CommunityFacade.
@@ -87,7 +89,7 @@ describe('CommunityFacade', () => {
     type: 'community',
   };
 
-  function setupFacadeWithCaller(role: string, sufijo: string | null) {
+  function setupFacadeWithCaller(role: UserRole, sufijo: string | null) {
     mockAuthCaller = {
       currentCaller$: of({ role, sufijo }),
     };

@@ -34,7 +34,7 @@ function buildItem(uuid: string, overrides: Partial<Record<string, string>> = {}
     withdrawn: false,
     lastModified: '2026-05-22T18:07:00.620147Z',
     type: 'item',
-  } as Item;
+  } as unknown as Item;
 }
 
 function buildSearchResult(items: Item[], total = items.length): SearchResult {

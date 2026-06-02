@@ -45,7 +45,7 @@ describe('PieChartComponent', () => {
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
-    const ds = c.chartData().datasets[0] as { backgroundColor: string[] };
+    const ds = c.chartData().datasets[0] as unknown as { backgroundColor: string[] };
     expect(Array.isArray(ds.backgroundColor)).toBe(true);
     expect(ds.backgroundColor.length).toBeGreaterThanOrEqual(2);
     expect(ds.backgroundColor[0]).toMatch(/^#[0-9A-Fa-f]{6}$/);

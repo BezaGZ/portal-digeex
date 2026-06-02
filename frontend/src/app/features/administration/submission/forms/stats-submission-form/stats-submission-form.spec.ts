@@ -307,10 +307,10 @@ describe('StatsSubmissionForm', () => {
     const c = mountForCreate();
 
     c.togglePendingDelete('bs-xlsx');
-    expect(c.getBitstreamsToRemove()).toEqual(['bs-xlsx']);
+    expect((c as unknown as { getBitstreamsToRemove(): string[] }).getBitstreamsToRemove()).toEqual(['bs-xlsx']);
 
     c.togglePendingDelete('bs-xlsx');
-    expect(c.getBitstreamsToRemove()).toEqual([]);
+    expect((c as unknown as { getBitstreamsToRemove(): string[] }).getBitstreamsToRemove()).toEqual([]);
   });
 
   /**
@@ -324,10 +324,10 @@ describe('StatsSubmissionForm', () => {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
     c.onAddBitstreams([nuevo]);
-    expect(c.getBitstreamsToAdd()).toEqual([nuevo]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([nuevo]);
 
     c.onAddBitstreams([]);
-    expect(c.getBitstreamsToAdd()).toEqual([]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([]);
   });
 
   /** Verifica que canSubmit bloquee el envío cuando el conteo efectivo (current - deletes + adds) cae a cero. */
@@ -383,8 +383,8 @@ describe('StatsSubmissionForm', () => {
     c.onAddBitstreams([nuevo]);
 
     expect(c.isPendingDelete('bs-xlsx')).toBe(true);
-    expect(c.getBitstreamsToAdd()).toEqual([nuevo]);
-    expect(c.getBitstreamsToRemove()).toEqual(['bs-xlsx']);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([nuevo]);
+    expect((c as unknown as { getBitstreamsToRemove(): string[] }).getBitstreamsToRemove()).toEqual(['bs-xlsx']);
   });
 
   /**
@@ -413,11 +413,11 @@ describe('StatsSubmissionForm', () => {
     const nuevo = new File(['x'], 'matricula-nueva.xlsx');
     c.onAddBitstreams([nuevo]);
     expect(c.isPendingDelete('bs-xlsx')).toBe(true);
-    expect(c.getBitstreamsToAdd()).toEqual([nuevo]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([nuevo]);
 
     c.onAddBitstreams([]);
     expect(c.isPendingDelete('bs-xlsx')).toBe(false);
-    expect(c.getBitstreamsToAdd()).toEqual([]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([]);
   });
 
   /**
@@ -444,11 +444,11 @@ describe('StatsSubmissionForm', () => {
 
     const nuevo = new File(['x'], 'matricula-nueva.xlsx');
     c.onAddBitstreams([nuevo]);
-    expect(c.getBitstreamsToAdd()).toEqual([nuevo]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([nuevo]);
     expect(c.isPendingDelete('bs-xlsx')).toBe(true);
 
     c.togglePendingDelete('bs-xlsx');
     expect(c.isPendingDelete('bs-xlsx')).toBe(false);
-    expect(c.getBitstreamsToAdd()).toEqual([]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([]);
   });
 });

@@ -12,6 +12,7 @@ import { CollectionApiService } from '../../core/api/collection-api.service';
 import { SearchFilters } from './models/search-filters.model';
 import { ENTITY_TYPE } from '../../core/config/digeex-values.config';
 import { SearchStateService } from './services/search-state.service';
+import { SearchResult } from '../../core/api/models/discovery.model';
 
 /**
  * Tests de `AdvancedSearch`.
@@ -61,7 +62,7 @@ describe('AdvancedSearch', () => {
     totalPages: 1,
     page: 0,
     size: 10,
-  };
+  } as unknown as SearchResult;
 
   const mockFacetsOnlyResult = {
     items: [],
@@ -74,7 +75,7 @@ describe('AdvancedSearch', () => {
     totalPages: 0,
     page: 0,
     size: 0,
-  };
+  } as unknown as SearchResult;
 
   const mockBundlesResponse = {
     _embedded: {
@@ -223,8 +224,8 @@ describe('AdvancedSearch', () => {
 
     component.onSearch({ ...defaultFilters, query: 'test' });
 
-    const callArgs = searchSpy.mock.calls[0][0];
-    expect(callArgs.filters).toEqual(
+    const callArgs = searchSpy.mock.calls[0]?.[0];
+    expect(callArgs?.filters).toEqual(
       expect.arrayContaining([
         { name: 'entityType', value: ENTITY_TYPE.DOCUMENTO, operator: 'equals' },
       ])
@@ -269,8 +270,8 @@ describe('AdvancedSearch', () => {
       nivelEducativo: ['Primaria'],
     });
 
-    const callArgs = searchSpy.mock.calls[0][0];
-    expect(callArgs.filters).toEqual(
+    const callArgs = searchSpy.mock.calls[0]?.[0];
+    expect(callArgs?.filters).toEqual(
       expect.arrayContaining([
         { name: 'entityType', value: ENTITY_TYPE.DOCUMENTO, operator: 'equals' },
         { name: 'itemtype', value: 'Manual', operator: 'equals' },

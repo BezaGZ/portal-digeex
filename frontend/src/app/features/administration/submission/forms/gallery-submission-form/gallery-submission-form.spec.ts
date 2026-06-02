@@ -497,10 +497,10 @@ describe('GallerySubmissionForm', () => {
 
     c.togglePendingDelete('bs-1');
     c.togglePendingDelete('bs-2');
-    expect(c.getBitstreamsToRemove().sort()).toEqual(['bs-1', 'bs-2']);
+    expect((c as unknown as { getBitstreamsToRemove(): string[] }).getBitstreamsToRemove().sort()).toEqual(['bs-1', 'bs-2']);
 
     c.togglePendingDelete('bs-1');
-    expect(c.getBitstreamsToRemove()).toEqual(['bs-2']);
+    expect((c as unknown as { getBitstreamsToRemove(): string[] }).getBitstreamsToRemove()).toEqual(['bs-2']);
   });
 
   /**
@@ -516,10 +516,10 @@ describe('GallerySubmissionForm', () => {
     const f1 = new File(['a'], 'a.jpg', { type: 'image/jpeg' });
     const f2 = new File(['b'], 'b.jpg', { type: 'image/jpeg' });
     c.onAddBitstreams([f1, f2]);
-    expect(c.getBitstreamsToAdd()).toEqual([f1, f2]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([f1, f2]);
 
     c.onAddBitstreams([f2]);
-    expect(c.getBitstreamsToAdd()).toEqual([f2]);
+    expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([f2]);
   });
 
   /** Verifica que onBitstreamPageChange recargue la página solicitada con el size elegido. */

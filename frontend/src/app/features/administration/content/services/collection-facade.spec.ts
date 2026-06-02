@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { firstValueFrom, of, throwError } from 'rxjs';
+import { Observable, firstValueFrom, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 import { CollectionFacade } from './collection-facade';
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
@@ -10,6 +10,8 @@ import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { BusinessRuleError } from '../../../../core/error/business-rule-error';
 import { CollectionCreateBody } from '../../../../core/api/models/collection.model';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
+import { Caller } from '../specifications/scope-context.model';
+import { UserRole } from '../../users/models/user-view.model';
 
 type CollectionApiMock = {
   create: Mock;
@@ -29,7 +31,7 @@ type BundleApiMock = {
   deleteBitstream: Mock;
 };
 type ScopeMock = { assertWithinScope: Mock };
-type AuthCallerMock = { currentCaller$: ReturnType<typeof of> };
+type AuthCallerMock = { currentCaller$: Observable<Caller | null> };
 
 /**
  * Tests de CollectionFacade.
@@ -96,7 +98,7 @@ describe('CollectionFacade', () => {
     type: 'collection',
   };
 
-  function setupFacadeWithCaller(role: string, sufijo: string | null) {
+  function setupFacadeWithCaller(role: UserRole, sufijo: string | null) {
     mockAuthCaller = {
       currentCaller$: of({ role, sufijo }),
     };

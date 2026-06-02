@@ -2,7 +2,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
-import { EMPTY, of, throwError } from 'rxjs';
+import { EMPTY, Observable, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MessageService } from 'primeng/api';
 
@@ -28,7 +28,7 @@ describe('Users (contenedor)', () => {
   let component: Users;
   let searchUsersFn: ReturnType<typeof vi.fn>;
   let getAssignableGroupsFn: ReturnType<typeof vi.fn>;
-  let currentUserViewObservable: ReturnType<typeof of>;
+  let currentUserViewObservable: Observable<UserView | null>;
   let deactivateUserFn: ReturnType<typeof vi.fn>;
   let reactivateUserFn: ReturnType<typeof vi.fn>;
   let resetPasswordFn: ReturnType<typeof vi.fn>;

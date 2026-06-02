@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Subject, firstValueFrom, of, throwError } from 'rxjs';
+import { Observable, Subject, firstValueFrom, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 import { SubmissionFacade, SubmitItemRequest } from './submission-facade';
 import { WorkspaceItemApiService } from '../../../../core/api/workspaceitem-api.service';
@@ -8,6 +8,8 @@ import { ItemApiService } from '../../../../core/api/item-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { BusinessRuleError } from '../../../../core/error/business-rule-error';
+import { Caller } from '../specifications/scope-context.model';
+import { UserRole } from '../../users/models/user-view.model';
 
 type WorkspaceApiMock = {
   create: Mock;
@@ -19,7 +21,7 @@ type WorkspaceApiMock = {
 };
 type ItemApiMock = { updateMetadata: Mock };
 type ScopeMock = { assertWithinScope: Mock };
-type AuthCallerMock = { currentCaller$: ReturnType<typeof of> };
+type AuthCallerMock = { currentCaller$: Observable<Caller | null> };
 type BundleApiMock = {
   listForItem: Mock;
   createBundle: Mock;
@@ -69,15 +71,15 @@ describe('SubmissionFacade', () => {
     collectionUuid: 'coll-uuid',
     sectionName: 'traditionalpageone',
     metadata: {
-      'dc.title': [{ value: 'Documento de prueba' }],
-      'dc.date.issued': [{ value: '2026' }],
+      'dc.title': [{ value: 'Documento de prueba', language: null, authority: null, confidence: -1, place: 0 }],
+      'dc.date.issued': [{ value: '2026', language: null, authority: null, confidence: -1, place: 0 }],
     },
     files: [new File(['contenido'], 'documento.pdf', { type: 'application/pdf' })],
     visibility: 'public',
     sufijoSubdireccion: 'ED_BASICA',
   };
 
-  function setupFacadeWithCaller(role: string, sufijo: string | null) {
+  function setupFacadeWithCaller(role: UserRole, sufijo: string | null) {
     mockAuthCaller = { currentCaller$: of({ role, sufijo }) };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({

@@ -6,6 +6,7 @@ import { Mock, vi } from 'vitest';
 
 import { roleGuard } from './role.guard';
 import { AuthCallerService } from '../../features/administration/shared/services/auth-caller.service';
+import { Caller } from '../../features/administration/content/specifications/scope-context.model';
 
 /**
  * Tests del `roleGuard` factory.
@@ -20,13 +21,13 @@ import { AuthCallerService } from '../../features/administration/shared/services
  * Ciclo 41 TDD — Sprint 6.
  */
 describe('roleGuard', () => {
-  let mockAuthCaller: { currentCaller$: ReturnType<typeof of> };
+  let mockAuthCaller: { currentCaller$: Observable<Caller | null> };
   let mockRouter: { createUrlTree: Mock };
   let mockMessage: { add: Mock };
   const routeSnapshot = {} as ActivatedRouteSnapshot;
   const stateSnapshot = { url: '/administrador/subdirecciones' } as RouterStateSnapshot;
 
-  function configureTestBed(caller: { role: string; sufijo: string | null } | null) {
+  function configureTestBed(caller: Caller | null) {
     mockAuthCaller = { currentCaller$: of(caller) };
     mockRouter = { createUrlTree: vi.fn(() => ({ kind: 'urltree' } as unknown as UrlTree)) };
     mockMessage = { add: vi.fn() };
@@ -69,7 +70,7 @@ describe('roleGuard', () => {
   });
 
   it('waits for the first non-null caller emission before evaluating the role', async () => {
-    const callerSubject = new BehaviorSubject<{ role: string; sufijo: string | null } | null>(null);
+    const callerSubject = new BehaviorSubject<Caller | null>(null);
     mockAuthCaller = { currentCaller$: callerSubject.asObservable() };
     mockRouter = { createUrlTree: vi.fn(() => ({ kind: 'urltree' } as unknown as UrlTree)) };
     mockMessage = { add: vi.fn() };

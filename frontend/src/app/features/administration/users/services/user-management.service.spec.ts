@@ -98,10 +98,11 @@ describe('UserManagementService', () => {
             language: null,
             authority: '',
             confidence: -1,
+            place: 0,
           },
         ],
         'eperson.lastname': [
-          { value: input.lastName ?? 'N', language: null, authority: '', confidence: -1 },
+          { value: input.lastName ?? 'N', language: null, authority: '', confidence: -1, place: 0 },
         ],
       },
       _embedded: input.groups ? { groups: embeddedGroups(input.groups) } : undefined,

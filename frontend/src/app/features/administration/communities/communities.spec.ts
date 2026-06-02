@@ -2,7 +2,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
-import { EMPTY, of } from 'rxjs';
+import { EMPTY, Observable, of } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { Communities } from './communities';
@@ -12,6 +12,7 @@ import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CommunityFacade } from '../content/services/community-facade';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { Community } from '../../../core/api/models/community.model';
+import { Caller } from '../content/specifications/scope-context.model';
 
 /**
  * Tests del contenedor Communities.
@@ -29,7 +30,7 @@ describe('Communities (contenedor)', () => {
   let listSubcommunitiesFn: ReturnType<typeof vi.fn>;
   let listByCommunityFn: ReturnType<typeof vi.fn>;
   let getItemsFn: ReturnType<typeof vi.fn>;
-  let currentCallerObservable: ReturnType<typeof of>;
+  let currentCallerObservable: Observable<Caller | null>;
   let createSubdireccionFn: ReturnType<typeof vi.fn>;
   let updateSubdireccionFn: ReturnType<typeof vi.fn>;
   let deleteSubdireccionFn: ReturnType<typeof vi.fn>;

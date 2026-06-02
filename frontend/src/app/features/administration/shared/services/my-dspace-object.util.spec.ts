@@ -57,7 +57,18 @@ describe('my-dspace-object.util', () => {
 
   /** Verifica que coverUrlOf arme la URL del bitstream cuando hay thumbnail. */
   it('coverUrlOf returns the bitstream content URL when the item has thumbnail', () => {
-    const o = build({ thumbnail: { uuid: 'bs-1', name: 'cover.jpg', type: 'bitstream' } });
+    const o = build({
+      thumbnail: {
+        uuid: 'bs-1',
+        name: 'cover.jpg',
+        type: 'bitstream',
+        handle: null,
+        metadata: {},
+        sizeBytes: 0,
+        checkSum: { checkSumAlgorithm: 'MD5', value: '' },
+        sequenceId: 1,
+      },
+    });
     expect(coverUrlOf(o)).toBe('/server/api/core/bitstreams/bs-1/content');
   });
 

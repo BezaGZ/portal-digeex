@@ -5,6 +5,7 @@ import {
 } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { WorkspaceItemApiService } from './workspaceitem-api.service';
+import { WorkspaceItem } from './models/workspaceitem.model';
 import workspaceitemCreateFixture from './test-fixtures/submission-workspaceitem-create-response.json';
 import workspaceitemPatchFixture from './test-fixtures/submission-workspaceitem-patch-response.json';
 import workspaceitemUploadFixture from './test-fixtures/submission-workspaceitem-upload-response.json';
@@ -41,7 +42,7 @@ describe('WorkspaceItemApiService', () => {
 
   describe('create()', () => {
     it('should POST to /api/submission/workspaceitems with owningCollection in query and empty body', () => {
-      let received: typeof workspaceitemCreateFixture | undefined;
+      let received: WorkspaceItem | undefined;
 
       service.create('coll-uuid').subscribe((ws) => (received = ws));
 
@@ -66,7 +67,7 @@ describe('WorkspaceItemApiService', () => {
           value: [{ value: 'Nuevo título' }],
         },
       ];
-      let received: typeof workspaceitemPatchFixture | undefined;
+      let received: WorkspaceItem | undefined;
 
       service.patchSection(57, patch).subscribe((ws) => (received = ws));
 
@@ -82,7 +83,7 @@ describe('WorkspaceItemApiService', () => {
   describe('uploadFile()', () => {
     it('should POST multipart with field "file" to the workspaceitem endpoint and return the workspaceitem with the file in /sections/upload/files', () => {
       const file = new File(['dummy'], 'captura.pdf', { type: 'application/pdf' });
-      let received: typeof workspaceitemUploadFixture | undefined;
+      let received: WorkspaceItem | undefined;
 
       service.uploadFile(57, file).subscribe((ws) => (received = ws));
 

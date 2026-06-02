@@ -99,7 +99,7 @@ function buildItem(uuid: string, datasetKey: string | undefined, title?: string)
     withdrawn: false,
     lastModified: '2026-05-22T00:00:00Z',
     type: 'item',
-  } as Item;
+  } as unknown as Item;
 }
 
 const PARSED_EXCEL: ParsedExcel = {

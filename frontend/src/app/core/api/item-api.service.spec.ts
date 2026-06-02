@@ -6,6 +6,7 @@ import {
 import { provideHttpClient } from '@angular/common/http';
 import { ItemApiService } from './item-api.service';
 import { JsonPatchEntry } from './json-patch.util';
+import { Item } from './models/item.model';
 import itemPatchFixture from './test-fixtures/item-patch-metadata-response.json';
 import itemWithdrawnTrueFixture from './test-fixtures/item-patch-withdrawn-true-response.json';
 
@@ -43,7 +44,7 @@ describe('ItemApiService', () => {
       const patch: JsonPatchEntry[] = [
         { op: 'replace', path: '/discoverable', value: false },
       ];
-      let received: typeof itemPatchFixture | undefined;
+      let received: Item | undefined;
 
       service.updateMetadata('item-uuid', patch).subscribe((item) => (received = item));
 

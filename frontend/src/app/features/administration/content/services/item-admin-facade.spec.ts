@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { firstValueFrom, of } from 'rxjs';
+import { Observable, firstValueFrom, of } from 'rxjs';
 import { Mock, vi } from 'vitest';
 import { ItemAdminFacade } from './item-admin-facade';
 import { ItemApiService } from '../../../../core/api/item-api.service';
@@ -8,6 +8,8 @@ import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { BusinessRuleError } from '../../../../core/error/business-rule-error';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
+import { Caller } from '../specifications/scope-context.model';
+import { UserRole } from '../../users/models/user-view.model';
 
 type ItemApiMock = {
   updateMetadata: Mock;
@@ -23,7 +25,7 @@ type BundleApiMock = {
   deleteBitstream: Mock;
 };
 type ScopeMock = { assertWithinScope: Mock };
-type AuthCallerMock = { currentCaller$: ReturnType<typeof of> };
+type AuthCallerMock = { currentCaller$: Observable<Caller | null> };
 
 /**
  * Tests de ItemAdminFacade.
@@ -56,7 +58,7 @@ describe('ItemAdminFacade', () => {
     type: 'item',
   };
 
-  function setupFacadeWithCaller(role: string, sufijo: string | null) {
+  function setupFacadeWithCaller(role: UserRole, sufijo: string | null) {
     mockAuthCaller = { currentCaller$: of({ role, sufijo }) };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
