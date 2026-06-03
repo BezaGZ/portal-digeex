@@ -11,6 +11,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { ConfirmationService, MessageService } from 'primeng/api';
+import { TableLazyLoadEvent } from 'primeng/table';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -45,7 +46,9 @@ interface ProgramaFormPayload {
  * Pantalla de gestión de programas (colecciones DSpace bajo cada
  * subdirección). El SuperAdmin elige una subdirección en el dropdown
  * superior y ve sus programas; admin_subdireccion queda fijado a su
- * propio sufijo. Cada acción mutativa delega al CollectionFacade.
+ * propio sufijo. La tabla pagina server-side vía el output `lazyLoad`
+ * que el `p-table` emite por cambio de página o cambio de rowsPerPage.
+ * Cada acción mutativa delega al CollectionFacade.
  */
 @Component({
   selector: 'app-collections',
@@ -84,35 +87,62 @@ export class Collections {
   /** Subdirección seleccionada en el dropdown; sus colecciones llenan la tabla. */
   readonly selectedSubdireccion = signal<Community | null>(null);
 
-  /** Colecciones de la subdirección seleccionada, enriquecidas con recursosCount. */
+  /** Página actual de colecciones (0-based) para la subdirección activa. */
+  readonly currentPage = signal<number>(0);
+
+  /** Tamaño de página que el `p-table` está mostrando; cambia con `rowsPerPageOptions`. */
+  readonly pageSize = signal<number>(10);
+
+  /** Total de colecciones de la subdirección activa, leído del `page.totalElements`. */
+  readonly totalRecords = signal<number>(0);
+
+  /** Colecciones de la página actual, enriquecidas con `recursosCount`. */
   readonly collections = signal<ProgramaView[]>([]);
 
-  /** Cambia la subdirección activa y refetcha sus colecciones con conteo de recursos. */
+  /**
+   * Cambia la subdirección activa: guarda el sub y resetea page=0. El fetch
+   * real ocurre cuando el `p-table` emite `onLazyLoad`; intent (qué sub) y
+   * fetch (qué página) quedan como responsabilidades separadas.
+   */
   selectSubdireccion(sub: Community | null): void {
     this.selectedSubdireccion.set(sub);
+    this.currentPage.set(0);
     if (!sub) {
       this.collections.set([]);
-      return;
+      this.totalRecords.set(0);
     }
+  }
+
+  /**
+   * Handler del output `lazyLoad` del `p-table`. Convierte el offset `first`
+   * de PrimeNG a índice de página 0-based de DSpace (`page = first / rows`).
+   */
+  onLazyLoad(event: TableLazyLoadEvent): void {
+    const sub = this.selectedSubdireccion();
+    if (!sub) return;
+    const rows = event.rows ?? this.pageSize();
+    const first = event.first ?? 0;
+    const page = Math.floor(first / rows);
+    this.pageSize.set(rows);
+    this.currentPage.set(page);
+    this.fetchPage(sub.uuid, page, rows);
+  }
+
+  private fetchPage(uuid: string, page: number, size: number): void {
     this.collectionApi
-      .listByCommunity(sub.uuid, 0, 100, { embed: 'logo' })
+      .listByCommunity(uuid, page, size, { embed: 'logo' })
       .pipe(
-        // `archivedItemsCount` viaja en el listing porque DIGEEX activa
-        // `webui.strengths.show=true` en `docker/local.cfg`.
         switchMap((resp) => {
           const colls: Collection[] = resp._embedded?.['collections'] ?? [];
-          if (colls.length === 0) {
-            return of([] as ProgramaView[]);
-          }
+          this.totalRecords.set(resp.page?.totalElements ?? colls.length);
           const views: ProgramaView[] = colls.map((coll) => ({
             ...coll,
             // Clamp defensivo: DSpace devuelve -1 si la feature strengths
+            // está apagada en el backend.
             recursosCount: Math.max(0, coll.archivedItemsCount ?? 0),
           }));
           return of(views);
         }),
-        // Ordeno por dc.identifier.other (orden en el menú); si falta o
-        // no es numérico, queda al final.
         map((views) =>
           [...views].sort((a, b) => this.ordenValue(a) - this.ordenValue(b)),
         ),
@@ -216,7 +246,7 @@ export class Collections {
     this.facade.createColeccion$(sub.uuid, body, sufijo, payload.coverFile ?? undefined).subscribe({
       next: () => {
         this.closeDialog();
-        this.refreshCollections();
+        this.refreshCurrentPage();
         this.toast.add({ severity: 'success', summary: 'Programa creado' });
       },
       error: (err) => this.toastError(err, 'No se pudo crear el programa'),
@@ -266,12 +296,12 @@ export class Collections {
             .subscribe({
               next: () => {
                 this.closeDialog();
-                this.refreshCollections();
+                this.refreshCurrentPage();
                 this.toast.add({ severity: 'success', summary: 'Programa actualizado' });
               },
               error: (err) => {
                 this.closeDialog();
-                this.refreshCollections();
+                this.refreshCurrentPage();
                 this.toast.add({
                   severity: 'warn',
                   summary: 'Programa actualizado, pero el logo falló',
@@ -282,7 +312,7 @@ export class Collections {
           return;
         }
         this.closeDialog();
-        this.refreshCollections();
+        this.refreshCurrentPage();
         this.toast.add({ severity: 'success', summary: 'Programa actualizado' });
       },
       error: (err) => this.toastError(err, 'No se pudo actualizar el programa'),
@@ -310,20 +340,55 @@ export class Collections {
       accept: () => {
         this.facade.deleteColeccion$(target.uuid, sufijo).subscribe({
           next: () => {
-            this.refreshCollections();
+            this.refreshAfterDelete();
             this.toast.add({ severity: 'success', summary: 'Programa eliminado' });
           },
-          error: (err) => this.toastError(err, 'No se pudo eliminar el programa'),
+          error: (err) => this.toastError(err, 'No se pudo aliminar el programa'),
         });
       },
     });
   }
 
-  private refreshCollections(): void {
+  /**
+   * Refresca la página actual sin tocar el offset. Llamado tras crear
+   * o editar: la nueva colección aparece en la página actual si cae en
+   * el rango; si no, el usuario la encuentra navegando.
+   */
+  private refreshCurrentPage(): void {
     const sub = this.selectedSubdireccion();
-    if (sub) {
-      this.selectSubdireccion(sub);
-    }
+    if (!sub) return;
+    this.fetchPage(sub.uuid, this.currentPage(), this.pageSize());
+  }
+
+  /**
+   * Refresca tras eliminar aplicando la política sin páginas huérfanas:
+   * pide la página actual; si vuelve vacía y existe una página previa,
+   * baja a `currentPage - 1` y vuelve a pedir. Evita que el usuario
+   * vea una tabla en blanco en una página que ya no existe.
+   */
+  private refreshAfterDelete(): void {
+    const sub = this.selectedSubdireccion();
+    if (!sub) return;
+    const page = this.currentPage();
+    const size = this.pageSize();
+    this.collectionApi
+      .listByCommunity(sub.uuid, page, size, { embed: 'logo' })
+      .subscribe((resp) => {
+        const colls: Collection[] = resp._embedded?.['collections'] ?? [];
+        if (colls.length === 0 && page > 0) {
+          this.currentPage.set(page - 1);
+          this.fetchPage(sub.uuid, page - 1, size);
+          return;
+        }
+        this.totalRecords.set(resp.page?.totalElements ?? colls.length);
+        const views: ProgramaView[] = colls
+          .map((coll) => ({
+            ...coll,
+            recursosCount: Math.max(0, coll.archivedItemsCount ?? 0),
+          }))
+          .sort((a, b) => this.ordenValue(a) - this.ordenValue(b));
+        this.collections.set(views);
+      });
   }
 
   private toastError(err: unknown, fallback: string): void {
@@ -374,16 +439,7 @@ export class Collections {
         if (!root) {
           return of([] as Community[]);
         }
-        return this.communityApi.listSubcommunities(root.uuid, 0, 100).pipe(
-          map((listResp) => {
-            const embedded = listResp._embedded ?? {};
-            return (
-              (embedded as Record<string, Community[]>)['subcommunities']
-              ?? (embedded as Record<string, Community[]>)['communities']
-              ?? []
-            );
-          }),
-        );
+        return this.communityApi.listAllSubcommunities(root.uuid);
       }),
     );
   }

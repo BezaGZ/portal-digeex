@@ -18,7 +18,7 @@ import { JsonPatchEntry } from './json-patch.util';
  * el listado top-level, la lectura por UUID y el listado de sub-comunidades
  * de una community padre.
  *
- * Ciclo 6 TDD — Sprint 6
+ * Ciclo 6 TDD — Sprint 6. Ajustado en Ciclo 13 (Sprint 8).
  */
 describe('CommunityApiService', () => {
   let service: CommunityApiService;
@@ -324,5 +324,109 @@ describe('CommunityApiService', () => {
     expect(result!.uuid).toBe('939d427e-9205-4b1f-85df-704d9bba2478');
     expect(result!.name).toBe('COMMUNITY_9123e095-de73-4316-b319-1d2e60e9be83_ADMIN');
     expect(result!.permanent).toBe(false);
+  });
+
+  /**
+   * Verifica que `listAllSubcommunities` no imponga `size` y resuelva en una
+   * sola request cuando `totalPages=1`. Caso típico DIGEEX (≤3 subdirecciones).
+   */
+  it('listAllSubcommunities() should hit /subcommunities without size param and resolve in one request', async () => {
+    const promise = new Promise<Community[]>((resolve, reject) => {
+      service.listAllSubcommunities('root-uuid').subscribe({
+        next: (subs) => {
+          expect(subs.map((s) => s.uuid)).toEqual(['sub-1', 'sub-2']);
+          resolve(subs);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne(
+      '/server/api/core/communities/root-uuid/subcommunities',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      _embedded: {
+        subcommunities: [
+          { uuid: 'sub-1', name: 'Sub A', type: 'community', handle: '1/1', metadata: {}, archivedItemsCount: 0, _links: { self: { href: '' } } },
+          { uuid: 'sub-2', name: 'Sub B', type: 'community', handle: '1/2', metadata: {}, archivedItemsCount: 0, _links: { self: { href: '' } } },
+        ],
+      },
+      _links: { self: { href: '/' } },
+      page: { size: 20, totalElements: 2, totalPages: 1, number: 0 },
+    });
+
+    await promise;
+  });
+
+  /**
+   * Verifica que `listAllSubcommunities` pagine recursivamente cuando hay
+   * varias páginas, pasando solo `page` desde la segunda en adelante.
+   */
+  it('listAllSubcommunities() should paginate recursively when totalPages > 1, concatenating all pages', async () => {
+    const promise = new Promise<Community[]>((resolve, reject) => {
+      service.listAllSubcommunities('root-uuid').subscribe({
+        next: (subs) => {
+          expect(subs.map((s) => s.uuid)).toEqual(['sub-1', 'sub-2']);
+          resolve(subs);
+        },
+        error: reject,
+      });
+    });
+
+    const r0 = httpMock.expectOne(
+      '/server/api/core/communities/root-uuid/subcommunities',
+    );
+    r0.flush({
+      _embedded: {
+        subcommunities: [
+          { uuid: 'sub-1', name: 'Sub A', type: 'community', handle: '', metadata: {}, archivedItemsCount: 0, _links: { self: { href: '' } } },
+        ],
+      },
+      _links: { self: { href: '/' } },
+      page: { size: 20, totalElements: 2, totalPages: 2, number: 0 },
+    });
+
+    const r1 = httpMock.expectOne(
+      '/server/api/core/communities/root-uuid/subcommunities?page=1',
+    );
+    r1.flush({
+      _embedded: {
+        subcommunities: [
+          { uuid: 'sub-2', name: 'Sub B', type: 'community', handle: '', metadata: {}, archivedItemsCount: 0, _links: { self: { href: '' } } },
+        ],
+      },
+      _links: { self: { href: '/' } },
+      page: { size: 20, totalElements: 2, totalPages: 2, number: 1 },
+    });
+
+    await promise;
+  });
+
+  /**
+   * Verifica que `listAllSubcommunities` devuelva arreglo vacío cuando la
+   * community padre no tiene sub-comunidades.
+   */
+  it('listAllSubcommunities() should resolve to an empty array when the parent has no subcommunities', async () => {
+    const promise = new Promise<Community[]>((resolve, reject) => {
+      service.listAllSubcommunities('root-uuid').subscribe({
+        next: (subs) => {
+          expect(subs).toEqual([]);
+          resolve(subs);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne(
+      '/server/api/core/communities/root-uuid/subcommunities',
+    );
+    req.flush({
+      _embedded: {},
+      _links: { self: { href: '/' } },
+      page: { size: 20, totalElements: 0, totalPages: 0, number: 0 },
+    });
+
+    await promise;
   });
 });

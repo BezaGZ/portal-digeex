@@ -18,15 +18,19 @@ import { Collection } from '../../../core/api/models/collection.model';
  * Tests del contenedor Collections (pantalla "Programas").
  *
  * El contenedor lista las colecciones (programas) de la subdirección
- * seleccionada por el usuario en un dropdown. SuperAdmin ve todas las
- * subdirecciones; admin_subdireccion solo la suya y queda bloqueado en
- * ese sufijo. Cada acción mutativa delega al CollectionFacade existente.
+ * seleccionada por el usuario en un dropdown server-side paginado. El
+ * dropdown de subdirecciones se llena con `listAllSubcommunities` (todas
+ * de un golpe vía paginación recursiva, porque el p-select debe poder
+ * mostrarlas) y la tabla de colecciones se llena por página vía
+ * `onLazyLoad` del `p-table`. SuperAdmin ve todas las subdirecciones;
+ * admin_subdireccion queda bloqueado en su sufijo. Cada acción mutativa
+ * delega al CollectionFacade existente.
  *
- * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4 (Sprint 7) y Ciclo 12 (Sprint 8).
+ * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4 (Sprint 7), Ciclo 12 y Ciclo 13 (Sprint 8).
  */
 describe('Collections (contenedor)', () => {
   let searchTopFn: ReturnType<typeof vi.fn>;
-  let listSubcommunitiesFn: ReturnType<typeof vi.fn>;
+  let listAllSubcommunitiesFn: ReturnType<typeof vi.fn>;
   let listByCommunityFn: ReturnType<typeof vi.fn>;
   let createColeccionFn: ReturnType<typeof vi.fn>;
   let updateColeccionFn: ReturnType<typeof vi.fn>;
@@ -61,6 +65,19 @@ describe('Collections (contenedor)', () => {
     };
   }
 
+  function buildPage(colls: Collection[], totalElements: number) {
+    return of({
+      _embedded: { collections: colls },
+      _links: { self: { href: '/' } },
+      page: {
+        size: 10,
+        totalElements,
+        totalPages: Math.ceil(totalElements / 10),
+        number: 0,
+      },
+    });
+  }
+
   beforeEach(() => {
     searchTopFn = vi.fn().mockReturnValue(
       of({
@@ -69,31 +86,16 @@ describe('Collections (contenedor)', () => {
         page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
       }),
     );
-    listSubcommunitiesFn = vi.fn().mockReturnValue(
-      of({
-        _embedded: {
-          subcommunities: [
-            buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA'),
-            buildCommunity('Trabajo y Cultura', 'sub-2', 'ED_TRABAJO'),
-            buildCommunity('Investigación', 'sub-3', 'ED_INVESTIGACION'),
-          ],
-        },
-        _links: { self: { href: '/server/api/core/communities/digeex-root-uuid/subcommunities' } },
-        page: { size: 20, totalElements: 3, totalPages: 1, number: 0 },
-      }),
+    listAllSubcommunitiesFn = vi.fn().mockReturnValue(
+      of([
+        buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA'),
+        buildCommunity('Trabajo y Cultura', 'sub-2', 'ED_TRABAJO'),
+        buildCommunity('Investigación', 'sub-3', 'ED_INVESTIGACION'),
+      ]),
     );
-    listByCommunityFn = vi.fn().mockImplementation((uuid: string) =>
-      of({
-        _embedded: {
-          collections: [
-            buildCollection('PEAC', 'coll-peac', 34),
-            buildCollection('PRONEA', 'coll-pronea', 6),
-          ],
-        },
-        _links: { self: { href: `/server/api/core/communities/${uuid}/collections` } },
-        page: { size: 10, totalElements: 2, totalPages: 1, number: 0 },
-      }),
-    );
+    listByCommunityFn = vi
+      .fn()
+      .mockReturnValue(buildPage([buildCollection('PEAC', 'coll-peac', 34), buildCollection('PRONEA', 'coll-pronea', 6)], 2));
     createColeccionFn = vi.fn().mockReturnValue(of(buildCollection('Nueva', 'coll-new')));
     updateColeccionFn = vi.fn().mockReturnValue(of(buildCollection('Renombrada', 'coll-peac')));
     deleteColeccionFn = vi.fn().mockReturnValue(of(undefined));
@@ -104,10 +106,10 @@ describe('Collections (contenedor)', () => {
       imports: [Collections],
       providers: [
         provideNoopAnimations(),
-          provideHttpClient(),
+        provideHttpClient(),
         {
           provide: CommunityApiService,
-          useValue: { searchTop: searchTopFn, listSubcommunities: listSubcommunitiesFn },
+          useValue: { searchTop: searchTopFn, listAllSubcommunities: listAllSubcommunitiesFn },
         },
         {
           provide: CollectionApiService,
@@ -134,12 +136,13 @@ describe('Collections (contenedor)', () => {
     confirmFn = vi.spyOn(TestBed.inject(ConfirmationService), 'confirm') as any;
   });
 
-  it('should fetch DIGEEX root and its subdirecciones on init, exposing them as selector options', () => {
+  /** Verifica que en init se llene el dropdown con listAllSubcommunities (paginación recursiva). */
+  it('should fetch DIGEEX root and all subdirecciones on init via listAllSubcommunities', () => {
     const fixture = TestBed.createComponent(Collections);
     fixture.detectChanges();
 
     expect(searchTopFn).toHaveBeenCalled();
-    expect(listSubcommunitiesFn).toHaveBeenCalledWith('digeex-root-uuid', 0, 100);
+    expect(listAllSubcommunitiesFn).toHaveBeenCalledWith('digeex-root-uuid');
     expect(fixture.componentInstance.subdirecciones().map((s) => s.name)).toEqual([
       'Educación Básica',
       'Trabajo y Cultura',
@@ -163,11 +166,11 @@ describe('Collections (contenedor)', () => {
           provideHttpClient(),
           {
             provide: CommunityApiService,
-            useValue: { searchTop: searchTopFn, listSubcommunities: listSubcommunitiesFn },
+            useValue: { searchTop: searchTopFn, listAllSubcommunities: listAllSubcommunitiesFn },
           },
           {
             provide: CollectionApiService,
-            useValue: { listByCommunity: vi.fn(() => of({ _embedded: { collections: [] }, _links: { self: { href: '/' } }, page: { size: 10, totalElements: 0, totalPages: 0, number: 0 } })) },
+            useValue: { listByCommunity: vi.fn().mockReturnValue(buildPage([], 0)) },
           },
           { provide: CollectionFacade, useValue: {} },
           {
@@ -200,13 +203,11 @@ describe('Collections (contenedor)', () => {
           provideHttpClient(),
           {
             provide: CommunityApiService,
-            useValue: { searchTop: searchTopFn, listSubcommunities: listSubcommunitiesFn },
+            useValue: { searchTop: searchTopFn, listAllSubcommunities: listAllSubcommunitiesFn },
           },
           {
             provide: CollectionApiService,
-            useValue: {
-              listByCommunity: vi.fn(() => of({ _embedded: { collections: [] }, _links: { self: { href: '/' } }, page: { size: 10, totalElements: 0, totalPages: 0, number: 0 } })),
-            },
+            useValue: { listByCommunity: vi.fn().mockReturnValue(buildPage([], 0)) },
           },
           { provide: CollectionFacade, useValue: {} },
           {
@@ -261,18 +262,65 @@ describe('Collections (contenedor)', () => {
     });
   });
 
-  describe('selecting a subdireccion', () => {
-    it('should fetch the collections of the selected subdireccion and expose them in state', () => {
+  describe('selecting a subdireccion (server-side pagination)', () => {
+    /** Verifica que selectSubdireccion guarde el sub y resetee currentPage sin disparar fetch. */
+    it('should store the selected sub and reset currentPage without fetching collections', () => {
       const fixture = TestBed.createComponent(Collections);
       fixture.detectChanges();
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      listByCommunityFn.mockClear();
 
       c.selectSubdireccion(sub);
 
-      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100, { embed: 'logo' });
-      expect(c.collections().map((coll) => coll.name)).toEqual(['PEAC', 'PRONEA']);
       expect(c.selectedSubdireccion()?.uuid).toBe('sub-1');
+      expect(c.currentPage()).toBe(0);
+      expect(listByCommunityFn).not.toHaveBeenCalled();
+    });
+
+    /** Verifica que onLazyLoad con first=0/rows=10 dispare listByCommunity con page=0/size=10 y embed=logo. */
+    it('should dispatch listByCommunity with page=0/size=10 when onLazyLoad fires for the first page', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      c.selectSubdireccion(sub);
+      listByCommunityFn.mockClear();
+
+      c.onLazyLoad({ first: 0, rows: 10 });
+
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 10, { embed: 'logo' });
+      expect(c.collections().map((coll) => coll.name)).toEqual(['PEAC', 'PRONEA']);
+    });
+
+    /** Verifica que onLazyLoad con first=10/rows=10 traduzca el offset a page=1. */
+    it('should translate first/rows to the correct page index when onLazyLoad fires for page 2', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      c.selectSubdireccion(sub);
+      listByCommunityFn.mockClear();
+
+      c.onLazyLoad({ first: 10, rows: 10 });
+
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 1, 10, { embed: 'logo' });
+    });
+
+    /** Verifica que totalRecords se actualice desde page.totalElements del response. */
+    it('should update totalRecords signal from page.totalElements after fetch', () => {
+      listByCommunityFn.mockReturnValue(
+        buildPage([buildCollection('A', 'a'), buildCollection('B', 'b')], 47),
+      );
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      c.selectSubdireccion(sub);
+
+      c.onLazyLoad({ first: 0, rows: 10 });
+
+      expect(c.totalRecords()).toBe(47);
     });
 
     /**
@@ -284,8 +332,9 @@ describe('Collections (contenedor)', () => {
       fixture.detectChanges();
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
-
       c.selectSubdireccion(sub);
+
+      c.onLazyLoad({ first: 0, rows: 10 });
 
       const counts = c.collections().map((coll) => coll.recursosCount);
       expect(counts).toEqual([34, 6]);
@@ -297,21 +346,15 @@ describe('Collections (contenedor)', () => {
      */
     it('should clamp a negative archivedItemsCount to 0 in recursosCount', () => {
       listByCommunityFn.mockReturnValue(
-        of({
-          _embedded: {
-            collections: [buildCollection('SIN_CONTEO', 'coll-x', -1)],
-          },
-          _links: { self: { href: '/' } },
-          page: { size: 10, totalElements: 1, totalPages: 1, number: 0 },
-        }),
+        buildPage([buildCollection('SIN_CONTEO', 'coll-x', -1)], 1),
       );
 
       const fixture = TestBed.createComponent(Collections);
       fixture.detectChanges();
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
-
       c.selectSubdireccion(sub);
+      c.onLazyLoad({ first: 0, rows: 10 });
 
       expect(c.collections()[0].recursosCount).toBe(0);
     });
@@ -324,6 +367,7 @@ describe('Collections (contenedor)', () => {
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
+      c.onLazyLoad({ first: 0, rows: 10 });
       listByCommunityFn.mockClear();
 
       c.handleCreateSubmit({
@@ -360,7 +404,7 @@ describe('Collections (contenedor)', () => {
         undefined,
       );
       expect(c.dialogMode()).toBe('closed');
-      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100, { embed: 'logo' });
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 10, { embed: 'logo' });
       expect(messageAddFn).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
     });
 
@@ -370,6 +414,7 @@ describe('Collections (contenedor)', () => {
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
+      c.onLazyLoad({ first: 0, rows: 10 });
       const target = buildCollection('PEAC', 'coll-peac');
       c.openEditDialog(target);
 
@@ -411,6 +456,7 @@ describe('Collections (contenedor)', () => {
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
+      c.onLazyLoad({ first: 0, rows: 10 });
       const cover = new File(['png'], 'logo.png', { type: 'image/png' });
 
       c.handleCreateSubmit({
@@ -441,6 +487,7 @@ describe('Collections (contenedor)', () => {
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
+      c.onLazyLoad({ first: 0, rows: 10 });
       const target = buildCollection('PEAC', 'coll-peac');
       c.openEditDialog(target);
       const cover = new File(['png'], 'logo.png', { type: 'image/png' });
@@ -462,28 +509,13 @@ describe('Collections (contenedor)', () => {
       expect(updateOrder).toBeLessThan(replaceOrder);
     });
 
-    /**
-     * Verifica que pase embed=logo en listByCommunity para precargar el logo del listado admin.
-     * Sin el embed, la columna de avatar tendría que hacer una llamada por colección al cargar la tabla.
-     */
-    it('should request listByCommunity with embed=logo when selecting a sub', () => {
-      const fixture = TestBed.createComponent(Collections);
-      fixture.detectChanges();
-      const c = fixture.componentInstance;
-      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
-      listByCommunityFn.mockClear();
-
-      c.selectSubdireccion(sub);
-
-      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100, { embed: 'logo' });
-    });
-
     it('should ask for confirmation, then call deleteColeccion$, refresh y toast on accept', () => {
       const fixture = TestBed.createComponent(Collections);
       fixture.detectChanges();
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
+      c.onLazyLoad({ first: 0, rows: 10 });
       const target = buildCollection('PEAC', 'coll-peac');
 
       confirmFn.mockImplementation((options: { accept: () => void }) => options.accept());
@@ -493,8 +525,39 @@ describe('Collections (contenedor)', () => {
 
       expect(confirmFn).toHaveBeenCalled();
       expect(deleteColeccionFn).toHaveBeenCalledWith('coll-peac', 'ED_BASICA');
-      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100, { embed: 'logo' });
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 10, { embed: 'logo' });
       expect(messageAddFn).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
+    });
+
+    /**
+     * Verifica la política de refresh sin huérfanos: tras eliminar la última fila
+     * de la página actual, currentPage baja a la página previa para evitar mostrar
+     * una página vacía al usuario.
+     */
+    it('should drop currentPage to previous page when the current page becomes empty after delete', () => {
+      // Setup: usuario está en página 2 (currentPage=1) viendo 1 colección, total era 11.
+      listByCommunityFn.mockReturnValueOnce(
+        buildPage([buildCollection('LAST', 'coll-last', 0)], 11),
+      );
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      c.selectSubdireccion(sub);
+      c.onLazyLoad({ first: 10, rows: 10 });
+      expect(c.currentPage()).toBe(1);
+
+      // Tras eliminar la última colección, el siguiente fetch devuelve la página vacía con total=10.
+      listByCommunityFn.mockReturnValueOnce(buildPage([], 10)); // página 1 ahora vacía
+      listByCommunityFn.mockReturnValueOnce(
+        buildPage([buildCollection('PEAC', 'coll-peac', 34)], 10),
+      ); // página 0 con datos
+      listByCommunityFn.mockClear();
+      confirmFn.mockImplementation((options: { accept: () => void }) => options.accept());
+
+      c.onDeleteClick(buildCollection('LAST', 'coll-last'));
+
+      expect(c.currentPage()).toBe(0);
     });
   });
 });

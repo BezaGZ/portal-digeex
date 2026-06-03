@@ -7,9 +7,9 @@ import { Group, AssociatedGroupCreateBody } from './models/group.model';
 import { Bitstream } from './models/bitstream.model';
 import { HalListResponse } from './models/hal.model';
 import {
-  DSPACE_API_BASE,
   COLLECTIONS_PATH,
   COMMUNITIES_PATH,
+  DSPACE_API_BASE,
   ITEMS_PATH,
 } from './dspace-rest.util';
 import { JsonPatchEntry } from './json-patch.util';
@@ -80,21 +80,36 @@ export class CollectionApiService {
 
   /**
    * Materializa TODAS las colecciones del repositorio agotando páginas
-   * con `expand`+`reduce`. `pageSize` default 100; útil cuando el caller
-   * necesita rankear globalmente por un campo derivado (DSpace 9.x solo
-   * sortea metadata indexable, no `archivedItemsCount`).
+   * (`expand`+`reduce`) sin imponer `size` desde el frontend. Mismo
+   * patrón que `VocabularyApiService.getEntries`: el backend usa su
+   * default `spring.data.rest.default-page-size`.
    */
-  listAll(
-    options: { embed?: string; pageSize?: number } = {},
-  ): Observable<Collection[]> {
-    const pageSize = options.pageSize ?? 100;
-    return this.list(0, pageSize, { embed: options.embed }).pipe(
+  listAll(options: { embed?: string } = {}): Observable<Collection[]> {
+    return this.fetchAllPage$(0, options.embed).pipe(
       expand((resp) => {
-        const page = resp.page;
-        if (!page || page.number + 1 >= page.totalPages) {
-          return EMPTY;
-        }
-        return this.list(page.number + 1, pageSize, { embed: options.embed });
+        const next = (resp.page?.number ?? 0) + 1;
+        return next < (resp.page?.totalPages ?? 0)
+          ? this.fetchAllPage$(next, options.embed)
+          : EMPTY;
+      }),
+      reduce(
+        (acc, resp) => [...acc, ...(resp._embedded?.['collections'] ?? [])],
+        [] as Collection[],
+      ),
+    );
+  }
+
+  /** Versión scope-filtered de `listAll` para una community específica. */
+  listAllByCommunity(
+    communityUuid: string,
+    options: { embed?: string } = {},
+  ): Observable<Collection[]> {
+    return this.fetchByCommunityPage$(communityUuid, 0, options.embed).pipe(
+      expand((resp) => {
+        const next = (resp.page?.number ?? 0) + 1;
+        return next < (resp.page?.totalPages ?? 0)
+          ? this.fetchByCommunityPage$(communityUuid, next, options.embed)
+          : EMPTY;
       }),
       reduce(
         (acc, resp) => [...acc, ...(resp._embedded?.['collections'] ?? [])],
@@ -104,30 +119,37 @@ export class CollectionApiService {
   }
 
   /**
-   * Versión scope-filtered de `listAll`: agota páginas dentro de una
-   * community específica. Mismo `pageSize` default y mismo `expand`+`reduce`.
+   * Fetch de una página del listado completo. Página 0 sin parámetros
+   * (DSpace usa su default); siguientes solo mandan `page`.
    */
-  listAllByCommunity(
+  private fetchAllPage$(
+    page: number,
+    embed?: string,
+  ): Observable<HalListResponse<Collection>> {
+    let params = new HttpParams();
+    if (page > 0) params = params.set('page', String(page));
+    if (embed) params = params.set('embed', embed);
+    return this.http.get<HalListResponse<Collection>>(
+      `${DSPACE_API_BASE}${COLLECTIONS_PATH}`,
+      { params },
+    );
+  }
+
+  /**
+   * Fetch de una página del listado por community. Misma convención que
+   * `fetchAllPage$`: página 0 sin params, siguientes solo `page`.
+   */
+  private fetchByCommunityPage$(
     communityUuid: string,
-    options: { embed?: string; pageSize?: number } = {},
-  ): Observable<Collection[]> {
-    const pageSize = options.pageSize ?? 100;
-    return this.listByCommunity(communityUuid, 0, pageSize, {
-      embed: options.embed,
-    }).pipe(
-      expand((resp) => {
-        const page = resp.page;
-        if (!page || page.number + 1 >= page.totalPages) {
-          return EMPTY;
-        }
-        return this.listByCommunity(communityUuid, page.number + 1, pageSize, {
-          embed: options.embed,
-        });
-      }),
-      reduce(
-        (acc, resp) => [...acc, ...(resp._embedded?.['collections'] ?? [])],
-        [] as Collection[],
-      ),
+    page: number,
+    embed?: string,
+  ): Observable<HalListResponse<Collection>> {
+    let params = new HttpParams();
+    if (page > 0) params = params.set('page', String(page));
+    if (embed) params = params.set('embed', embed);
+    return this.http.get<HalListResponse<Collection>>(
+      `${DSPACE_API_BASE}${COMMUNITIES_PATH}/${communityUuid}/collections`,
+      { params },
     );
   }
 

@@ -56,10 +56,11 @@
         [items]="collections()"
         [canEdit]="true"
         [canDelete]="true"
-        [pageSize]="10"
-        [totalRecords]="collections().length"
+        [pageSize]="pageSize()"
+        [totalRecords]="totalRecords()"
         (editRequest)="openEditDialog($event)"
-        (deleteRequest)="onDeleteClick($event)" />
+        (deleteRequest)="onDeleteClick($event)"
+        (lazyLoad)="onLazyLoad($event)" />
     </p-card>
   }
 

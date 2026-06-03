@@ -96,13 +96,8 @@ export class Dashboard {
           switchMap((resp) => {
             const root = resp._embedded?.['communities']?.[0];
             if (!root) return of<string | null>(null);
-            return this.communityApi.listSubcommunities(root.uuid, 0, 100).pipe(
-              switchMap((listResp) => {
-                const embedded = listResp._embedded ?? {};
-                const subs: Community[] =
-                  (embedded as Record<string, Community[]>)['subcommunities'] ??
-                  (embedded as Record<string, Community[]>)['communities'] ??
-                  [];
+            return this.communityApi.listAllSubcommunities(root.uuid).pipe(
+              switchMap((subs: Community[]) => {
                 const matching = findCallerSub(subs, caller);
                 return of<string | null>(matching?.uuid ?? null);
               }),

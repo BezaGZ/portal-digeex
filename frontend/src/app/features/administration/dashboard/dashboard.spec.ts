@@ -22,12 +22,12 @@ import { CollectionApiService } from '../../../core/api/collection-api.service';
  * top-list-card que navega a la pantalla de Programas. Los servicios de
  * los widgets se mockean para no disparar HTTP real.
  *
- * Ciclo 12 TDD — Sprint 8.
+ * Ciclo 12 TDD — Sprint 8. Ajustado en Ciclo 13 (Sprint 8).
  */
 describe('Dashboard', () => {
   let caller$: BehaviorSubject<Caller | null>;
   let searchTopFn: Mock;
-  let listSubcommunitiesFn: Mock;
+  let listAllSubcommunitiesFn: Mock;
   let routerNavigateFn: Mock;
 
   function buildCommunity(uuid: string, name: string, sufijo: string): Community {
@@ -55,17 +55,11 @@ describe('Dashboard', () => {
         page: { size: 1, totalElements: 1, totalPages: 1, number: 0 },
       }),
     );
-    listSubcommunitiesFn = vi.fn().mockReturnValue(
-      of({
-        _embedded: {
-          subcommunities: [
-            buildCommunity('sub-1', 'Educación Básica', 'ED_BASICA'),
-            buildCommunity('sub-2', 'Trabajo', 'ED_TRABAJO'),
-          ],
-        },
-        _links: { self: { href: '/' } },
-        page: { size: 2, totalElements: 2, totalPages: 1, number: 0 },
-      }),
+    listAllSubcommunitiesFn = vi.fn().mockReturnValue(
+      of([
+        buildCommunity('sub-1', 'Educación Básica', 'ED_BASICA'),
+        buildCommunity('sub-2', 'Trabajo', 'ED_TRABAJO'),
+      ]),
     );
     routerNavigateFn = vi.fn();
 
@@ -78,7 +72,7 @@ describe('Dashboard', () => {
         { provide: AuthCallerService, useValue: { currentCaller$: caller$.asObservable() } },
         {
           provide: CommunityApiService,
-          useValue: { searchTop: searchTopFn, listSubcommunities: listSubcommunitiesFn },
+          useValue: { searchTop: searchTopFn, listAllSubcommunities: listAllSubcommunitiesFn },
         },
         // Stubs para que los widgets hijos no exploten al renderizarse en el test.
         // Devuelven observables vacíos que mantienen el widget en spinner.
@@ -120,13 +114,13 @@ describe('Dashboard', () => {
     expect(fixture.componentInstance.widgets().length).toBe(4);
     // No necesita buscar la sub porque es SuperAdmin.
     expect(searchTopFn).not.toHaveBeenCalled();
-    expect(listSubcommunitiesFn).not.toHaveBeenCalled();
+    expect(listAllSubcommunitiesFn).not.toHaveBeenCalled();
     expect(fixture.nativeElement.querySelector('[data-testid="dashboard-widget-grid"]')).not.toBeNull();
   });
 
   /**
    * Verifica que para admin_subdireccion el scope se resuelva al UUID
-   * de la community que matchea su sufijo, vía searchTop + listSubcommunities.
+   * de la community que matchea su sufijo, vía searchTop + listAllSubcommunities.
    */
   it('should resolve scope to the community uuid of the caller sufijo when role is admin_subdireccion', () => {
     caller$.next({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' });
@@ -135,7 +129,7 @@ describe('Dashboard', () => {
     fixture.detectChanges();
 
     expect(searchTopFn).toHaveBeenCalled();
-    expect(listSubcommunitiesFn).toHaveBeenCalledWith('digeex-root', 0, 100);
+    expect(listAllSubcommunitiesFn).toHaveBeenCalledWith('digeex-root');
     expect(fixture.componentInstance.scope()).toBe('sub-1');
     expect(fixture.componentInstance.widgets().length).toBe(4);
   });
