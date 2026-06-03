@@ -18,7 +18,7 @@ import collectionCreateAdmingroupFixture from './test-fixtures/collection-create
  * el listado completo, el listado por community padre, la lectura por UUID
  * y la collection dueña de un item.
  *
- * Ciclo 6 TDD — Sprint 6. Ajustado en Ciclo 3.
+ * Ciclo 6 TDD — Sprint 6. Ajustado en Ciclo 3 (Sprint 7) y Ciclo 12 (Sprint 8).
  */
 describe('CollectionApiService', () => {
   let service: CollectionApiService;
@@ -136,6 +136,129 @@ describe('CollectionApiService', () => {
     );
     expect(req.request.method).toBe('GET');
     req.flush(mockResponse);
+
+    await promise;
+  });
+
+  /**
+   * Verifica que `listAll` resuelva en 1 request cuando totalPages=1.
+   * Camino feliz del widget Top colecciones cuando el repo cabe en una página.
+   */
+  it('listAll() should resolve in a single request when there is only one page', async () => {
+    const promise = new Promise<Collection[]>((resolve, reject) => {
+      service.listAll().subscribe({
+        next: (colls) => {
+          expect(colls.map((c) => c.uuid)).toEqual(['col-1', 'col-2']);
+          resolve(colls);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100');
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      _embedded: {
+        collections: [
+          { uuid: 'col-1', name: 'A', type: 'collection', archivedItemsCount: 1, handle: '1/1', metadata: {}, _links: { self: { href: '' } } },
+          { uuid: 'col-2', name: 'B', type: 'collection', archivedItemsCount: 2, handle: '1/2', metadata: {}, _links: { self: { href: '' } } },
+        ],
+      },
+      _links: { self: { href: '/' } },
+      page: { size: 100, totalElements: 2, totalPages: 1, number: 0 },
+    });
+
+    await promise;
+  });
+
+  /** Verifica que `listAll` pagine recursivamente hasta agotar totalPages. */
+  it('listAll() should paginate recursively when totalPages > 1, concatenating all pages', async () => {
+    const promise = new Promise<Collection[]>((resolve, reject) => {
+      service.listAll({ pageSize: 2 }).subscribe({
+        next: (colls) => {
+          expect(colls.map((c) => c.uuid)).toEqual(['col-1', 'col-2', 'col-3', 'col-4', 'col-5']);
+          resolve(colls);
+        },
+        error: reject,
+      });
+    });
+
+    const r0 = httpMock.expectOne('/server/api/core/collections?page=0&size=2');
+    r0.flush({
+      _embedded: {
+        collections: [
+          { uuid: 'col-1', name: 'A', type: 'collection', archivedItemsCount: 0, handle: '', metadata: {}, _links: { self: { href: '' } } },
+          { uuid: 'col-2', name: 'B', type: 'collection', archivedItemsCount: 0, handle: '', metadata: {}, _links: { self: { href: '' } } },
+        ],
+      },
+      _links: { self: { href: '/' } },
+      page: { size: 2, totalElements: 5, totalPages: 3, number: 0 },
+    });
+
+    const r1 = httpMock.expectOne('/server/api/core/collections?page=1&size=2');
+    r1.flush({
+      _embedded: {
+        collections: [
+          { uuid: 'col-3', name: 'C', type: 'collection', archivedItemsCount: 0, handle: '', metadata: {}, _links: { self: { href: '' } } },
+          { uuid: 'col-4', name: 'D', type: 'collection', archivedItemsCount: 0, handle: '', metadata: {}, _links: { self: { href: '' } } },
+        ],
+      },
+      _links: { self: { href: '/' } },
+      page: { size: 2, totalElements: 5, totalPages: 3, number: 1 },
+    });
+
+    const r2 = httpMock.expectOne('/server/api/core/collections?page=2&size=2');
+    r2.flush({
+      _embedded: {
+        collections: [
+          { uuid: 'col-5', name: 'E', type: 'collection', archivedItemsCount: 0, handle: '', metadata: {}, _links: { self: { href: '' } } },
+        ],
+      },
+      _links: { self: { href: '/' } },
+      page: { size: 2, totalElements: 5, totalPages: 3, number: 2 },
+    });
+
+    await promise;
+  });
+
+  /** Verifica que `listAllByCommunity` agote páginas para una community específica. */
+  it('listAllByCommunity() should paginate recursively scoped to a single community', async () => {
+    const promise = new Promise<Collection[]>((resolve, reject) => {
+      service.listAllByCommunity('sub-1', { pageSize: 2 }).subscribe({
+        next: (colls) => {
+          expect(colls.map((c) => c.uuid)).toEqual(['col-a', 'col-b', 'col-c']);
+          resolve(colls);
+        },
+        error: reject,
+      });
+    });
+
+    const r0 = httpMock.expectOne(
+      '/server/api/core/communities/sub-1/collections?page=0&size=2',
+    );
+    r0.flush({
+      _embedded: {
+        collections: [
+          { uuid: 'col-a', name: 'A', type: 'collection', archivedItemsCount: 0, handle: '', metadata: {}, _links: { self: { href: '' } } },
+          { uuid: 'col-b', name: 'B', type: 'collection', archivedItemsCount: 0, handle: '', metadata: {}, _links: { self: { href: '' } } },
+        ],
+      },
+      _links: { self: { href: '/' } },
+      page: { size: 2, totalElements: 3, totalPages: 2, number: 0 },
+    });
+
+    const r1 = httpMock.expectOne(
+      '/server/api/core/communities/sub-1/collections?page=1&size=2',
+    );
+    r1.flush({
+      _embedded: {
+        collections: [
+          { uuid: 'col-c', name: 'C', type: 'collection', archivedItemsCount: 0, handle: '', metadata: {}, _links: { self: { href: '' } } },
+        ],
+      },
+      _links: { self: { href: '/' } },
+      page: { size: 2, totalElements: 3, totalPages: 2, number: 1 },
+    });
 
     await promise;
   });

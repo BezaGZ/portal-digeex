@@ -1,255 +1,115 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+} from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { CardModule } from 'primeng/card';
-import { ChartModule } from 'primeng/chart';
-import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { Observable, of } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 
+import { TotalCard } from './components/total-card/total-card';
+import { FacetBarCard } from './components/facet-bar-card/facet-bar-card';
+import { RangeBarCard } from './components/range-bar-card/range-bar-card';
+import { TopListCard, TopListEntry } from './components/top-list-card/top-list-card';
+import {
+  DashboardWidgetSpec,
+  DASHBOARD_WIDGETS_BY_ROLE,
+} from './dashboard.config';
+import { CommunityApiService } from '../../../core/api/community-api.service';
+import { Community } from '../../../core/api/models/community.model';
+import { AuthCallerService } from '../shared/services/auth-caller.service';
+import { findCallerSub } from '../shared/services/scope-resolver';
+
+/**
+ * Contenedor del Dashboard de KPIs. Resuelve el scope desde el caller
+ * (null para SuperAdmin, UUID de su community para admin_subdireccion)
+ * y renderiza los widgets que `DASHBOARD_WIDGETS_BY_ROLE` define por rol.
+ */
 @Component({
   selector: 'app-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
-  imports: [CommonModule, CardModule, ChartModule, TableModule, ButtonModule],
+  imports: [
+    CommonModule,
+    CardModule,
+    ButtonModule,
+    TotalCard,
+    FacetBarCard,
+    RangeBarCard,
+    TopListCard,
+  ],
   templateUrl: './dashboard.html',
 })
 export class Dashboard {
-  constructor(private router: Router) {}
-  programSummary = [
-    {
-      name: 'PEAC',
-      items: 128,
-      collections: 6,
-      color: 'var(--gob-azul-gobierno)',
-      bg: 'var(--gob-celeste-cielo)',
-    },
-    {
-      name: 'PRONEA',
-      items: 96,
-      collections: 4,
-      color: 'var(--gob-oportunidad-dark)',
-      bg: 'var(--gob-oportunidad-light)',
-    },
-    {
-      name: 'Modalidades Flexibles',
-      items: 74,
-      collections: 5,
-      color: 'var(--gob-seguridad)',
-      bg: 'var(--gob-seguridad-light)',
-    },
-    {
-      name: 'PROBEFI',
-      items: 42,
-      collections: 2,
-      color: 'var(--gob-ocre-oscuro)',
-      bg: 'var(--gob-ocre-claro)',
-    },
-  ];
+  private readonly router = inject(Router);
+  private readonly communityApi = inject(CommunityApiService);
+  private readonly authCaller = inject(AuthCallerService);
 
-  totalSolicitudes = '9,289';
-  becasAdjudicadas = '8,193';
+  /** Caller actual (rol + sufijo); null mientras el observable no resuelve. */
+  readonly caller = toSignal(this.authCaller.currentCaller$, { initialValue: null });
 
-  tableRows = [
-    {
-      depto: 'Baja Verapaz',
-      muni: 'San Miguel Chicaj',
-      nombre: 'Mendoza Lopez Jaqueline Mayari',
-      edad: 24,
-      trayectoria: 'Ingles Inicial',
-      total: 500,
-    },
-    {
-      depto: 'Baja Verapaz',
-      muni: 'San Miguel Chicaj',
-      nombre: 'Vasquez Cahueque Nidial Lish',
-      edad: 27,
-      trayectoria: 'Ingles Inicial',
-      total: 2200,
-    },
-    {
-      depto: 'Chimaltenango',
-      muni: 'Acatenango',
-      nombre: 'Cua Guzman Maria Gorety',
-      edad: 32,
-      trayectoria: 'Ingles Inicial',
-      total: 2200,
-    },
-    {
-      depto: 'Chimaltenango',
-      muni: 'Chimaltenango',
-      nombre: 'Apu Nauc Wendy Clarilo',
-      edad: 27,
-      trayectoria: 'Ingles Inicial',
-      total: 2200,
-    },
-    {
-      depto: 'Quiche',
-      muni: 'Uspantan',
-      nombre: 'Abon Jacu Stiven Gabriel',
-      edad: 23,
-      trayectoria: 'Ingles Inicial',
-      total: 2200,
-    },
-  ];
+  /**
+   * Scope resuelto: `undefined` mientras carga, `null` para SuperAdmin
+   * (universal), UUID para admin_subdireccion. Si el caller no tiene
+   * sub válida, queda `null` (defensa contra estado inconsistente).
+   */
+  readonly scope = toSignal(this.resolveScope$(), { initialValue: undefined });
 
-  deptoData = {
-    labels: [
-      'Guatemala',
-      'Alta Verapaz',
-      'Quetzaltenango',
-      'Chimaltenango',
-      'Quiche',
-      'Escuintla',
-      'San Marcos',
-    ],
-    datasets: [
-      {
-        label: 'Beneficiarios',
-        data: [3354, 1145, 934, 812, 741, 658, 612],
-        backgroundColor: '#1E3159',
-      },
-    ],
-  };
+  /** Lista de widgets para el rol del caller actual. */
+  readonly widgets = computed<readonly DashboardWidgetSpec[]>(() => {
+    const role = this.caller()?.role;
+    if (!role) return [];
+    return DASHBOARD_WIDGETS_BY_ROLE[role] ?? [];
+  });
 
-  deptoOptions = {
-    indexAxis: 'y',
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { maxTicksLimit: 5 } },
-      y: { ticks: { autoSkip: false, font: { size: 10 } } },
-    },
-    layout: { padding: { right: 8 } },
-  };
+  /** UI lista cuando el caller resolvió y el scope está estable. */
+  readonly ready = computed(() => this.caller() !== null && this.scope() !== undefined);
 
-  trayectoriaData = {
-    labels: ['Inicial 2 horas', 'Intermedia 3 horas', 'Intensiva 4 horas'],
-    datasets: [
-      {
-        data: [7688, 1250, 351],
-        backgroundColor: ['#1E3159', '#233E72', '#CCF0FF'],
-      },
-    ],
-  };
-
-  trayectoriaSummary = [
-    { label: 'Inicial 2 horas', value: '7,688 (83.6%)' },
-    { label: 'Intermedia 3 horas', value: '1,250 (13.6%)' },
-    { label: 'Intensiva 4 horas', value: '351 (3.8%)' },
-  ];
-
-  generoData = {
-    labels: ['F', 'M'],
-    datasets: [
-      {
-        data: [6731, 3258],
-        backgroundColor: ['#1E3159', '#0b3a75'],
-      },
-    ],
-  };
-
-  generoSummary = [
-    { label: 'F', value: '6,731 (67.3%)' },
-    { label: 'M', value: '3,258 (32.7%)' },
-  ];
-
-  trabajanData = {
-    labels: ['No', 'Si'],
-    datasets: [
-      {
-        label: 'Beneficiarios',
-        data: [5374, 4462],
-        backgroundColor: ['#1E3159', '#233E72'],
-      },
-    ],
-  };
-
-  trabajanSummary = [
-    { label: 'No', value: '5,374 (53.7%)' },
-    { label: 'Si', value: '4,462 (46.2%)' },
-  ];
-
-  trabajanOptions = {
-    indexAxis: 'y',
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { maxTicksLimit: 4 } },
-      y: { ticks: { autoSkip: false, font: { size: 10 } } },
-    },
-  };
-
-  etniaData = {
-    labels: ['Ladino', 'Maya', 'Otra', 'Xinka', 'Garifuna'],
-    datasets: [
-      {
-        label: 'Beneficiarios',
-        data: [7958, 1833, 102, 38, 19],
-        backgroundColor: '#1E3159',
-      },
-    ],
-  };
-
-  edadData = {
-    labels: ['15-17', '18-20', '21-25', '26-30', '31-40', '41-50', '51-60'],
-    datasets: [
-      {
-        label: 'Beneficiarios',
-        data: [554, 1324, 2315, 2620, 906, 318, 84],
-        backgroundColor: '#1E3159',
-      },
-    ],
-  };
-
-  ejecucionData = {
-    labels: ['Estipendios', 'Formacion INTECAP', 'Servicios CNH', 'Auditoria externa'],
-    datasets: [
-      {
-        label: 'Millones',
-        data: [12.15, 9.86, 2.01, 0.09],
-        backgroundColor: ['#1E3159', '#026961', '#FE8B5A', '#F2A119'],
-      },
-    ],
-  };
-
-  ejecucionSummary = [
-    { label: 'Estipendios', value: 'Q12.15 mil.' },
-    { label: 'Formacion INTECAP', value: 'Q9.86 mil.' },
-    { label: 'Servicios CNH', value: 'Q2.01 mil.' },
-    { label: 'Auditoria externa', value: 'Q0.09 mil.' },
-  ];
-
-  fondoData = {
-    labels: ['2026', '2025'],
-    datasets: [
-      {
-        data: [28.59, 21.41],
-        backgroundColor: ['#1E3159', '#233E72'],
-      },
-    ],
-  };
-
-  fondoSummary = [
-    { label: '2026', value: 'Q28.59 mil. (57.18%)' },
-    { label: '2025', value: 'Q21.41 mil. (42.82%)' },
-  ];
-
-  simpleOptions = {
-    maintainAspectRatio: false,
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: { boxWidth: 10, boxHeight: 10, padding: 12, font: { size: 10 } },
-      },
-    },
-    scales: {
-      x: { ticks: { autoSkip: true, maxTicksLimit: 6, font: { size: 10 } } },
-      y: { ticks: { autoSkip: true, maxTicksLimit: 5, font: { size: 10 } } },
-    },
-  };
-
-  goBack() {
+  goBack(): void {
     this.router.navigate(['/']);
+  }
+
+  /**
+   * Click en una fila del top-list-card. Navega a la pantalla de
+   * Programas filtrada por la colección clickeada.
+   */
+  onTopListEntryClick(entry: TopListEntry): void {
+    this.router.navigate(['/administrador/programas', entry.uuid]);
+  }
+
+  /**
+   * Resuelve el scope desde el caller: null para SuperAdmin, UUID de la
+   * Community con sufijo matching para admin_subdireccion, null si no hay match.
+   */
+  private resolveScope$(): Observable<string | null> {
+    return this.authCaller.currentCaller$.pipe(
+      switchMap((caller) => {
+        if (!caller || caller.role === 'superadmin' || !caller.sufijo) {
+          return of<string | null>(null);
+        }
+        return this.communityApi.searchTop(0, 1).pipe(
+          switchMap((resp) => {
+            const root = resp._embedded?.['communities']?.[0];
+            if (!root) return of<string | null>(null);
+            return this.communityApi.listSubcommunities(root.uuid, 0, 100).pipe(
+              switchMap((listResp) => {
+                const embedded = listResp._embedded ?? {};
+                const subs: Community[] =
+                  (embedded as Record<string, Community[]>)['subcommunities'] ??
+                  (embedded as Record<string, Community[]>)['communities'] ??
+                  [];
+                const matching = findCallerSub(subs, caller);
+                return of<string | null>(matching?.uuid ?? null);
+              }),
+            );
+          }),
+        );
+      }),
+    );
   }
 }

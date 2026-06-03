@@ -18,322 +18,55 @@
       Panel de Estadísticas
     </h1>
     <p class="text-gray-600" style="font-family: var(--font-body)">
-      Resumen general y panel PROBEFI.
+      Indicadores en tiempo real desde el repositorio.
     </p>
   </div>
 
-  <p-card styleClass="!rounded-2xl !shadow-sm">
-    <ng-template pTemplate="title">
-      <span style="font-family: var(--font-heading); font-weight: 500">Programas (resumen)</span>
-    </ng-template>
-    <ng-template pTemplate="content">
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        @for (program of programSummary; track program.name) {
-          <div class="rounded-xl border border-gray-200 p-4 bg-white">
-            <div class="flex items-center gap-3">
-              <div
-                class="w-10 h-10 rounded-lg flex items-center justify-center"
-                [ngStyle]="{ 'background-color': program.bg, color: program.color }"
-              >
-                <i class="pi pi-chart-line text-lg"></i>
-              </div>
-              <div>
-                <h3
-                  class="text-base text-gray-900"
-                  style="font-family: var(--font-heading); font-weight: 500"
-                >
-                  {{ program.name }}
-                </h3>
-                <p class="text-xs text-gray-500" style="font-family: var(--font-body)">
-                  {{ program.collections }} colecciones
-                </p>
-              </div>
-            </div>
-            <div
-              class="mt-3 text-2xl text-gray-900"
-              style="font-family: var(--font-heading); font-weight: 500"
-            >
-              {{ program.items }}
-            </div>
-            <p class="text-xs text-gray-500" style="font-family: var(--font-body)">
-              items registrados
-            </p>
-          </div>
+  @if (!ready()) {
+    <div class="text-sm text-gray-500" data-testid="dashboard-loading">
+      Cargando indicadores…
+    </div>
+  } @else if (widgets().length === 0) {
+    <div
+      class="text-sm text-gray-500 bg-white rounded-xl border border-gray-200 p-6"
+      data-testid="dashboard-empty"
+    >
+      Tu rol no tiene indicadores configurados todavía.
+    </div>
+  } @else {
+    <div
+      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+      data-testid="dashboard-widget-grid"
+    >
+      @for (widget of widgets(); track widget.label) {
+        @switch (widget.kind) {
+          @case ('total') {
+            <app-total-card [scope]="scope() ?? null" [label]="widget.label" />
+          }
+          @case ('facet-bar') {
+            <app-facet-bar-card
+              [scope]="scope() ?? null"
+              [label]="widget.label"
+              [facetName]="widget.facetName"
+            />
+          }
+          @case ('range-bar') {
+            <app-range-bar-card
+              [scope]="scope() ?? null"
+              [label]="widget.label"
+              [ranges]="widget.ranges"
+            />
+          }
+          @case ('top-list') {
+            <app-top-list-card
+              [scope]="scope() ?? null"
+              [label]="widget.label"
+              [limit]="widget.limit"
+              (entryClicked)="onTopListEntryClick($event)"
+            />
+          }
         }
-      </div>
-    </ng-template>
-  </p-card>
-
-  <p-card styleClass="!rounded-2xl !shadow-sm">
-    <ng-template pTemplate="title">
-      <span style="font-family: var(--font-heading); font-weight: 500"
-        >PROBEFI - Becas de Formacion Tecnica Laboral en Ingles</span
-      >
-    </ng-template>
-    <ng-template pTemplate="content">
-      <div class="grid grid-cols-1 2xl:grid-cols-2 gap-8">
-        <div class="space-y-6">
-          <div class="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-            <h3
-              class="text-sm text-gray-700 mb-3"
-              style="font-family: var(--font-heading); font-weight: 500"
-            >
-              Cantidad de beneficiarios por departamento
-            </h3>
-            <div class="h-72">
-              <p-chart
-                type="bar"
-                [data]="deptoData"
-                [options]="deptoOptions"
-                styleClass="w-full h-full"
-              ></p-chart>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-              <h3
-                class="text-sm text-gray-700 mb-3"
-                style="font-family: var(--font-heading); font-weight: 500"
-              >
-                Beneficiarios por trayectoria de formacion
-              </h3>
-              <div class="h-80">
-                <p-chart
-                  type="doughnut"
-                  [data]="trayectoriaData"
-                  [options]="simpleOptions"
-                  styleClass="w-full h-full"
-                ></p-chart>
-              </div>
-              <div
-                class="mt-3 text-xs text-gray-600 space-y-1"
-                style="font-family: var(--font-body)"
-              >
-                @for (row of trayectoriaSummary; track row.label) {
-                  <div class="flex items-center justify-between">
-                    <span>{{ row.label }}</span>
-                    <span
-                      class="text-gray-700"
-                      style="font-family: var(--font-heading); font-weight: 500"
-                      >{{ row.value }}</span
-                    >
-                  </div>
-                }
-              </div>
-            </div>
-            <div class="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-              <h3
-                class="text-sm text-gray-700 mb-3"
-                style="font-family: var(--font-heading); font-weight: 500"
-              >
-                Beneficiarios por genero
-              </h3>
-              <div class="h-80">
-                <p-chart
-                  type="pie"
-                  [data]="generoData"
-                  [options]="simpleOptions"
-                  styleClass="w-full h-full"
-                ></p-chart>
-              </div>
-              <div
-                class="mt-3 text-xs text-gray-600 space-y-1"
-                style="font-family: var(--font-body)"
-              >
-                @for (row of generoSummary; track row.label) {
-                  <div class="flex items-center justify-between">
-                    <span>{{ row.label }}</span>
-                    <span
-                      class="text-gray-700"
-                      style="font-family: var(--font-heading); font-weight: 500"
-                      >{{ row.value }}</span
-                    >
-                  </div>
-                }
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="space-y-6">
-          <div class="grid grid-cols-1 gap-4">
-            <div class="bg-white border border-gray-200 rounded-xl p-4">
-              <div class="text-xs text-gray-500" style="font-family: var(--font-body)">
-                Total solicitudes
-              </div>
-              <div
-                class="text-2xl text-gray-900"
-                style="font-family: var(--font-heading); font-weight: 500"
-              >
-                {{ totalSolicitudes }}
-              </div>
-            </div>
-            <div class="bg-white border border-gray-200 rounded-xl p-4">
-              <div class="text-xs text-gray-500" style="font-family: var(--font-body)">
-                Becas adjudicadas
-              </div>
-              <div
-                class="text-2xl text-gray-900"
-                style="font-family: var(--font-heading); font-weight: 500"
-              >
-                {{ becasAdjudicadas }}
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-            <h3
-              class="text-sm text-gray-700 mb-3"
-              style="font-family: var(--font-heading); font-weight: 500"
-            >
-              Beneficiarios que trabajan
-            </h3>
-            <div class="h-56">
-              <p-chart
-                type="bar"
-                [data]="trabajanData"
-                [options]="trabajanOptions"
-                styleClass="w-full h-full"
-              ></p-chart>
-            </div>
-            <div class="mt-3 text-xs text-gray-600 space-y-1" style="font-family: var(--font-body)">
-              @for (row of trabajanSummary; track row.label) {
-                <div class="flex items-center justify-between">
-                  <span>{{ row.label }}</span>
-                  <span
-                    class="text-gray-700"
-                    style="font-family: var(--font-heading); font-weight: 500"
-                    >{{ row.value }}</span
-                  >
-                </div>
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white border border-gray-200 rounded-xl p-4 mt-6">
-        <h3
-          class="text-sm text-gray-700 mb-3"
-          style="font-family: var(--font-heading); font-weight: 500"
-        >
-          Listado de beneficiarios
-        </h3>
-        <p-table [value]="tableRows" [rows]="5" [paginator]="true" styleClass="p-datatable-sm">
-          <ng-template pTemplate="header">
-            <tr>
-              <th style="font-family: var(--font-heading); font-weight: 500">Departamento</th>
-              <th style="font-family: var(--font-heading); font-weight: 500">Municipio</th>
-              <th style="font-family: var(--font-heading); font-weight: 500">Nombre completo</th>
-              <th style="font-family: var(--font-heading); font-weight: 500">Edad</th>
-              <th style="font-family: var(--font-heading); font-weight: 500">Trayectoria</th>
-              <th style="font-family: var(--font-heading); font-weight: 500">Total</th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-row>
-            <tr>
-              <td>{{ row.depto }}</td>
-              <td>{{ row.muni }}</td>
-              <td class="max-w-[220px] truncate">{{ row.nombre }}</td>
-              <td>{{ row.edad }}</td>
-              <td>{{ row.trayectoria }}</td>
-              <td>{{ row.total }}</td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-8 mt-6">
-        <div class="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-          <h3
-            class="text-sm text-gray-700 mb-3"
-            style="font-family: var(--font-heading); font-weight: 500"
-          >
-            Beneficiarios por etnia
-          </h3>
-          <div class="h-56">
-            <p-chart
-              type="bar"
-              [data]="etniaData"
-              [options]="simpleOptions"
-              styleClass="w-full h-full"
-            ></p-chart>
-          </div>
-        </div>
-        <div class="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-          <h3
-            class="text-sm text-gray-700 mb-3"
-            style="font-family: var(--font-heading); font-weight: 500"
-          >
-            Beneficiarios por edad
-          </h3>
-          <div class="h-56">
-            <p-chart
-              type="bar"
-              [data]="edadData"
-              [options]="simpleOptions"
-              styleClass="w-full h-full"
-            ></p-chart>
-          </div>
-        </div>
-        <div class="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-          <h3
-            class="text-sm text-gray-700 mb-3"
-            style="font-family: var(--font-heading); font-weight: 500"
-          >
-            Ejecucion 2025
-          </h3>
-          <div class="h-56">
-            <p-chart
-              type="bar"
-              [data]="ejecucionData"
-              [options]="simpleOptions"
-              styleClass="w-full h-full"
-            ></p-chart>
-          </div>
-          <div class="mt-3 text-xs text-gray-600 space-y-1" style="font-family: var(--font-body)">
-            @for (row of ejecucionSummary; track row.label) {
-              <div class="flex items-center justify-between">
-                <span>{{ row.label }}</span>
-                <span
-                  class="text-gray-700"
-                  style="font-family: var(--font-heading); font-weight: 500"
-                  >{{ row.value }}</span
-                >
-              </div>
-            }
-          </div>
-        </div>
-        <div class="bg-white border border-gray-200 rounded-xl p-4 overflow-hidden">
-          <h3
-            class="text-sm text-gray-700 mb-3"
-            style="font-family: var(--font-heading); font-weight: 500"
-          >
-            Fondo PROBEFI por año
-          </h3>
-          <div class="h-64">
-            <p-chart
-              type="doughnut"
-              [data]="fondoData"
-              [options]="simpleOptions"
-              styleClass="w-full h-full"
-            ></p-chart>
-          </div>
-          <div class="mt-3 text-xs text-gray-600 space-y-1" style="font-family: var(--font-body)">
-            @for (row of fondoSummary; track row.label) {
-              <div class="flex items-center justify-between">
-                <span>{{ row.label }}</span>
-                <span
-                  class="text-gray-700"
-                  style="font-family: var(--font-heading); font-weight: 500"
-                  >{{ row.value }}</span
-                >
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-    </ng-template>
-  </p-card>
+      }
+    </div>
+  }
 </div>

@@ -4,89 +4,87 @@ import { Subject, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 
 import { TopListCard } from './top-list-card';
-import { DiscoveryService } from '../../../../../core/api/discovery.service';
-import { Facet, SearchParams, SearchResult } from '../../../../../core/api/models/discovery.model';
+import { CollectionApiService } from '../../../../../core/api/collection-api.service';
+import { Collection } from '../../../../../core/api/models/collection.model';
 
 /**
  * Tests del widget top-list-card del Dashboard de KPIs.
  *
- * El widget consume `DiscoveryService.search({ size: 0, scope? })`, busca el
- * facet cuyo nombre coincide con `facetName` (default `'collection'`), ordena
- * sus values por count desc, toma los primeros `limit` (default 10) y los
- * renderiza como lista clickeable. Cada entrada incluye el `authorityKey`
- * preservado por el wrapper (UUID de la colección). El click emite la entrada
- * completa; la navegación la decide el padre (DIP del widget vs Router).
+ * El widget pide todas las colecciones del scope vía
+ * `CollectionApiService.listAll`/`listAllByCommunity`, rankea por
+ * `archivedItemsCount` desc y muestra las primeras `limit` filas.
+ * Cuatro estados: spinner, lista, empty, `—` ante error.
  *
- * Ciclo 11 TDD — Sprint 8.
+ * Ciclo 11 TDD — Sprint 8. Ajustado en Ciclo 12 (Sprint 8).
  */
 describe('TopListCard', () => {
-  let searchFn: Mock;
+  let listAllByCommunityFn: Mock;
+  let listAllFn: Mock;
 
-  function buildFacet(name: string, values: { label: string; count: number; authorityKey?: string }[]): Facet {
-    return { name, values };
-  }
-
-  function buildSearchResult(facets: Facet[]): SearchResult {
+  function buildCollection(uuid: string, name: string, archivedItemsCount: number): Collection {
     return {
-      items: [],
-      facets,
-      totalElements: 0,
-      totalPages: 0,
-      page: 0,
-      size: 0,
-    };
+      uuid,
+      name,
+      type: 'collection',
+      handle: `123/${uuid}`,
+      archivedItemsCount,
+      metadata: {
+        'dc.title': [{ value: name, language: null, authority: null, confidence: -1, place: 0 }],
+      },
+      _links: { self: { href: `/collections/${uuid}` } },
+    } as Collection;
   }
 
   beforeEach(async () => {
-    searchFn = vi.fn().mockReturnValue(
-      of(
-        buildSearchResult([
-          buildFacet('collection', [
-            { label: 'PEAC', count: 45, authorityKey: 'coll-peac' },
-            { label: 'PRONEA', count: 12, authorityKey: 'coll-pronea' },
-            { label: 'Modalidades Flexibles', count: 8, authorityKey: 'coll-modf' },
-          ]),
-        ]),
-      ),
-    );
+    const peac = buildCollection('coll-peac', 'PEAC', 45);
+    const pronea = buildCollection('coll-pronea', 'PRONEA', 12);
+    const modf = buildCollection('coll-modf', 'Modalidades Flexibles', 8);
+
+    listAllByCommunityFn = vi.fn().mockReturnValue(of([peac, pronea, modf]));
+    listAllFn = vi.fn().mockReturnValue(of([peac, pronea, modf]));
+
     await TestBed.configureTestingModule({
       imports: [TopListCard],
       providers: [
         provideNoopAnimations(),
-        { provide: DiscoveryService, useValue: { search: searchFn } },
+        {
+          provide: CollectionApiService,
+          useValue: {
+            listAllByCommunity: listAllByCommunityFn,
+            listAll: listAllFn,
+          },
+        },
       ],
     }).compileComponents();
   });
 
-  /** Verifica que con scope null (SuperAdmin) la llamada a search omita el scope. */
-  it('should call DiscoveryService.search with size=0 and no scope when scope input is null', () => {
+  /** Verifica que con scope=UUID se invoque listAllByCommunity (paginación recursiva). */
+  it('should call listAllByCommunity once when scope is a community uuid', () => {
+    const fixture = TestBed.createComponent(TopListCard);
+    fixture.componentRef.setInput('scope', 'community-uuid-001');
+    fixture.componentRef.setInput('label', 'Top colecciones');
+    fixture.detectChanges();
+
+    expect(listAllByCommunityFn).toHaveBeenCalledTimes(1);
+    expect(listAllByCommunityFn.mock.calls[0]?.[0]).toBe('community-uuid-001');
+    expect(listAllFn).not.toHaveBeenCalled();
+  });
+
+  /** Verifica que con scope=null se invoque listAll (paginación recursiva del repo). */
+  it('should call listAll() once when scope is null', () => {
     const fixture = TestBed.createComponent(TopListCard);
     fixture.componentRef.setInput('scope', null);
     fixture.componentRef.setInput('label', 'Top colecciones');
     fixture.detectChanges();
 
-    expect(searchFn).toHaveBeenCalledTimes(1);
-    const args = searchFn.mock.calls[0]?.[0] as SearchParams;
-    expect(args.size).toBe(0);
-    expect(args.scope).toBeUndefined();
+    expect(listAllFn).toHaveBeenCalledTimes(1);
+    expect(listAllByCommunityFn).not.toHaveBeenCalled();
   });
 
-  /** Verifica que con scope concreto (AdminSub) la llamada propague el scope. */
-  it('should call DiscoveryService.search with size=0 and propagate scope when scope input is a uuid', () => {
-    const fixture = TestBed.createComponent(TopListCard);
-    fixture.componentRef.setInput('scope', 'community-uuid-001');
-    fixture.componentRef.setInput('label', 'Top colecciones de la subdirección');
-    fixture.detectChanges();
-
-    expect(searchFn).toHaveBeenCalledTimes(1);
-    const args = searchFn.mock.calls[0]?.[0] as SearchParams;
-    expect(args.scope).toBe('community-uuid-001');
-  });
-
-  /** Verifica que mientras el observable está pendiente se renderice el spinner compartido. */
-  it('should render <app-loading-spinner> while the search observable is pending', () => {
-    const pending = new Subject<SearchResult>();
-    searchFn.mockReturnValue(pending.asObservable());
+  /** Verifica que mientras el listing está pendiente se renderice el spinner compartido. */
+  it('should render <app-loading-spinner> while the listing observable is pending', () => {
+    const pending = new Subject<Collection[]>();
+    listAllFn.mockReturnValue(pending.asObservable());
 
     const fixture = TestBed.createComponent(TopListCard);
     fixture.componentRef.setInput('scope', null);
@@ -97,8 +95,8 @@ describe('TopListCard', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="top-list-card-row"]')).toBeNull();
   });
 
-  /** Verifica que al resolver con datos del facet, se rendericen los N items ordenados por count desc. */
-  it('should render the top entries ordered by count desc when the search resolves with the requested facet', () => {
+  /** Verifica que al resolver se rendericen las filas ordenadas por count desc. */
+  it('should render the entries ordered by archivedItemsCount desc', () => {
     const fixture = TestBed.createComponent(TopListCard);
     fixture.componentRef.setInput('scope', null);
     fixture.componentRef.setInput('label', 'Top colecciones');
@@ -113,7 +111,7 @@ describe('TopListCard', () => {
   });
 
   /** Verifica que el input limit acote el render a los primeros N items. */
-  it('should truncate the rendered list to `limit` entries when the facet contains more values', () => {
+  it('should truncate the rendered list to `limit` entries when there are more collections', () => {
     const fixture = TestBed.createComponent(TopListCard);
     fixture.componentRef.setInput('scope', null);
     fixture.componentRef.setInput('label', 'Top 2');
@@ -136,18 +134,18 @@ describe('TopListCard', () => {
     let emitted: { uuid: string; label: string; count: number } | null = null;
     fixture.componentInstance.entryClicked.subscribe((e) => (emitted = e));
 
-    const firstRowBtn = fixture.nativeElement.querySelector('[data-testid="top-list-card-row"]') as HTMLButtonElement;
+    const firstRowBtn = fixture.nativeElement.querySelector(
+      '[data-testid="top-list-card-row"]',
+    ) as HTMLButtonElement;
     firstRowBtn.click();
     fixture.detectChanges();
 
     expect(emitted).toEqual({ uuid: 'coll-peac', label: 'PEAC', count: 45 });
   });
 
-  /** Verifica que cuando el facet pedido no aparece en el response se renderice empty-state. */
-  it('should render an empty-state message when the resolved search does not contain the requested facet', () => {
-    searchFn.mockReturnValue(
-      of(buildSearchResult([buildFacet('language', [{ label: 'es', count: 10 }])])),
-    );
+  /** Verifica que cuando el listing devuelve cero colecciones se renderice empty-state. */
+  it('should render an empty-state message when the scope has no collections', () => {
+    listAllFn.mockReturnValue(of([]));
 
     const fixture = TestBed.createComponent(TopListCard);
     fixture.componentRef.setInput('scope', null);
@@ -158,9 +156,9 @@ describe('TopListCard', () => {
     expect(emptyEl).not.toBeNull();
   });
 
-  /** Verifica que ante un fallo del observable se renderice `—` como fallback silencioso. */
-  it('should render "—" when the search observable errors', () => {
-    searchFn.mockReturnValue(throwError(() => new Error('502 Bad Gateway')));
+  /** Verifica que ante un fallo del listing se renderice `—` como fallback silencioso. */
+  it('should render "—" when the listing observable errors', () => {
+    listAllFn.mockReturnValue(throwError(() => new Error('502 Bad Gateway')));
 
     const fixture = TestBed.createComponent(TopListCard);
     fixture.componentRef.setInput('scope', null);
@@ -170,5 +168,40 @@ describe('TopListCard', () => {
     const failedEl = fixture.nativeElement.querySelector('[data-testid="top-list-card-failed"]');
     expect(failedEl).not.toBeNull();
     expect(failedEl.textContent.trim()).toBe('—');
+  });
+
+  /**
+   * Verifica que un `archivedItemsCount` negativo (feature strengths off en el
+   * backend) se trate como 0 para que el ranking no se ensucie con `-1`s.
+   * Defensivo: el widget no debe asumir que la config del servidor está bien.
+   */
+  it('should clamp a negative archivedItemsCount to 0 (defensive against strengths off)', () => {
+    const peac = buildCollection('coll-peac', 'PEAC', 45);
+    const broken = buildCollection('coll-broken', 'Sin conteo', -1);
+    listAllFn.mockReturnValue(of([peac, broken]));
+
+    const fixture = TestBed.createComponent(TopListCard);
+    fixture.componentRef.setInput('scope', null);
+    fixture.componentRef.setInput('label', 'Top colecciones');
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="top-list-card-row"]');
+    expect(rows.length).toBe(2);
+    expect(rows[0].textContent).toContain('PEAC');
+    expect(rows[0].textContent).toContain('45');
+    expect(rows[1].textContent).toContain('Sin conteo');
+    expect(rows[1].textContent).toContain('0');
+  });
+
+  /** Verifica que el label input se renderice como título del card. */
+  it('should render the label input as the card title', () => {
+    const fixture = TestBed.createComponent(TopListCard);
+    fixture.componentRef.setInput('scope', null);
+    fixture.componentRef.setInput('label', 'Top colecciones del sistema');
+    fixture.detectChanges();
+
+    const labelEl = fixture.nativeElement.querySelector('[data-testid="top-list-card-label"]');
+    expect(labelEl).not.toBeNull();
+    expect(labelEl.textContent.trim()).toBe('Top colecciones del sistema');
   });
 });

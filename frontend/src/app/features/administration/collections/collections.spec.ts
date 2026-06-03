@@ -9,7 +9,6 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { Collections } from './collections';
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
-import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionFacade } from '../content/services/collection-facade';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { Community } from '../../../core/api/models/community.model';
@@ -23,13 +22,12 @@ import { Collection } from '../../../core/api/models/collection.model';
  * subdirecciones; admin_subdireccion solo la suya y queda bloqueado en
  * ese sufijo. Cada acción mutativa delega al CollectionFacade existente.
  *
- * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4.
+ * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4 (Sprint 7) y Ciclo 12 (Sprint 8).
  */
 describe('Collections (contenedor)', () => {
   let searchTopFn: ReturnType<typeof vi.fn>;
   let listSubcommunitiesFn: ReturnType<typeof vi.fn>;
   let listByCommunityFn: ReturnType<typeof vi.fn>;
-  let getItemsFn: ReturnType<typeof vi.fn>;
   let createColeccionFn: ReturnType<typeof vi.fn>;
   let updateColeccionFn: ReturnType<typeof vi.fn>;
   let deleteColeccionFn: ReturnType<typeof vi.fn>;
@@ -37,13 +35,13 @@ describe('Collections (contenedor)', () => {
   let confirmFn: ReturnType<typeof vi.fn>;
   let messageAddFn: ReturnType<typeof vi.fn>;
 
-  function buildCollection(name: string, uuid: string): Collection {
+  function buildCollection(name: string, uuid: string, archivedItemsCount = 0): Collection {
     return {
       uuid,
       name,
       handle: `123456789/${uuid}`,
       metadata: {},
-      archivedItemsCount: 0,
+      archivedItemsCount,
       type: 'collection',
     };
   }
@@ -88,19 +86,12 @@ describe('Collections (contenedor)', () => {
       of({
         _embedded: {
           collections: [
-            buildCollection('PEAC', 'coll-peac'),
-            buildCollection('PRONEA', 'coll-pronea'),
+            buildCollection('PEAC', 'coll-peac', 34),
+            buildCollection('PRONEA', 'coll-pronea', 6),
           ],
         },
         _links: { self: { href: `/server/api/core/communities/${uuid}/collections` } },
         page: { size: 10, totalElements: 2, totalPages: 1, number: 0 },
-      }),
-    );
-    getItemsFn = vi.fn().mockImplementation((uuid: string) =>
-      of({
-        _embedded: { items: [] },
-        _links: { self: { href: `/server/api/discover/search/objects?scope=${uuid}` } },
-        page: { size: 1, totalElements: 0, totalPages: 0, number: 0 },
       }),
     );
     createColeccionFn = vi.fn().mockReturnValue(of(buildCollection('Nueva', 'coll-new')));
@@ -121,10 +112,6 @@ describe('Collections (contenedor)', () => {
         {
           provide: CollectionApiService,
           useValue: { listByCommunity: listByCommunityFn },
-        },
-        {
-          provide: DSpaceApiService,
-          useValue: { getItems: getItemsFn },
         },
         {
           provide: CollectionFacade,
@@ -182,10 +169,6 @@ describe('Collections (contenedor)', () => {
             provide: CollectionApiService,
             useValue: { listByCommunity: vi.fn(() => of({ _embedded: { collections: [] }, _links: { self: { href: '/' } }, page: { size: 10, totalElements: 0, totalPages: 0, number: 0 } })) },
           },
-          {
-            provide: DSpaceApiService,
-            useValue: { getItems: vi.fn(() => of({ _embedded: { items: [] }, _links: { self: { href: '/' } }, page: { size: 1, totalElements: 0, totalPages: 0, number: 0 } })) },
-          },
           { provide: CollectionFacade, useValue: {} },
           {
             provide: AuthCallerService,
@@ -223,12 +206,6 @@ describe('Collections (contenedor)', () => {
             provide: CollectionApiService,
             useValue: {
               listByCommunity: vi.fn(() => of({ _embedded: { collections: [] }, _links: { self: { href: '/' } }, page: { size: 10, totalElements: 0, totalPages: 0, number: 0 } })),
-            },
-          },
-          {
-            provide: DSpaceApiService,
-            useValue: {
-              getItems: vi.fn(() => of({ _embedded: { items: [] }, _links: { self: { href: '/' } }, page: { size: 1, totalElements: 0, totalPages: 0, number: 0 } })),
             },
           },
           { provide: CollectionFacade, useValue: {} },
@@ -296,6 +273,47 @@ describe('Collections (contenedor)', () => {
       expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 100, { embed: 'logo' });
       expect(c.collections().map((coll) => coll.name)).toEqual(['PEAC', 'PRONEA']);
       expect(c.selectedSubdireccion()?.uuid).toBe('sub-1');
+    });
+
+    /**
+     * Verifica que `recursosCount` se derive del `archivedItemsCount`
+     * que viaja en el listing cuando `webui.strengths.show=true`.
+     */
+    it('should derive recursosCount from archivedItemsCount in the listing', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+
+      c.selectSubdireccion(sub);
+
+      const counts = c.collections().map((coll) => coll.recursosCount);
+      expect(counts).toEqual([34, 6]);
+    });
+
+    /**
+     * Verifica el clamp defensivo: si DSpace devuelve `-1` (feature strengths
+     * off), el widget muestra 0 en la tabla, no un número negativo.
+     */
+    it('should clamp a negative archivedItemsCount to 0 in recursosCount', () => {
+      listByCommunityFn.mockReturnValue(
+        of({
+          _embedded: {
+            collections: [buildCollection('SIN_CONTEO', 'coll-x', -1)],
+          },
+          _links: { self: { href: '/' } },
+          page: { size: 10, totalElements: 1, totalPages: 1, number: 0 },
+        }),
+      );
+
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+
+      c.selectSubdireccion(sub);
+
+      expect(c.collections()[0].recursosCount).toBe(0);
     });
   });
 

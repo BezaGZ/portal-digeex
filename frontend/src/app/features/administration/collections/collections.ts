@@ -8,7 +8,7 @@ import {
   untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Observable, forkJoin, of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { FormsModule } from '@angular/forms';
@@ -23,7 +23,6 @@ import { CollectionTable } from './components/collection-table/collection-table'
 import { CollectionDialog } from './components/collection-dialog/collection-dialog';
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
-import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { Community } from '../../../core/api/models/community.model';
 import { Collection, CollectionCreateBody } from '../../../core/api/models/collection.model';
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
@@ -68,7 +67,6 @@ interface ProgramaFormPayload {
 export class Collections {
   private readonly communityApi = inject(CommunityApiService);
   private readonly collectionApi = inject(CollectionApiService);
-  private readonly dspaceApi = inject(DSpaceApiService);
   private readonly facade = inject(CollectionFacade);
   private readonly authCaller = inject(AuthCallerService);
   private readonly confirmation = inject(ConfirmationService);
@@ -99,25 +97,19 @@ export class Collections {
     this.collectionApi
       .listByCommunity(sub.uuid, 0, 100, { embed: 'logo' })
       .pipe(
+        // `archivedItemsCount` viaja en el listing porque DIGEEX activa
+        // `webui.strengths.show=true` en `docker/local.cfg`.
         switchMap((resp) => {
           const colls: Collection[] = resp._embedded?.['collections'] ?? [];
           if (colls.length === 0) {
             return of([] as ProgramaView[]);
           }
-          // Por cada colección, una llamada a Discovery scope-filtered
-          // para contar items archivados. archivedItemsCount del
-          // recurso collection devuelve valores no confiables en DSpace
-          // 9.x; Discovery sí refleja la realidad.
-          return forkJoin(
-            colls.map((coll) =>
-              this.dspaceApi.getItems(coll.uuid, 0, 1).pipe(
-                map((items) => ({
-                  ...coll,
-                  recursosCount: items.page?.totalElements ?? 0,
-                })),
-              ),
-            ),
-          );
+          const views: ProgramaView[] = colls.map((coll) => ({
+            ...coll,
+            // Clamp defensivo: DSpace devuelve -1 si la feature strengths
+            recursosCount: Math.max(0, coll.archivedItemsCount ?? 0),
+          }));
+          return of(views);
         }),
         // Ordeno por dc.identifier.other (orden en el menú); si falta o
         // no es numérico, queda al final.

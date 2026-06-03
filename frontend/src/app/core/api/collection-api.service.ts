@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { EMPTY, Observable } from 'rxjs';
+import { expand, map, reduce } from 'rxjs/operators';
 import { Collection, CollectionCreateBody } from './models/collection.model';
 import { Group, AssociatedGroupCreateBody } from './models/group.model';
 import { Bitstream } from './models/bitstream.model';
@@ -30,15 +30,22 @@ export class CollectionApiService {
    * Lista paginada de todas las colecciones del repositorio. `options.embed`
    * proyecta subrecursos en la misma respuesta — p. ej. `'logo'` para evitar
    * una llamada extra por collection desde home/listados públicos.
+   * `options.sort` se pasa tal cual al backend (formato Spring Data:
+   * `"campo,direccion"`, p. ej. `"archivedItemsCount,desc"`). Usado por el
+   * widget Top colecciones para pedirle al servidor que ordene globalmente
+   * y traiga solo `size=limit` registros, evitando size hardcoded.
    */
   list(
     page = 0,
     size = 100,
-    options: { embed?: string } = {},
+    options: { embed?: string; sort?: string } = {},
   ): Observable<HalListResponse<Collection>> {
     let params = new HttpParams().set('page', page).set('size', size);
     if (options.embed) {
       params = params.set('embed', options.embed);
+    }
+    if (options.sort) {
+      params = params.set('sort', options.sort);
     }
     return this.http.get<HalListResponse<Collection>>(
       `${DSPACE_API_BASE}${COLLECTIONS_PATH}`,
@@ -49,21 +56,78 @@ export class CollectionApiService {
   /**
    * Lista paginada de colecciones que pertenecen a una community específica.
    * Mismo `options.embed` que `list` para que el admin precargue el logo en
-   * el listado por subdirección.
+   * el listado por subdirección. `options.sort` permite ordenar server-side
+   * (mismo formato Spring Data que `list`).
    */
   listByCommunity(
     communityUuid: string,
     page = 0,
     size = 20,
-    options: { embed?: string } = {},
+    options: { embed?: string; sort?: string } = {},
   ): Observable<HalListResponse<Collection>> {
     let params = new HttpParams().set('page', page).set('size', size);
     if (options.embed) {
       params = params.set('embed', options.embed);
     }
+    if (options.sort) {
+      params = params.set('sort', options.sort);
+    }
     return this.http.get<HalListResponse<Collection>>(
       `${DSPACE_API_BASE}${COMMUNITIES_PATH}/${communityUuid}/collections`,
       { params },
+    );
+  }
+
+  /**
+   * Materializa TODAS las colecciones del repositorio agotando páginas
+   * con `expand`+`reduce`. `pageSize` default 100; útil cuando el caller
+   * necesita rankear globalmente por un campo derivado (DSpace 9.x solo
+   * sortea metadata indexable, no `archivedItemsCount`).
+   */
+  listAll(
+    options: { embed?: string; pageSize?: number } = {},
+  ): Observable<Collection[]> {
+    const pageSize = options.pageSize ?? 100;
+    return this.list(0, pageSize, { embed: options.embed }).pipe(
+      expand((resp) => {
+        const page = resp.page;
+        if (!page || page.number + 1 >= page.totalPages) {
+          return EMPTY;
+        }
+        return this.list(page.number + 1, pageSize, { embed: options.embed });
+      }),
+      reduce(
+        (acc, resp) => [...acc, ...(resp._embedded?.['collections'] ?? [])],
+        [] as Collection[],
+      ),
+    );
+  }
+
+  /**
+   * Versión scope-filtered de `listAll`: agota páginas dentro de una
+   * community específica. Mismo `pageSize` default y mismo `expand`+`reduce`.
+   */
+  listAllByCommunity(
+    communityUuid: string,
+    options: { embed?: string; pageSize?: number } = {},
+  ): Observable<Collection[]> {
+    const pageSize = options.pageSize ?? 100;
+    return this.listByCommunity(communityUuid, 0, pageSize, {
+      embed: options.embed,
+    }).pipe(
+      expand((resp) => {
+        const page = resp.page;
+        if (!page || page.number + 1 >= page.totalPages) {
+          return EMPTY;
+        }
+        return this.listByCommunity(communityUuid, page.number + 1, pageSize, {
+          embed: options.embed,
+        });
+      }),
+      reduce(
+        (acc, resp) => [...acc, ...(resp._embedded?.['collections'] ?? [])],
+        [] as Collection[],
+      ),
     );
   }
 
