@@ -19,6 +19,8 @@ export interface SearchObject {
 export interface SearchFacetValue {
   label: string;
   count: number;
+  /** Identificador opcional para values cuya entidad es un DSO (collection, community, item). */
+  authorityKey?: string;
   _links: HalLinks;
 }
 

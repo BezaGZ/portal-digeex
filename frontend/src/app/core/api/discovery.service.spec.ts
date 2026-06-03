@@ -10,7 +10,7 @@ import { DiscoveryService } from './discovery.service';
  * (`/api/discover/search/objects`). Soporta query de texto
  * y filtros por facetas.
  *
- * Ciclo 1 TDD — Sprint 4. Ajustado en Ciclo 37 — Sprint 6.
+ * Ciclos 1, 37 TDD — Sprints 4, 6. Ajustado en Ciclo 11 (Sprint 8).
  */
 describe('DiscoveryService', () => {
   let service: DiscoveryService;
@@ -206,5 +206,78 @@ describe('DiscoveryService', () => {
     });
 
     await promise;
+  });
+
+  /**
+   * Verifica que el mapeo de facets preserve el campo `authorityKey` cuando
+   * DSpace lo provee. Los facets cuyos valores son DSO (collections, communities)
+   * incluyen el UUID en ese campo; los facets sobre metadata pura
+   * (entityType, language) lo omiten y el mapeo lo deja `undefined`.
+   */
+  it('should preserve authorityKey on facet values when DSpace provides it and leave it undefined otherwise', async () => {
+    let result: { facets: { name: string; values: { label: string; count: number; authorityKey?: string }[] }[] } | null = null;
+    const promise = new Promise<void>((resolve, reject) => {
+      service.search({ query: 'test' }).subscribe({
+        next: (r) => {
+          result = r as typeof result;
+          resolve();
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne((r) => r.url === '/server/api/discover/search/objects');
+    req.flush({
+      _embedded: {
+        searchResult: {
+          _embedded: { objects: [] },
+          page: { size: 20, totalElements: 0, totalPages: 0, number: 0 },
+        },
+        facets: [
+          {
+            name: 'collection',
+            facetType: 'standard',
+            _embedded: {
+              values: [
+                {
+                  label: 'PEAC',
+                  count: 45,
+                  authorityKey: 'coll-uuid-peac',
+                  _links: { self: { href: '' } },
+                },
+                {
+                  label: 'PRONEA',
+                  count: 12,
+                  authorityKey: 'coll-uuid-pronea',
+                  _links: { self: { href: '' } },
+                },
+              ],
+            },
+            _links: { self: { href: '' } },
+          },
+          {
+            name: 'entityType',
+            facetType: 'text',
+            _embedded: {
+              values: [{ label: 'Documento', count: 53, _links: { self: { href: '' } } }],
+            },
+            _links: { self: { href: '' } },
+          },
+        ],
+      },
+      _links: { self: { href: '' } },
+    });
+
+    await promise;
+
+    expect(result).not.toBeNull();
+    const collFacet = result!.facets.find((f) => f.name === 'collection');
+    expect(collFacet).toBeDefined();
+    expect(collFacet!.values[0].authorityKey).toBe('coll-uuid-peac');
+    expect(collFacet!.values[1].authorityKey).toBe('coll-uuid-pronea');
+
+    const typeFacet = result!.facets.find((f) => f.name === 'entityType');
+    expect(typeFacet).toBeDefined();
+    expect(typeFacet!.values[0].authorityKey).toBeUndefined();
   });
 });

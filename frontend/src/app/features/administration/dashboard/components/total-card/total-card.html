@@ -1,0 +1,18 @@
+<p-card>
+  <ng-template pTemplate="title">
+    <span data-testid="total-card-label">{{ label() }}</span>
+  </ng-template>
+  <div class="flex items-center justify-center min-h-[80px]">
+    @if (loading()) {
+      <app-loading-spinner minHeight="80px" />
+    } @else {
+      <span data-testid="total-card-value" class="text-4xl font-bold text-primary">
+        @if (failed()) {
+          —
+        } @else {
+          {{ value() | number }}
+        }
+      </span>
+    }
+  </div>
+</p-card>

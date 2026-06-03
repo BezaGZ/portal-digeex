@@ -116,6 +116,7 @@ export class DiscoveryService {
       values: (facet._embedded?.values || []).map((v) => ({
         label: v.label,
         count: v.count,
+        authorityKey: v.authorityKey,
       })),
     }));
   }

@@ -1,0 +1,36 @@
+<p-card>
+  <ng-template pTemplate="title">
+    <span data-testid="top-list-card-label">{{ label() }}</span>
+  </ng-template>
+  <div class="min-h-[200px] flex flex-col">
+    @if (loading()) {
+      <div class="flex-1 flex items-center justify-center">
+        <app-loading-spinner minHeight="200px" />
+      </div>
+    } @else if (failed()) {
+      <div class="flex-1 flex items-center justify-center">
+        <span data-testid="top-list-card-failed" class="text-4xl font-bold text-gray-400">—</span>
+      </div>
+    } @else if (isEmpty()) {
+      <div class="flex-1 flex items-center justify-center">
+        <span data-testid="top-list-card-empty" class="text-sm text-gray-500">Sin datos para esta facet.</span>
+      </div>
+    } @else {
+      <ol class="space-y-1">
+        @for (entry of entries(); track entry.uuid) {
+          <li>
+            <button
+              type="button"
+              data-testid="top-list-card-row"
+              class="w-full text-left flex items-center justify-between p-2 hover:bg-gray-100 rounded transition-colors"
+              (click)="onEntryClick(entry)"
+            >
+              <span class="truncate">{{ entry.label }}</span>
+              <span class="font-semibold text-primary ml-2">{{ entry.count }}</span>
+            </button>
+          </li>
+        }
+      </ol>
+    }
+  </div>
+</p-card>

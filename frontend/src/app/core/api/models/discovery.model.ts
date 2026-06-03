@@ -9,6 +9,12 @@ export interface FacetFilter {
 export interface FacetValue {
   label: string;
   count: number;
+  /**
+   * Identificador opcional que DSpace provee para facets cuyos valores son
+   * DSO (colecciones, comunidades, items). Queda `undefined` para facets
+   * sobre metadata pura (entityType, language, dateIssued).
+   */
+  authorityKey?: string;
 }
 
 export interface Facet {

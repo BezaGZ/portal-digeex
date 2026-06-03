@@ -1,0 +1,16 @@
+<p-card>
+  <ng-template pTemplate="title">
+    <span data-testid="facet-bar-card-label">{{ label() }}</span>
+  </ng-template>
+  <div class="min-h-[200px] flex items-center justify-center">
+    @if (loading()) {
+      <app-loading-spinner minHeight="200px" />
+    } @else if (failed()) {
+      <span data-testid="facet-bar-card-failed" class="text-4xl font-bold text-gray-400">—</span>
+    } @else if (isEmpty()) {
+      <span data-testid="facet-bar-card-empty" class="text-sm text-gray-500">Sin datos para esta facet.</span>
+    } @else {
+      <app-bar-chart [config]="chartConfig()!" class="w-full" />
+    }
+  </div>
+</p-card>
