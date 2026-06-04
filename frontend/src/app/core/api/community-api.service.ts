@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { EMPTY, Observable } from 'rxjs';
-import { expand, map, reduce } from 'rxjs/operators';
+import { expand, reduce } from 'rxjs/operators';
 import { Community, CommunityCreateBody } from './models/community.model';
 import { Group, AssociatedGroupCreateBody } from './models/group.model';
 import { HalListResponse } from './models/hal.model';
