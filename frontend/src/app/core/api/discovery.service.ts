@@ -62,6 +62,10 @@ export class DiscoveryService {
       httpParams = httpParams.set('configuration', params.configuration);
     }
 
+    if (params.dsoType) {
+      httpParams = httpParams.set('dsoType', params.dsoType);
+    }
+
     if (params.filters) {
       for (const filter of params.filters) {
         httpParams = httpParams.append(`f.${filter.name}`, `${filter.value},${filter.operator}`);

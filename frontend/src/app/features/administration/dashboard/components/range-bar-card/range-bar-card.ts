@@ -70,7 +70,9 @@ export class RangeBarCard {
     return {
       type: 'bar',
       title: this.label(),
-      data: this.ranges().map((r, i) => ({ label: r.label, value: c[i] ?? 0 })),
+      data: this.ranges()
+        .map((r, i) => ({ label: r.label, value: c[i] ?? 0 }))
+        .filter((p) => p.value > 0),
     };
   });
 
@@ -84,6 +86,7 @@ export class RangeBarCard {
           .search({
             size: 0,
             scope,
+            dsoType: 'item',
             filters: [
               {
                 name: 'dateIssued',

@@ -19,7 +19,7 @@ import { SearchParams, SearchResult } from '../../../../../core/api/models/disco
  * valor > 0, mensaje empty-state cuando todos los rangos resuelven en 0,
  * `—` cuando alguna llamada falla.
  *
- * Ciclo 11 TDD — Sprint 8.
+ * Ciclo 11 TDD — Sprint 8. Ajustado en Ciclo 14 (Sprint 8).
  */
 describe('RangeBarCard', () => {
   let searchFn: Mock;
@@ -86,6 +86,42 @@ describe('RangeBarCard', () => {
     expect(searchFn).toHaveBeenCalledTimes(3);
     const args = searchFn.mock.calls.map((c) => c[0] as SearchParams);
     expect(args.every((a) => a.scope === 'community-uuid-001')).toBe(true);
+  });
+
+  /**
+   * Verifica que los rangos cuyo conteo resuelve en 0 NO aparezcan en `chartConfig.data`.
+   * El empty-state global sigue cubierto por `counts`, no por `chartConfig.data`.
+   */
+  it('should drop ranges with count=0 from chartConfig.data', () => {
+    let counter = 0;
+    const totals = [0, 5, 0];
+    searchFn.mockImplementation(() => of(buildSearchResult(totals[counter++] ?? 0)));
+
+    const fixture = TestBed.createComponent(RangeBarCard);
+    fixture.componentRef.setInput('scope', null);
+    fixture.componentRef.setInput('label', 'Por fecha');
+    fixture.componentRef.setInput('ranges', SAMPLE_RANGES);
+    fixture.detectChanges();
+
+    const component = fixture.componentInstance as unknown as {
+      chartConfig: () => { data: { label: string; value: number }[] } | null;
+    };
+    const cfg = component.chartConfig();
+    expect(cfg).not.toBeNull();
+    expect(cfg!.data).toEqual([{ label: '2020-2023', value: 5 }]);
+  });
+
+  /** Verifica que cada llamada del forkJoin incluya `dsoType: 'item'` para que cada rango cuente solo items archivados. */
+  it('should pass dsoType: "item" on every range search call', () => {
+    const fixture = TestBed.createComponent(RangeBarCard);
+    fixture.componentRef.setInput('scope', null);
+    fixture.componentRef.setInput('label', 'Por fecha');
+    fixture.componentRef.setInput('ranges', SAMPLE_RANGES);
+    fixture.detectChanges();
+
+    expect(searchFn).toHaveBeenCalledTimes(3);
+    const args = searchFn.mock.calls.map((c) => c[0] as SearchParams);
+    expect(args.every((a) => a.dsoType === 'item')).toBe(true);
   });
 
   /** Verifica que mientras al menos una llamada está pendiente, se renderice el spinner compartido. */

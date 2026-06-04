@@ -16,7 +16,7 @@ import { SearchParams, SearchResult } from '../../../../../core/api/models/disco
  * llamada. El render tiene tres estados: spinner mientras pending, número
  * cuando resuelve, `—` cuando el observable falla.
  *
- * Ciclo 9 TDD — Sprint 8.
+ * Ciclo 9 TDD — Sprint 8. Ajustado en Ciclo 14 (Sprint 8).
  */
 describe('TotalCard', () => {
   let searchFn: Mock;
@@ -67,6 +67,18 @@ describe('TotalCard', () => {
     const args = searchFn.mock.calls[0]?.[0] as SearchParams;
     expect(args.size).toBe(0);
     expect(args.scope).toBe('community-uuid-001');
+  });
+
+  /** Verifica que la llamada incluya `dsoType: 'item'` para que Discovery cuente solo items archivados. */
+  it('should call DiscoveryService.search with dsoType: "item"', () => {
+    const fixture = TestBed.createComponent(TotalCard);
+    fixture.componentRef.setInput('scope', null);
+    fixture.componentRef.setInput('label', 'Total');
+    fixture.detectChanges();
+
+    expect(searchFn).toHaveBeenCalledTimes(1);
+    const args = searchFn.mock.calls[0]?.[0] as SearchParams;
+    expect(args.dsoType).toBe('item');
   });
 
   /** Verifica que mientras el observable está pendiente se renderice el spinner compartido. */

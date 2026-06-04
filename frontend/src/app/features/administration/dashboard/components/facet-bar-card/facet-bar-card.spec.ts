@@ -16,7 +16,7 @@ import { Facet, SearchParams, SearchResult } from '../../../../../core/api/model
  * Cuatro estados: spinner mientras pending, bar-chart cuando resuelve con
  * datos, empty cuando la facet no aparece, `—` cuando el observable falla.
  *
- * Ciclo 10 TDD — Sprint 8.
+ * Ciclo 10 TDD — Sprint 8. Ajustado en Ciclo 14 (Sprint 8).
  */
 describe('FacetBarCard', () => {
   let searchFn: Mock;
@@ -83,6 +83,19 @@ describe('FacetBarCard', () => {
     const args = searchFn.mock.calls[0]?.[0] as SearchParams;
     expect(args.size).toBe(0);
     expect(args.scope).toBe('community-uuid-001');
+  });
+
+  /** Verifica que la llamada incluya `dsoType: 'item'` para que la facet agrupe solo sobre items archivados. */
+  it('should call DiscoveryService.search with dsoType: "item"', () => {
+    const fixture = TestBed.createComponent(FacetBarCard);
+    fixture.componentRef.setInput('scope', null);
+    fixture.componentRef.setInput('label', 'Por tipo');
+    fixture.componentRef.setInput('facetName', 'entityType');
+    fixture.detectChanges();
+
+    expect(searchFn).toHaveBeenCalledTimes(1);
+    const args = searchFn.mock.calls[0]?.[0] as SearchParams;
+    expect(args.dsoType).toBe('item');
   });
 
   /** Verifica que mientras el observable está pendiente se renderice el spinner compartido. */

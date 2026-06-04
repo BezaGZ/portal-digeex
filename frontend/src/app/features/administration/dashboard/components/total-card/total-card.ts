@@ -42,7 +42,7 @@ export class TotalCard {
       const scope = this.scope() ?? undefined;
       this.count.set(undefined);
       this.discovery
-        .search({ size: 0, scope })
+        .search({ size: 0, scope, dsoType: 'item' })
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (result) => this.count.set(result.totalElements),

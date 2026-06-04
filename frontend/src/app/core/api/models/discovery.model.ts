@@ -31,6 +31,11 @@ export interface SearchParams {
   sort?: string;
   /** Configuration bean del backend (`default`, `administrativeView`, etc.). */
   configuration?: string;
+  /**
+   * Acota el universo del search a un tipo de DSO. Sin este filtro, Discovery
+   * cuenta colecciones, comunidades y workspace items junto con items archivados.
+   */
+  dsoType?: 'item' | 'collection' | 'community';
 }
 
 export interface SearchResult {

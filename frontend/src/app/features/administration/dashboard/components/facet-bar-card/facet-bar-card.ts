@@ -82,7 +82,7 @@ export class FacetBarCard {
       this.facetName();
       this.result.set(undefined);
       this.discovery
-        .search({ size: 0, scope })
+        .search({ size: 0, scope, dsoType: 'item' })
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (r) => this.result.set(r),

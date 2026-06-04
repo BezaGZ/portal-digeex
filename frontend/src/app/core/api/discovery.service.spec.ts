@@ -10,7 +10,7 @@ import { DiscoveryService } from './discovery.service';
  * (`/api/discover/search/objects`). Soporta query de texto
  * y filtros por facetas.
  *
- * Ciclos 1, 37 TDD — Sprints 4, 6. Ajustado en Ciclo 11 y Ciclo 12 (Sprint 8).
+ * Ciclos 1, 37 TDD — Sprints 4, 6. Ajustado en Ciclos 11, 12 y 14 (Sprint 8).
  */
 describe('DiscoveryService', () => {
   let service: DiscoveryService;
@@ -279,5 +279,30 @@ describe('DiscoveryService', () => {
     const typeFacet = result!.facets.find((f) => f.name === 'entityType');
     expect(typeFacet).toBeDefined();
     expect(typeFacet!.values[0].authorityKey).toBeUndefined();
+  });
+
+  /**
+   * Verifica que `search({ dsoType: 'item' })` agregue `dsoType=item` al request.
+   * Sin este filtro Discovery cuenta colecciones y workspace items como si fueran archivados.
+   */
+  it('should include dsoType=item in the request when params.dsoType is "item"', async () => {
+    service.search({ dsoType: 'item' }).subscribe();
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/server/api/discover/search/objects' &&
+        r.params.get('dsoType') === 'item',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(mockSearchResponse);
+  });
+
+  /** Verifica que `search({})` sin `dsoType` NO incluya el parámetro y el endpoint mantenga su comportamiento default. */
+  it('should NOT include dsoType in the request when params.dsoType is undefined', async () => {
+    service.search({}).subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === '/server/api/discover/search/objects');
+    expect(req.request.params.has('dsoType')).toBe(false);
+    req.flush(mockSearchResponse);
   });
 });
