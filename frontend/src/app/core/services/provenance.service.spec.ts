@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { ProvenanceService } from './provenance.service';
-import { MetadataValue } from '../api/models/metadata.model';
+import { MetadataMap, MetadataValue } from '../api/models/metadata.model';
 
 /**
  * Tests de `ProvenanceService`.
@@ -13,7 +13,7 @@ import { MetadataValue } from '../api/models/metadata.model';
  * TIMESTAMP). Entradas no reconocidas se exponen con `raw` para que el
  * timeline las renderice como texto plano sin perder información.
  *
- * Ciclo 13 TDD — Sprint 8.
+ * Ciclo 13 TDD — Sprint 8. Ajustado en Ciclo 15 (Sprint 8).
  */
 describe('ProvenanceService', () => {
   let service: ProvenanceService;
@@ -131,5 +131,25 @@ describe('ProvenanceService', () => {
     const result = service.parseProvenance(entries);
 
     expect(result.map((e) => e.action)).toEqual(['Reinstated', 'Made available', 'Submitted']);
+  });
+
+  /**
+   * Verifica que `extractFrom` lea el array `dc.description.provenance` del metadata
+   * y devuelva `[]` cuando la key no existe (catálogos cargados por SAF).
+   */
+  it('should extract the dc.description.provenance entries from a MetadataMap, returning [] when the key is absent', () => {
+    const metadata: MetadataMap = {
+      'dc.title': [buildMetadataValue('Título de prueba')],
+      'dc.description.provenance': [
+        buildMetadataValue('Submitted by Jane Doe (jdoe@example.com) on 2024-01-15T10:30:00Z'),
+        buildMetadataValue('Made available in DSpace on 2024-01-20T10:35:00Z'),
+      ],
+    };
+
+    const result = service.extractFrom(metadata);
+    expect(result.map((e) => e.action)).toEqual(['Made available', 'Submitted']);
+
+    const empty = service.extractFrom({ 'dc.title': [buildMetadataValue('Solo título')] });
+    expect(empty).toEqual([]);
   });
 });

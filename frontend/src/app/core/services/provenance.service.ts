@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { MetadataValue } from '../api/models/metadata.model';
+import { MetadataMap, MetadataValue } from '../api/models/metadata.model';
 import { TimelineEntry } from './provenance.model';
 
 /**
@@ -46,6 +46,16 @@ export class ProvenanceService {
   parseProvenance(entries: MetadataValue[]): TimelineEntry[] {
     const parsed = entries.map((entry) => this.parseEntry(entry.value));
     return parsed.sort((a, b) => this.compareTimestampsDesc(a, b));
+  }
+
+  /**
+   * Lee el array `dc.description.provenance` de un metadata map y delega a
+   * `parseProvenance`. Las 3 pantallas detail del visor lo invocan en una sola
+   * línea sin replicar el lookup de la key.
+   */
+  extractFrom(metadata: MetadataMap): TimelineEntry[] {
+    const entries = metadata['dc.description.provenance'] ?? [];
+    return this.parseProvenance(entries);
   }
 
   /**
