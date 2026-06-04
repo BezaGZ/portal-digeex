@@ -1,0 +1,35 @@
+@if (loading()) {
+  <app-loading-spinner />
+} @else if (failed()) {
+  <div
+    data-testid="subdireccion-detail-failed"
+    class="flex flex-col items-center justify-center py-8 text-center"
+  >
+    <p class="text-[color:var(--p-text-muted-color)]">—</p>
+  </div>
+} @else {
+  <div class="flex flex-col gap-4">
+    <p-card data-testid="subdireccion-detail-card">
+      <div class="flex items-start justify-between gap-3">
+        <h2 class="m-0 text-xl font-semibold">{{ title() }}</h2>
+        @if (sufijo()) {
+          <span
+            class="px-2 py-1 rounded text-xs font-mono bg-[color:var(--p-surface-100)] text-[color:var(--p-text-muted-color)]"
+          >
+            {{ sufijo() }}
+          </span>
+        }
+      </div>
+      @if (description()) {
+        <p class="mt-3 text-sm text-[color:var(--p-text-muted-color)]">
+          {{ description() }}
+        </p>
+      }
+    </p-card>
+
+    <p-card>
+      <h3 class="m-0 mb-3 text-lg font-medium">Historial de actividad</h3>
+      <app-provenance-timeline [entries]="provenanceEntries()" />
+    </p-card>
+  </div>
+}

@@ -127,6 +127,14 @@ export const routes: Routes = [
         data: { breadcrumb: 'Subdirecciones' }
       },
       {
+        path: 'subdirecciones/:uuid',
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
+        loadComponent: () =>
+          import('./features/administration/subdirecciones-detail/subdirecciones-detail').then(
+            (m) => m.SubdireccionesDetail,
+          ),
+      },
+      {
         path: 'programas',
         canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
         loadComponent: () => import('./features/administration/collections/collections').then(m => m.Collections),
