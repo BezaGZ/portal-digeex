@@ -141,6 +141,22 @@ export const routes: Routes = [
         data: { breadcrumb: 'Programas' }
       },
       {
+        path: 'programas/:uuid',
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
+        loadComponent: () =>
+          import('./features/administration/programas-detail/programas-detail').then(
+            (m) => m.ProgramasDetail,
+          ),
+      },
+      {
+        path: 'programas/:colUuid/items/:itemUuid',
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
+        loadComponent: () =>
+          import('./features/administration/items-detail/items-detail').then(
+            (m) => m.ItemsDetail,
+          ),
+      },
+      {
         path: 'programas/:uuid/cargar',
         canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
         /**
