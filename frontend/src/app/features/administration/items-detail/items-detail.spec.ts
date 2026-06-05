@@ -7,7 +7,7 @@ import { Mock, vi } from 'vitest';
 import { ItemsDetail } from './items-detail';
 import { ItemApiService } from '../../../core/api/item-api.service';
 import { Item } from '../../../core/api/models/item.model';
-import { ProvenanceService } from '../../../core/services/provenance.service';
+import { ProvenanceService } from '../content/provenance/provenance.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 
 /**

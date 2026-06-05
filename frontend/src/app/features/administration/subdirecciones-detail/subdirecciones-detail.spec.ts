@@ -7,7 +7,7 @@ import { Mock, vi } from 'vitest';
 import { SubdireccionesDetail } from './subdirecciones-detail';
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { Community } from '../../../core/api/models/community.model';
-import { ProvenanceService } from '../../../core/services/provenance.service';
+import { ProvenanceService } from '../content/provenance/provenance.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 
 /**

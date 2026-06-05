@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { ProvenanceService } from './provenance.service';
-import { MetadataMap, MetadataValue } from '../api/models/metadata.model';
+import { MetadataMap, MetadataValue } from '../../../../core/api/models/metadata.model';
 
 /**
  * Tests de `ProvenanceService`.

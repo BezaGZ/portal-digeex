@@ -15,10 +15,10 @@ import { CardModule } from 'primeng/card';
 
 import { ItemApiService } from '../../../core/api/item-api.service';
 import { Item } from '../../../core/api/models/item.model';
-import { ProvenanceService } from '../../../core/services/provenance.service';
+import { ProvenanceService } from '../content/provenance/provenance.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { ProvenanceTimeline } from '../../../shared/components/provenance-timeline/provenance-timeline';
+import { ProvenanceTimeline } from '../content/provenance/timeline/provenance-timeline';
 
 /**
  * Pantalla detail administrativa de item. Orquesta el fetch del recurso,

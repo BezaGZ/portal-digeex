@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CardModule } from 'primeng/card';
 
-import { TimelineEntry } from '../../../core/services/provenance.model';
+import { TimelineEntry } from '../timeline-entry.model';
 
 /**
  * Timeline cronológica de actividad del recurso. Componente presentacional puro:

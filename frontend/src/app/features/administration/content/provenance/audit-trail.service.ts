@@ -2,12 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { map, switchMap, take } from 'rxjs/operators';
 
-import { ItemApiService } from '../api/item-api.service';
-import { CommunityApiService } from '../api/community-api.service';
-import { CollectionApiService } from '../api/collection-api.service';
-import { JsonPatchEntry, PATCH_OP_ADD } from '../api/json-patch.util';
-import { AuthCallerService } from '../../features/administration/shared/services/auth-caller.service';
-import { Actor } from '../../features/administration/content/specifications/scope-context.model';
+import { ItemApiService } from '../../../../core/api/item-api.service';
+import { CommunityApiService } from '../../../../core/api/community-api.service';
+import { CollectionApiService } from '../../../../core/api/collection-api.service';
+import { JsonPatchEntry, PATCH_OP_ADD } from '../../../../core/api/json-patch.util';
+import { AuthCallerService } from '../../shared/services/auth-caller.service';
+import { Actor } from '../specifications/scope-context.model';
 
 /**
  * DSO sobre el que se appendea la entrada de provenance. El service

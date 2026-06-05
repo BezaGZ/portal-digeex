@@ -15,10 +15,10 @@ import { CardModule } from 'primeng/card';
 
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { Community } from '../../../core/api/models/community.model';
-import { ProvenanceService } from '../../../core/services/provenance.service';
+import { ProvenanceService } from '../content/provenance/provenance.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { ProvenanceTimeline } from '../../../shared/components/provenance-timeline/provenance-timeline';
+import { ProvenanceTimeline } from '../content/provenance/timeline/provenance-timeline';
 
 /**
  * Pantalla detail administrativa de subdirección. Orquesta el fetch del recurso,

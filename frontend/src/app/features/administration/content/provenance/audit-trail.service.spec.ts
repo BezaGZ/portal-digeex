@@ -3,12 +3,12 @@ import { Observable, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 
 import { AuditTrailService } from './audit-trail.service';
-import { ItemApiService } from '../api/item-api.service';
-import { CommunityApiService } from '../api/community-api.service';
-import { CollectionApiService } from '../api/collection-api.service';
-import { AuthCallerService } from '../../features/administration/shared/services/auth-caller.service';
-import { Actor } from '../../features/administration/content/specifications/scope-context.model';
-import { JsonPatchEntry } from '../api/json-patch.util';
+import { ItemApiService } from '../../../../core/api/item-api.service';
+import { CommunityApiService } from '../../../../core/api/community-api.service';
+import { CollectionApiService } from '../../../../core/api/collection-api.service';
+import { AuthCallerService } from '../../shared/services/auth-caller.service';
+import { Actor } from '../specifications/scope-context.model';
+import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
 
 /**
  * Tests de `AuditTrailService`.
