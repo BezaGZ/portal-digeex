@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 import { EMPTY, Observable, of } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
@@ -93,6 +94,7 @@ describe('Communities (contenedor)', () => {
       imports: [Communities],
       providers: [
         provideNoopAnimations(),
+        provideRouter([]),
         {
           provide: CommunityApiService,
           useValue: {
@@ -151,6 +153,7 @@ describe('Communities (contenedor)', () => {
         imports: [Communities],
         providers: [
           provideNoopAnimations(),
+          provideRouter([]),
           {
             provide: CommunityApiService,
             useValue: { searchTop: searchTopFn, listSubcommunities: listSubcommunitiesFn },
