@@ -42,3 +42,14 @@ export interface ScopeSpecification {
   isSatisfiedBy(context: ScopeContext): boolean;
   rejectionMessage(context: ScopeContext): string;
 }
+
+/**
+ * Identidad del usuario para la auditoría: nombre, apellido y correo. Se
+ * mantiene separado de `Caller` porque `Caller` describe scope (qué puede
+ * hacer) mientras que `Actor` describe identidad (quién lo hizo).
+ */
+export interface Actor {
+  firstName: string;
+  lastName: string;
+  email: string;
+}

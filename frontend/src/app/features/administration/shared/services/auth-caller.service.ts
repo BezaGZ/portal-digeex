@@ -2,13 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { UserManagementService } from '../../users/services/user-management.service';
-import { Caller } from '../../content/specifications/scope-context.model';
+import { Actor, Caller } from '../../content/specifications/scope-context.model';
 
 /**
  * Proyección del usuario autenticado en la forma que las reglas de scope
- * esperan: rol del portal y sufijo de subdirección. Encapsula la lectura
- * de la vista del usuario para que los facades no dependan directamente
- * del servicio de gestión de usuarios.
+ * y la auditoría esperan: `currentCaller$` expone rol y sufijo para validar
+ * scope; `currentActor$` expone nombre y correo para registrar autoría en
+ * el provenance. Ambos derivan del mismo `currentUserView$`.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthCallerService {
@@ -18,6 +18,14 @@ export class AuthCallerService {
     map((view) =>
       view
         ? { role: view.role, sufijo: view.subdivision }
+        : null,
+    ),
+  );
+
+  readonly currentActor$: Observable<Actor | null> = this.userMgmt.currentUserView$.pipe(
+    map((view) =>
+      view
+        ? { firstName: view.firstName, lastName: view.lastName, email: view.email }
         : null,
     ),
   );
