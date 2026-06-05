@@ -157,6 +157,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'items/:itemUuid',
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
+        loadComponent: () =>
+          import('./features/administration/items-detail/items-detail').then(
+            (m) => m.ItemsDetail,
+          ),
+      },
+      {
         path: 'programas/:uuid/cargar',
         canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
         /**

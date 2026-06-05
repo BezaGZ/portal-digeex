@@ -6,6 +6,7 @@ import { CommunityApiService } from '../../../../core/api/community-api.service'
 import { GroupApiService } from '../../../../core/api/group-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
+import { AuditTrailService } from '../provenance/audit-trail.service';
 import { BusinessRuleError } from '../../../../core/error/business-rule-error';
 import { CommunityCreateBody } from '../../../../core/api/models/community.model';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
@@ -27,6 +28,7 @@ type GroupApiMock = {
 };
 type ScopeMock = { assertWithinScope: Mock };
 type AuthCallerMock = { currentCaller$: Observable<Caller | null> };
+type AuditMock = { appendProvenance$: Mock };
 
 /**
  * Tests de CommunityFacade.
@@ -36,7 +38,7 @@ type AuthCallerMock = { currentCaller$: Observable<Caller | null> };
  * pipeline transaccional y deshace lo creado en cascada inversa cuando un
  * paso intermedio falla.
  *
- * Ciclo 12 TDD — Sprint 6
+ * Ciclo 12 TDD — Sprint 6. Ajustado en Ciclo 21 (Sprint 8).
  */
 describe('CommunityFacade', () => {
   let facade: CommunityFacade;
@@ -44,6 +46,7 @@ describe('CommunityFacade', () => {
   let mockGroupApi: GroupApiMock;
   let mockScope: ScopeMock;
   let mockAuthCaller: AuthCallerMock;
+  let mockAudit: AuditMock;
 
   const newCommunity = {
     uuid: 'comm-new',
@@ -101,6 +104,7 @@ describe('CommunityFacade', () => {
         { provide: GroupApiService, useValue: mockGroupApi },
         { provide: ContentScopeService, useValue: mockScope },
         { provide: AuthCallerService, useValue: mockAuthCaller },
+        { provide: AuditTrailService, useValue: mockAudit },
       ],
     });
     facade = TestBed.inject(CommunityFacade);
@@ -129,6 +133,7 @@ describe('CommunityFacade', () => {
     mockScope = {
       assertWithinScope: vi.fn(),
     };
+    mockAudit = { appendProvenance$: vi.fn(() => of(undefined)) };
   });
 
   describe('createSubdireccion$', () => {
@@ -257,6 +262,46 @@ describe('CommunityFacade', () => {
       await expect(firstValueFrom(facade.deleteSubdireccion$('comm-1', 'ED_BASICA'))).rejects.toBeInstanceOf(BusinessRuleError);
       expect(mockGroupApi.delete).not.toHaveBeenCalled();
       expect(mockCommunityApi.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('audit trail integration', () => {
+    const body: CommunityCreateBody = {
+      name: 'Subdirección de Calidad',
+      metadata: { 'dc.title': [{ value: 'Subdirección de Calidad', language: null, authority: null, confidence: -1, place: 0 }] },
+      type: 'community',
+    };
+
+    /** Verifica que createSubdireccion$ invoque audit.appendProvenance$ con la acción Created al cerrar el pipeline transaccional. */
+    it('should call audit.appendProvenance$ with "Created" after a successful createSubdireccion$', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(facade.createSubdireccion$(body, 'ED_CALIDAD'));
+
+      expect(mockAudit.appendProvenance$).toHaveBeenCalledWith('community', 'comm-new', 'Created');
+    });
+
+    /** Verifica que updateSubdireccion$ invoque audit.appendProvenance$ con la acción Edited al cerrar el PATCH exitoso. */
+    it('should call audit.appendProvenance$ with "Edited" after a successful updateSubdireccion$', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockCommunityApi.updateMetadata = vi.fn(() => of({ ...newCommunity, uuid: 'comm-1' }));
+      const patch: JsonPatchEntry[] = [
+        { op: 'replace', path: '/metadata/dc.title/0/value', value: 'Renombrada' },
+      ];
+
+      await firstValueFrom(facade.updateSubdireccion$('comm-1', patch, 'ED_BASICA'));
+
+      expect(mockAudit.appendProvenance$).toHaveBeenCalledWith('community', 'comm-1', 'Edited');
+    });
+
+    /** Verifica que deleteSubdireccion$ NO invoque al audit: el DSO es destruido y no puede recibir entradas. */
+    it('should NOT call audit.appendProvenance$ on deleteSubdireccion$ (DSO destroyed)', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockGroupApi.getByName = vi.fn().mockReturnValueOnce(of(standaloneSubmitters)).mockReturnValueOnce(of(standaloneAdmin));
+
+      await firstValueFrom(facade.deleteSubdireccion$('comm-1', 'ED_CALIDAD'));
+
+      expect(mockAudit.appendProvenance$).not.toHaveBeenCalled();
     });
   });
 });

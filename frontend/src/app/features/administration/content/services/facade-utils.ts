@@ -1,7 +1,8 @@
-import { Observable, of, throwError } from 'rxjs';
+import { MonoTypeOperatorFunction, Observable, of, throwError } from 'rxjs';
 import { catchError, map, switchMap, take } from 'rxjs/operators';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { Caller } from '../specifications/scope-context.model';
+import { AuditDsoType, AuditTrailService } from '../provenance/audit-trail.service';
 
 /**
  * Resuelve el caller actual a la forma que las reglas de scope esperan.
@@ -38,4 +39,25 @@ export function rollbackCascade(
       of(undefined) as Observable<unknown>,
     )
     .pipe(switchMap(() => throwError(() => originalError)));
+}
+
+/**
+ * Operador best-effort que appendea una entrada de provenance al cierre del
+ * pipeline exitoso. El error del audit NO rompe la operación principal: el
+ * facade emite el DSO original aunque el PATCH del audit falle. Reusado por
+ * los 3 facades del Bloque 3 sobre items, communities y collections.
+ */
+export function withAudit$<T extends { uuid: string }>(
+  audit: AuditTrailService,
+  dsoType: AuditDsoType,
+  action: string,
+): MonoTypeOperatorFunction<T> {
+  return (source$) =>
+    source$.pipe(
+      switchMap((dso) =>
+        audit
+          .appendProvenance$(dsoType, dso.uuid, action)
+          .pipe(catchError(() => of(undefined)), map(() => dso)),
+      ),
+    );
 }

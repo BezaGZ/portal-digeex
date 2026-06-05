@@ -7,6 +7,7 @@ import { GroupApiService } from '../../../../core/api/group-api.service';
 import { BundleApiService } from '../../../../core/api/bundle-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
+import { AuditTrailService } from '../provenance/audit-trail.service';
 import { BusinessRuleError } from '../../../../core/error/business-rule-error';
 import { CollectionCreateBody } from '../../../../core/api/models/collection.model';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
@@ -32,6 +33,7 @@ type BundleApiMock = {
 };
 type ScopeMock = { assertWithinScope: Mock };
 type AuthCallerMock = { currentCaller$: Observable<Caller | null> };
+type AuditMock = { appendProvenance$: Mock };
 
 /**
  * Tests de CollectionFacade.
@@ -44,7 +46,7 @@ type AuthCallerMock = { currentCaller$: Observable<Caller | null> };
  * y solo lo enlaza como subgrupo del submittersGroup técnico de la nueva
  * colección, nunca lo crea ni lo borra.
  *
- * Ciclo 13 TDD — Sprint 6. Ajustado en Ciclo 3.
+ * Ciclo 13 TDD — Sprint 6. Ajustado en Ciclos 3 y 21 (Sprint 8).
  */
 describe('CollectionFacade', () => {
   let facade: CollectionFacade;
@@ -52,6 +54,7 @@ describe('CollectionFacade', () => {
   let mockGroupApi: GroupApiMock;
   let mockBundleApi: BundleApiMock;
   let mockScope: ScopeMock;
+  let mockAudit: AuditMock;
   let mockAuthCaller: AuthCallerMock;
 
   const newCollection = {
@@ -111,6 +114,7 @@ describe('CollectionFacade', () => {
         { provide: BundleApiService, useValue: mockBundleApi },
         { provide: ContentScopeService, useValue: mockScope },
         { provide: AuthCallerService, useValue: mockAuthCaller },
+        { provide: AuditTrailService, useValue: mockAudit },
       ],
     });
     facade = TestBed.inject(CollectionFacade);
@@ -137,6 +141,7 @@ describe('CollectionFacade', () => {
     mockScope = {
       assertWithinScope: vi.fn(),
     };
+    mockAudit = { appendProvenance$: vi.fn(() => of(undefined)) };
   });
 
   describe('createColeccion$', () => {
@@ -176,11 +181,9 @@ describe('CollectionFacade', () => {
     });
 
     /**
-     * Ciclo 40.3 — extiende el pipeline con el enlace al adminGroup técnico
-     * para mantener simetría con el seed. Después de enlazar SUBMITTERS al
-     * `_SUBMIT` técnico, el facade crea el `_admin` técnico y enlaza el mismo
-     * SUBMITTERS shared como subgroup, reusando el `getByName` previo (sin
-     * pegarlo dos veces a DSpace).
+     * Verifica que el pipeline cree el `_admin` técnico y enlace el SUBMITTERS
+     * shared como subgroup reusando el `getByName` previo, manteniendo simetría
+     * con el seed sin pegarle dos veces a DSpace.
      */
     it('should also create the adminGroup and link SUBMITTERS, reusing the getByName result (single lookup)', async () => {
       setupFacadeWithCaller('superadmin', null);
@@ -211,9 +214,9 @@ describe('CollectionFacade', () => {
     });
 
     /**
-     * Ciclo 40.3 — si falla la creación del adminGroup técnico, el cleanup
-     * debe deshacer el submittersGroup técnico ya creado y la collection. No
-     * intenta borrar un techAdmin que no existe.
+     * Verifica que si falla la creación del adminGroup técnico, el cleanup
+     * deshaga el submittersGroup técnico ya creado y la collection sin intentar
+     * borrar un techAdmin que no existe.
      */
     it('should rollback techSubmit and collection when createAdminGroup fails', async () => {
       setupFacadeWithCaller('superadmin', null);
@@ -280,10 +283,9 @@ describe('CollectionFacade', () => {
     });
 
     /**
-     * Ciclo 40.3 — si el segundo addSubgroup (el de SUBMITTERS al admin
-     * técnico) falla, el cleanup debe deshacer en cascada inversa: admin
-     * técnico, submit técnico y collection. Es el escenario que más residuos
-     * podría dejar.
+     * Verifica que si falla el segundo addSubgroup (SUBMITTERS al admin
+     * técnico), el cleanup deshaga en cascada inversa: admin técnico, submit
+     * técnico y collection. Es el escenario con más residuos posibles.
      */
     it('should rollback techAdmin, techSubmit and collection when admin addSubgroup fails', async () => {
       setupFacadeWithCaller('superadmin', null);
@@ -420,6 +422,38 @@ describe('CollectionFacade', () => {
         firstValueFrom(facade.deleteColeccion$('coll-1', 'ED_TRABAJO')),
       ).rejects.toBeInstanceOf(BusinessRuleError);
       expect(mockCollectionApi.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('audit trail integration', () => {
+    /** Verifica que createColeccion$ invoque audit.appendProvenance$ con la acción Created al cerrar el pipeline transaccional. */
+    it('should call audit.appendProvenance$ with "Created" after a successful createColeccion$', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA'));
+
+      expect(mockAudit.appendProvenance$).toHaveBeenCalledWith('collection', 'coll-new', 'Created');
+    });
+
+    /** Verifica que updateColeccion$ invoque audit.appendProvenance$ con la acción Edited al cerrar el PATCH exitoso. */
+    it('should call audit.appendProvenance$ with "Edited" after a successful updateColeccion$', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      const patch: JsonPatchEntry[] = [
+        { op: 'replace', path: '/metadata/dc.title/0/value', value: 'Renombrada' },
+      ];
+
+      await firstValueFrom(facade.updateColeccion$('coll-1', patch, 'ED_BASICA'));
+
+      expect(mockAudit.appendProvenance$).toHaveBeenCalledWith('collection', 'coll-new', 'Edited');
+    });
+
+    /** Verifica que deleteColeccion$ NO invoque al audit: el DSO es destruido y no puede recibir entradas. */
+    it('should NOT call audit.appendProvenance$ on deleteColeccion$ (DSO destroyed)', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(facade.deleteColeccion$('coll-1', 'ED_BASICA'));
+
+      expect(mockAudit.appendProvenance$).not.toHaveBeenCalled();
     });
   });
 });

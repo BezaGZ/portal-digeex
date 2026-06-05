@@ -8,9 +8,10 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { map } from 'rxjs/operators';
+import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 
 import { ItemApiService } from '../../../core/api/item-api.service';
@@ -30,7 +31,7 @@ import { ProvenanceTimeline } from '../content/provenance/timeline/provenance-ti
   selector: 'app-items-detail',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CardModule, LoadingSpinnerComponent, ProvenanceTimeline],
+  imports: [CommonModule, ButtonModule, CardModule, LoadingSpinnerComponent, ProvenanceTimeline],
   templateUrl: './items-detail.html',
 })
 export class ItemsDetail {
@@ -38,7 +39,13 @@ export class ItemsDetail {
   private readonly api = inject(ItemApiService);
   private readonly provenance = inject(ProvenanceService);
   private readonly breadcrumb = inject(BreadcrumbService);
+  private readonly location = inject(Location);
   private readonly destroyRef = inject(DestroyRef);
+
+  /** Vuelve a la vista anterior en el stack del navegador. */
+  goBack(): void {
+    this.location.back();
+  }
 
   private readonly itemUuid = toSignal(
     this.route.paramMap.pipe(map((p) => p.get('itemUuid') ?? '')),

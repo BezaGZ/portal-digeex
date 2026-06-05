@@ -8,9 +8,10 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { map } from 'rxjs/operators';
+import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 
 import { CommunityApiService } from '../../../core/api/community-api.service';
@@ -29,7 +30,7 @@ import { ProvenanceTimeline } from '../content/provenance/timeline/provenance-ti
   selector: 'app-subdirecciones-detail',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CardModule, LoadingSpinnerComponent, ProvenanceTimeline],
+  imports: [CommonModule, ButtonModule, CardModule, LoadingSpinnerComponent, ProvenanceTimeline],
   templateUrl: './subdirecciones-detail.html',
 })
 export class SubdireccionesDetail {
@@ -37,7 +38,13 @@ export class SubdireccionesDetail {
   private readonly api = inject(CommunityApiService);
   private readonly provenance = inject(ProvenanceService);
   private readonly breadcrumb = inject(BreadcrumbService);
+  private readonly location = inject(Location);
   private readonly destroyRef = inject(DestroyRef);
+
+  /** Vuelve a la vista anterior en el stack del navegador. */
+  goBack(): void {
+    this.location.back();
+  }
 
   private readonly uuid = toSignal(
     this.route.paramMap.pipe(map((p) => p.get('uuid') ?? '')),

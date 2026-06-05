@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -70,6 +70,7 @@ type ResourcesTab = 'activos' | 'eliminados';
     InputNumberModule,
     InputTextModule,
     PaginatorModule,
+    RouterLink,
     SelectModule,
     TooltipModule,
     LoadingSpinnerComponent,

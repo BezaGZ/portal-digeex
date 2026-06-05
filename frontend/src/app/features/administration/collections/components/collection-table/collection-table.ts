@@ -1,6 +1,8 @@
 import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { TableLazyLoadEvent, TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
+import { TooltipModule } from 'primeng/tooltip';
 import { Collection } from '../../../../../core/api/models/collection.model';
 import { extractLogoUrl } from '../../../../../core/api/collection-logo.util';
 import { ProgramaView } from '../../models/programa-view.model';
@@ -14,7 +16,7 @@ import { ProgramaView } from '../../models/programa-view.model';
   selector: 'app-collection-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './collection-table.html',
-  imports: [TableModule, ButtonModule],
+  imports: [TableModule, ButtonModule, TooltipModule, RouterLink],
 })
 export class CollectionTable {
   readonly items = input.required<ProgramaView[]>();

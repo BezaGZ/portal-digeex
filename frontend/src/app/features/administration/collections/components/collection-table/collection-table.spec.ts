@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
 
 import { CollectionTable } from './collection-table';
 import { Collection } from '../../../../../core/api/models/collection.model';
@@ -11,14 +12,34 @@ import { Collection } from '../../../../../core/api/models/collection.model';
  * Renderiza una fila por colección y emite editRequest/deleteRequest
  * cuando el usuario interactúa.
  *
- * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 5.
+ * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclos 5 y 21 (Sprint 8).
  */
 describe('CollectionTable', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [CollectionTable],
-      providers: [provideNoopAnimations()],
+      providers: [provideNoopAnimations(), provideRouter([])],
     });
+  });
+
+  /** Verifica que cada fila exponga el botón "Ver historial" con routerLink al detail del programa. */
+  it('should render a "Ver historial" button per row linking to /administrador/programas/<uuid>', () => {
+    const fixture = TestBed.createComponent(CollectionTable);
+    const items: Collection[] = [
+      {
+        uuid: 'coll-99',
+        name: 'TestCol',
+        handle: '123/99',
+        type: 'collection',
+        metadata: {},
+        archivedItemsCount: 0,
+      },
+    ];
+    fixture.componentRef.setInput('items', items);
+    fixture.detectChanges();
+
+    const linkBtn = fixture.nativeElement.querySelector('[data-testid="programa-view-history"]');
+    expect(linkBtn).not.toBeNull();
   });
 
   it('should render one row per collection from the items input', () => {

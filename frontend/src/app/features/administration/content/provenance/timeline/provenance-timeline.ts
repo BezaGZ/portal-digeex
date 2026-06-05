@@ -13,6 +13,7 @@ import { TimelineEntry } from '../timeline-entry.model';
 const ACTION_LABELS: Readonly<Record<string, string>> = {
   Submitted: 'Subido',
   'Made available': 'Publicado',
+  Created: 'Creado',
   Edited: 'Editado',
   Withdrawn: 'Retirado',
   Reinstated: 'Restaurado',

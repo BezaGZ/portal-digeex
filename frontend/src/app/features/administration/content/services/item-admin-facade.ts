@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
-import { catchError, last, map, switchMap } from 'rxjs/operators';
+import { last, map, switchMap } from 'rxjs/operators';
 import { ItemApiService } from '../../../../core/api/item-api.service';
 import { BundleApiService } from '../../../../core/api/bundle-api.service';
 import { ContentScopeService } from './content-scope.service';
@@ -9,7 +9,7 @@ import { Item } from '../../../../core/api/models/item.model';
 import { Bitstream } from '../../../../core/api/models/bitstream.model';
 import { Paginated } from '../../../../core/api/models/hal.model';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
-import { resolveCaller$ } from './facade-utils';
+import { resolveCaller$, withAudit$ } from './facade-utils';
 import { AUDIT_ACTIONS, AuditTrailService } from '../provenance/audit-trail.service';
 
 /**
@@ -43,22 +43,6 @@ export class ItemAdminFacade {
   private readonly authCaller = inject(AuthCallerService);
   private readonly audit = inject(AuditTrailService);
 
-  /**
-   * Concatena un append de provenance best-effort al final del flujo exitoso.
-   * El error del audit NO rompe la operación principal: el facade emite el
-   * recurso original aunque el PATCH del audit falle.
-   */
-  private withItemAudit$(action: string) {
-    return (source$: Observable<Item>): Observable<Item> =>
-      source$.pipe(
-        switchMap((item) =>
-          this.audit
-            .appendProvenance$('item', item.uuid, action)
-            .pipe(catchError(() => of(undefined)), map(() => item)),
-        ),
-      );
-  }
-
   /** Aplica un parche JSON sobre la metadata del item archivado. */
   updateItem$(
     uuid: string,
@@ -66,7 +50,7 @@ export class ItemAdminFacade {
     sufijoSubdireccion: string,
   ): Observable<Item> {
     return this.runScoped$(sufijoSubdireccion, () =>
-      this.itemApi.updateMetadata(uuid, patch).pipe(this.withItemAudit$(AUDIT_ACTIONS.EDITED)),
+      this.itemApi.updateMetadata(uuid, patch).pipe(withAudit$<Item>(this.audit, 'item', AUDIT_ACTIONS.EDITED)),
     );
   }
 
@@ -108,7 +92,7 @@ export class ItemAdminFacade {
       if (steps$.length === 0) {
         return of(payload.item);
       }
-      return this.runStepsSequential$(steps$, uuid).pipe(this.withItemAudit$(AUDIT_ACTIONS.EDITED));
+      return this.runStepsSequential$(steps$, uuid).pipe(withAudit$<Item>(this.audit, 'item', AUDIT_ACTIONS.EDITED));
     });
   }
 
@@ -186,7 +170,7 @@ export class ItemAdminFacade {
   /**
    * Borra los bitstreams del bundle existente y sube el nuevo. Los DELETE
    * se hacen secuenciales con `concatMap` porque DSpace 9 a veces tira 500
-   * con deletes concurrentes al mismo bundle (misma lección del Ciclo 19).
+   * con deletes concurrentes al mismo bundle.
    */
   private replaceCover$(bundleUuid: string, coverFile: File): Observable<unknown> {
     return this.bundleApi.listBitstreams(bundleUuid).pipe(

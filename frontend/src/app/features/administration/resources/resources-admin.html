@@ -142,6 +142,16 @@
                 </td>
                 <td class="px-3 py-3 text-right whitespace-nowrap">
                   <div class="flex gap-2 justify-end">
+                    <span data-testid="action-view-history">
+                      <p-button
+                        icon="pi pi-history"
+                        severity="secondary"
+                        [text]="true"
+                        [rounded]="true"
+                        pTooltip="Ver historial"
+                        tooltipPosition="top"
+                        [routerLink]="['/administrador/items', o.indexableObject.uuid]" />
+                    </span>
                     @if (tab() === 'activos') {
                       <span data-testid="action-edit">
                         <p-button

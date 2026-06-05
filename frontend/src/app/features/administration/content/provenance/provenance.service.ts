@@ -24,6 +24,7 @@ const PATTERNS: readonly ProvenancePattern[] = [
   { action: 'Made available', regex: new RegExp(`^Made available in DSpace on ${TS}`) },
   { action: 'Withdrawn', regex: new RegExp(`^Item withdrawn by (.+?) on ${TS}`) },
   { action: 'Reinstated', regex: new RegExp(`^Item reinstated by (.+?) on ${TS}`) },
+  { action: 'Created', regex: new RegExp(`^Created by (.+?) on ${TS}`) },
   { action: 'Edited', regex: new RegExp(`^Edited by (.+?) on ${TS}`) },
 ];
 

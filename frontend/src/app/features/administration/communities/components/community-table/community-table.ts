@@ -1,6 +1,8 @@
 import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { TableLazyLoadEvent, TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
+import { TooltipModule } from 'primeng/tooltip';
 import { Community } from '../../../../../core/api/models/community.model';
 import { SubdireccionView } from '../../models/subdireccion-view.model';
 
@@ -14,7 +16,7 @@ import { SubdireccionView } from '../../models/subdireccion-view.model';
   selector: 'app-community-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './community-table.html',
-  imports: [TableModule, ButtonModule],
+  imports: [TableModule, ButtonModule, TooltipModule, RouterLink],
 })
 export class CommunityTable {
   readonly items = input.required<SubdireccionView[]>();

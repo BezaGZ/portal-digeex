@@ -3,31 +3,55 @@
     data-testid="provenance-timeline-empty"
     class="flex flex-col items-center justify-center py-8 px-6 text-center"
   >
-    <p class="text-[color:var(--p-text-muted-color)]">Sin actividad registrada</p>
+    <p
+      style="
+        color: var(--color-text-secondary);
+        font-family: var(--font-body);
+      "
+    >
+      Sin actividad registrada
+    </p>
   </div>
 } @else {
   <ol aria-label="Historial de actividad" class="flex flex-col gap-3 list-none p-0 m-0">
     @for (entry of entries(); track $index) {
-      <li>
-        <p-card>
-          @if (entry.timestamp) {
-            <time
-              [attr.datetime]="entry.timestamp.toISOString()"
-              class="block text-sm text-[color:var(--p-text-muted-color)]"
-            >
-              {{ entry.timestamp | date: 'medium' }}
-            </time>
-          }
-          @if (entry.action !== 'Unknown') {
-            <p class="font-medium mt-1">
-              <span>{{ entry.actor ?? 'DSpace' }}</span>
-              <span class="text-[color:var(--p-text-muted-color)]"> — </span>
-              <span>{{ actionLabel(entry.action) }}</span>
-            </p>
-          } @else {
-            <p class="font-mono text-sm mt-1">{{ entry.raw }}</p>
-          }
-        </p-card>
+      <li
+        class="rounded-lg border p-4"
+        style="border-color: var(--color-border, #e5e7eb); background-color: #ffffff;"
+      >
+        @if (entry.timestamp) {
+          <time
+            [attr.datetime]="entry.timestamp.toISOString()"
+            class="block text-sm mb-1"
+            style="
+              color: var(--color-text-secondary);
+              font-family: var(--font-body);
+            "
+          >
+            {{ entry.timestamp | date: 'medium' }}
+          </time>
+        }
+        @if (entry.action !== 'Unknown') {
+          <p
+            class="m-0"
+            style="
+              font-family: var(--font-body);
+              font-weight: 500;
+              color: var(--gob-azul-gobierno);
+            "
+          >
+            <span>{{ entry.actor ?? 'DSpace' }}</span>
+            <span style="color: var(--color-text-secondary);"> — </span>
+            <span>{{ actionLabel(entry.action) }}</span>
+          </p>
+        } @else {
+          <p
+            class="m-0 font-mono text-sm"
+            style="color: var(--color-text-secondary); font-family: var(--font-body);"
+          >
+            {{ entry.raw }}
+          </p>
+        }
       </li>
     }
   </ol>

@@ -109,6 +109,7 @@ describe('ProvenanceTimeline', () => {
 
     expect(cmp.actionLabel('Submitted')).toBe('Subido');
     expect(cmp.actionLabel('Made available')).toBe('Publicado');
+    expect(cmp.actionLabel('Created')).toBe('Creado');
     expect(cmp.actionLabel('Edited')).toBe('Editado');
     expect(cmp.actionLabel('Withdrawn')).toBe('Retirado');
     expect(cmp.actionLabel('Reinstated')).toBe('Restaurado');

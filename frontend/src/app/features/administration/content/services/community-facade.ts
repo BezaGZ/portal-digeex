@@ -12,7 +12,8 @@ import {
   GROUPS_COLLECTION_PATH,
   buildAbsoluteApiUrl,
 } from '../../../../core/api/dspace-rest.util';
-import { resolveCaller$, rollbackCascade } from './facade-utils';
+import { resolveCaller$, rollbackCascade, withAudit$ } from './facade-utils';
+import { AUDIT_ACTIONS, AuditTrailService } from '../provenance/audit-trail.service';
 
 /**
  * Coordina create/update/delete de subdirecciones (sub-comunidades de la
@@ -27,6 +28,7 @@ export class CommunityFacade {
   private readonly groupApi = inject(GroupApiService);
   private readonly scope = inject(ContentScopeService);
   private readonly authCaller = inject(AuthCallerService);
+  private readonly audit = inject(AuditTrailService);
 
   /**
    * Crea una subdirección bajo la raíz del repositorio. Solo SuperAdmin.
@@ -58,7 +60,9 @@ export class CommunityFacade {
                   ),
               );
             }
-            return this.runCreatePipeline$(rootUuid, body, sufijo);
+            return this.runCreatePipeline$(rootUuid, body, sufijo).pipe(
+              withAudit$<Community>(this.audit, 'community', AUDIT_ACTIONS.CREATED),
+            );
           }),
         );
       }),
@@ -83,7 +87,9 @@ export class CommunityFacade {
         } catch (err) {
           return throwError(() => err);
         }
-        return this.communityApi.updateMetadata(uuid, patch);
+        return this.communityApi
+          .updateMetadata(uuid, patch)
+          .pipe(withAudit$<Community>(this.audit, 'community', AUDIT_ACTIONS.EDITED));
       }),
     );
   }

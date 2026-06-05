@@ -39,7 +39,7 @@ type AuditMock = { appendProvenance$: Mock };
  * desde el item al árbol jerárquico no se hace acá: la UI lo conoce
  * porque navega desde la colección y se lo pasa al facade.
  *
- * Ciclo 15 TDD — Sprint 6. Ajustado en Ciclo 34.
+ * Ciclo 15 TDD — Sprint 6. Ajustado en Ciclos 34, 20 y 21 (Sprint 8).
  */
 describe('ItemAdminFacade', () => {
   let facade: ItemAdminFacade;

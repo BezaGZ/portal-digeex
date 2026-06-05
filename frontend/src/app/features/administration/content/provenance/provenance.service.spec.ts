@@ -104,6 +104,21 @@ describe('ProvenanceService', () => {
     expect(entry.timestamp?.toISOString()).toBe('2026-06-05T08:19:10.065Z');
   });
 
+  /** Verifica el patrón del portal "Created by NAME (EMAIL) on TIMESTAMP" que el AuditTrailService escribe al crear community/collection. */
+  it('should parse the DIGEEX "Created by" pattern', () => {
+    const entries = [
+      buildMetadataValue(
+        'Created by Administrador DIGEEX (admin@mineduc.gob.gt) on 2026-06-05T11:17:44.135Z',
+      ),
+    ];
+
+    const [entry] = service.parseProvenance(entries);
+
+    expect(entry.action).toBe('Created');
+    expect(entry.actor).toBe('Administrador DIGEEX (admin@mineduc.gob.gt)');
+    expect(entry.timestamp?.toISOString()).toBe('2026-06-05T11:17:44.135Z');
+  });
+
   /** Verifica el patrón del portal "Edited by NAME (EMAIL) on TIMESTAMP". */
   it('should parse the DIGEEX "Edited by" pattern', () => {
     const entries = [

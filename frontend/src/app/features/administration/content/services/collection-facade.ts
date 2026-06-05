@@ -13,7 +13,8 @@ import {
   GROUPS_COLLECTION_PATH,
   buildAbsoluteApiUrl,
 } from '../../../../core/api/dspace-rest.util';
-import { resolveCaller$, rollbackCascade } from './facade-utils';
+import { resolveCaller$, rollbackCascade, withAudit$ } from './facade-utils';
+import { AUDIT_ACTIONS, AuditTrailService } from '../provenance/audit-trail.service';
 
 /**
  * Coordina create/update/delete de colecciones bajo una subdirección. Cada
@@ -30,6 +31,7 @@ export class CollectionFacade {
   private readonly bundleApi = inject(BundleApiService);
   private readonly scope = inject(ContentScopeService);
   private readonly authCaller = inject(AuthCallerService);
+  private readonly audit = inject(AuditTrailService);
 
   /**
    * Crea una colección bajo la subcomunidad indicada y enlaza el SUBMITTERS
@@ -73,8 +75,7 @@ export class CollectionFacade {
                        * colección: como subgroup del _SUBMIT técnico (da SUBMIT a
                        * los delegados) y como subgroup del _admin técnico (les da
                        * ADMIN heredado, necesario para POST bundles del cover y
-                       * PATCH metadata del item post-archive). Mismo patrón que
-                       * setup-dspace.sh Ciclo 40.
+                       * PATCH metadata del item post-archive).
                        */
                       return this.groupApi
                         .addSubgroup(techSubmit.uuid, sharedUri)
@@ -135,6 +136,7 @@ export class CollectionFacade {
           ),
         );
       }),
+      withAudit$<Collection>(this.audit, 'collection', AUDIT_ACTIONS.CREATED),
     );
   }
 
@@ -159,7 +161,9 @@ export class CollectionFacade {
         } catch (err) {
           return throwError(() => err);
         }
-        return this.collectionApi.updateMetadata(uuid, patch);
+        return this.collectionApi
+          .updateMetadata(uuid, patch)
+          .pipe(withAudit$<Collection>(this.audit, 'collection', AUDIT_ACTIONS.EDITED));
       }),
     );
   }
