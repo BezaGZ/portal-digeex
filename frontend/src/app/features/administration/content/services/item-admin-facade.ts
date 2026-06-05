@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
-import { last, map, switchMap } from 'rxjs/operators';
+import { catchError, last, map, switchMap } from 'rxjs/operators';
 import { ItemApiService } from '../../../../core/api/item-api.service';
 import { BundleApiService } from '../../../../core/api/bundle-api.service';
 import { ContentScopeService } from './content-scope.service';
@@ -10,6 +10,7 @@ import { Bitstream } from '../../../../core/api/models/bitstream.model';
 import { Paginated } from '../../../../core/api/models/hal.model';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
 import { resolveCaller$ } from './facade-utils';
+import { AUDIT_ACTIONS, AuditTrailService } from '../provenance/audit-trail.service';
 
 /**
  * Bundle de cambios para edición de item archivado. Cada campo es opcional
@@ -40,6 +41,23 @@ export class ItemAdminFacade {
   private readonly bundleApi = inject(BundleApiService);
   private readonly scope = inject(ContentScopeService);
   private readonly authCaller = inject(AuthCallerService);
+  private readonly audit = inject(AuditTrailService);
+
+  /**
+   * Concatena un append de provenance best-effort al final del flujo exitoso.
+   * El error del audit NO rompe la operación principal: el facade emite el
+   * recurso original aunque el PATCH del audit falle.
+   */
+  private withItemAudit$(action: string) {
+    return (source$: Observable<Item>): Observable<Item> =>
+      source$.pipe(
+        switchMap((item) =>
+          this.audit
+            .appendProvenance$('item', item.uuid, action)
+            .pipe(catchError(() => of(undefined)), map(() => item)),
+        ),
+      );
+  }
 
   /** Aplica un parche JSON sobre la metadata del item archivado. */
   updateItem$(
@@ -48,7 +66,7 @@ export class ItemAdminFacade {
     sufijoSubdireccion: string,
   ): Observable<Item> {
     return this.runScoped$(sufijoSubdireccion, () =>
-      this.itemApi.updateMetadata(uuid, patch),
+      this.itemApi.updateMetadata(uuid, patch).pipe(this.withItemAudit$(AUDIT_ACTIONS.EDITED)),
     );
   }
 
@@ -90,7 +108,7 @@ export class ItemAdminFacade {
       if (steps$.length === 0) {
         return of(payload.item);
       }
-      return this.runStepsSequential$(steps$, uuid);
+      return this.runStepsSequential$(steps$, uuid).pipe(this.withItemAudit$(AUDIT_ACTIONS.EDITED));
     });
   }
 
@@ -213,12 +231,19 @@ export class ItemAdminFacade {
     );
   }
 
-  /** Marca el item como withdrawn (queda fuera del portal público pero restorable). */
+  /**
+   * Marca el item como withdrawn (queda fuera del portal público pero restorable).
+   * No appendea provenance manual: DSpace 9 escribe `Item withdrawn by …`
+   * automáticamente al disparar el endpoint (verificado el 2026-06-05).
+   */
   withdrawItem$(uuid: string, sufijoSubdireccion: string): Observable<Item> {
     return this.runScoped$(sufijoSubdireccion, () => this.itemApi.withdraw(uuid));
   }
 
-  /** Devuelve un item previamente withdrawn al portal público. */
+  /**
+   * Devuelve un item previamente withdrawn al portal público. DSpace 9
+   * escribe `Item reinstated by …` automáticamente.
+   */
   restoreItem$(uuid: string, sufijoSubdireccion: string): Observable<Item> {
     return this.runScoped$(sufijoSubdireccion, () => this.itemApi.restore(uuid));
   }

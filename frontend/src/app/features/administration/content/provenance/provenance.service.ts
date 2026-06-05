@@ -12,28 +12,19 @@ interface ProvenancePattern {
   readonly regex: RegExp;
 }
 
+/**
+ * Fragmento de timestamp ISO 8601 aceptado por DSpace y por `Date.toISOString()`
+ * del frontend. Los milisegundos son opcionales porque DSpace nativo los
+ * omite (`...:02Z`) mientras que `AuditTrailService` los incluye (`...:02.201Z`).
+ */
+const TS = '(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z)';
+
 const PATTERNS: readonly ProvenancePattern[] = [
-  {
-    action: 'Submitted',
-    regex: /^Submitted by (.+?) on (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/,
-  },
-  {
-    action: 'Made available',
-    regex: /^Made available in DSpace on (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/,
-  },
-  {
-    action: 'Withdrawn',
-    regex:
-      /^Withdrawn from DSpace on (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) by (.+)$/,
-  },
-  {
-    action: 'Reinstated',
-    regex: /^Reinstated by (.+?) on (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/,
-  },
-  {
-    action: 'Edited',
-    regex: /^Edited by (.+?) on (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/,
-  },
+  { action: 'Submitted', regex: new RegExp(`^Submitted by (.+?) on ${TS}`) },
+  { action: 'Made available', regex: new RegExp(`^Made available in DSpace on ${TS}`) },
+  { action: 'Withdrawn', regex: new RegExp(`^Item withdrawn by (.+?) on ${TS}`) },
+  { action: 'Reinstated', regex: new RegExp(`^Item reinstated by (.+?) on ${TS}`) },
+  { action: 'Edited', regex: new RegExp(`^Edited by (.+?) on ${TS}`) },
 ];
 
 /**
@@ -59,8 +50,8 @@ export class ProvenanceService {
   }
 
   /**
-   * Intenta cada patrón en orden hasta encontrar match. "Withdrawn" pone
-   * timestamp antes que actor en las capturas; los demás invierten el orden.
+   * Intenta cada patrón en orden hasta encontrar match. "Made available" solo
+   * captura timestamp; los otros cuatro capturan actor + timestamp en ese orden.
    */
   private parseEntry(raw: string): TimelineEntry {
     for (const pattern of PATTERNS) {
@@ -71,14 +62,6 @@ export class ProvenanceService {
         return {
           action: pattern.action,
           actor: null,
-          timestamp: this.toDate(match[1]),
-          raw,
-        };
-      }
-      if (pattern.action === 'Withdrawn') {
-        return {
-          action: pattern.action,
-          actor: match[2],
           timestamp: this.toDate(match[1]),
           raw,
         };

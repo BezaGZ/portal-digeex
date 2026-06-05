@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Observable, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 
-import { AuditTrailService } from './audit-trail.service';
+import { AUDIT_ACTIONS, AuditTrailService } from './audit-trail.service';
 import { ItemApiService } from '../../../../core/api/item-api.service';
 import { CommunityApiService } from '../../../../core/api/community-api.service';
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
@@ -19,7 +19,7 @@ import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
  * actor desde `AuthCallerService.currentActor$` y dispatcha al wrapper HTTP
  * correspondiente; el control de error es responsabilidad del consumidor.
  *
- * Ciclo 19 TDD — Sprint 8.
+ * Ciclo 19 TDD — Sprint 8. Ajustado en Ciclo 20 (Sprint 8).
  */
 describe('AuditTrailService', () => {
   let service: AuditTrailService;
@@ -150,6 +150,12 @@ describe('AuditTrailService', () => {
     });
 
     expect(error.message).toBe('500 Server Error');
+  });
+
+  /** Verifica que `AUDIT_ACTIONS` exporta el vocabulario canónico que los facades del Bloque 3 consumen. */
+  it('should export AUDIT_ACTIONS with the canonical vocabulary', () => {
+    expect(AUDIT_ACTIONS.EDITED).toBe('Edited');
+    expect(AUDIT_ACTIONS.CREATED).toBe('Created');
   });
 
   /** Verifica que el observable emita `undefined` y complete cuando el PATCH resuelve OK. */

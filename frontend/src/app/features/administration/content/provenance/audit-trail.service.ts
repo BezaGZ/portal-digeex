@@ -31,6 +31,18 @@ export const AUDIT_MESSAGE_TEMPLATE = (
 export const PROVENANCE_APPEND_PATH = '/metadata/dc.description.provenance/-';
 
 /**
+ * Vocabulario canónico de las acciones que solo escribe el portal. DSpace 9
+ * cubre nativamente `Submitted`, `Made available`, `Item withdrawn by` e
+ * `Item reinstated by` (validado el 2026-06-05); el portal cubre `Edited`
+ * (PATCH de metadata sobre items, communities y collections) y `Created`
+ * (creación de community/collection desde el portal).
+ */
+export const AUDIT_ACTIONS = {
+  EDITED: 'Edited',
+  CREATED: 'Created',
+} as const;
+
+/**
  * Service centralizado para agregar entradas de auditoría al campo
  * `dc.description.provenance` de items, communities y collections. Resuelve
  * el actor desde `AuthCallerService.currentActor$`, arma el patch JSON

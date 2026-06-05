@@ -13,7 +13,7 @@ import { MetadataMap, MetadataValue } from '../../../../core/api/models/metadata
  * TIMESTAMP). Entradas no reconocidas se exponen con `raw` para que el
  * timeline las renderice como texto plano sin perder información.
  *
- * Ciclo 13 TDD — Sprint 8. Ajustado en Ciclo 15 (Sprint 8).
+ * Ciclo 13 TDD — Sprint 8. Ajustado en Ciclos 15 y 20 (Sprint 8).
  */
 describe('ProvenanceService', () => {
   let service: ProvenanceService;
@@ -55,11 +55,11 @@ describe('ProvenanceService', () => {
     expect(entry.timestamp?.toISOString()).toBe('2024-01-15T10:35:00.000Z');
   });
 
-  /** Verifica el patrón nativo "Withdrawn from DSpace on TIMESTAMP by NAME". */
-  it('should parse the native "Withdrawn from DSpace" pattern', () => {
+  /** Verifica el patrón nativo "Item withdrawn by NAME on TIMESTAMP" que DSpace 9 escribe al retirar un item. */
+  it('should parse the native "Item withdrawn by" pattern', () => {
     const entries = [
       buildMetadataValue(
-        'Withdrawn from DSpace on 2024-02-01T14:00:00Z by Admin User (admin@example.com)',
+        'Item withdrawn by Admin User (admin@example.com) on 2024-02-01T14:00:00Z\nItem was in collections:\nFoo (ID: x)',
       ),
     ];
 
@@ -70,11 +70,11 @@ describe('ProvenanceService', () => {
     expect(entry.timestamp?.toISOString()).toBe('2024-02-01T14:00:00.000Z');
   });
 
-  /** Verifica el patrón nativo "Reinstated by NAME (EMAIL) on TIMESTAMP". */
-  it('should parse the native "Reinstated by" pattern', () => {
+  /** Verifica el patrón nativo "Item reinstated by NAME on TIMESTAMP" que DSpace 9 escribe al restaurar. */
+  it('should parse the native "Item reinstated by" pattern', () => {
     const entries = [
       buildMetadataValue(
-        'Reinstated by John Smith (jsmith@example.com) on 2024-02-05T09:00:00Z',
+        'Item reinstated by John Smith (jsmith@example.com) on 2024-02-05T09:00:00Z',
       ),
     ];
 
@@ -83,6 +83,25 @@ describe('ProvenanceService', () => {
     expect(entry.action).toBe('Reinstated');
     expect(entry.actor).toBe('John Smith (jsmith@example.com)');
     expect(entry.timestamp?.toISOString()).toBe('2024-02-05T09:00:00.000Z');
+  });
+
+  /**
+   * Verifica que el regex acepte timestamps con milisegundos. El parser tiene
+   * que matchear tanto el formato de DSpace nativo (`...:02Z` sin ms) como el
+   * de `AuditTrailService` (`...:02.201Z` que viene de `Date.toISOString()`).
+   */
+  it('should accept timestamps with milliseconds from Date.toISOString()', () => {
+    const entries = [
+      buildMetadataValue(
+        'Edited by Mynor Ramos (mynor@mineduc.gob.gt) on 2026-06-05T08:19:10.065Z',
+      ),
+    ];
+
+    const [entry] = service.parseProvenance(entries);
+
+    expect(entry.action).toBe('Edited');
+    expect(entry.actor).toBe('Mynor Ramos (mynor@mineduc.gob.gt)');
+    expect(entry.timestamp?.toISOString()).toBe('2026-06-05T08:19:10.065Z');
   });
 
   /** Verifica el patrón del portal "Edited by NAME (EMAIL) on TIMESTAMP". */
@@ -124,7 +143,7 @@ describe('ProvenanceService', () => {
   it('should sort parsed entries chronologically descending', () => {
     const entries = [
       buildMetadataValue('Submitted by Jane Doe (jdoe@example.com) on 2024-01-15T10:30:00Z'),
-      buildMetadataValue('Reinstated by John Smith (jsmith@example.com) on 2024-02-05T09:00:00Z'),
+      buildMetadataValue('Item reinstated by John Smith (jsmith@example.com) on 2024-02-05T09:00:00Z'),
       buildMetadataValue('Made available in DSpace on 2024-01-20T10:35:00Z'),
     ];
 

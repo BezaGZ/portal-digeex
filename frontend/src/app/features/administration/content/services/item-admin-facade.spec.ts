@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { Observable, firstValueFrom, of } from 'rxjs';
+import { Observable, firstValueFrom, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 import { ItemAdminFacade } from './item-admin-facade';
 import { ItemApiService } from '../../../../core/api/item-api.service';
 import { BundleApiService } from '../../../../core/api/bundle-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
+import { AuditTrailService } from '../provenance/audit-trail.service';
 import { BusinessRuleError } from '../../../../core/error/business-rule-error';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
 import { Caller } from '../specifications/scope-context.model';
@@ -26,6 +27,7 @@ type BundleApiMock = {
 };
 type ScopeMock = { assertWithinScope: Mock };
 type AuthCallerMock = { currentCaller$: Observable<Caller | null> };
+type AuditMock = { appendProvenance$: Mock };
 
 /**
  * Tests de ItemAdminFacade.
@@ -45,6 +47,7 @@ describe('ItemAdminFacade', () => {
   let mockBundleApi: BundleApiMock;
   let mockScope: ScopeMock;
   let mockAuthCaller: AuthCallerMock;
+  let mockAudit: AuditMock;
 
   const archivedItem = {
     uuid: 'item-uuid',
@@ -68,6 +71,7 @@ describe('ItemAdminFacade', () => {
         { provide: BundleApiService, useValue: mockBundleApi },
         { provide: ContentScopeService, useValue: mockScope },
         { provide: AuthCallerService, useValue: mockAuthCaller },
+        { provide: AuditTrailService, useValue: mockAudit },
       ],
     });
     facade = TestBed.inject(ItemAdminFacade);
@@ -90,6 +94,7 @@ describe('ItemAdminFacade', () => {
       deleteBitstream: vi.fn(() => of(undefined)),
     };
     mockScope = { assertWithinScope: vi.fn() };
+    mockAudit = { appendProvenance$: vi.fn(() => of(undefined)) };
   });
 
   describe('updateItem$', () => {
@@ -476,6 +481,69 @@ describe('ItemAdminFacade', () => {
         firstValueFrom(facade.restoreItem$('item-uuid', 'ED_TRABAJO')),
       ).rejects.toBeInstanceOf(BusinessRuleError);
       expect(mockItemApi.restore).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('audit trail integration', () => {
+    /** Verifica que updateItem$ invoque audit.appendProvenance$ con la acción Edited. */
+    it('should call audit.appendProvenance$ with "Edited" after a successful updateItem$', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      const patch: JsonPatchEntry[] = [
+        { op: 'replace', path: '/metadata/dc.title/0/value', value: 'X' },
+      ];
+
+      await firstValueFrom(facade.updateItem$('item-uuid', patch, 'ED_BASICA'));
+
+      expect(mockAudit.appendProvenance$).toHaveBeenCalledWith('item', 'item-uuid', 'Edited');
+    });
+
+    /** Verifica que editItem$ invoque audit.appendProvenance$ con la acción Edited al cierre. */
+    it('should call audit.appendProvenance$ with "Edited" after a successful editItem$', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      const patch: JsonPatchEntry[] = [
+        { op: 'replace', path: '/metadata/dc.title/0/value', value: 'X' },
+      ];
+
+      await firstValueFrom(
+        facade.editItem$('item-uuid', { patch, item: archivedItem }, 'ED_BASICA'),
+      );
+
+      expect(mockAudit.appendProvenance$).toHaveBeenCalledWith('item', 'item-uuid', 'Edited');
+    });
+
+    /**
+     * Verifica que withdrawItem$ NO llame al audit: DSpace 9 escribe
+     * `Item withdrawn by …` automáticamente y un audit manual duplicaría.
+     */
+    it('should NOT call audit.appendProvenance$ on withdrawItem$ (DSpace writes the native entry)', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(facade.withdrawItem$('item-uuid', 'ED_BASICA'));
+
+      expect(mockAudit.appendProvenance$).not.toHaveBeenCalled();
+    });
+
+    /** Verifica que restoreItem$ tampoco llame al audit. */
+    it('should NOT call audit.appendProvenance$ on restoreItem$ (DSpace writes the native entry)', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(facade.restoreItem$('item-uuid', 'ED_BASICA'));
+
+      expect(mockAudit.appendProvenance$).not.toHaveBeenCalled();
+    });
+
+    /** Verifica best-effort: editItem$ emite el item exitoso aunque el audit falle. */
+    it('should emit the successful item even when audit.appendProvenance$ errors (best-effort)', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockAudit.appendProvenance$.mockReturnValue(throwError(() => new Error('500 audit failed')));
+      const patch: JsonPatchEntry[] = [
+        { op: 'replace', path: '/metadata/dc.title/0/value', value: 'X' },
+      ];
+
+      const result = await firstValueFrom(facade.updateItem$('item-uuid', patch, 'ED_BASICA'));
+
+      expect(result.uuid).toBe('item-uuid');
+      expect(mockAudit.appendProvenance$).toHaveBeenCalledTimes(1);
     });
   });
 });

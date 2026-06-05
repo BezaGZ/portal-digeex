@@ -12,7 +12,7 @@ import { TimelineEntry } from '../timeline-entry.model';
  * `<time datetime>` para que screen readers parseen las fechas. Empty-state
  * con `data-testid` para los recursos sin provenance escrito.
  *
- * Ciclo 15 TDD — Sprint 8.
+ * Ciclo 15 TDD — Sprint 8. Ajustado en Ciclo 20 (Sprint 8).
  */
 describe('ProvenanceTimeline', () => {
   function buildEntry(overrides: Partial<TimelineEntry> = {}): TimelineEntry {
@@ -82,8 +82,8 @@ describe('ProvenanceTimeline', () => {
     expect(fixture.nativeElement.querySelector('ol')).toBeNull();
   });
 
-  /** Verifica que entradas conocidas muestren actor + action; entradas con action="Unknown" muestren el `raw` plano. */
-  it('should render actor + action for known entries and the raw text for unknown entries', () => {
+  /** Verifica que entradas conocidas muestren actor + action traducida; entradas con action="Unknown" muestren el `raw` plano. */
+  it('should render actor + localized action for known entries and the raw text for unknown entries', () => {
     const fixture = TestBed.createComponent(ProvenanceTimeline);
     fixture.componentRef.setInput('entries', [
       buildEntry({ action: 'Submitted', actor: 'Jane Doe (jdoe@example.com)' }),
@@ -98,7 +98,20 @@ describe('ProvenanceTimeline', () => {
 
     const items = fixture.nativeElement.querySelectorAll('ol > li');
     expect(items[0].textContent).toContain('Jane Doe (jdoe@example.com)');
-    expect(items[0].textContent).toContain('Submitted');
+    expect(items[0].textContent).toContain('Subido');
     expect(items[1].textContent).toContain('Some custom non-standard provenance note');
+  });
+
+  /** Verifica las 5 traducciones canónicas del vocabulario del parser. */
+  it('should translate the 5 canonical actions to Spanish labels', () => {
+    const fixture = TestBed.createComponent(ProvenanceTimeline);
+    const cmp = fixture.componentInstance;
+
+    expect(cmp.actionLabel('Submitted')).toBe('Subido');
+    expect(cmp.actionLabel('Made available')).toBe('Publicado');
+    expect(cmp.actionLabel('Edited')).toBe('Editado');
+    expect(cmp.actionLabel('Withdrawn')).toBe('Retirado');
+    expect(cmp.actionLabel('Reinstated')).toBe('Restaurado');
+    expect(cmp.actionLabel('SomethingCustom')).toBe('SomethingCustom');
   });
 });

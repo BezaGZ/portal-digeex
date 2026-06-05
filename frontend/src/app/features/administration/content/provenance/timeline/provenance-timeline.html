@@ -22,7 +22,7 @@
             <p class="font-medium mt-1">
               <span>{{ entry.actor ?? 'DSpace' }}</span>
               <span class="text-[color:var(--p-text-muted-color)]"> — </span>
-              <span>{{ entry.action }}</span>
+              <span>{{ actionLabel(entry.action) }}</span>
             </p>
           } @else {
             <p class="font-mono text-sm mt-1">{{ entry.raw }}</p>
