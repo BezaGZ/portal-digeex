@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -68,6 +69,7 @@ export class MySubmissions {
   private readonly authCaller = inject(AuthCallerService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly objects = signal<MyDSpaceObject[]>([]);
@@ -153,6 +155,11 @@ export class MySubmissions {
   /** Navega a la pantalla de edición del item. */
   onEdit(uuid: string): void {
     this.router.navigate(['/administrador/envios', uuid, 'editar']);
+  }
+
+  /** Vuelve a la pantalla previa usando el stack de navegación del browser. */
+  goBack(): void {
+    this.location.back();
   }
 
   /**

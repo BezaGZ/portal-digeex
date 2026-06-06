@@ -1,4 +1,5 @@
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { Location } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -22,14 +23,13 @@ import { ConfirmationService } from 'primeng/api';
  * nativos `withdrawn` y `discoverable`. La acción Eliminar dispara el
  * facade pre-existente `ItemAdminFacade.withdrawItem$` con el sufijo del
  * caller logueado y recarga la página actual.
- *
- * Ciclo 39 TDD — Sprint 6.
  */
 describe('MySubmissions', () => {
   let searchFn: ReturnType<typeof vi.fn>;
   let withdrawFn: ReturnType<typeof vi.fn>;
   let restoreFn: ReturnType<typeof vi.fn>;
   let confirmFn: ReturnType<typeof vi.fn>;
+  let locationBackFn: ReturnType<typeof vi.fn>;
 
   const buildItemObject = (uuid: string, title: string) => ({
     type: 'discover',
@@ -62,6 +62,7 @@ describe('MySubmissions', () => {
     withdrawFn = vi.fn().mockReturnValue(of({}));
     restoreFn = vi.fn().mockReturnValue(of({}));
     confirmFn = vi.fn().mockImplementation((opts: { accept?: () => void }) => opts.accept?.());
+    locationBackFn = vi.fn();
 
     TestBed.configureTestingModule({
       imports: [MySubmissions],
@@ -84,6 +85,7 @@ describe('MySubmissions', () => {
             accept: EMPTY,
           },
         },
+        { provide: Location, useValue: { back: locationBackFn } },
       ],
     });
   });
@@ -499,6 +501,25 @@ describe('MySubmissions', () => {
       expect(recurso).toBeGreaterThan(titulo);
       expect(recurso).toBeLessThan(tipo);
     });
+  });
+
+  /** Verifica que el botón Regresar dispare Location.back para volver a la pantalla previa. */
+  it('should call location.back when goBack is invoked', () => {
+    const fixture = TestBed.createComponent(MySubmissions);
+    fixture.detectChanges();
+
+    fixture.componentInstance.goBack();
+
+    expect(locationBackFn).toHaveBeenCalledTimes(1);
+  });
+
+  /** Verifica que el template renderice un botón Regresar con data-testid identificable. */
+  it('should render a Regresar button in the template', () => {
+    const fixture = TestBed.createComponent(MySubmissions);
+    fixture.detectChanges();
+
+    const btn = fixture.nativeElement.querySelector('[data-testid="my-submissions-back"]');
+    expect(btn).not.toBeNull();
   });
 
   /**
