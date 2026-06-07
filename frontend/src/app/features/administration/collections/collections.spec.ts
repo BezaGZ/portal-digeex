@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
-import { EMPTY, of } from 'rxjs';
+import { EMPTY, Subject, of } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { Collections } from './collections';
@@ -18,15 +19,17 @@ import { Collection } from '../../../core/api/models/collection.model';
  * Tests del contenedor Collections (pantalla "Programas").
  *
  * El contenedor lista las colecciones (programas) de la subdirección
- * seleccionada por el usuario en un dropdown server-side paginado. El
- * dropdown de subdirecciones se llena con `listAllSubcommunities` (todas
- * de un golpe vía paginación recursiva, porque el p-select debe poder
- * mostrarlas) y la tabla de colecciones se llena por página vía
- * `onLazyLoad` del `p-table`. SuperAdmin ve todas las subdirecciones;
- * admin_subdireccion queda bloqueado en su sufijo. Cada acción mutativa
- * delega al CollectionFacade existente.
+ * seleccionada en un dropdown server-side paginado. El dropdown se llena
+ * con `listAllSubcommunities` (paginación recursiva). La tabla se llena
+ * por página vía un `effect()` que observa `selectedSubdireccion`,
+ * `currentPage` y `pageSize`; `selectSubdireccion` y `onLazyLoad` son
+ * intent puro (solo setean signals) y el `fixture.detectChanges()`
+ * después de cada mutación hace correr el effect que dispara el fetch.
+ * SuperAdmin ve todas las subdirecciones; admin_subdireccion queda
+ * bloqueado en su sufijo. Cada acción mutativa delega al
+ * `CollectionFacade`.
  *
- * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4 (Sprint 7), Ciclo 12 y Ciclo 13 (Sprint 8).
+ * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4 (Sprint 7), Ciclos 12, 13, 24 (Sprint 8).
  */
 describe('Collections (contenedor)', () => {
   let searchTopFn: ReturnType<typeof vi.fn>;
@@ -107,6 +110,7 @@ describe('Collections (contenedor)', () => {
       providers: [
         provideNoopAnimations(),
         provideHttpClient(),
+        provideRouter([]),
         {
           provide: CommunityApiService,
           useValue: { searchTop: searchTopFn, listAllSubcommunities: listAllSubcommunitiesFn },
@@ -164,6 +168,7 @@ describe('Collections (contenedor)', () => {
         providers: [
           provideNoopAnimations(),
           provideHttpClient(),
+          provideRouter([]),
           {
             provide: CommunityApiService,
             useValue: { searchTop: searchTopFn, listAllSubcommunities: listAllSubcommunitiesFn },
@@ -201,6 +206,7 @@ describe('Collections (contenedor)', () => {
         providers: [
           provideNoopAnimations(),
           provideHttpClient(),
+          provideRouter([]),
           {
             provide: CommunityApiService,
             useValue: { searchTop: searchTopFn, listAllSubcommunities: listAllSubcommunitiesFn },
@@ -262,9 +268,9 @@ describe('Collections (contenedor)', () => {
     });
   });
 
-  describe('selecting a subdireccion (server-side pagination)', () => {
-    /** Verifica que selectSubdireccion guarde el sub y resetee currentPage sin disparar fetch. */
-    it('should store the selected sub and reset currentPage without fetching collections', () => {
+  describe('selecting a subdireccion (effect-driven fetch)', () => {
+    /** Verifica que selectSubdireccion guarde el sub y resetee currentPage; el fetch lo dispara el effect tras detectChanges. */
+    it('should store the selected sub and reset currentPage as intent (no synchronous fetch)', () => {
       const fixture = TestBed.createComponent(Collections);
       fixture.detectChanges();
       const c = fixture.componentInstance;
@@ -278,31 +284,33 @@ describe('Collections (contenedor)', () => {
       expect(listByCommunityFn).not.toHaveBeenCalled();
     });
 
-    /** Verifica que onLazyLoad con first=0/rows=10 dispare listByCommunity con page=0/size=10 y embed=logo. */
-    it('should dispatch listByCommunity with page=0/size=10 when onLazyLoad fires for the first page', () => {
+    /** Verifica que tras seleccionar sub + detectChanges, el effect dispare listByCommunity con page=0/size=10 y embed=logo. */
+    it('should dispatch listByCommunity via the effect with page=0/size=10 after selecting a sub', () => {
       const fixture = TestBed.createComponent(Collections);
       fixture.detectChanges();
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
-      c.selectSubdireccion(sub);
       listByCommunityFn.mockClear();
 
-      c.onLazyLoad({ first: 0, rows: 10 });
+      c.selectSubdireccion(sub);
+      fixture.detectChanges();
 
       expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 10, { embed: 'logo' });
       expect(c.collections().map((coll) => coll.name)).toEqual(['PEAC', 'PRONEA']);
     });
 
-    /** Verifica que onLazyLoad con first=10/rows=10 traduzca el offset a page=1. */
+    /** Verifica que onLazyLoad con first=10/rows=10 traduzca el offset a page=1 y el effect dispare el fetch. */
     it('should translate first/rows to the correct page index when onLazyLoad fires for page 2', () => {
       const fixture = TestBed.createComponent(Collections);
       fixture.detectChanges();
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
+      fixture.detectChanges();
       listByCommunityFn.mockClear();
 
       c.onLazyLoad({ first: 10, rows: 10 });
+      fixture.detectChanges();
 
       expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 1, 10, { embed: 'logo' });
     });
@@ -316,9 +324,9 @@ describe('Collections (contenedor)', () => {
       fixture.detectChanges();
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
-      c.selectSubdireccion(sub);
 
-      c.onLazyLoad({ first: 0, rows: 10 });
+      c.selectSubdireccion(sub);
+      fixture.detectChanges();
 
       expect(c.totalRecords()).toBe(47);
     });
@@ -332,9 +340,9 @@ describe('Collections (contenedor)', () => {
       fixture.detectChanges();
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
-      c.selectSubdireccion(sub);
 
-      c.onLazyLoad({ first: 0, rows: 10 });
+      c.selectSubdireccion(sub);
+      fixture.detectChanges();
 
       const counts = c.collections().map((coll) => coll.recursosCount);
       expect(counts).toEqual([34, 6]);
@@ -353,10 +361,110 @@ describe('Collections (contenedor)', () => {
       fixture.detectChanges();
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+
       c.selectSubdireccion(sub);
-      c.onLazyLoad({ first: 0, rows: 10 });
+      fixture.detectChanges();
 
       expect(c.collections()[0].recursosCount).toBe(0);
+    });
+  });
+
+  describe('refetch reactivo y feedback de loading al cambiar de subdirección', () => {
+    /** Verifica que cambiar la sub dispare un fetch con el nuevo uuid y page=0. */
+    it('should refetch with the new uuid when selectSubdireccion is called with a different sub', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const subA = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      const subB = buildCommunity('Trabajo y Cultura', 'sub-2', 'ED_TRABAJO');
+
+      c.selectSubdireccion(subA);
+      fixture.detectChanges();
+      listByCommunityFn.mockClear();
+
+      c.selectSubdireccion(subB);
+      fixture.detectChanges();
+
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-2', 0, 10, { embed: 'logo' });
+    });
+
+    /** Verifica que loading() pase a true mientras el fetch está pendiente y vuelva a false al emit. */
+    it('should toggle loading() to true while the fetch is pending and back to false after emit', () => {
+      const subject = new Subject<unknown>();
+      listByCommunityFn.mockReturnValue(subject.asObservable());
+
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+
+      c.selectSubdireccion(sub);
+      fixture.detectChanges();
+      expect(c.loading()).toBe(true);
+
+      subject.next({
+        _embedded: { collections: [buildCollection('PEAC', 'coll-peac', 34)] },
+        _links: { self: { href: '/' } },
+        page: { size: 10, totalElements: 1, totalPages: 1, number: 0 },
+      });
+      subject.complete();
+      fixture.detectChanges();
+      expect(c.loading()).toBe(false);
+    });
+
+    /** Regresión del guard: con auto-select del caller, no debe haber doble fetch entre el effect y el onLazyLoad inicial. */
+    it('should not double-fetch on mount when auto-select and onLazyLoad initial converge on the same trio', () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [Collections],
+        providers: [
+          provideNoopAnimations(),
+          provideHttpClient(),
+          provideRouter([]),
+          {
+            provide: CommunityApiService,
+            useValue: { searchTop: searchTopFn, listAllSubcommunities: listAllSubcommunitiesFn },
+          },
+          {
+            provide: CollectionApiService,
+            useValue: { listByCommunity: listByCommunityFn },
+          },
+          { provide: CollectionFacade, useValue: {} },
+          {
+            provide: AuthCallerService,
+            useValue: { currentCaller$: of({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }) },
+          },
+          { provide: MessageService, useValue: { add: vi.fn(), messageObserver: EMPTY, clearObserver: EMPTY } },
+          ConfirmationService,
+        ],
+      });
+      listByCommunityFn.mockClear();
+
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      // Simula el onLazyLoad inicial que el <p-table> emite al montar con el mismo trío.
+      fixture.componentInstance.onLazyLoad({ first: 0, rows: 10 });
+      fixture.detectChanges();
+
+      expect(listByCommunityFn).toHaveBeenCalledTimes(1);
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 10, { embed: 'logo' });
+    });
+
+    /** Cambio de página vía onLazyLoad: el effect dispara fetch con la nueva página y mantiene la sub. */
+    it('should fetch with the new page while keeping the same sub when onLazyLoad changes pagination', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      c.selectSubdireccion(sub);
+      fixture.detectChanges();
+      listByCommunityFn.mockClear();
+
+      c.onLazyLoad({ first: 10, rows: 10 });
+      fixture.detectChanges();
+
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 1, 10, { embed: 'logo' });
+      expect(c.selectedSubdireccion()?.uuid).toBe('sub-1');
     });
   });
 
@@ -367,7 +475,7 @@ describe('Collections (contenedor)', () => {
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
-      c.onLazyLoad({ first: 0, rows: 10 });
+      fixture.detectChanges();
       listByCommunityFn.mockClear();
 
       c.handleCreateSubmit({
@@ -414,7 +522,7 @@ describe('Collections (contenedor)', () => {
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
-      c.onLazyLoad({ first: 0, rows: 10 });
+      fixture.detectChanges();
       const target = buildCollection('PEAC', 'coll-peac');
       c.openEditDialog(target);
 
@@ -456,7 +564,7 @@ describe('Collections (contenedor)', () => {
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
-      c.onLazyLoad({ first: 0, rows: 10 });
+      fixture.detectChanges();
       const cover = new File(['png'], 'logo.png', { type: 'image/png' });
 
       c.handleCreateSubmit({
@@ -487,7 +595,7 @@ describe('Collections (contenedor)', () => {
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
-      c.onLazyLoad({ first: 0, rows: 10 });
+      fixture.detectChanges();
       const target = buildCollection('PEAC', 'coll-peac');
       c.openEditDialog(target);
       const cover = new File(['png'], 'logo.png', { type: 'image/png' });
@@ -515,7 +623,7 @@ describe('Collections (contenedor)', () => {
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
-      c.onLazyLoad({ first: 0, rows: 10 });
+      fixture.detectChanges();
       const target = buildCollection('PEAC', 'coll-peac');
 
       confirmFn.mockImplementation((options: { accept: () => void }) => options.accept());
@@ -544,7 +652,9 @@ describe('Collections (contenedor)', () => {
       const c = fixture.componentInstance;
       const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
       c.selectSubdireccion(sub);
+      fixture.detectChanges();
       c.onLazyLoad({ first: 10, rows: 10 });
+      fixture.detectChanges();
       expect(c.currentPage()).toBe(1);
 
       // Tras eliminar la última colección, el siguiente fetch devuelve la página vacía con total=10.

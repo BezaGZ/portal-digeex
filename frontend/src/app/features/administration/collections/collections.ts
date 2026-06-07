@@ -100,9 +100,16 @@ export class Collections {
   readonly collections = signal<ProgramaView[]>([]);
 
   /**
-   * Cambia la subdirección activa: guarda el sub y resetea page=0. El fetch
-   * real ocurre cuando el `p-table` emite `onLazyLoad`; intent (qué sub) y
-   * fetch (qué página) quedan como responsabilidades separadas.
+   * Guard del effect del fetch: recuerda el último trío `{uuid, page, size}`
+   * fetcheado por el effect para evitar re-disparar cuando el `<p-table>`
+   * emite `onLazyLoad` con los mismos valores que ya cargó el auto-select.
+   * `selectSubdireccion(null)` lo limpia para que el siguiente intent fetche.
+   */
+  private readonly lastFetched = signal<{ uuid: string; page: number; size: number } | null>(null);
+
+  /**
+   * Intent del usuario: cambia la subdirección activa y resetea page=0. El
+   * fetch lo dispara el `effect()` del constructor que observa los signals.
    */
   selectSubdireccion(sub: Community | null): void {
     this.selectedSubdireccion.set(sub);
@@ -110,22 +117,21 @@ export class Collections {
     if (!sub) {
       this.collections.set([]);
       this.totalRecords.set(0);
+      this.lastFetched.set(null);
     }
   }
 
   /**
    * Handler del output `lazyLoad` del `p-table`. Convierte el offset `first`
-   * de PrimeNG a índice de página 0-based de DSpace (`page = first / rows`).
+   * de PrimeNG a índice de página 0-based (`page = first / rows`) y setea
+   * los signals; el effect dispara el fetch cuando alguno cambia.
    */
   onLazyLoad(event: TableLazyLoadEvent): void {
-    const sub = this.selectedSubdireccion();
-    if (!sub) return;
     const rows = event.rows ?? this.pageSize();
     const first = event.first ?? 0;
     const page = Math.floor(first / rows);
     this.pageSize.set(rows);
     this.currentPage.set(page);
-    this.fetchPage(sub.uuid, page, rows);
   }
 
   private fetchPage(uuid: string, page: number, size: number): void {
@@ -147,8 +153,12 @@ export class Collections {
           [...views].sort((a, b) => this.ordenValue(a) - this.ordenValue(b)),
         ),
       )
-      .subscribe((views) => {
-        this.collections.set(views);
+      .subscribe({
+        next: (views) => {
+          this.collections.set(views);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false),
       });
   }
 
@@ -352,42 +362,55 @@ export class Collections {
   /**
    * Refresca la página actual sin tocar el offset. Llamado tras crear
    * o editar: la nueva colección aparece en la página actual si cae en
-   * el rango; si no, el usuario la encuentra navegando.
+   * el rango; si no, el usuario la encuentra navegando. Mantiene
+   * `lastFetched` sincronizado para que el effect del fetch no re-dispare
+   * inmediatamente después con el mismo trío.
    */
   private refreshCurrentPage(): void {
     const sub = this.selectedSubdireccion();
     if (!sub) return;
-    this.fetchPage(sub.uuid, this.currentPage(), this.pageSize());
+    const page = this.currentPage();
+    const size = this.pageSize();
+    this.loading.set(true);
+    this.lastFetched.set({ uuid: sub.uuid, page, size });
+    this.fetchPage(sub.uuid, page, size);
   }
 
   /**
    * Refresca tras eliminar aplicando la política sin páginas huérfanas:
    * pide la página actual; si vuelve vacía y existe una página previa,
-   * baja a `currentPage - 1` y vuelve a pedir. Evita que el usuario
-   * vea una tabla en blanco en una página que ya no existe.
+   * baja `currentPage - 1` (lo cual dispara el effect del fetch para esa
+   * página) e invalida `lastFetched` para que el effect dispare. Evita que
+   * el usuario vea una tabla en blanco en una página que ya no existe.
    */
   private refreshAfterDelete(): void {
     const sub = this.selectedSubdireccion();
     if (!sub) return;
     const page = this.currentPage();
     const size = this.pageSize();
+    this.loading.set(true);
     this.collectionApi
       .listByCommunity(sub.uuid, page, size, { embed: 'logo' })
-      .subscribe((resp) => {
-        const colls: Collection[] = resp._embedded?.['collections'] ?? [];
-        if (colls.length === 0 && page > 0) {
-          this.currentPage.set(page - 1);
-          this.fetchPage(sub.uuid, page - 1, size);
-          return;
-        }
-        this.totalRecords.set(resp.page?.totalElements ?? colls.length);
-        const views: ProgramaView[] = colls
-          .map((coll) => ({
-            ...coll,
-            recursosCount: Math.max(0, coll.archivedItemsCount ?? 0),
-          }))
-          .sort((a, b) => this.ordenValue(a) - this.ordenValue(b));
-        this.collections.set(views);
+      .subscribe({
+        next: (resp) => {
+          const colls: Collection[] = resp._embedded?.['collections'] ?? [];
+          if (colls.length === 0 && page > 0) {
+            this.lastFetched.set(null);
+            this.currentPage.set(page - 1);
+            return;
+          }
+          this.totalRecords.set(resp.page?.totalElements ?? colls.length);
+          const views: ProgramaView[] = colls
+            .map((coll) => ({
+              ...coll,
+              recursosCount: Math.max(0, coll.archivedItemsCount ?? 0),
+            }))
+            .sort((a, b) => this.ordenValue(a) - this.ordenValue(b));
+          this.collections.set(views);
+          this.loading.set(false);
+          this.lastFetched.set({ uuid: sub.uuid, page, size });
+        },
+        error: () => this.loading.set(false),
       });
   }
 
@@ -427,6 +450,28 @@ export class Collections {
         if (matching) {
           this.selectSubdireccion(matching);
         }
+      });
+    });
+
+    // Effect del fetch del listado: única fuente de verdad de "qué pedir
+    // al backend". Observa la sub, la página y el tamaño; cuando alguno
+    // cambia, sube `loading` y dispara `fetchPage`. El guard `lastFetched`
+    // evita re-disparar cuando el `<p-table>` emite `onLazyLoad` inicial
+    // con el mismo trío que el auto-select ya cargó. `untracked` aísla las
+    // escrituras del effect para que no se autorretroalimente.
+    effect(() => {
+      const sub = this.selectedSubdireccion();
+      const page = this.currentPage();
+      const size = this.pageSize();
+      if (!sub) return;
+      const last = untracked(() => this.lastFetched());
+      if (last && last.uuid === sub.uuid && last.page === page && last.size === size) {
+        return;
+      }
+      untracked(() => {
+        this.lastFetched.set({ uuid: sub.uuid, page, size });
+        this.loading.set(true);
+        this.fetchPage(sub.uuid, page, size);
       });
     });
   }
