@@ -13,6 +13,7 @@ import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
+import { StatisticsTrackingService } from '../../../core/api/statistics-tracking.service';
 import { VocabularyDisplayService } from '../../../core/api/vocabulary-display.service';
 import { BitstreamDownloadService } from '../../../core/api/bitstream-download.service';
 import { inferBitstreamFormat } from '../../../core/api/bitstream-format.util';
@@ -59,6 +60,7 @@ export class DocumentDetailComponent implements OnInit {
     private vocabDisplay: VocabularyDisplayService,
     private downloader: BitstreamDownloadService,
     private cdr: ChangeDetectorRef,
+    private tracking: StatisticsTrackingService,
   ) {}
 
   ngOnInit() {
@@ -78,6 +80,12 @@ export class DocumentDetailComponent implements OnInit {
         this.documentDescription = item.metadata?.['dc.description.abstract']?.[0]?.value || '';
         this.isVideo = item.metadata?.['dc.type']?.[0]?.value === 'Video';
         this.videoUrl = item.metadata?.['dc.relation.uri']?.[0]?.value || '';
+
+        // Registra la visita al item en Solr Statistics (best-effort).
+        this.tracking
+          .trackView$(item.uuid, 'item')
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe();
 
         const bundlesAndBitstreams$ = this.dspaceApi.getBundles(itemUuid).pipe(
           switchMap((bundlesResponse) => {

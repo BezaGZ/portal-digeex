@@ -46,7 +46,10 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   // valida el Bearer antes de llegar al endpoint y rechaza con 401 cuando
   // el token está expirado. La pantalla de reset por token se rompía
   // porque ese 401 cascadeaba en un redirect a `/iniciar-sesion`.
-  if (req.url.includes('/eperson/registrations')) {
+  // `/statistics/viewevents` registra visitas en Solr Statistics: si llega
+  // autenticado como admin DSpace filtra el hit para no inflar los reportes
+  // con tráfico de administración. Las visitas siempre son anónimas.
+  if (req.url.includes('/eperson/registrations') || req.url.includes('/statistics/viewevents')) {
     return next(req);
   }
 

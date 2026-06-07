@@ -16,6 +16,7 @@ import { ButtonModule } from 'primeng/button';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
+import { StatisticsTrackingService } from '../../../core/api/statistics-tracking.service';
 import { BitstreamDownloadService } from '../../../core/api/bitstream-download.service';
 import { inferBitstreamFormat } from '../../../core/api/bitstream-format.util';
 import { CollectionView, ItemView, BitstreamView, PaginatorEvent, Bitstream } from '../../../core/api/models';
@@ -61,6 +62,7 @@ export class ProgramViewComponent implements OnInit {
     private dspaceApi: DSpaceApiService,
     private collectionApi: CollectionApiService,
     private downloader: BitstreamDownloadService,
+    private tracking: StatisticsTrackingService,
   ) {}
 
   ngOnInit() {
@@ -86,6 +88,12 @@ export class ProgramViewComponent implements OnInit {
           );
           return;
         }
+
+        // Registra la visita al programa en Solr Statistics (best-effort).
+        this.tracking
+          .trackView$(collection.uuid, 'collection')
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe();
 
         this.currentNode = {
           id: collection.uuid,

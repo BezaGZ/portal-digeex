@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, Injector, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, Injector, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, throwError } from 'rxjs';
@@ -8,6 +9,7 @@ import { ButtonModule } from 'primeng/button';
 
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { BundleApiService } from '../../../core/api/bundle-api.service';
+import { StatisticsTrackingService } from '../../../core/api/statistics-tracking.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { ExcelReaderService } from '../services/excel-reader.service';
 import { getStatsRenderer } from '../stats-dataset-registry';
@@ -52,6 +54,8 @@ export class StatsDetail implements OnInit {
   private readonly bundleApi = inject(BundleApiService);
   private readonly excelReader = inject(ExcelReaderService);
   private readonly breadcrumbService = inject(BreadcrumbService);
+  private readonly tracking = inject(StatisticsTrackingService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
 
   readonly item = signal<Item | null>(null);
@@ -103,6 +107,11 @@ export class StatsDetail implements OnInit {
         tap((item) => {
           this.item.set(item);
           this.updateBreadcrumb(item);
+          // Registra la visita al item en Solr Statistics (best-effort).
+          this.tracking
+            .trackView$(item.uuid, 'item')
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe();
         }),
         switchMap((item) => this.resolveRendererAndExcel$(item)),
       )

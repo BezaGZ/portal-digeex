@@ -60,6 +60,16 @@
             tooltipPosition="top"
             data-testid="programa-view-history"
             [routerLink]="['/administrador/programas', row.uuid]" />
+          <p-button
+            icon="pi pi-chart-line"
+            severity="secondary"
+            size="small"
+            [rounded]="true"
+            [text]="true"
+            pTooltip="Ver estadísticas"
+            tooltipPosition="top"
+            data-testid="programa-view-stats"
+            [routerLink]="['/administrador/uso/programas', row.uuid]" />
           @if (canEdit()) {
             <p-button
               icon="pi pi-pencil"

@@ -165,6 +165,33 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'uso',
+        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
+        loadComponent: () =>
+          import('./features/administration/statistics/statistics-page').then(
+            (m) => m.StatisticsPage,
+          ),
+        data: { breadcrumb: 'Estadísticas de uso', dsoType: 'site' },
+      },
+      {
+        path: 'uso/items/:uuid',
+        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
+        loadComponent: () =>
+          import('./features/administration/statistics/statistics-page').then(
+            (m) => m.StatisticsPage,
+          ),
+        data: { dsoType: 'item' },
+      },
+      {
+        path: 'uso/programas/:uuid',
+        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
+        loadComponent: () =>
+          import('./features/administration/statistics/statistics-page').then(
+            (m) => m.StatisticsPage,
+          ),
+        data: { dsoType: 'collection' },
+      },
+      {
         path: 'programas/:uuid/cargar',
         canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
         /**

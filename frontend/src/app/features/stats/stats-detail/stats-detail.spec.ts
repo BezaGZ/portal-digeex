@@ -8,6 +8,7 @@ import { StatsDetail } from './stats-detail';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { BundleApiService } from '../../../core/api/bundle-api.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
+import { StatisticsTrackingService } from '../../../core/api/statistics-tracking.service';
 import { ExcelReaderService } from '../services/excel-reader.service';
 import {
   registerStatsRenderer,
@@ -26,7 +27,7 @@ import { Item } from '../../../core/api/models/item.model';
  * construcción del dashboard. Cubre los cuatro modos de error (`not-found`,
  * `unsupported`, `pii`, `network`) y el flujo feliz con filtros.
  *
- * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclo 16.
+ * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclos 16, 23.
  */
 
 const DASHBOARD: StatsDashboard = {
@@ -141,6 +142,7 @@ describe('StatsDetail', () => {
         },
         { provide: ExcelReaderService, useValue: { getParsedExcel$: getParsedExcelFn } },
         { provide: BreadcrumbService, useValue: { setTrail: setTrailFn } },
+        { provide: StatisticsTrackingService, useValue: { trackView$: vi.fn().mockReturnValue(of(undefined)) } },
       ],
     });
   });

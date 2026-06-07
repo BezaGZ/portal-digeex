@@ -5,6 +5,7 @@ import { GalleriaModule } from 'primeng/galleria';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
 import { GalleryService } from '../../services/gallery.service';
+import { StatisticsTrackingService } from '../../../../core/api/statistics-tracking.service';
 import { Album } from '../../models';
 import { PhotoGridItemComponent } from '../photo-grid-item/photo-grid-item';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -30,6 +31,7 @@ export class AlbumViewer implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private galleryService: GalleryService,
+    private tracking: StatisticsTrackingService,
   ) {}
 
   ngOnInit() {
@@ -52,6 +54,11 @@ export class AlbumViewer implements OnInit {
       next: (album) => {
         if (album) {
           this.album.set(album);
+          // Registra la visita al item en Solr Statistics (best-effort).
+          this.tracking
+            .trackView$(uuid, 'item')
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe();
         } else {
           this.router.navigate(['/galeria']);
         }

@@ -1,0 +1,23 @@
+<p-card class="block w-full" styleClass="shadow-sm">
+  <h3 class="m-0 mb-4 text-base font-semibold !text-gray-800 dark:!text-gray-100">
+    Visitas por mes
+  </h3>
+
+  @if (loading()) {
+    <app-loading-spinner data-testid="monthly-visits-loading" minHeight="220px" />
+  } @else if (!hasData()) {
+    <app-empty-state
+      data-testid="monthly-visits-empty"
+      icon="pi pi-chart-bar"
+      title="Sin visitas registradas"
+      message="Aún no se han capturado visitas en este período." />
+  } @else {
+    <p-chart
+      type="bar"
+      [data]="data"
+      [options]="options"
+      [width]="'100%'"
+      [height]="chartHeight() + 'px'"
+      data-testid="monthly-visits-chart" />
+  }
+</p-card>

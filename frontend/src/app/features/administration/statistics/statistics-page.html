@@ -1,0 +1,51 @@
+<div class="p-6">
+  <div class="mb-4">
+    <p-button
+      label=" Regresar"
+      icon="pi pi-arrow-left"
+      severity="primary"
+      [rounded]="true"
+      styleClass="!text-white !font-medium !px-4 !py-2 transition-all duration-200"
+      data-testid="statistics-back"
+      (onClick)="goBack()" />
+  </div>
+
+  <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2" data-testid="statistics-title">
+    {{ title() }}
+  </h1>
+  <p class="text-gray-600 dark:text-gray-400 mb-6">
+    Datos de uso.
+  </p>
+
+  @if (loading()) {
+    <app-loading-spinner minHeight="200px" />
+  } @else if (errored() || loaded() === null) {
+    <app-empty-state
+      data-testid="statistics-error"
+      icon="pi pi-exclamation-triangle"
+      title="No se pudieron cargar las estadísticas"
+      message="Intentá recargar la página. Si el error persiste, consultá al equipo de soporte." />
+  } @else {
+    <div
+      [class]="
+        dsoType() === 'item'
+          ? 'grid grid-cols-1 lg:grid-cols-2 gap-4 items-start'
+          : 'grid grid-cols-1 gap-4'
+      "
+    >
+      @for (entry of loaded(); track entry.reportType) {
+        @if (entry.reportType === 'TotalVisitsPerMonth') {
+          <div [class]="dsoType() === 'item' ? 'w-full lg:col-span-2' : 'w-full'">
+            <app-monthly-visits-grid [report]="entry.report" />
+          </div>
+        } @else {
+          <div class="w-full">
+            <app-usage-report-table
+              [reportType]="entry.reportType"
+              [report]="entry.report" />
+          </div>
+        }
+      }
+    </div>
+  }
+</div>

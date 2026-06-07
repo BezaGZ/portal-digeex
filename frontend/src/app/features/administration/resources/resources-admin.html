@@ -152,6 +152,16 @@
                         tooltipPosition="top"
                         [routerLink]="['/administrador/items', o.indexableObject.uuid]" />
                     </span>
+                    <span data-testid="action-view-stats">
+                      <p-button
+                        icon="pi pi-chart-line"
+                        severity="secondary"
+                        [text]="true"
+                        [rounded]="true"
+                        pTooltip="Ver estadísticas"
+                        tooltipPosition="top"
+                        [routerLink]="['/administrador/uso/items', o.indexableObject.uuid]" />
+                    </span>
                     @if (tab() === 'activos') {
                       <span data-testid="action-edit">
                         <p-button

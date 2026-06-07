@@ -12,7 +12,7 @@ import { AuthService } from './auth.service';
  * gestiona refresh automático del JWT cuando está próximo a expirar,
  * y redirige al login cuando DSpace responde 401.
  *
- * Ciclo 2 TDD — Sprint 5
+ * Ciclo 2 TDD — Sprint 5. Ajustado en Ciclo 23.
  */
 describe('jwtInterceptor', () => {
   let httpMock: HttpTestingController;
@@ -129,6 +129,30 @@ describe('jwtInterceptor', () => {
       const req = httpMock.expectOne(
         '/server/api/eperson/registrations/search/findByToken',
       );
+      expect(req.request.headers.has('Authorization')).toBe(false);
+      req.flush({});
+
+      await promise;
+    });
+
+    /**
+     * Verifica que el POST a `/statistics/viewevents` NO lleve Bearer aunque
+     * el AuthService tenga un token. DSpace filtra hits autenticados como
+     * admin para no inflar los reportes con tráfico de administración; el
+     * portal registra visitas siempre como anónimo aunque el visitante esté
+     * logueado en otro tab. Ver `csrf.interceptor` que agrega `X-XSRF-TOKEN`
+     * y `withCredentials` automáticamente.
+     */
+    it('should NOT attach Bearer on /statistics/viewevents requests', async () => {
+      vi.spyOn(authService, 'getToken').mockReturnValue('admin-jwt');
+
+      const promise = new Promise<void>((resolve, reject) => {
+        httpClient
+          .post('/server/api/statistics/viewevents', { targetId: 'uuid-1', targetType: 'item' })
+          .subscribe({ next: () => resolve(), error: reject });
+      });
+
+      const req = httpMock.expectOne('/server/api/statistics/viewevents');
       expect(req.request.headers.has('Authorization')).toBe(false);
       req.flush({});
 
