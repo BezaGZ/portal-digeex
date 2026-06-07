@@ -24,7 +24,12 @@ import { Caller } from '../content/specifications/scope-context.model';
  * Asume que el bootstrap (setup-dspace.sh) corrió y la community raíz
  * existe; si no existe, muestra un mensaje de sistema no inicializado.
  *
- * Ciclo 17 TDD — Sprint 6
+ * La tabla se llena por página vía un `effect()` que observa `currentPage`,
+ * `pageSize` y `refreshCounter`; `onLazyLoad` y las mutaciones son intent
+ * puro (solo setean signals) y el `fixture.detectChanges()` después de
+ * cada mutación hace correr el effect que dispara el fetch.
+ *
+ * Ciclo 17 TDD — Sprint 6. Ajustado en Ciclo 25 (Sprint 8).
  */
 describe('Communities (contenedor)', () => {
   let searchTopFn: ReturnType<typeof vi.fn>;
@@ -232,6 +237,7 @@ describe('Communities (contenedor)', () => {
         sufijo: 'ED_NUEVA',
         description: '',
       });
+      fixture.detectChanges();
 
       expect(createSubdireccionFn).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -265,6 +271,7 @@ describe('Communities (contenedor)', () => {
         sufijo: 'ED_BASICA',
         description: '',
       });
+      fixture.detectChanges();
 
       expect(updateSubdireccionFn).toHaveBeenCalledWith(
         'sub-1',
@@ -295,6 +302,7 @@ describe('Communities (contenedor)', () => {
       listSubcommunitiesFn.mockClear();
 
       c.handleDelete(target, 'ED_BASICA');
+      fixture.detectChanges();
 
       expect(confirmFn).toHaveBeenCalled();
       expect(deleteSubdireccionFn).toHaveBeenCalledWith('sub-1', 'ED_BASICA');
@@ -302,6 +310,48 @@ describe('Communities (contenedor)', () => {
       expect(messageAddFn).toHaveBeenCalledWith(
         expect.objectContaining({ severity: 'success' }),
       );
+    });
+  });
+
+  describe('refresh reactivo y guard del effect', () => {
+    /** Verifica que el mount dispare una sola llamada a listSubcommunities aunque el effect corra al inicializar. */
+    it('should fire a single fetch on mount even though the effect runs immediately', () => {
+      listSubcommunitiesFn.mockClear();
+      const fixture = TestBed.createComponent(Communities);
+      fixture.detectChanges();
+
+      expect(listSubcommunitiesFn).toHaveBeenCalledTimes(1);
+      expect(listSubcommunitiesFn).toHaveBeenCalledWith('digeex-root-uuid', 0, 10);
+    });
+
+    /**
+     * Verifica que dos mutaciones consecutivas disparen dos fetches separados.
+     * Cada mutación incrementa el refreshCounter, lo cual cambia el trío de
+     * dependencias del effect y obliga al guard a saltar el corto-circuito.
+     */
+    it('should fire a new fetch after each mutation (refreshCounter increments)', () => {
+      const fixture = TestBed.createComponent(Communities);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      c.openCreateDialog();
+      listSubcommunitiesFn.mockClear();
+
+      c.handleCreateSubmit({
+        nombreCorto: 'A',
+        tituloCompleto: 'Sub A',
+        sufijo: 'ED_A',
+        description: '',
+      });
+      fixture.detectChanges();
+      c.handleCreateSubmit({
+        nombreCorto: 'B',
+        tituloCompleto: 'Sub B',
+        sufijo: 'ED_B',
+        description: '',
+      });
+      fixture.detectChanges();
+
+      expect(listSubcommunitiesFn).toHaveBeenCalledTimes(2);
     });
   });
 });

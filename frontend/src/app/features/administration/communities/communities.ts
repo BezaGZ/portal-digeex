@@ -2,12 +2,14 @@ import {
   Component,
   ChangeDetectionStrategy,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, Observable, combineLatest, forkJoin, of } from 'rxjs';
-import { map, switchMap, tap } from 'rxjs/operators';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { Observable, forkJoin, of } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 import { TableLazyLoadEvent } from 'primeng/table';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
@@ -34,17 +36,11 @@ interface SubdireccionFormPayload {
   description: string;
 }
 
-interface TablePageState {
-  page: number;
-  size: number;
-}
-
 interface PaginatedSubsView {
   items: SubdireccionView[];
   totalElements: number;
 }
 
-const INITIAL_PAGE_STATE: TablePageState = { page: 0, size: 10 };
 const EMPTY_PAGE: PaginatedSubsView = { items: [], totalElements: 0 };
 
 /**
@@ -109,24 +105,32 @@ export class Communities {
     return t?.metadata?.['dc.description']?.[0]?.value ?? '';
   });
 
-  /** Estado paginado de la tabla; lo actualiza onLazyLoad de PrimeNG. */
-  private readonly tableState = signal<TablePageState>(INITIAL_PAGE_STATE);
+  /** Página actual (0-based). La setea `onLazyLoad` desde el evento del `<p-table>`. */
+  readonly currentPage = signal<number>(0);
 
-  /** Trigger para recargar tras mutaciones. BehaviorSubject emite al suscribirse. */
-  private readonly refresh$ = new BehaviorSubject<void>(undefined);
+  /** Tamaño de página. La setea `onLazyLoad` desde el evento del `<p-table>`. */
+  readonly pageSize = signal<number>(10);
 
-  private readonly subdireccionesPaginated = toSignal(
-    combineLatest([toObservable(this.tableState), this.refresh$]).pipe(
-      tap(() => this.loading.set(true)),
-      switchMap(([state]) => this.fetchPaginatedSubdirecciones$(state.page, state.size)),
-      tap(() => this.loading.set(false)),
-    ),
-    { initialValue: EMPTY_PAGE },
-  );
+  /**
+   * Contador de mutaciones para forzar refetch tras crear, editar o eliminar
+   * sin tocar `currentPage` ni `pageSize`. Cada incremento cambia el trío de
+   * dependencias del effect del fetch y obliga a re-disparar.
+   */
+  private readonly refreshCounter = signal<number>(0);
 
-  readonly subdirecciones = computed(() => this.subdireccionesPaginated().items);
-  readonly totalRecords = computed(() => this.subdireccionesPaginated().totalElements);
-  readonly pageSize = computed(() => this.tableState().size);
+  /**
+   * Guard del effect del fetch: recuerda el último trío
+   * `{page, size, refresh}` disparado para evitar re-disparar cuando los
+   * signals cambian sin valor neto. Patrón canonizado del proyecto para
+   * listados admin paginados con effect signal-driven.
+   */
+  private readonly lastFetched = signal<{ page: number; size: number; refresh: number } | null>(null);
+
+  /** Subdirecciones de la página actual, enriquecidas con conteos de programas e items. */
+  readonly subdirecciones = signal<SubdireccionView[]>([]);
+
+  /** Total de subdirecciones del repositorio, leído del `page.totalElements`. */
+  readonly totalRecords = signal<number>(0);
 
   /** Helper que el template usa para inferir el sufijo de una subdirección. */
   extractSufijo(c: Community): string {
@@ -139,18 +143,16 @@ export class Communities {
   }
 
   /**
-   * Bind a `(onLazyLoad)` del p-table. PrimeNG emite `first` (offset) y
-   * `rows` (tamaño de página, posiblemente null en el primer evento).
-   * Al cambiar de página o de size, refetch con la nueva ventana.
+   * Handler del output `lazyLoad` del `<p-table>`. Convierte el offset `first`
+   * de PrimeNG a índice de página 0-based y setea los signals; el effect
+   * dispara el fetch cuando alguno cambia.
    */
   onLazyLoad(event: TableLazyLoadEvent): void {
-    const rows = event.rows ?? INITIAL_PAGE_STATE.size;
+    const rows = event.rows ?? 10;
     const first = event.first ?? 0;
     const page = rows > 0 ? Math.floor(first / rows) : 0;
-    const current = this.tableState();
-    if (current.page !== page || current.size !== rows) {
-      this.tableState.set({ page, size: rows });
-    }
+    this.pageSize.set(rows);
+    this.currentPage.set(page);
   }
 
   openCreateDialog(): void {
@@ -166,6 +168,29 @@ export class Communities {
   closeDialog(): void {
     this.editTarget.set(null);
     this.dialogMode.set('closed');
+  }
+
+  constructor() {
+    // Effect del fetch del listado: única fuente de verdad de "qué pedir
+    // al backend". Observa la página, el tamaño y el contador de refresh;
+    // cuando alguno cambia y el trío difiere del último fetcheado, sube
+    // `loading` y dispara `fetchPaginated`. El guard `lastFetched` previene
+    // re-disparar cuando los signals cambian sin valor neto. `untracked`
+    // aísla las escrituras del effect para que no se autorretroalimente.
+    effect(() => {
+      const page = this.currentPage();
+      const size = this.pageSize();
+      const refresh = this.refreshCounter();
+      const last = untracked(() => this.lastFetched());
+      if (last && last.page === page && last.size === size && last.refresh === refresh) {
+        return;
+      }
+      untracked(() => {
+        this.lastFetched.set({ page, size, refresh });
+        this.loading.set(true);
+        this.fetchPaginated(page, size);
+      });
+    });
   }
 
   handleCreateSubmit(payload: SubdireccionFormPayload): void {
@@ -195,7 +220,7 @@ export class Communities {
     this.facade.createSubdireccion$(body, payload.sufijo).subscribe({
       next: () => {
         this.closeDialog();
-        this.refresh$.next();
+        this.refreshCounter.update((n) => n + 1);
         this.toast.add({ severity: 'success', summary: 'Subdirección creada' });
       },
       error: (err) => this.toastError(err, 'No se pudo crear la subdirección'),
@@ -229,7 +254,7 @@ export class Communities {
     this.facade.updateSubdireccion$(target.uuid, patch, payload.sufijo).subscribe({
       next: () => {
         this.closeDialog();
-        this.refresh$.next();
+        this.refreshCounter.update((n) => n + 1);
         this.toast.add({ severity: 'success', summary: 'Subdirección actualizada' });
       },
       error: (err) => this.toastError(err, 'No se pudo actualizar la subdirección'),
@@ -262,7 +287,7 @@ export class Communities {
       accept: () => {
         this.facade.deleteSubdireccion$(target.uuid, sufijo).subscribe({
           next: () => {
-            this.refresh$.next();
+            this.refreshCounter.update((n) => n + 1);
             this.toast.add({ severity: 'success', summary: 'Subdirección eliminada' });
           },
           error: (err) => this.toastError(err, 'No se pudo eliminar la subdirección'),
@@ -272,11 +297,27 @@ export class Communities {
   }
 
   /**
-   * Pipeline que arma la página: searchTop → listSubcommunities ventana
-   * pedida → forkJoin que enriquece cada subdirección con su conteo de
-   * programas y de items archivados (vía Discovery scope-filtered).
+   * Suscribe al pipeline de fetch y setea `subdirecciones`, `totalRecords`
+   * y `loading`. Llamado por el effect cuando el trío de dependencias
+   * (`page`, `size`, `refresh`) cambia.
    */
-  private fetchPaginatedSubdirecciones$(page: number, size: number): Observable<PaginatedSubsView> {
+  private fetchPaginated(page: number, size: number): void {
+    this.fetchPaginated$(page, size).subscribe({
+      next: (result) => {
+        this.subdirecciones.set(result.items);
+        this.totalRecords.set(result.totalElements);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
+
+  /**
+   * Pipeline que arma la página: `searchTop` → `listSubcommunities` con la
+   * ventana pedida → `forkJoin` que enriquece cada subdirección con su
+   * conteo de programas y de items archivados (vía Discovery scope-filtered).
+   */
+  private fetchPaginated$(page: number, size: number): Observable<PaginatedSubsView> {
     return this.communityApi.searchTop(0, 1).pipe(
       switchMap((resp) => {
         const root = resp._embedded?.['communities']?.[0];
