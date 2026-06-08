@@ -251,12 +251,6 @@ export const routes: Routes = [
         loadComponent: () => import('./features/administration/profile/profile').then(m => m.Profile),
         data: { breadcrumb: 'Perfil' }
       },
-      {
-        path: 'reportes',
-        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
-        loadComponent: () => import('./features/administration/reports/reports').then(m => m.Reports),
-        data: { breadcrumb: 'Reportes' }
-      }
     ]
   },
 

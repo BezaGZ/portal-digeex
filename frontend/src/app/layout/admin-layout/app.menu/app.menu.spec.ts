@@ -50,10 +50,10 @@ describe('AppMenu', () => {
         'Programas',
         'Cargar contenido',
         'Recursos',
-        'Reportes',
         'Usuarios',
       ]),
     );
+    expect(labels).not.toContain('Reportes');
   });
 
   it('hides Subdirecciones and Usuarios for admin_subdireccion', async () => {
@@ -65,11 +65,11 @@ describe('AppMenu', () => {
         'Programas',
         'Cargar contenido',
         'Recursos',
-        'Reportes',
       ]),
     );
     expect(labels).not.toContain('Subdirecciones');
     expect(labels).not.toContain('Usuarios');
+    expect(labels).not.toContain('Reportes');
   });
 
   it('shows only Estadísticas and Cargar contenido for personal_delegado', async () => {
