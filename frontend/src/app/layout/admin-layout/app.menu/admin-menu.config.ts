@@ -74,7 +74,7 @@ export const ADMIN_MENU: readonly AdminMenuItem[] = [
     label: 'Estadísticas de uso',
     icon: 'pi pi-fw pi-chart-line',
     routerLink: '/administrador/uso',
-    scope: ROLE_SCOPES.STAFF,
+    scope: ROLE_SCOPES.ADMIN,
   },
 ];
 

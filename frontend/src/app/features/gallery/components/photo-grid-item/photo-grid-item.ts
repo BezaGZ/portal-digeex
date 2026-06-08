@@ -21,6 +21,7 @@ import { SkeletonModule } from 'primeng/skeleton';
     </div>
   `,
   styleUrl: './photo-grid-item.scss',
+  host: { class: 'block' },
 })
 export class PhotoGridItemComponent {
   @Input({ required: true }) src = '';

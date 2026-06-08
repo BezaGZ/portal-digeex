@@ -1,11 +1,15 @@
-:host {
-  display: block;
-}
-
+/**
+ * Animación de hover compuesto. El SCSS dedicado se justifica porque
+ * Tailwind no expresa limpiamente: (a) el hover del card que escala la
+ * imagen interna (requiere selector descendiente, no `group-hover`), y
+ * (b) la sombra con color RGBA institucional (`#1e3159`) que en Tailwind
+ * obliga a un arbitrary value verboso. Lo demás (typography, sizing,
+ * paleta dark, line-clamp) vive en el HTML con clases Tailwind directas.
+ */
 .album-card {
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
     transform: translateY(-8px);
@@ -15,46 +19,4 @@
       transform: scale(1.05);
     }
   }
-}
-
-.cover-container {
-  position: relative;
-  overflow: hidden;
-  border-radius: 8px 8px 0 0;
-}
-
-.album-cover {
-  width: 100%;
-  height: 240px;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.album-date {
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.album-title {
-  font-size: 1.25rem;
-  color: var(--gob-azul-gobierno);
-  margin-bottom: 8px;
-  line-height: 1.3;
-  text-align: center;
-}
-
-.album-description {
-  color: var(--color-text-secondary);
-  line-height: 1.5;
-  margin-bottom: 16px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-align: center;
 }

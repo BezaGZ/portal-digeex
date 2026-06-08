@@ -2,7 +2,6 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { roleGuard } from './core/auth/role.guard';
 import { ROLE_SCOPES } from './core/auth/role-scopes';
-
 export const routes: Routes = [
 
   {
@@ -39,7 +38,7 @@ export const routes: Routes = [
             loadComponent: () => import('./features/stats/stats-list/stats-list').then(m => m.StatsList),
           },
           {
-            path: ':uuid',
+            path: ':uuid/item/:itemUuid',
             /**
              * Importar primero los renderers garantiza que `registerStatsRenderer`
              * de cada dataset (`docentes`, `estudiantes`, etc.) corrió antes de
@@ -53,6 +52,10 @@ export const routes: Routes = [
                 .then(() => import('./features/stats/stats-detail/stats-detail'))
                 .then(m => m.StatsDetail),
           },
+          {
+            path: ':uuid',
+            loadComponent: () => import('./features/stats/stats-list/stats-list').then(m => m.StatsList),
+          },
         ],
       },
       {
@@ -64,10 +67,14 @@ export const routes: Routes = [
             loadComponent: () => import('./features/gallery/gallery').then(m => m.Gallery)
           },
           {
-            path: ':id',
+            path: ':uuid/album/:id',
             loadComponent: () => import('./features/gallery/components/album-viewer/album-viewer').then(m => m.AlbumViewer),
             data: { breadcrumb: 'Álbum' }
-          }
+          },
+          {
+            path: ':uuid',
+            loadComponent: () => import('./features/gallery/gallery').then(m => m.Gallery)
+          },
         ]
       }
     ]
@@ -166,7 +173,7 @@ export const routes: Routes = [
       },
       {
         path: 'uso',
-        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
         loadComponent: () =>
           import('./features/administration/statistics/statistics-page').then(
             (m) => m.StatisticsPage,
@@ -175,7 +182,7 @@ export const routes: Routes = [
       },
       {
         path: 'uso/items/:uuid',
-        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
         loadComponent: () =>
           import('./features/administration/statistics/statistics-page').then(
             (m) => m.StatisticsPage,
@@ -184,7 +191,7 @@ export const routes: Routes = [
       },
       {
         path: 'uso/programas/:uuid',
-        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
         loadComponent: () =>
           import('./features/administration/statistics/statistics-page').then(
             (m) => m.StatisticsPage,

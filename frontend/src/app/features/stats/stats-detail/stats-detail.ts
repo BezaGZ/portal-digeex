@@ -26,12 +26,14 @@ import { EmptyStateComponent } from '../../../shared';
 export type StatsDetailError = 'not-found' | 'unsupported' | 'network';
 
 /**
- * Detalle público de un item Estadística en `/estadistica/:uuid`. Orquesta
- * la carga del item, la resolución del renderer del registry por
- * `digeex.statsDataset`, la descarga lazy del Excel y la construcción del
- * dashboard con sus filtros. Cuatro modos de error explícitos (item no
- * existe, dataset no registrado, columna PII, fallo de red) con empty
- * states distintos para que el visitante entienda qué pasó.
+ * Detalle público de un item Estadística en
+ * `/estadistica/:uuid/item/:itemUuid`. El `:uuid` es la colección padre y
+ * `:itemUuid` el item específico. Orquesta la carga del item, la resolución
+ * del renderer del registry por `digeex.statsDataset`, la descarga lazy del
+ * Excel y la construcción del dashboard con sus filtros. Cuatro modos de
+ * error explícitos (item no existe, dataset no registrado, columna PII,
+ * fallo de red) con empty states distintos para que el visitante entienda
+ * qué pasó.
  */
 @Component({
   selector: 'app-stats-detail',
@@ -66,17 +68,25 @@ export class StatsDetail implements OnInit {
 
   private renderer: StatsRenderer | null = null;
 
+  /** UUID de la colección padre, leído del route param `:uuid`. */
+  private collectionUuid: string | null = null;
+
   ngOnInit(): void {
-    const uuid = this.route.snapshot.params['uuid'];
-    if (!uuid) {
+    this.collectionUuid = (this.route.snapshot.params['uuid'] as string | undefined) ?? null;
+    const itemUuid = this.route.snapshot.params['itemUuid'];
+    if (!itemUuid) {
       this.fail('not-found');
       return;
     }
-    this.load(uuid);
+    this.load(itemUuid);
   }
 
-  /** Vuelve al listado público. */
+  /** Vuelve al listado de la colección padre si el UUID está presente; si no, al raíz. */
   goBack(): void {
+    if (this.collectionUuid) {
+      this.router.navigate(['/estadistica', this.collectionUuid]);
+      return;
+    }
     this.router.navigate(['/estadistica']);
   }
 
@@ -93,10 +103,10 @@ export class StatsDetail implements OnInit {
 
   /** Permite reintentar tras un error de red sin recargar la página completa. */
   retry(): void {
-    const uuid = this.route.snapshot.params['uuid'];
-    if (!uuid) return;
+    const itemUuid = this.route.snapshot.params['itemUuid'];
+    if (!itemUuid) return;
     this.errorState.set(null);
-    this.load(uuid);
+    this.load(itemUuid);
   }
 
   private load(uuid: string): void {
@@ -180,13 +190,18 @@ export class StatsDetail implements OnInit {
 
   /**
    * Publica el trail con el `dc.title` real del item para que el breadcrumb
-   * global muestre el título en lugar del literal de `route.data`. Mismo
-   * patrón que `DocumentDetailComponent`.
+   * global muestre el título en lugar del literal de `route.data`. Si la
+   * colección padre está presente, la entrada "Estadística" linkea al
+   * listado de esa colección; si no, al raíz. Mismo patrón que
+   * `DocumentDetailComponent`.
    */
   private updateBreadcrumb(item: Item): void {
     const title = item.metadata?.['dc.title']?.[0]?.value ?? 'Detalle';
+    const listingLink = this.collectionUuid
+      ? `/estadistica/${this.collectionUuid}`
+      : '/estadistica';
     this.breadcrumbService.setTrail([
-      { label: 'Estadística', routerLink: '/estadistica' },
+      { label: 'Estadística', routerLink: listingLink },
       { label: title },
     ]);
   }

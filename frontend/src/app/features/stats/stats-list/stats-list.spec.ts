@@ -1,9 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { StatsList } from './stats-list';
 import { StatsListService } from '../services/stats-list.service';
+import { StatisticsTrackingService } from '../../../core/api/statistics-tracking.service';
 import { StatsItem, StatsItemPage } from '../models/stats-item.model';
 
 /**
@@ -14,7 +15,7 @@ import { StatsItem, StatsItemPage } from '../models/stats-item.model';
  * loading), filtra client-side por dataset y navega al detalle por uuid en
  * el click de la card.
  *
- * Ciclo 10 TDD — Sprint 7.
+ * Ciclo 10 TDD — Sprint 7. Ajustado en Ciclo 26 (Sprint 8).
  */
 
 const SAMPLE_ITEMS: StatsItem[] = [
@@ -29,15 +30,30 @@ function buildPage(items: StatsItem[], total = items.length, page = 0): StatsIte
 
 describe('StatsList', () => {
   let searchFn: ReturnType<typeof vi.fn>;
+  let getStatsCollectionUuidFn: ReturnType<typeof vi.fn>;
+  let trackFn: ReturnType<typeof vi.fn>;
   let navigateFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     searchFn = vi.fn();
+    getStatsCollectionUuidFn = vi.fn().mockReturnValue(of('col-estadistica'));
+    trackFn = vi.fn().mockReturnValue(of(undefined));
     navigateFn = vi.fn();
     TestBed.configureTestingModule({
       providers: [
-        { provide: StatsListService, useValue: { searchStats: searchFn } },
+        {
+          provide: StatsListService,
+          useValue: {
+            searchStats: searchFn,
+            getStatsCollectionUuid$: getStatsCollectionUuidFn,
+          },
+        },
+        { provide: StatisticsTrackingService, useValue: { trackView$: trackFn } },
         { provide: Router, useValue: { navigate: navigateFn } },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({}) } },
+        },
       ],
     });
   });
@@ -50,7 +66,7 @@ describe('StatsList', () => {
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
-    expect(searchFn).toHaveBeenCalledWith(0, 12);
+    expect(searchFn).toHaveBeenCalledWith(0, 12, 'col-estadistica');
     expect(c.items().length).toBe(3);
     expect(c.totalRecords()).toBe(3);
     expect(c.isLoading()).toBe(false);
@@ -91,7 +107,33 @@ describe('StatsList', () => {
 
     c.onPageChange({ page: 2 });
 
-    expect(searchFn).toHaveBeenLastCalledWith(2, 12);
+    expect(searchFn).toHaveBeenLastCalledWith(2, 12, 'col-estadistica');
+  });
+
+  /** Verifica que registre una visita a la colección Estadistica una sola vez al montar. */
+  it('should register one view to the Estadistica collection on init', () => {
+    searchFn.mockReturnValue(of(buildPage(SAMPLE_ITEMS)));
+
+    const fixture = TestBed.createComponent(StatsList);
+    fixture.detectChanges();
+
+    expect(getStatsCollectionUuidFn).toHaveBeenCalledTimes(1);
+    expect(trackFn).toHaveBeenCalledWith('col-estadistica', 'collection');
+    expect(trackFn).toHaveBeenCalledTimes(1);
+  });
+
+  /** Verifica que cambiar de página no dispare un tracking adicional. */
+  it('should not track an extra view on page change', () => {
+    searchFn.mockReturnValue(of(buildPage(SAMPLE_ITEMS)));
+
+    const fixture = TestBed.createComponent(StatsList);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.onPageChange({ page: 1 });
+    c.onPageChange({ page: 2 });
+
+    expect(trackFn).toHaveBeenCalledTimes(1);
   });
 
   /** Click en card navega a /estadistica/:uuid con el uuid emitido. */
@@ -104,6 +146,6 @@ describe('StatsList', () => {
 
     c.openItem('a');
 
-    expect(navigateFn).toHaveBeenCalledWith(['/estadistica', 'a']);
+    expect(navigateFn).toHaveBeenCalledWith(['/estadistica', 'col-estadistica', 'item', 'a']);
   });
 });

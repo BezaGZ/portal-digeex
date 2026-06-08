@@ -15,7 +15,7 @@ import { ENTITY_TYPE } from '../../../core/config/digeex-values.config';
  * álbumes con facetas, la carga de un álbum individual con sus fotos,
  * la obtención de opciones de filtro y el mapeo de metadata Dublin Core + digeex.
  *
- * Ciclo 8 TDD - Sprint 4 TDD — Galería con Discovery + caché
+ * Ciclo 8 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8).
  */
 describe('GalleryService', () => {
   let service: GalleryService;
@@ -437,5 +437,22 @@ describe('GalleryService', () => {
     req.flush('Error', { status: 500, statusText: 'Server Error' });
 
     await promise;
+  });
+
+  /** getGalleryCollectionUuid$ — método público para que el container registre visitas */
+
+  /** Verifica que getGalleryCollectionUuid$() resuelve el UUID de la colección Galeria desde el cache. */
+  it('should expose getGalleryCollectionUuid$() that resolves the Galeria collection UUID via the cache', async () => {
+    const promise = new Promise<string>((resolve, reject) => {
+      service.getGalleryCollectionUuid$().subscribe({
+        next: (uuid) => resolve(uuid),
+        error: reject,
+      });
+    });
+
+    httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo').flush(mockCollectionsResponse);
+
+    const uuid = await promise;
+    expect(uuid).toBe('col-galeria');
   });
 });

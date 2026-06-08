@@ -12,6 +12,7 @@ import { IsoDateLocalPipe } from '../../../../core/i18n/iso-date-local.pipe';
   imports: [CommonModule, CardModule, ButtonModule, IsoDateLocalPipe],
   templateUrl: './album-card.html',
   styleUrls: ['./album-card.scss'],
+  host: { class: 'block' },
 })
 export class AlbumCardComponent {
   album = input.required<Album>();

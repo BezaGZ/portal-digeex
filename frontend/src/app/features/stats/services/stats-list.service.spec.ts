@@ -15,7 +15,7 @@ import { SearchResult } from '../../../core/api/models/discovery.model';
  * colección y los mapea a `StatsItem` sin descargar bitstreams: el Excel
  * solo se carga al entrar al detalle (CA-07).
  *
- * Ciclo 10 TDD — Sprint 7.
+ * Ciclo 10 TDD — Sprint 7. Ajustado en Ciclo 26 (Sprint 8).
  */
 
 function buildItem(uuid: string, overrides: Partial<Record<string, string>> = {}): Item {
@@ -120,6 +120,17 @@ describe('StatsListService', () => {
     expect(result?.totalElements).toBe(25);
     expect(result?.totalPages).toBe(3);
     expect(result?.page).toBe(1);
+  });
+
+  /** El método público delega al cache para que el container pueda registrar visitas. */
+  it('should expose getStatsCollectionUuid$() that delegates to CollectionCacheService.findByFormat with ENTITY_TYPE.ESTADISTICA', () => {
+    findByFormatFn.mockReturnValue(of('collection-uuid'));
+
+    let received: string | undefined;
+    service.getStatsCollectionUuid$().subscribe((uuid) => (received = uuid));
+
+    expect(findByFormatFn).toHaveBeenCalledWith('Estadistica');
+    expect(received).toBe('collection-uuid');
   });
 
   /** Si la colección Estadistica no existe (entorno limpio), retorna página vacía. */

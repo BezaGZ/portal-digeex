@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { Gallery } from './gallery';
 import { GalleryService } from './services/gallery.service';
+import { StatisticsTrackingService } from '../../core/api/statistics-tracking.service';
 import { AlbumPage, FilterOptions } from './models';
 
 /**
@@ -14,11 +15,12 @@ import { AlbumPage, FilterOptions } from './models';
  * Carga álbumes paginados desde GalleryService, puebla
  * opciones de filtro, maneja paginación y navegación.
  *
- * Ciclo 5 TDD — Sprint 4
+ * Ciclo 5 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8).
  */
 describe('Gallery', () => {
   let router: Router;
   let galleryService: GalleryService;
+  let tracking: StatisticsTrackingService;
 
   /** Fixtures */
 
@@ -58,14 +60,21 @@ describe('Gallery', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({}) } },
+        },
       ],
     }).compileComponents();
 
     router = TestBed.inject(Router);
     galleryService = TestBed.inject(GalleryService);
+    tracking = TestBed.inject(StatisticsTrackingService);
 
     vi.spyOn(galleryService, 'searchAlbums').mockReturnValue(of(MOCK_ALBUM_PAGE));
     vi.spyOn(galleryService, 'getFilterOptions').mockReturnValue(of(MOCK_FILTER_OPTIONS));
+    vi.spyOn(galleryService, 'getGalleryCollectionUuid$').mockReturnValue(of('col-galeria'));
+    vi.spyOn(tracking, 'trackView$').mockReturnValue(of(undefined));
     vi.spyOn(router, 'navigate').mockImplementation(() => Promise.resolve(true));
   });
 
@@ -83,7 +92,7 @@ describe('Gallery', () => {
       const fixture = TestBed.createComponent(Gallery);
       fixture.detectChanges();
 
-      expect(galleryService.searchAlbums).toHaveBeenCalledWith({}, 0, 6);
+      expect(galleryService.searchAlbums).toHaveBeenCalledWith({}, 0, 6, 'col-galeria');
       expect(galleryService.getFilterOptions).toHaveBeenCalled();
       expect(fixture.componentInstance.albums().length).toBe(2);
       expect(fixture.componentInstance.totalRecords()).toBe(8);
@@ -136,7 +145,7 @@ describe('Gallery', () => {
 
       fixture.componentInstance.onPageChange({ page: 2, rows: 6, first: 12 });
 
-      expect(searchSpy).toHaveBeenCalledWith({}, 2, 6);
+      expect(searchSpy).toHaveBeenCalledWith({}, 2, 6, 'col-galeria');
     });
 
     /** Verifica que onFiltersChange() reinicie a página 0 con los nuevos filtros. */
@@ -149,7 +158,7 @@ describe('Gallery', () => {
 
       fixture.componentInstance.onFiltersChange({ programs: ['PRONEA'] });
 
-      expect(searchSpy).toHaveBeenCalledWith({ programs: ['PRONEA'] }, 0, 6);
+      expect(searchSpy).toHaveBeenCalledWith({ programs: ['PRONEA'] }, 0, 6, 'col-galeria');
     });
 
     /** Verifica que onClearFilters() limpie filtros y reinicie la búsqueda. */
@@ -162,22 +171,58 @@ describe('Gallery', () => {
 
       fixture.componentInstance.onClearFilters();
 
-      expect(searchSpy).toHaveBeenCalledWith({}, 0, 6);
+      expect(searchSpy).toHaveBeenCalledWith({}, 0, 6, 'col-galeria');
+    });
+  });
+
+  /** Tracking de visita a la colección */
+
+  describe('collection view tracking', () => {
+    /** Verifica que se registre una visita a la colección al inicializar el componente. */
+    it('should register one view to the Galeria collection on init', () => {
+      const fixture = TestBed.createComponent(Gallery);
+      fixture.detectChanges();
+
+      expect(galleryService.getGalleryCollectionUuid$).toHaveBeenCalledTimes(1);
+      expect(tracking.trackView$).toHaveBeenCalledWith('col-galeria', 'collection');
+      expect(tracking.trackView$).toHaveBeenCalledTimes(1);
+    });
+
+    /** Verifica que cambiar de página no dispare un tracking adicional. */
+    it('should not track an extra view on page change', () => {
+      const fixture = TestBed.createComponent(Gallery);
+      fixture.detectChanges();
+
+      fixture.componentInstance.onPageChange({ page: 2, rows: 6, first: 12 });
+      fixture.componentInstance.onPageChange({ page: 3, rows: 6, first: 18 });
+
+      expect(tracking.trackView$).toHaveBeenCalledTimes(1);
+    });
+
+    /** Verifica que cambiar filtros no dispare un tracking adicional. */
+    it('should not track an extra view on filter change or clear', () => {
+      const fixture = TestBed.createComponent(Gallery);
+      fixture.detectChanges();
+
+      fixture.componentInstance.onFiltersChange({ programs: ['PRONEA'] });
+      fixture.componentInstance.onClearFilters();
+
+      expect(tracking.trackView$).toHaveBeenCalledTimes(1);
     });
   });
 
   /** Navegación */
 
   describe('navigation', () => {
-    /** Verifica que openAlbum() navegue a /galeria/:id. */
-    it('should navigate to /galeria/:id on openAlbum', () => {
+    /** Verifica que openAlbum() navegue a /galeria/:collectionUuid/album/:albumId. */
+    it('should navigate to /galeria/:collectionUuid/album/:albumId on openAlbum', () => {
       const fixture = TestBed.createComponent(Gallery);
       fixture.detectChanges();
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       fixture.componentInstance.openAlbum({ id: 'album-1' } as any);
 
-      expect(router.navigate).toHaveBeenCalledWith(['/galeria', 'album-1']);
+      expect(router.navigate).toHaveBeenCalledWith(['/galeria', 'col-galeria', 'album', 'album-1']);
     });
 
     /** Verifica que goBack() navegue a la raíz. */

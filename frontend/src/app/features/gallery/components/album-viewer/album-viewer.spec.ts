@@ -14,7 +14,7 @@ import { Album } from '../../models';
  * Carga un álbum completo por UUID desde route params,
  * muestra grid de fotos y abre modal PrimeNG Galleria.
  *
- * Ciclo 6 TDD — Sprint 4
+ * Ciclo 6 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8).
  */
 describe('AlbumViewer', () => {
   let galleryService: GalleryService;
@@ -53,7 +53,7 @@ describe('AlbumViewer', () => {
         provideHttpClientTesting(),
         {
           provide: ActivatedRoute,
-          useValue: { params: of({ id: 'album-001' }) },
+          useValue: { params: of({ uuid: 'col-galeria', id: 'album-001' }) },
         },
       ],
     }).compileComponents();
@@ -102,14 +102,14 @@ describe('AlbumViewer', () => {
       expect(fixture.componentInstance.isLoading()).toBe(false);
     });
 
-    /** Verifica que navegue a /galeria cuando el álbum no se encuentra. */
-    it('should navigate to /galeria when album is not found', () => {
+    /** Verifica que navegue al listado de la colección padre cuando el álbum no se encuentra. */
+    it('should navigate to /galeria/:collectionUuid when album is not found', () => {
       vi.spyOn(galleryService, 'getAlbumById').mockReturnValue(of(undefined));
 
       const fixture = TestBed.createComponent(AlbumViewer);
       fixture.detectChanges();
 
-      expect(router.navigate).toHaveBeenCalledWith(['/galeria']);
+      expect(router.navigate).toHaveBeenCalledWith(['/galeria', 'col-galeria']);
     });
   });
 
@@ -135,12 +135,13 @@ describe('AlbumViewer', () => {
       expect(formatted).toContain('2025');
     });
 
-    /** Verifica que goBack() navegue a /galeria. */
-    it('should navigate to /galeria on goBack', () => {
+    /** Verifica que goBack() navegue al listado de la colección padre. */
+    it('should navigate to /galeria/:collectionUuid on goBack', () => {
       const fixture = TestBed.createComponent(AlbumViewer);
+      fixture.detectChanges();
       fixture.componentInstance.goBack();
 
-      expect(router.navigate).toHaveBeenCalledWith(['/galeria']);
+      expect(router.navigate).toHaveBeenCalledWith(['/galeria', 'col-galeria']);
     });
   });
 });

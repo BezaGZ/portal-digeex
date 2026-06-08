@@ -29,26 +29,37 @@ export class GalleryService {
   /** ─── Buscar colección de galería ─── */
 
   /**
-   * Obtiene el UUID de la colección de galería desde el caché global.
-   * @returns Observable con el UUID de la colección que tiene dspace.entity.type = 'galeria'
+   * Devuelve el UUID de la colección con `dspace.entity.type = 'Galeria'`.
+   * Lo usan el container para registrar visitas en `viewevents` y los
+   * métodos internos del service para acotar el scope de Discovery.
    */
-  private findGalleryCollection(): Observable<string> {
+  getGalleryCollectionUuid$(): Observable<string> {
     return this.collectionCache.findByFormat(ENTITY_TYPE.GALERIA);
   }
 
   /** ─── Cargar álbumes (paginado) ─── */
 
   /**
-   * Busca álbumes dentro de la colección de galería con filtros y paginación.
-   * Para cada ítem obtiene el thumbnail del bundle THUMBNAIL y el conteo
-   * de fotos del bundle ORIGINAL.
+   * Busca álbumes dentro de una colección de galería con filtros y paginación.
+   * Si `collectionUuid` viene, lo usa como scope directo; si no, resuelve la
+   * primera colección con `dspace.entity.type = 'Galeria'` vía el cache para
+   * preservar el comportamiento de la ruta raíz `/galeria` sin UUID.
+   * Para cada ítem obtiene el thumbnail del bundle THUMBNAIL y el conteo de
+   * fotos del bundle ORIGINAL.
    * @param filters - Filtros de galería (programa, tipo evento, población, contexto)
    * @param page - Página actual (default: 0)
    * @param size - Cantidad de álbumes por página (default: 6)
+   * @param collectionUuid - UUID de la colección a consultar (opcional)
    * @returns Observable con AlbumPage (álbumes + datos de paginación)
    */
-  searchAlbums(filters: GalleryFilters = {}, page = 0, size = 6): Observable<AlbumPage> {
-    return this.findGalleryCollection().pipe(
+  searchAlbums(
+    filters: GalleryFilters = {},
+    page = 0,
+    size = 6,
+    collectionUuid?: string,
+  ): Observable<AlbumPage> {
+    const scope$ = collectionUuid ? of(collectionUuid) : this.getGalleryCollectionUuid$();
+    return scope$.pipe(
       switchMap((collectionUuid) => {
         const facetFilters = this.buildGalleryFacetFilters(filters);
 
@@ -192,12 +203,16 @@ export class GalleryService {
   /** ─── Opciones de filtro (facetas) ─── */
 
   /**
-   * Obtiene las opciones de filtro disponibles para la galería.
-   * Hace un request con size=0 para obtener solo las facetas sin ítems.
+   * Obtiene las opciones de filtro disponibles para la galería. Si
+   * `collectionUuid` viene, lo usa como scope; si no, resuelve la primera
+   * colección con `dspace.entity.type = 'Galeria'`. Hace un request con
+   * size=0 para obtener solo las facetas sin ítems.
+   * @param collectionUuid - UUID de la colección a consultar (opcional)
    * @returns Observable con FilterOptions (programas, tipos evento, población, contexto)
    */
-  getFilterOptions(): Observable<FilterOptions> {
-    return this.findGalleryCollection().pipe(
+  getFilterOptions(collectionUuid?: string): Observable<FilterOptions> {
+    const scope$ = collectionUuid ? of(collectionUuid) : this.getGalleryCollectionUuid$();
+    return scope$.pipe(
       switchMap((collectionUuid) =>
         this.discoveryService.search({ scope: collectionUuid, page: 0, size: 0 })
       ),

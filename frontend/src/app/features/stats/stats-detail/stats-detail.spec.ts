@@ -22,12 +22,15 @@ import { Item } from '../../../core/api/models/item.model';
 /**
  * Tests del `StatsDetail`.
  *
- * Container del detalle público en `/estadistica/:uuid`. Orquesta la
- * resolución del item, el renderer del registry, la descarga del Excel y la
- * construcción del dashboard. Cubre los cuatro modos de error (`not-found`,
- * `unsupported`, `pii`, `network`) y el flujo feliz con filtros.
+ * Container del detalle público en `/estadistica/:uuid/item/:itemUuid`. El
+ * `:uuid` es la colección padre y `:itemUuid` el item específico. Orquesta
+ * la resolución del item, el renderer del registry, la descarga del Excel
+ * y la construcción del dashboard. Cubre los cuatro modos de error
+ * (`not-found`, `unsupported`, `pii`, `network`) y el flujo feliz con
+ * filtros. El breadcrumb y el `goBack` apuntan al listado de la colección
+ * padre cuando el UUID está presente.
  *
- * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclos 16, 23.
+ * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclos 16, 23, 26.
  */
 
 const DASHBOARD: StatsDashboard = {
@@ -130,7 +133,7 @@ describe('StatsDetail', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        { provide: ActivatedRoute, useValue: { snapshot: { params: { uuid: 'item-1' } } } },
+        { provide: ActivatedRoute, useValue: { snapshot: { params: { uuid: 'col-estadistica', itemUuid: 'item-1' } } } },
         { provide: Router, useValue: { navigate: navigateFn } },
         { provide: DSpaceApiService, useValue: { getItem: getItemFn } },
         {
@@ -254,7 +257,7 @@ describe('StatsDetail', () => {
 
     fixture.componentInstance.goBack();
 
-    expect(navigateFn).toHaveBeenCalledWith(['/estadistica']);
+    expect(navigateFn).toHaveBeenCalledWith(['/estadistica', 'col-estadistica']);
   });
 
   /** Verifica que setTrail publique [{label:'Estadística', routerLink}, {label: dc.title}] tras resolver getItem. */
@@ -272,7 +275,7 @@ describe('StatsDetail', () => {
     fixture.detectChanges();
 
     expect(setTrailFn).toHaveBeenCalledWith([
-      { label: 'Estadística', routerLink: '/estadistica' },
+      { label: 'Estadística', routerLink: '/estadistica/col-estadistica' },
       { label: 'Estudiantes 2024' },
     ]);
   });
@@ -292,7 +295,7 @@ describe('StatsDetail', () => {
     fixture.detectChanges();
 
     expect(setTrailFn).toHaveBeenCalledWith([
-      { label: 'Estadística', routerLink: '/estadistica' },
+      { label: 'Estadística', routerLink: '/estadistica/col-estadistica' },
       { label: 'Detalle' },
     ]);
   });

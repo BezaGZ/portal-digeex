@@ -34,13 +34,25 @@ export class AlbumViewer implements OnInit {
     private tracking: StatisticsTrackingService,
   ) {}
 
+  /** UUID de la colección padre, leído del route param `:uuid` de la ruta `/galeria/:uuid/album/:id`. */
+  private collectionUuid: string | null = null;
+
+  /**
+   * Suscribe a `route.params` (no a `route.snapshot`) intencionalmente para
+   * que la vista responda a navegaciones entre álbumes vecinos sin remontar
+   * el componente: cuando el usuario abre otro álbum desde un link interno
+   * que apunta al mismo `AlbumViewer`, Angular reutiliza la instancia y
+   * emite un nuevo `params`. La resubscripción dispara `loadAlbum` con el
+   * id nuevo y un nuevo `trackView$` para registrar la visita al item.
+   */
   ngOnInit() {
     this.route.params.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.collectionUuid = (params['uuid'] as string | undefined) ?? null;
       const albumId = params['id'];
       if (albumId) {
         this.loadAlbum(albumId);
       } else {
-        this.router.navigate(['/galeria']);
+        this.navigateBackToListing();
       }
     });
   }
@@ -60,17 +72,26 @@ export class AlbumViewer implements OnInit {
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe();
         } else {
-          this.router.navigate(['/galeria']);
+          this.navigateBackToListing();
         }
         this.isLoading.set(false);
       },
       error: () => {
-        this.router.navigate(['/galeria']);
+        this.navigateBackToListing();
       },
     });
   }
 
   goBack() {
+    this.navigateBackToListing();
+  }
+
+  /** Vuelve al listado de la colección padre si el UUID está presente; si no, al raíz `/galeria`. */
+  private navigateBackToListing(): void {
+    if (this.collectionUuid) {
+      this.router.navigate(['/galeria', this.collectionUuid]);
+      return;
+    }
     this.router.navigate(['/galeria']);
   }
 

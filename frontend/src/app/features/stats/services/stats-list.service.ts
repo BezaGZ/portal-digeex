@@ -22,12 +22,25 @@ export class StatsListService {
   private readonly discovery = inject(DiscoveryService);
 
   /**
-   * Busca items Estadística paginados. Si la colección no existe (ocurre en
-   * entornos limpios sin seed o si el setup-dspace.sh nunca corrió), retorna
-   * página vacía en vez de lanzar para que la vista pública degrade limpio.
+   * Devuelve el UUID de la colección con `dspace.entity.type = 'Estadistica'`.
+   * Lo usan el container para registrar visitas en `viewevents` y `searchStats`
+   * para acotar el scope de Discovery.
    */
-  searchStats(page = 0, size = 12): Observable<StatsItemPage> {
-    return this.collectionCache.findByFormat(ENTITY_TYPE.ESTADISTICA).pipe(
+  getStatsCollectionUuid$(): Observable<string> {
+    return this.collectionCache.findByFormat(ENTITY_TYPE.ESTADISTICA);
+  }
+
+  /**
+   * Busca items Estadística paginados dentro de una colección. Si
+   * `collectionUuid` viene, lo usa como scope directo; si no, resuelve la
+   * primera colección con `dspace.entity.type = 'Estadistica'` vía el cache.
+   * Si la colección no existe (entorno limpio o `setup-dspace.sh` no corrió),
+   * retorna página vacía en vez de lanzar para que la vista pública degrade
+   * limpio.
+   */
+  searchStats(page = 0, size = 12, collectionUuid?: string): Observable<StatsItemPage> {
+    const scope$ = collectionUuid ? of(collectionUuid) : this.getStatsCollectionUuid$();
+    return scope$.pipe(
       switchMap((collectionUuid) =>
         this.discovery.search({ scope: collectionUuid, page, size }).pipe(
           map((result) => ({

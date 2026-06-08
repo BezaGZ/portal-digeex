@@ -9,7 +9,7 @@
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 16px rgba(30, 49, 89, 0.2);
-    border-color: var(--gob-azul-gobierno);
+    border-color: #1e3a8a; /* blue-800 — borde institucional en light */
   }
 
   img {
@@ -30,4 +30,8 @@
       transition: opacity 0.3s ease;
     }
   }
+}
+
+:host-context(.dark) .photo-grid-item:hover {
+  border-color: #93c5fd; /* blue-300 — contraste visible sobre fondo oscuro */
 }

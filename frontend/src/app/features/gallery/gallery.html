@@ -12,21 +12,15 @@
     </div>
 
     <div class="mb-8">
-      <h1
-        class="text-4xl mb-4"
-        style="color: var(--gob-azul-gobierno); font-family: var(--font-heading); font-weight: 700"
-      >
+      <h1 class="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-4">
         Galería Institucional
       </h1>
-      <p
-        class="text-lg leading-relaxed"
-        style="color: var(--color-text-primary); font-family: var(--font-body); font-weight: 400"
-      >
+      <p class="text-lg leading-relaxed text-gray-600 dark:text-gray-400">
         Momentos destacados de las actividades, eventos y logros de la Dirección General de
         Educación Extraescolar
       </p>
       @if (!isLoading() && totalRecords() > 0) {
-        <p class="text-sm mt-2" style="color: var(--color-text-secondary)">
+        <p class="text-sm mt-2 text-gray-500 dark:text-gray-400">
           {{ totalRecords() }} álbumes disponibles
         </p>
       }

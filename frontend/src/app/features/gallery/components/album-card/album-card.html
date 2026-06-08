@@ -1,16 +1,16 @@
 <p-card styleClass="album-card" (click)="onCardClick()">
-  <div class="cover-container">
+  <div class="relative overflow-hidden rounded-t-lg">
     @if (album().coverPhoto) {
-      <img [src]="album().coverPhoto" [alt]="album().title" loading="lazy" class="album-cover" />
+      <img [src]="album().coverPhoto" [alt]="album().title" loading="lazy" class="album-cover w-full h-60 object-cover transition-transform duration-300" />
     } @else {
-      <div class="album-cover flex items-center justify-center" style="background-color: #f5f2ee">
+      <div class="album-cover w-full h-60 object-cover transition-transform duration-300 flex items-center justify-center" style="background-color: #f5f2ee">
         <i class="pi pi-images text-6xl" style="color: #d9d5d0"></i>
       </div>
     }
   </div>
 
   <div class="p-4">
-    <div class="album-date">
+    <div class="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center justify-center gap-1.5">
       <i class="pi pi-calendar text-sm"></i>
       <span>{{ album().date | isoDateLocal: 'longDate' }}</span>
       @if (album().photoCount > 0) {
@@ -23,35 +23,23 @@
 
     <div class="flex flex-wrap items-center justify-center gap-2 mb-2">
       @if (album().eventType) {
-        <span
-          class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
-          style="background-color: var(--gob-azul-gobierno); color: white; font-family: var(--font-body)"
-        >
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-[#1E3159] dark:bg-[#2A4A8E] text-white">
           <i class="pi pi-tag text-xs"></i>
           {{ album().eventType }}
         </span>
       }
       @if (album().program) {
-        <span
-          class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
-          style="background-color: var(--gob-azul-acento); color: white; font-family: var(--font-body)"
-        >
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-[#233E72] dark:bg-[#3A5AA8] text-white">
           {{ album().program }}
         </span>
       }
     </div>
 
-    <h3
-      class="album-title"
-      style="font-family: var(--font-heading); font-weight: 500"
-    >
+    <h3 class="text-xl font-medium text-[#1E3159] dark:text-white mb-2 leading-tight text-center" style="font-family: var(--font-heading)">
       {{ album().title }}
     </h3>
 
-    <p
-      class="album-description"
-      style="font-family: var(--font-body); font-weight: 400; font-size: 1rem"
-    >
+    <p class="text-base text-gray-600 dark:text-gray-400 leading-normal mb-4 line-clamp-2 text-center">
       {{ album().description }}
     </p>
 
