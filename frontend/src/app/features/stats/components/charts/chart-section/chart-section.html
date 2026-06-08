@@ -1,4 +1,6 @@
-<article class="bg-white p-5 sm:p-6 flex flex-col gap-4 h-full border-b border-r border-gray-100">
+<article
+  class="bg-white p-5 sm:p-6 flex flex-col gap-4 border-b border-r border-gray-100"
+  [class.h-full]="!isWide()">
   <header class="flex items-center justify-between">
     <h3 class="text-sm font-semibold uppercase tracking-wide leading-tight"
         style="color: var(--color-text-secondary); font-family: var(--font-heading)">

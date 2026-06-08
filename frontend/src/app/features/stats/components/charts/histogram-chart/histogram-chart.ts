@@ -18,6 +18,7 @@ import { readChartColors } from '../chart-colors.util';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ChartModule],
   templateUrl: './histogram-chart.html',
+  host: { class: 'block w-full' },
 })
 export class HistogramChartComponent {
   private readonly _config = signal<ChartConfig | null>(null);

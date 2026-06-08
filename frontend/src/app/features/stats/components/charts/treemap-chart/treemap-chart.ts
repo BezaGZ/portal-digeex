@@ -22,6 +22,7 @@ import { readChartColors } from '../chart-colors.util';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ChartModule],
   templateUrl: './treemap-chart.html',
+  host: { class: 'block w-full' },
 })
 export class TreemapChartComponent {
   private readonly _config = signal<ChartConfig | null>(null);

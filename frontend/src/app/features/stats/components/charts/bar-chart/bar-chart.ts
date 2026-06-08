@@ -36,6 +36,7 @@ import { readChartColors } from '../chart-colors.util';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ChartModule],
   templateUrl: './bar-chart.html',
+  host: { class: 'block w-full' },
 })
 export class BarChartComponent implements OnInit {
   private readonly _config = signal<ChartConfig | null>(null);

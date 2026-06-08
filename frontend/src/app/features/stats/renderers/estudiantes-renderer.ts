@@ -138,7 +138,14 @@ export class EstudiantesRenderer extends BaseStatsRenderer {
         ],
       },
       {
+        title: 'Resultados',
+        charts: [
+          { type: 'pie', title: 'Resultados', data: sortDesc(mapToData(resultadoCount)) },
+        ],
+      },
+      {
         title: 'Distribución por edad',
+        widthHint: 'wide',
         charts: [
           { type: 'histogram', title: 'Edad', data: sortByNumericLabel(numericMapToData(edadCount)) },
         ],
@@ -171,30 +178,27 @@ export class EstudiantesRenderer extends BaseStatsRenderer {
       },
       {
         title: 'Programas',
+        widthHint: 'wide',
         charts: [
           { type: 'treemap', title: 'Programas', data: sortDesc(mapToData(programaCount)) },
         ],
       },
       {
         title: 'Nivel educativo',
+        widthHint: 'wide',
         charts: [
           { type: 'bar', title: 'Nivel', data: sortDesc(mapToData(nivelCount)) },
         ],
       },
       {
         title: 'Área geográfica',
+        widthHint: 'wide',
         charts: [
           {
             type: 'horizontal-bar',
             title: 'Área geográfica',
             data: sortDesc(mapToData(areaCount)),
           },
-        ],
-      },
-      {
-        title: 'Resultados',
-        charts: [
-          { type: 'pie', title: 'Resultados', data: sortDesc(mapToData(resultadoCount)) },
         ],
       },
       {

@@ -36,6 +36,7 @@ import { MapChartComponent } from '../map-chart/map-chart';
   ],
   templateUrl: './chart-section.html',
   host: {
+    class: 'block',
     '[class.md:col-span-2]': 'isWide()',
   },
 })
