@@ -15,6 +15,7 @@ import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { MyDSpaceObject } from '../../../core/api/models/my-dspace.model';
+import { EmptyStateComponent } from '../../../shared';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemAdminFacade } from '../content/services/item-admin-facade';
 import { ResourcesAdminFacade } from '../content/services/resources-admin-facade';
@@ -74,6 +75,7 @@ type ResourcesTab = 'activos' | 'eliminados';
     SelectModule,
     TooltipModule,
     LoadingSpinnerComponent,
+    EmptyStateComponent,
   ],
 })
 export class ResourcesAdmin {

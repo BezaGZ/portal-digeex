@@ -17,6 +17,7 @@ import { Observable, map } from 'rxjs';
 
 import { CollectionApiService } from '../../../../../core/api/collection-api.service';
 import { Collection } from '../../../../../core/api/models/collection.model';
+import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
 import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
 
 /**
@@ -38,7 +39,7 @@ export interface TopListEntry {
   selector: 'app-top-list-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CardModule, ButtonModule, LoadingSpinnerComponent],
+  imports: [CommonModule, CardModule, ButtonModule, LoadingSpinnerComponent, EmptyStateComponent],
   templateUrl: './top-list-card.html',
 })
 export class TopListCard {

@@ -8,7 +8,12 @@
     } @else if (failed()) {
       <span data-testid="range-bar-card-failed" class="text-4xl font-bold text-gray-400">—</span>
     } @else if (isEmpty()) {
-      <span data-testid="range-bar-card-empty" class="text-sm text-gray-500">Sin items en los rangos solicitados.</span>
+      <app-empty-state
+        testId="range-bar-card-empty"
+        [compact]="true"
+        icon="pi pi-calendar"
+        title="Sin datos"
+        message="No hay items en los rangos solicitados." />
     } @else {
       <app-bar-chart [config]="chartConfig()!" class="w-full" />
     }

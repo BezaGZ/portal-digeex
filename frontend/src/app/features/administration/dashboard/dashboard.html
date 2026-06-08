@@ -27,12 +27,11 @@
       Cargando indicadores…
     </div>
   } @else if (widgets().length === 0) {
-    <div
-      class="text-sm text-gray-500 bg-white rounded-xl border border-gray-200 p-6"
-      data-testid="dashboard-empty"
-    >
-      Tu rol no tiene indicadores configurados todavía.
-    </div>
+    <app-empty-state
+      testId="dashboard-empty"
+      icon="pi pi-chart-bar"
+      title="Sin indicadores"
+      message="Tu rol no tiene indicadores configurados todavía." />
   } @else {
     <div
       class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"

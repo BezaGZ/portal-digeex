@@ -8,7 +8,12 @@
     } @else if (failed()) {
       <span data-testid="facet-bar-card-failed" class="text-4xl font-bold text-gray-400">—</span>
     } @else if (isEmpty()) {
-      <span data-testid="facet-bar-card-empty" class="text-sm text-gray-500">Sin datos para esta facet.</span>
+      <app-empty-state
+        testId="facet-bar-card-empty"
+        [compact]="true"
+        icon="pi pi-chart-bar"
+        title="Sin datos"
+        message="No hay valores para esta categoría." />
     } @else {
       <app-bar-chart [config]="chartConfig()!" class="w-full" />
     }

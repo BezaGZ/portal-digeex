@@ -5,6 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { Community } from '../../../../../core/api/models/community.model';
 import { SubdireccionView } from '../../models/subdireccion-view.model';
+import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
 
 /**
  * Tabla presentacional de subdirecciones. El padre pasa la lista y los
@@ -16,7 +17,7 @@ import { SubdireccionView } from '../../models/subdireccion-view.model';
   selector: 'app-community-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './community-table.html',
-  imports: [TableModule, ButtonModule, TooltipModule, RouterLink],
+  imports: [TableModule, ButtonModule, TooltipModule, RouterLink, EmptyStateComponent],
 })
 export class CommunityTable {
   readonly items = input.required<SubdireccionView[]>();

@@ -1,102 +1,102 @@
-<p-table
-  [value]="items()"
-  styleClass="p-datatable-sm"
-  [lazy]="true"
-  [paginator]="true"
-  [rows]="pageSize()"
-  [totalRecords]="totalRecords()"
-  [rowsPerPageOptions]="[10, 25, 50]"
-  currentPageReportTemplate="{first}–{last} de {totalRecords}"
-  [showCurrentPageReport]="true"
-  (onLazyLoad)="lazyLoad.emit($event)">
-  <ng-template #header>
-    <tr>
-      <th class="w-16">Logo</th>
-      <th class="w-20">Orden</th>
-      <th class="w-32">Sigla</th>
-      <th>Título</th>
-      <th>Identificador</th>
-      <th>Tipo</th>
-      <th>Ubicación menú</th>
-      <th>Recursos publicados</th>
-      <th class="w-44">Acciones</th>
-    </tr>
-  </ng-template>
-  <ng-template #body let-row>
-    <tr>
-      <td>
-        <div
-          class="w-10 h-10 rounded overflow-hidden flex items-center justify-center"
-          style="background-color: #f5f2ee"
-        >
-          @if (getLogoUrl(row); as logoUrl) {
-            <img
-              [src]="logoUrl"
-              [alt]="'Logo de ' + getSigla(row)"
-              loading="lazy"
-              class="w-full h-full object-cover"
-            />
-          } @else {
-            <i class="pi pi-image text-lg" style="color: #d9d5d0"></i>
-          }
-        </div>
-      </td>
-      <td class="text-center">{{ getOrden(row) }}</td>
-      <td class="font-bold">{{ getSigla(row) }}</td>
-      <td class="font-medium">{{ getTitulo(row) }}</td>
-      <td class="text-gray-600 dark:text-gray-400">{{ row.handle }}</td>
-      <td>{{ getEntityType(row) }}</td>
-      <td>{{ getNavLocation(row) }}</td>
-      <td>{{ row.recursosCount ?? '—' }}</td>
-      <td>
-        <div class="flex gap-2">
-          <p-button
-            icon="pi pi-history"
-            severity="secondary"
-            size="small"
-            [rounded]="true"
-            [text]="true"
-            pTooltip="Ver historial"
-            tooltipPosition="top"
-            data-testid="programa-view-history"
-            [routerLink]="['/administrador/programas', row.uuid]" />
-          <p-button
-            icon="pi pi-chart-line"
-            severity="secondary"
-            size="small"
-            [rounded]="true"
-            [text]="true"
-            pTooltip="Ver estadísticas"
-            tooltipPosition="top"
-            data-testid="programa-view-stats"
-            [routerLink]="['/administrador/uso/programas', row.uuid]" />
-          @if (canEdit()) {
+@if (items().length === 0) {
+  <app-empty-state
+    icon="pi pi-folder-open"
+    title="Sin programas"
+    message="Esta subdirección no tiene programas registrados todavía." />
+} @else {
+  <p-table
+    [value]="items()"
+    styleClass="p-datatable-sm"
+    [lazy]="true"
+    [paginator]="true"
+    [rows]="pageSize()"
+    [totalRecords]="totalRecords()"
+    [rowsPerPageOptions]="[10, 25, 50]"
+    currentPageReportTemplate="{first}–{last} de {totalRecords}"
+    [showCurrentPageReport]="true"
+    (onLazyLoad)="lazyLoad.emit($event)">
+    <ng-template #header>
+      <tr>
+        <th class="w-16">Logo</th>
+        <th class="w-20">Orden</th>
+        <th class="w-32">Sigla</th>
+        <th>Título</th>
+        <th>Identificador</th>
+        <th>Tipo</th>
+        <th>Ubicación menú</th>
+        <th>Recursos publicados</th>
+        <th class="w-44">Acciones</th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-row>
+      <tr>
+        <td>
+          <div
+            class="w-10 h-10 rounded overflow-hidden flex items-center justify-center"
+            style="background-color: #f5f2ee"
+          >
+            @if (getLogoUrl(row); as logoUrl) {
+              <img
+                [src]="logoUrl"
+                [alt]="'Logo de ' + getSigla(row)"
+                loading="lazy"
+                class="w-full h-full object-cover"
+              />
+            } @else {
+              <i class="pi pi-image text-lg" style="color: #d9d5d0"></i>
+            }
+          </div>
+        </td>
+        <td class="text-center">{{ getOrden(row) }}</td>
+        <td class="font-bold">{{ getSigla(row) }}</td>
+        <td class="font-medium">{{ getTitulo(row) }}</td>
+        <td class="text-gray-600 dark:text-gray-400">{{ row.handle }}</td>
+        <td>{{ getEntityType(row) }}</td>
+        <td>{{ getNavLocation(row) }}</td>
+        <td>{{ row.recursosCount ?? '—' }}</td>
+        <td>
+          <div class="flex gap-2">
             <p-button
-              icon="pi pi-pencil"
-              severity="info"
+              icon="pi pi-history"
+              severity="secondary"
               size="small"
               [rounded]="true"
               [text]="true"
-              (onClick)="editRequest.emit(row)" />
-          }
-          @if (canDelete()) {
+              pTooltip="Ver historial"
+              tooltipPosition="top"
+              data-testid="programa-view-history"
+              [routerLink]="['/administrador/programas', row.uuid]" />
             <p-button
-              icon="pi pi-trash"
-              severity="danger"
+              icon="pi pi-chart-line"
+              severity="secondary"
               size="small"
               [rounded]="true"
               [text]="true"
-              (onClick)="deleteRequest.emit(row)" />
-          }
-        </div>
-      </td>
-    </tr>
-  </ng-template>
-  <ng-template #emptymessage>
-    <tr>
-      <td colspan="9" class="text-center text-gray-500 dark:text-gray-400 py-6">
-        Esta subdirección no tiene programas registrados todavía.
-      </td>
-    </tr>
-  </ng-template>
-</p-table>
+              pTooltip="Ver estadísticas"
+              tooltipPosition="top"
+              data-testid="programa-view-stats"
+              [routerLink]="['/administrador/uso/programas', row.uuid]" />
+            @if (canEdit()) {
+              <p-button
+                icon="pi pi-pencil"
+                severity="info"
+                size="small"
+                [rounded]="true"
+                [text]="true"
+                (onClick)="editRequest.emit(row)" />
+            }
+            @if (canDelete()) {
+              <p-button
+                icon="pi pi-trash"
+                severity="danger"
+                size="small"
+                [rounded]="true"
+                [text]="true"
+                (onClick)="deleteRequest.emit(row)" />
+            }
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+}

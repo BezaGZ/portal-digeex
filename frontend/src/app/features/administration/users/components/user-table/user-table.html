@@ -1,128 +1,126 @@
 <p-confirmDialog />
 
 <p-card class="shadow-sm">
-  <p-table
-    [value]="users()"
-    [lazy]="true"
-    [totalRecords]="totalRecords()"
-    [rows]="pageSize()"
-    [paginator]="true"
-    [rowsPerPageOptions]="[10, 25, 50]"
-    [showCurrentPageReport]="true"
-    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} usuarios"
-    (onLazyLoad)="lazyLoad.emit($event)"
-    styleClass="p-datatable-sm"
-  >
-    <ng-template #header>
-      <tr>
-        <th>Nombre</th>
-        <th>Correo Electrónico</th>
-        <th>Rol</th>
-        <th>Subdirección</th>
-        <th>Estado</th>
-        <th class="text-right">Acciones</th>
-      </tr>
-    </ng-template>
+  @if (users().length === 0) {
+    <app-empty-state
+      icon="pi pi-users"
+      title="Sin usuarios"
+      message="No se encontraron usuarios con los filtros actuales." />
+  } @else {
+    <p-table
+      [value]="users()"
+      [lazy]="true"
+      [totalRecords]="totalRecords()"
+      [rows]="pageSize()"
+      [paginator]="true"
+      [rowsPerPageOptions]="[10, 25, 50]"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} usuarios"
+      (onLazyLoad)="lazyLoad.emit($event)"
+      styleClass="p-datatable-sm"
+    >
+      <ng-template #header>
+        <tr>
+          <th>Nombre</th>
+          <th>Correo Electrónico</th>
+          <th>Rol</th>
+          <th>Subdirección</th>
+          <th>Estado</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </ng-template>
 
-    <ng-template #body let-user>
-      <tr>
-        <td>{{ getFullName(user) }}</td>
+      <ng-template #body let-user>
+        <tr>
+          <td>{{ getFullName(user) }}</td>
 
-        <td>{{ user.email }}</td>
+          <td>{{ user.email }}</td>
 
-        <td>{{ getRoleLabel(user.role) }}</td>
+          <td>{{ getRoleLabel(user.role) }}</td>
 
-        <td>
-          @if (user.subdivision) {
-            {{ user.subdivision }}
-          } @else {
-            <span class="text-gray-400">—</span>
-          }
-        </td>
+          <td>
+            @if (user.subdivision) {
+              {{ user.subdivision }}
+            } @else {
+              <span class="text-gray-400">—</span>
+            }
+          </td>
 
-        <td>
-          <app-user-status-badge [status]="user.status" />
-        </td>
+          <td>
+            <app-user-status-badge [status]="user.status" />
+          </td>
 
-        <td>
-          <div class="flex gap-2 justify-end">
-            @if (user.status === 'active') {
-              <p-button
-                icon="pi pi-pencil"
-                severity="secondary"
-                [text]="true"
-                [rounded]="true"
-                (onClick)="onEdit(user)"
-                pTooltip="Editar identidad"
-                tooltipPosition="top"
-              />
-
-              <p-button
-                icon="pi pi-key"
-                severity="secondary"
-                [text]="true"
-                [rounded]="true"
-                (onClick)="onResetPassword(user)"
-                pTooltip="Restablecer contraseña"
-                tooltipPosition="top"
-              />
-
-              @if (canModifyRoles()) {
+          <td>
+            <div class="flex gap-2 justify-end">
+              @if (user.status === 'active') {
                 <p-button
-                  icon="pi pi-users"
-                  severity="info"
+                  icon="pi pi-pencil"
+                  severity="secondary"
                   [text]="true"
                   [rounded]="true"
-                  (onClick)="onModifyRole(user)"
-                  pTooltip="Modificar rol"
+                  (onClick)="onEdit(user)"
+                  pTooltip="Editar identidad"
                   tooltipPosition="top"
                 />
-              }
 
-              @if (canDeactivate(user).can) {
                 <p-button
-                  icon="pi pi-ban"
-                  severity="danger"
+                  icon="pi pi-key"
+                  severity="secondary"
                   [text]="true"
                   [rounded]="true"
-                  (onClick)="onDeactivate(user)"
-                  pTooltip="Desactivar usuario"
+                  (onClick)="onResetPassword(user)"
+                  pTooltip="Restablecer contraseña"
                   tooltipPosition="top"
                 />
+
+                @if (canModifyRoles()) {
+                  <p-button
+                    icon="pi pi-users"
+                    severity="info"
+                    [text]="true"
+                    [rounded]="true"
+                    (onClick)="onModifyRole(user)"
+                    pTooltip="Modificar rol"
+                    tooltipPosition="top"
+                  />
+                }
+
+                @if (canDeactivate(user).can) {
+                  <p-button
+                    icon="pi pi-ban"
+                    severity="danger"
+                    [text]="true"
+                    [rounded]="true"
+                    (onClick)="onDeactivate(user)"
+                    pTooltip="Desactivar usuario"
+                    tooltipPosition="top"
+                  />
+                } @else {
+                  <p-button
+                    icon="pi pi-ban"
+                    severity="danger"
+                    [text]="true"
+                    [rounded]="true"
+                    [disabled]="true"
+                    [pTooltip]="canDeactivate(user).reason"
+                    tooltipPosition="top"
+                  />
+                }
               } @else {
                 <p-button
-                  icon="pi pi-ban"
-                  severity="danger"
+                  icon="pi pi-check-circle"
+                  severity="success"
                   [text]="true"
                   [rounded]="true"
-                  [disabled]="true"
-                  [pTooltip]="canDeactivate(user).reason"
+                  (onClick)="onReactivate(user)"
+                  pTooltip="Reactivar usuario"
                   tooltipPosition="top"
                 />
               }
-            } @else {
-              <p-button
-                icon="pi pi-check-circle"
-                severity="success"
-                [text]="true"
-                [rounded]="true"
-                (onClick)="onReactivate(user)"
-                pTooltip="Reactivar usuario"
-                tooltipPosition="top"
-              />
-            }
-          </div>
-        </td>
-      </tr>
-    </ng-template>
-
-    <ng-template #emptymessage>
-      <tr>
-        <td colspan="6" class="text-center py-8 text-gray-500 dark:text-gray-400">
-          <i class="pi pi-users text-4xl mb-3 block"></i>
-          No se encontraron usuarios
-        </td>
-      </tr>
-    </ng-template>
-  </p-table>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  }
 </p-card>

@@ -16,6 +16,7 @@ import { TotalCard } from './components/total-card/total-card';
 import { FacetBarCard } from './components/facet-bar-card/facet-bar-card';
 import { RangeBarCard } from './components/range-bar-card/range-bar-card';
 import { TopListCard, TopListEntry } from './components/top-list-card/top-list-card';
+import { EmptyStateComponent } from '../../../shared';
 import {
   DashboardWidgetSpec,
   DASHBOARD_WIDGETS_BY_ROLE,
@@ -42,6 +43,7 @@ import { findCallerSub } from '../shared/services/scope-resolver';
     FacetBarCard,
     RangeBarCard,
     TopListCard,
+    EmptyStateComponent,
   ],
   templateUrl: './dashboard.html',
 })

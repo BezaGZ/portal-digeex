@@ -14,6 +14,7 @@ import { CardModule } from 'primeng/card';
 import { catchError, forkJoin, map, of } from 'rxjs';
 
 import { DiscoveryService } from '../../../../../core/api/discovery.service';
+import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
 import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
 import { BarChartComponent } from '../../../../stats/components/charts/bar-chart/bar-chart';
 import { ChartConfig } from '../../../../stats/models/stats-dashboard.model';
@@ -38,7 +39,7 @@ export interface DateRange {
   selector: 'app-range-bar-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CardModule, LoadingSpinnerComponent, BarChartComponent],
+  imports: [CommonModule, CardModule, LoadingSpinnerComponent, BarChartComponent, EmptyStateComponent],
   templateUrl: './range-bar-card.html',
 })
 export class RangeBarCard {

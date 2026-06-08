@@ -13,7 +13,12 @@
       </div>
     } @else if (isEmpty()) {
       <div class="flex-1 flex items-center justify-center">
-        <span data-testid="top-list-card-empty" class="text-sm text-gray-500">No hay colecciones en este alcance.</span>
+        <app-empty-state
+          testId="top-list-card-empty"
+          [compact]="true"
+          icon="pi pi-folder-open"
+          title="Sin colecciones"
+          message="No hay colecciones en este alcance." />
       </div>
     } @else {
       <ol class="space-y-1">

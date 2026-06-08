@@ -17,6 +17,7 @@ import { debounceTime, distinctUntilChanged, filter } from 'rxjs/operators';
 
 import { MyDSpaceApiService } from '../../../../core/api/my-dspace-api.service';
 import { MyDSpaceObject } from '../../../../core/api/models/my-dspace.model';
+import { EmptyStateComponent } from '../../../../shared';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemAdminFacade } from '../../content/services/item-admin-facade';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
@@ -61,6 +62,7 @@ const SORT_OPTIONS: { label: string; value: string }[] = [
     SelectModule,
     TooltipModule,
     LoadingSpinnerComponent,
+    EmptyStateComponent,
   ],
 })
 export class MySubmissions {

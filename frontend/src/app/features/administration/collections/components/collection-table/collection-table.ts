@@ -6,6 +6,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { Collection } from '../../../../../core/api/models/collection.model';
 import { extractLogoUrl } from '../../../../../core/api/collection-logo.util';
 import { ProgramaView } from '../../models/programa-view.model';
+import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
 
 /**
  * Tabla presentacional de programas (colecciones bajo una subdirección).
@@ -16,7 +17,7 @@ import { ProgramaView } from '../../models/programa-view.model';
   selector: 'app-collection-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './collection-table.html',
-  imports: [TableModule, ButtonModule, TooltipModule, RouterLink],
+  imports: [TableModule, ButtonModule, TooltipModule, RouterLink, EmptyStateComponent],
 })
 export class CollectionTable {
   readonly items = input.required<ProgramaView[]>();
