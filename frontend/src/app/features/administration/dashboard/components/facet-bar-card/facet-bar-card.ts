@@ -60,7 +60,17 @@ export class FacetBarCard {
     return r.facets.find((f) => f.name === this.facetName()) ?? null;
   });
 
-  readonly isEmpty = computed(() => !this.loading() && !this.failed() && this.facet() === null);
+  /**
+   * Verdadero cuando la facet no aparece en el response (el backend no la
+   * expone para el scope) o cuando aparece pero con cero valores (el scope
+   * existe pero está vacío). Sin la segunda condición Chart.js renderizaba
+   * una grilla 0-1.2 vacía en lugar del empty state.
+   */
+  readonly isEmpty = computed(() => {
+    if (this.loading() || this.failed()) return false;
+    const f = this.facet();
+    return f === null || f.values.length === 0;
+  });
 
   /**
    * Configuración del bar-chart derivada del facet. Mapea `{ label, count }`
