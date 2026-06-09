@@ -18,6 +18,7 @@ import { ItemApiService } from '../../../core/api/item-api.service';
 import { Item } from '../../../core/api/models/item.model';
 import { ProvenanceService } from '../content/provenance/provenance.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
+import { ExportHistoryButton } from '../../../shared/components/export-history-button/export-history-button.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { ProvenanceTimeline } from '../content/provenance/timeline/provenance-timeline';
 
@@ -31,7 +32,7 @@ import { ProvenanceTimeline } from '../content/provenance/timeline/provenance-ti
   selector: 'app-items-detail',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ButtonModule, CardModule, LoadingSpinnerComponent, ProvenanceTimeline],
+  imports: [CommonModule, ButtonModule, CardModule, LoadingSpinnerComponent, ProvenanceTimeline, ExportHistoryButton],
   templateUrl: './items-detail.html',
 })
 export class ItemsDetail {

@@ -42,9 +42,16 @@
       </p-card>
 
       <p-card styleClass="shadow-sm">
-        <h3 class="m-0 mb-4 text-sm uppercase tracking-wide font-medium text-gray-600 dark:text-gray-300">
-          Historial de actividad
-        </h3>
+        <div class="flex items-center justify-between mb-4 gap-3">
+          <h3 class="m-0 text-sm uppercase tracking-wide font-medium text-gray-600 dark:text-gray-300">
+            Historial de actividad
+          </h3>
+          <app-export-history-button
+            [dsoTitle]="title()"
+            [dsoSubtitle]="author()"
+            dsoType="item"
+            [entries]="provenanceEntries()" />
+        </div>
         <app-provenance-timeline [entries]="provenanceEntries()" />
       </p-card>
     </div>

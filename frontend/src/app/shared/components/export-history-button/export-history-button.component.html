@@ -1,0 +1,12 @@
+<p-button
+  label="Exportar PDF"
+  icon="pi pi-file-pdf"
+  severity="secondary"
+  [outlined]="true"
+  [rounded]="true"
+  size="small"
+  data-testid="export-history-pdf"
+  pTooltip="Descargar reporte del historial en PDF"
+  tooltipPosition="top"
+  [disabled]="entries.length === 0"
+  (onClick)="onExport()" />

@@ -66,6 +66,11 @@
 
 /* ============================================
    CONFIGURACIÓN TAILWIND V4 — Colores DIGEEX
+
+   Los hex de abajo son el espejo CSS de los tokens TS en
+   `src/app/core/theme/institutional-colors.ts`. Esa es la fuente única
+   para los consumidores TypeScript (charts, builder del PDF). Si DIGEEX
+   cambia la paleta, actualizar ambos archivos en la misma pasada.
    ============================================ */
 
 @theme {

@@ -41,6 +41,8 @@
     "chartjs-chart-treemap": "^3.1.0",
     "chartjs-plugin-datalabels": "^2.2.0",
     "js-cookie": "^3.0.5",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "jszip": "^3.10.1",
     "postcss": "^8.5.6",
     "primeicons": "^7.0.0",

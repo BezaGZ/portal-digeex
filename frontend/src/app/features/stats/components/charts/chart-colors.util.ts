@@ -19,16 +19,18 @@ export interface ChartColors {
   readonly treemapPalette: readonly string[];
 }
 
-const FALLBACK_PRIMARY = '#1E3159';
-const FALLBACK_PRIMARY_HOVER = '#233E72';
-const FALLBACK_SECONDARY = '#026961';
-const FALLBACK_SECONDARY_HOVER = '#235558';
-const FALLBACK_ACCENT = '#F2A119';
-const FALLBACK_ACCENT_DARK = '#A8723A';
-const FALLBACK_COMPETITIVIDAD = '#9F0B30';
-const FALLBACK_OPORTUNIDAD = '#FE8B5A';
-const FALLBACK_MODERNIDAD = '#888EA5';
-const FALLBACK_SURFACE = '#FFFFFF';
+import { INSTITUTIONAL_COLORS } from '../../../../core/theme/institutional-colors';
+
+const FALLBACK_PRIMARY = INSTITUTIONAL_COLORS.govBlue;
+const FALLBACK_PRIMARY_HOVER = INSTITUTIONAL_COLORS.govBlueAccent;
+const FALLBACK_SECONDARY = INSTITUTIONAL_COLORS.securityGreen;
+const FALLBACK_SECONDARY_HOVER = INSTITUTIONAL_COLORS.securityGreenDark;
+const FALLBACK_ACCENT = INSTITUTIONAL_COLORS.govAccent;
+const FALLBACK_ACCENT_DARK = INSTITUTIONAL_COLORS.govAccentDark;
+const FALLBACK_COMPETITIVIDAD = INSTITUTIONAL_COLORS.competitividad;
+const FALLBACK_OPORTUNIDAD = INSTITUTIONAL_COLORS.oportunidad;
+const FALLBACK_MODERNIDAD = INSTITUTIONAL_COLORS.modernidad;
+const FALLBACK_SURFACE = INSTITUTIONAL_COLORS.surface;
 
 /**
  * Tintes claros del azul institucional que no existen como CSS var en
