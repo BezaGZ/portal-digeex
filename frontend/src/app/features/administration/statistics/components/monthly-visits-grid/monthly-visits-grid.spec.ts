@@ -16,7 +16,7 @@ import { UsageReport } from '../../usage-report.model';
  * card proporcional al número de puntos para que el chart respete el
  * espacio sin dejar área vacía.
  *
- * Ciclo 23 TDD — Sprint 8.
+ * Ciclo 23 TDD — Sprint 8. Ajustado en Ciclo 28 (Sprint 8).
  */
 describe('MonthlyVisitsGrid', () => {
   beforeEach(() => {
@@ -26,12 +26,28 @@ describe('MonthlyVisitsGrid', () => {
     });
   });
 
-  function render(report: UsageReport | null, loading = false) {
+  function render(report: UsageReport | null, loading = false, monthsBack?: number) {
     const fixture = TestBed.createComponent(MonthlyVisitsGrid);
     fixture.componentRef.setInput('report', report);
     fixture.componentRef.setInput('loading', loading);
+    if (monthsBack !== undefined) {
+      fixture.componentRef.setInput('monthsBack', monthsBack);
+    }
     fixture.detectChanges();
     return fixture;
+  }
+
+  /** Construye `count` points consecutivos, el primero en `referenceDate` y retrocediendo un mes por cada índice. */
+  function buildMonthlyPoints(referenceDate: Date, count: number) {
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return Array.from({ length: count }, (_, i) => {
+      const d = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - i, 1);
+      const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+      return { id: `p-${i}`, label, values: { views: count - i } };
+    });
   }
 
   /** Verifica que loading muestre el placeholder de carga y oculte el chart. */
@@ -130,6 +146,28 @@ describe('MonthlyVisitsGrid', () => {
       points: [{ id: 'a', label: 'May 2025', values: { views: 4 } }],
     });
     expect(fx.componentInstance.chartHeight()).toBe(280);
+  });
+
+  /**
+   * Verifica que cuando `monthsBack` es un número finito el dataset se recorte
+   * a los últimos N meses. El filtrado pasa de runtime en frontend usando el
+   * label parseado del point contra la ventana hoy → hoy - monthsBack.
+   */
+  it('should clip dataset to the last N months when monthsBack is provided', () => {
+    const points = buildMonthlyPoints(new Date(), 24);
+    const fx = render(
+      { id: 'r', reportType: 'TotalVisitsPerMonth', points },
+      false,
+      6,
+    );
+    expect(fx.componentInstance.data?.labels?.length).toBe(6);
+  });
+
+  /** Verifica que sin `monthsBack` el dataset incluya todos los points (default = sin filtro). */
+  it('should include all parseable points when monthsBack is null', () => {
+    const points = buildMonthlyPoints(new Date(), 24);
+    const fx = render({ id: 'r', reportType: 'TotalVisitsPerMonth', points });
+    expect(fx.componentInstance.data?.labels?.length).toBe(24);
   });
 
   /** Verifica que labels con formato inesperado se descarten sin romper el dataset (tolerancia a inputs corruptos). */

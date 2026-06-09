@@ -10,9 +10,11 @@ import {
 import { Location } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
+import { SelectModule } from 'primeng/select';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 
 import { StatisticsApiService } from '../../../core/api/statistics-api.service';
@@ -29,9 +31,8 @@ import { UsageReportTable } from './components/usage-report-table/usage-report-t
 import { MonthlyVisitsGrid } from './components/monthly-visits-grid/monthly-visits-grid';
 
 /**
- * Tupla por reporte cargada en la vista: el tipo se usa para mapear al
- * título y al componente presentacional; el report es el shape crudo del
- * backend o `null` cuando el fetch falló (cae al empty state visual).
+ * Representa un reporte cargado en la página, conteniendo el tipo de reporte
+ * y su información asociada, o `null` si la consulta falló.
  */
 interface LoadedReport {
   reportType: UsageReportType;
@@ -45,12 +46,10 @@ const DSO_TYPE_TITLES: Readonly<Record<UsageReportDsoType, string>> = {
 };
 
 /**
- * Container reusable que monta la pantalla de estadísticas para un DSO. La
- * ruta declara el `dsoType` en `data` y el `dsoUuid` viene del parámetro
- * `:uuid` (excepto para `site`, donde el container lo descubre vía
- * `/api/core/sites`). Resuelve la matriz `REPORTS_BY_DSO_TYPE` y dispara
- * los fetches en paralelo con `forkJoin`. Cada fetch cae a `null` en error
- * para que la tarjeta caiga al empty state sin romper la página entera.
+ * Componente contenedor para visualizar las estadísticas de un objeto de DSpace (DSO).
+ * Resuelve el identificador único (`dsoUuid`) según el tipo de objeto (`dsoType`), ejecuta
+ * en paralelo las consultas de los reportes configurados en `REPORTS_BY_DSO_TYPE` y almacena
+ * los resultados para su visualización.
  */
 @Component({
   selector: 'app-statistics-page',
@@ -58,7 +57,9 @@ const DSO_TYPE_TITLES: Readonly<Record<UsageReportDsoType, string>> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ButtonModule,
+    FormsModule,
     RouterModule,
+    SelectModule,
     LoadingSpinnerComponent,
     EmptyStateComponent,
     UsageReportTable,
@@ -84,8 +85,7 @@ export class StatisticsPage {
   );
 
   readonly resolvedUuid = signal<string | null>(null);
-  /** Href absoluto del Site capturado del response de `/core/sites`; solo se usa
-   *  cuando dsoType=site para llamar al endpoint search/object. */
+  /** URL de autoreferencia (`self.href`) del sitio raíz resuelto. */
   readonly resolvedSiteHref = signal<string | null>(null);
   readonly loaded = signal<LoadedReport[] | null>(null);
   readonly errored = signal(false);
@@ -97,9 +97,19 @@ export class StatisticsPage {
 
   readonly loading = computed(() => this.loaded() === null && !this.errored());
 
+  /** Cantidad de meses de historial para el filtro de visitas. */
+  readonly monthsBack = signal<number>(12);
+
+  /** Opciones del dropdown de ventana mensual. */
+  readonly monthsBackOptions: { label: string; value: number }[] = [
+    { label: 'Últimos 3 meses', value: 3 },
+    { label: 'Últimos 6 meses', value: 6 },
+    { label: 'Últimos 12 meses', value: 12 },
+    { label: 'Últimos 24 meses', value: 24 },
+    { label: 'Últimos 60 meses', value: 60 },
+  ];
+
   constructor() {
-    // Resuelve el dsoUuid: para 'site' descubre el UUID + href via /api/core/sites;
-    // para 'item' y 'collection' lo toma del route param.
     effect(() => {
       const type = this.dsoType();
       if (!type) return;
@@ -116,10 +126,6 @@ export class StatisticsPage {
       }
     });
 
-    // Cuando el dsoUuid y el dsoType están resueltos, dispara los reports.
-    // Para `site` usa el endpoint search/object que devuelve el ranking de items
-    // más vistos del repositorio; para item/collection usa el endpoint single
-    // por cada reportType en paralelo (forkJoin).
     effect(() => {
       const type = this.dsoType();
       const uuid = this.resolvedUuid();
@@ -166,10 +172,8 @@ export class StatisticsPage {
   }
 
   /**
-   * Descubre el UUID y el href absoluto del Site root. `/api/core/sites`
-   * devuelve un array (en DSpace 9 siempre hay exactamente uno). El href se
-   * necesita para llamar al endpoint search/object con la URI completa del
-   * Site sin asumir el host del backend.
+   * Consulta el endpoint `/api/core/sites` para obtener el UUID y la URL
+   * de autoreferencia (`self.href`) del sitio raíz (Site root).
    */
   private discoverSite$(): Observable<{ uuid: string; href: string }> {
     return this.http

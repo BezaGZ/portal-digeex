@@ -22,7 +22,7 @@ import { CollectionApiService } from '../../../core/api/collection-api.service';
  * top-list-card que navega a la pantalla de Programas. Los servicios de
  * los widgets se mockean para no disparar HTTP real.
  *
- * Ciclo 12 TDD — Sprint 8. Ajustado en Ciclo 13 (Sprint 8).
+ * Ciclo 12 TDD — Sprint 8. Ajustado en Ciclos 13 y 28 (Sprint 8).
  */
 describe('Dashboard', () => {
   let caller$: BehaviorSubject<Caller | null>;
@@ -190,5 +190,40 @@ describe('Dashboard', () => {
     fixture.componentInstance.goBack();
 
     expect(routerNavigateFn).toHaveBeenCalledWith(['/']);
+  });
+
+  /** Verifica que el signal `selectedYearWindow` arranque en 5 (default del filtro temporal). */
+  it('should default selectedYearWindow to 5 years', () => {
+    caller$.next({ role: 'superadmin', sufijo: null });
+    const fixture = TestBed.createComponent(Dashboard);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.selectedYearWindow()).toBe(5);
+  });
+
+  /**
+   * Verifica que `yearRanges` computed devuelva N rangos cuando el signal cambia.
+   * El array sale del helper `buildLastNYearRanges` y se inyecta como input a `range-bar-card`.
+   */
+  it('should expose yearRanges with one entry per year of the selected window', () => {
+    caller$.next({ role: 'superadmin', sufijo: null });
+    const fixture = TestBed.createComponent(Dashboard);
+    fixture.detectChanges();
+
+    fixture.componentInstance.selectedYearWindow.set(3);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.yearRanges().length).toBe(3);
+  });
+
+  /** Verifica que el dropdown del filtro temporal exista en el HTML con su data-testid. */
+  it('should render the year-window dropdown with the expected data-testid', () => {
+    caller$.next({ role: 'superadmin', sufijo: null });
+    const fixture = TestBed.createComponent(Dashboard);
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="dashboard-year-window-select"]'),
+    ).not.toBeNull();
   });
 });

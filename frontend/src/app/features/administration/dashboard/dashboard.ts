@@ -3,12 +3,15 @@ import {
   Component,
   computed,
   inject,
+  signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
+import { SelectModule } from 'primeng/select';
 import { Observable, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
@@ -20,6 +23,7 @@ import { EmptyStateComponent } from '../../../shared';
 import {
   DashboardWidgetSpec,
   DASHBOARD_WIDGETS_BY_ROLE,
+  buildLastNYearRanges,
 } from './dashboard.config';
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { Community } from '../../../core/api/models/community.model';
@@ -27,9 +31,9 @@ import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { findCallerSub } from '../shared/services/scope-resolver';
 
 /**
- * Contenedor del Dashboard de KPIs. Resuelve el scope desde el caller
- * (null para SuperAdmin, UUID de su community para admin_subdireccion)
- * y renderiza los widgets que `DASHBOARD_WIDGETS_BY_ROLE` define por rol.
+ * Componente contenedor del Dashboard de KPIs.
+ * Resuelve el scope según el rol del usuario autenticado (SuperAdmin o Administrador de Subdirección)
+ * y renderiza los widgets correspondientes configurados en `DASHBOARD_WIDGETS_BY_ROLE`.
  */
 @Component({
   selector: 'app-dashboard',
@@ -37,8 +41,10 @@ import { findCallerSub } from '../shared/services/scope-resolver';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     CardModule,
     ButtonModule,
+    SelectModule,
     TotalCard,
     FacetBarCard,
     RangeBarCard,
@@ -52,13 +58,12 @@ export class Dashboard {
   private readonly communityApi = inject(CommunityApiService);
   private readonly authCaller = inject(AuthCallerService);
 
-  /** Caller actual (rol + sufijo); null mientras el observable no resuelve. */
+  /** Datos del usuario autenticado y su rol, inicializados en `null`. */
   readonly caller = toSignal(this.authCaller.currentCaller$, { initialValue: null });
 
   /**
-   * Scope resuelto: `undefined` mientras carga, `null` para SuperAdmin
-   * (universal), UUID para admin_subdireccion. Si el caller no tiene
-   * sub válida, queda `null` (defensa contra estado inconsistente).
+   * Identificador del ámbito de administración (UUID de la comunidad para administradores
+   * o `null` para SuperAdmin). Es `undefined` durante la carga inicial.
    */
   readonly scope = toSignal(this.resolveScope$(), { initialValue: undefined });
 
@@ -69,24 +74,37 @@ export class Dashboard {
     return DASHBOARD_WIDGETS_BY_ROLE[role] ?? [];
   });
 
-  /** UI lista cuando el caller resolvió y el scope está estable. */
+  /** Indica si la carga inicial del usuario y el scope ha finalizado. */
   readonly ready = computed(() => this.caller() !== null && this.scope() !== undefined);
+
+  /** Ventana temporal del dashboard expresada en años (por defecto 5). */
+  readonly selectedYearWindow = signal<number>(5);
+
+  /** Opciones de selección para la ventana temporal en años. */
+  readonly yearWindowOptions: { label: string; value: number }[] = [
+    { label: 'Últimos 3 años', value: 3 },
+    { label: 'Últimos 5 años', value: 5 },
+    { label: 'Últimos 10 años', value: 10 },
+  ];
+
+  /**
+   * Rangos anuales calculados a partir de la ventana de años seleccionada (`selectedYearWindow`).
+   */
+  readonly yearRanges = computed(() => buildLastNYearRanges(this.selectedYearWindow()));
 
   goBack(): void {
     this.router.navigate(['/']);
   }
 
   /**
-   * Click en una fila del top-list-card. Navega a la pantalla de
-   * Programas filtrada por la colección clickeada.
+   * Navega a la vista de programas filtrada por la colección especificada en la entrada seleccionada.
    */
   onTopListEntryClick(entry: TopListEntry): void {
     this.router.navigate(['/administrador/programas', entry.uuid]);
   }
 
   /**
-   * Resuelve el scope desde el caller: null para SuperAdmin, UUID de la
-   * Community con sufijo matching para admin_subdireccion, null si no hay match.
+   * Resuelve el identificador de la comunidad que corresponde al rol y sufijo del usuario autenticado.
    */
   private resolveScope$(): Observable<string | null> {
     return this.authCaller.currentCaller$.pipe(

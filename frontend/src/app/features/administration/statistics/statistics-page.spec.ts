@@ -20,7 +20,7 @@ import { UsageReport, UsageReportType } from './usage-report.model';
  * y la resiliencia ante fallo de un report individual (los demás siguen
  * renderizando porque el `catchError` lo degrada a `null`).
  *
- * Ciclo 23 TDD — Sprint 8.
+ * Ciclo 23 TDD — Sprint 8. Ajustado en Ciclo 28 (Sprint 8).
  */
 describe('StatisticsPage', () => {
   let getReportFn: ReturnType<typeof vi.fn>;
@@ -155,5 +155,51 @@ describe('StatisticsPage', () => {
 
     const title = fixture.nativeElement.querySelector('[data-testid="statistics-title"]');
     expect(title.textContent).toContain('Estadísticas del recurso');
+  });
+
+  /** Verifica que el signal `monthsBack` arranque en 12 (default del filtro temporal). */
+  it('should default monthsBack to 12 months', () => {
+    getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
+    const { fixture } = setup('item', 'item-uuid-x');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.monthsBack()).toBe(12);
+  });
+
+  /** Verifica que el dropdown del filtro temporal exista en el HTML con su data-testid. */
+  it('should render the months-back dropdown with the expected data-testid', async () => {
+    getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
+    const { fixture } = setup('item', 'item-uuid-y');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="stats-page-months-back-select"]'),
+    ).not.toBeNull();
+  });
+
+  /**
+   * Verifica que el dropdown se esconda cuando dsoType=site porque ese scope
+   * solo devuelve TotalVisits (ranking de items) sin TotalVisitsPerMonth.
+   */
+  it('should hide the months-back dropdown when dsoType is site', async () => {
+    getReportsForSiteFn.mockReturnValue(of([buildReport('TotalVisits', [])]));
+    const { fixture } = setup('site', null);
+    fixture.detectChanges();
+    httpMock.expectOne((req) => req.url.endsWith('/core/sites')).flush({
+      _embedded: {
+        sites: [
+          { uuid: 'site-z', _links: { self: { href: 'http://localhost:8080/server/api/core/sites/site-z' } } },
+        ],
+      },
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="stats-page-months-back-select"]'),
+    ).toBeNull();
   });
 });

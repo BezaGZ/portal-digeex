@@ -10,9 +10,8 @@ import {
 } from './history-pdf-builder';
 
 /**
- * Botón "Exportar PDF" reusable. Wrapper UI fino sobre `buildHistoryPdf`:
- * el componente se ocupa del click y la descarga; la lógica del PDF vive
- * en el builder puro para que sea testeable sin Angular.
+ * Componente de botón reusable para exportar el historial a PDF.
+ * Gestiona el evento de exportación e inicia la descarga del archivo generado por `buildHistoryPdf`.
  */
 @Component({
   selector: 'app-export-history-button',
@@ -29,7 +28,7 @@ export class ExportHistoryButton {
   @Input({ required: true }) entries: readonly TimelineEntry[] = [];
   @Input() handle?: string;
 
-  /** Construye el blob del PDF vía `buildHistoryPdf` y lo descarga con un `<a download>` temporal. */
+  /** Genera el archivo PDF a partir de los datos de entrada e inicia su descarga. */
   onExport(): void {
     const blob = buildHistoryPdf({
       dsoTitle: this.dsoTitle,
@@ -43,7 +42,7 @@ export class ExportHistoryButton {
     this.triggerDownload(blob, this.computeFilename());
   }
 
-  /** Filename `historial-{slug-del-titulo}-{YYYY-MM-DD}.pdf` con slug seguro para filesystem. */
+  /** Genera el nombre de archivo en formato `historial-{slug-del-titulo}-{fecha}.pdf`. */
   private computeFilename(): string {
     const slug = slugifyForFilename(this.dsoTitle) || 'documento';
     const today = new Date().toISOString().slice(0, 10);
@@ -51,8 +50,8 @@ export class ExportHistoryButton {
   }
 
   /**
-   * Descarga el blob con un `<a download>` temporal y revoca el object URL
-   * en el siguiente tick para no filtrar memoria.
+   * Crea un enlace temporal para la descarga del archivo Blob y revoca la URL del objeto
+   * para liberar memoria.
    */
   private triggerDownload(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);
@@ -62,6 +61,10 @@ export class ExportHistoryButton {
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    setTimeout(() => {
+      if (typeof URL.revokeObjectURL === 'function') {
+        URL.revokeObjectURL(url);
+      }
+    }, 0);
   }
 }

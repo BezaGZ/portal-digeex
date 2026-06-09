@@ -1,10 +1,7 @@
 /**
- * Tokens de color institucionales del Portal DIGEEX. Fuente única de los
- * hex que el portal usa para identidad visual. Cualquier consumidor TS
- * (charts, builder del PDF, futuros reportes) importa de acá; los espejos
- * existen en `styles.css` (CSS variables `:root`) y en los templates como
- * Tailwind arbitrary values y deben mantenerse sincronizados con este
- * archivo cuando DIGEEX cambie la paleta.
+ * Equivalente en TypeScript de la paleta de colores institucionales del Portal DIGEEX.
+ * Se define en TypeScript para su uso en elementos que no pueden acceder a variables CSS
+ * directamente (como gráficos en Canvas y generación de PDF).
  */
 export const INSTITUTIONAL_COLORS = {
   /** Azul gobierno. Identidad principal del Estado. */
@@ -30,3 +27,19 @@ export const INSTITUTIONAL_COLORS = {
 } as const;
 
 export type InstitutionalColorToken = keyof typeof INSTITUTIONAL_COLORS;
+
+/**
+ * Equivalente en TypeScript de los colores neutrales y escala de grises del tema CSS.
+ * Se define en TypeScript para su uso en componentes que operan fuera de la interfaz del DOM
+ * (como elementos dibujados en Canvas).
+ */
+export const THEME_NEUTRALS = {
+  bodyOnLight: '#1f2937',
+  bodyOnDark: '#f3f4f6',
+  mutedOnLight: '#4b5563',
+  mutedOnDark: '#9ca3af',
+  gridOnLight: 'rgba(0,0,0,0.08)',
+  gridOnDark: 'rgba(255,255,255,0.08)',
+} as const;
+
+export type ThemeNeutralToken = keyof typeof THEME_NEUTRALS;

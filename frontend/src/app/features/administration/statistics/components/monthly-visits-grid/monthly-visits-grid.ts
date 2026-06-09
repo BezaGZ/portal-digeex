@@ -14,27 +14,23 @@ import {
 import { CardModule } from 'primeng/card';
 import { ChartModule } from 'primeng/chart';
 
+import { INSTITUTIONAL_COLORS, THEME_NEUTRALS } from '../../../../../core/theme/institutional-colors';
 import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
 import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
 import { UsageReport } from '../../usage-report.model';
 
 /**
- * Visualización del report `TotalVisitsPerMonth` como gráfico de barras
- * horizontales con `<p-chart>` de PrimeNG v20. Cada mes ocupa una fila y
- * la barra crece hacia la derecha proporcional a las visitas; la altura
- * del card escala con la cantidad de meses para no dejar espacio sobrante.
+ * Renderiza el reporte `TotalVisitsPerMonth` en un gráfico de barras horizontales
+ * utilizando el componente `<p-chart>` de PrimeNG. La altura del contenedor se
+ * ajusta proporcionalmente al número de elementos.
  *
- * El backend devuelve `points` con `label` en formato "December 2025"
- * (inglés, hardcodeado en `UsageReportUtils`). El componente parsea cada
- * label, lo traduce a español corto ("Dic 2025") y arma el dataset
- * ordenado cronológicamente ascendente.
+ * Procesa las etiquetas de fecha provistas por el servidor (formato "Month YYYY")
+ * traduciéndolas a español abreviado ("Ene YYYY") y ordenando los datos cronológicamente.
  *
- * La paleta de los ticks y barras se elige según `document.documentElement.classList.contains('dark')`
- * porque el preset DigeexPreset fija `--p-text-color` al azul institucional
- * que queda ilegible sobre el fondo oscuro. Un `MutationObserver` repinta
- * el chart cuando el usuario alterna el modo sin recargar la página.
+ * Los estilos y colores de los elementos se actualizan en respuesta a los cambios
+ * de tema claro y oscuro mediante un `MutationObserver` sobre el elemento `<html>`.
  *
- * @see https://primeng.org/chart#horizontal — patrón base del demo oficial
+ * @see https://primeng.org/chart#horizontal
  */
 @Component({
   selector: 'app-monthly-visits-grid',
@@ -47,23 +43,24 @@ import { UsageReport } from '../../usage-report.model';
 export class MonthlyVisitsGrid implements OnInit {
   readonly report = input<UsageReport | null>(null);
   readonly loading = input<boolean>(false);
+  /**
+   * Límite de meses a incluir en el gráfico desde la fecha actual.
+   * Si es numérico, restringe el conjunto de datos a ese rango.
+   * Si es `null` (por defecto), se procesan todos los registros disponibles.
+   */
+  readonly monthsBack = input<number | null>(null);
 
   private readonly platformId = inject(PLATFORM_ID);
   private readonly cd = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
-  /** Observa cambios de la class `dark` en `<html>` para repintar el chart
-   *  con los colores adecuados cuando el usuario alterna modo claro/noche
-   *  sin cambiar el `report` input. */
+  /** Observa cambios en el atributo de clase del elemento `<html>` para actualizar el tema del gráfico. */
   private themeObserver: MutationObserver | null = null;
 
-  /**
-   * `chartData` y `chartOptions` se publican como signals para que el
-   * `<p-chart>` reactive cuando se reconstruyen en `initChart`.
-   */
+  /** Estructura de datos y opciones de configuración del gráfico. */
   data: { labels: string[]; datasets: ChartDataset[] } | null = null;
   options: ChartOptions | null = null;
 
-  /** True cuando hay al menos un punto parseable y con valor > 0. */
+  /** Indica si el reporte contiene registros válidos con un valor superior a cero. */
   readonly hasData = computed(() => {
     const r = this.report();
     if (!r || r.points.length === 0) return false;
@@ -71,10 +68,8 @@ export class MonthlyVisitsGrid implements OnInit {
   });
 
   /**
-   * Altura del contenedor del chart proporcional al número de barras. Cada
-   * fila reserva ~36px (barra + gap) y se suman ~60px para la escala X
-   * inferior, el padding interno y el title del eje. Mínimo 280px para que
-   * el card no quede demasiado bajo cuando hay pocas filas.
+   * Altura calculada del contenedor del gráfico, proporcional a la cantidad de registros.
+   * Reserva 36 píxeles por registro más un margen base de 60 píxeles, con un mínimo de 280 píxeles.
    */
   readonly chartHeight = computed(() => {
     const r = this.report();
@@ -83,9 +78,6 @@ export class MonthlyVisitsGrid implements OnInit {
   });
 
   constructor() {
-    // Reconstruye el dataset cuando el input cambia. `initChart` lee los
-    // tokens CSS del tema en cada corrida, así que el render se adapta al
-    // tema activo sin lógica extra.
     effect(() => {
       this.initChart();
     });
@@ -114,20 +106,15 @@ export class MonthlyVisitsGrid implements OnInit {
       return;
     }
 
-    // Detecta el modo activo del portal para elegir colores legibles en
-    // ambos esquemas. El tema PrimeNG DigeexPreset fija `--p-text-color` al
-    // azul institucional en modo claro, lo cual queda ilegible sobre el
-    // fondo azul oscuro del modo noche. Por eso usamos paleta Tailwind
-    // gray-* directamente: misma escala que el resto de las pantallas
-    // administrativas (`text-gray-800 dark:text-gray-100`).
     const isDarkMode = document.documentElement.classList.contains('dark');
 
-    const primaryColor = isDarkMode ? '#60a5fa' : '#2563eb';
-    const textColor = isDarkMode ? '#f3f4f6' : '#1f2937';
-    const textColorSecondary = isDarkMode ? '#9ca3af' : '#4b5563';
-    const surfaceBorder = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+    // Selección de colores institucionales y neutrales según el tema activo.
+    const primaryColor = isDarkMode ? INSTITUTIONAL_COLORS.surface : INSTITUTIONAL_COLORS.govBlue;
+    const textColor = isDarkMode ? THEME_NEUTRALS.bodyOnDark : THEME_NEUTRALS.bodyOnLight;
+    const textColorSecondary = isDarkMode ? THEME_NEUTRALS.mutedOnDark : THEME_NEUTRALS.mutedOnLight;
+    const surfaceBorder = isDarkMode ? THEME_NEUTRALS.gridOnDark : THEME_NEUTRALS.gridOnLight;
 
-    const parsed = r.points
+    const parsedAll = r.points
       .map((p) => {
         const meta = parseMonthLabel(p.label);
         if (!meta) return null;
@@ -137,6 +124,8 @@ export class MonthlyVisitsGrid implements OnInit {
       .sort((a, b) =>
         a.year !== b.year ? a.year - b.year : a.monthIdx - b.monthIdx,
       );
+
+    const parsed = applyMonthlyWindow(parsedAll, this.monthsBack());
 
     this.data = {
       labels: parsed.map((p) => `${MONTH_SHORT_ES[p.monthIdx]} ${p.year}`),
@@ -155,9 +144,6 @@ export class MonthlyVisitsGrid implements OnInit {
     this.options = {
       indexAxis: 'y' as const,
       maintainAspectRatio: false,
-      // Sin `aspectRatio` explícito: con `maintainAspectRatio: false`
-      // Chart.js usa todo el espacio del contenedor y respeta la altura
-      // dinámica calculada por `chartHeight`.
       plugins: {
         legend: { display: false },
       },
@@ -210,9 +196,8 @@ const MONTH_SHORT_ES = [
 ] as const;
 
 /**
- * Convierte un label del backend tipo "December 2025" al par
- * `{year, monthIdx}` (0-indexed). Devuelve `null` si el formato es
- * desconocido para que el componente lo ignore sin romper.
+ * Procesa una etiqueta en formato "Month YYYY" y retorna un objeto con el año y el índice del mes (0-11).
+ * Retorna `null` si el formato no es válido.
  */
 function parseMonthLabel(label: string): { year: number; monthIdx: number } | null {
   const match = label.trim().match(/^([A-Za-z]+)\s+(\d{4})$/);
@@ -225,4 +210,19 @@ function parseMonthLabel(label: string): { year: number; monthIdx: number } | nu
   const year = Number(match[2]);
   if (idx < 0 || !Number.isFinite(year)) return null;
   return { year, monthIdx: idx };
+}
+
+/**
+ * Filtra el arreglo de registros para incluir únicamente los correspondientes a los últimos
+ * `monthsBack` meses, calculados a partir de la fecha actual.
+ */
+function applyMonthlyWindow<T extends { year: number; monthIdx: number }>(
+  parsed: readonly T[],
+  monthsBack: number | null,
+): T[] {
+  if (!monthsBack || monthsBack <= 0) return [...parsed];
+  const now = new Date();
+  const currentKey = now.getFullYear() * 12 + now.getMonth();
+  const cutoff = currentKey - (monthsBack - 1);
+  return parsed.filter((p) => p.year * 12 + p.monthIdx >= cutoff);
 }

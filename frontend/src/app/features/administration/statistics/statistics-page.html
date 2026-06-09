@@ -26,6 +26,22 @@
       title="No se pudieron cargar las estadísticas"
       message="Intentá recargar la página. Si el error persiste, consultá al equipo de soporte." />
   } @else {
+    @if (dsoType() !== 'site') {
+      <div class="flex items-center justify-end mb-4 gap-3">
+        <label class="text-sm text-gray-600 dark:text-gray-400" for="stats-page-months-back">
+          Ventana mensual
+        </label>
+        <p-select
+          inputId="stats-page-months-back"
+          data-testid="stats-page-months-back-select"
+          [options]="monthsBackOptions"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="monthsBack()"
+          (ngModelChange)="monthsBack.set($event)"
+          styleClass="min-w-[180px]" />
+      </div>
+    }
     <div
       [class]="
         dsoType() === 'item'
@@ -36,7 +52,7 @@
       @for (entry of loaded(); track entry.reportType) {
         @if (entry.reportType === 'TotalVisitsPerMonth') {
           <div [class]="dsoType() === 'item' ? 'w-full lg:col-span-2' : 'w-full'">
-            <app-monthly-visits-grid [report]="entry.report" />
+            <app-monthly-visits-grid [report]="entry.report" [monthsBack]="monthsBack()" />
           </div>
         } @else {
           <div class="w-full">

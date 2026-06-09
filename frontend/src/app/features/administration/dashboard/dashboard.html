@@ -30,6 +30,20 @@
       title="Sin indicadores"
       message="Tu rol no tiene indicadores configurados todavía." />
   } @else {
+    <div class="flex items-center justify-end mb-4 gap-3">
+      <label class="text-sm text-gray-600 dark:text-gray-400" for="dashboard-year-window">
+        Ventana temporal
+      </label>
+      <p-select
+        inputId="dashboard-year-window"
+        data-testid="dashboard-year-window-select"
+        [options]="yearWindowOptions"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="selectedYearWindow()"
+        (ngModelChange)="selectedYearWindow.set($event)"
+        styleClass="min-w-[160px]" />
+    </div>
     <div
       class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
       data-testid="dashboard-widget-grid"
@@ -50,7 +64,7 @@
             <app-range-bar-card
               [scope]="scope() ?? null"
               [label]="widget.label"
-              [ranges]="widget.ranges"
+              [ranges]="yearRanges()"
             />
           }
           @case ('top-list') {
