@@ -54,6 +54,13 @@ import { AuthService } from './core/auth/auth.service';
  * la Estrategia Visual 2026. Configura colores primarios, superficies
  * y esquemas de color para todos los componentes de PrimeNG.
  *
+ * Las anclas oficiales referencian las CSS vars de `styles.css` (fuente
+ * única de la paleta) vía `var(--color-*)`: el engine de @primeuix/styled
+ * emite los strings que no son tokens `{...}` tal cual al CSS generado y
+ * el navegador los resuelve contra `:root`. Los tonos intermedios de cada
+ * escala (50-950) son derivaciones propias del preset sin equivalente en
+ * la fuente y permanecen como hex; `zinc` es la escala neutral estándar.
+ *
  * @see {@link https://primeng.org/theming#customization PrimeNG Theming}
  * @see {@link https://www.primeuix.org/themes Themes Documentation}
  */
@@ -73,7 +80,7 @@ const DigeexPreset = definePreset(Aura, {
       200: '#9DB1D4',
       300: '#7691C3',
       400: '#5879B6',      /** Base: Azul Gobierno oficial */
-      500: '#1E3159',
+      500: 'var(--color-gob-primary)',
       600: '#1A2B4E',
       700: '#162443',
       800: '#121D38',
@@ -89,8 +96,8 @@ const DigeexPreset = definePreset(Aura, {
          */
         primary: {
           color: '{primary.500}',
-          contrastColor: '#FFFFFF',
-          hoverColor: '#233E72',
+          contrastColor: 'var(--color-surface)',
+          hoverColor: 'var(--color-gob-primary-light)',
           activeColor: '{primary.700}'
         },
 
@@ -100,10 +107,10 @@ const DigeexPreset = definePreset(Aura, {
          * definido en la Estrategia Visual 2026.
          */
         surface: {
-          0: '#FFFFFF',
-          50: '#F5F2EE',
+          0: 'var(--color-surface)',
+          50: 'var(--color-background)',
           100: '#E8E4DF',
-          200: '#D9D5D0',
+          200: 'var(--color-border)',
           300: '#CAC6C1',
           400: '#BBB7B2',
           500: '#ACA8A3',
@@ -119,10 +126,10 @@ const DigeexPreset = definePreset(Aura, {
          * mutedColor: #4A5568 garantiza contraste WCAG AA (7.4:1 sobre blanco).
          */
         text: {
-          color: '#1E3159',
+          color: 'var(--color-text-primary)',
           hoverColor: '{primary.700}',
-          mutedColor: '#4A5568',
-          highlightColor: '#1E3159'
+          mutedColor: 'var(--color-text-secondary)',
+          highlightColor: 'var(--color-text-primary)'
         }
       }
     }
@@ -141,13 +148,13 @@ const DigeexPreset = definePreset(Aura, {
     amber: {
       50: '#FFF8E6',
       100: '#FFE8B3',
-      200: '#FFD392',
+      200: 'var(--color-gob-accent-light)',
       300: '#FFBE70',
       400: '#FFA94E',
-      500: '#F2A119',
+      500: 'var(--color-gob-accent)',
       600: '#D68D0E',
       700: '#BA7A0B',
-      800: '#A8723A',
+      800: 'var(--color-gob-accent-dark)',
       900: '#8C5E2E',
       950: '#704A22'
     },
@@ -162,7 +169,7 @@ const DigeexPreset = definePreset(Aura, {
     sky: {
       50: '#F0FAFF',
       100: '#E0F5FF',
-      200: '#CCF0FF',
+      200: 'var(--color-gob-sky)',
       300: '#B3E5FF',
       400: '#99DAFF',
       500: '#80CFFF',
@@ -187,12 +194,12 @@ const DigeexPreset = definePreset(Aura, {
     emerald: {
       50: '#E8F5F4',
       100: '#C6E9E6',
-      200: '#8DD8D3',
+      200: 'var(--color-seguridad-light)',
       300: '#5BBFB7',
       400: '#2FA89E',
-      500: '#026961',
+      500: 'var(--color-seguridad)',
       600: '#025651',
-      700: '#235558',
+      700: 'var(--color-seguridad-dark)',
       800: '#1B4147',
       900: '#122B30',
       950: '#0A1A1D'
@@ -211,13 +218,13 @@ const DigeexPreset = definePreset(Aura, {
      */
     red: {
       50: '#FFF5F7',
-      100: '#FFE1E5',
+      100: 'var(--color-competitividad-light)',
       200: '#FFC6CD',
       300: '#F08AA0',
       400: '#D44D72',
-      500: '#9F0B30',
+      500: 'var(--color-competitividad)',
       600: '#8A0A2A',
-      700: '#7B162F',
+      700: 'var(--color-competitividad-dark)',
       800: '#5E1126',
       900: '#3F0C1A',
       950: '#20060D'
