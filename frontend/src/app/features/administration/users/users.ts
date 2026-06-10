@@ -16,7 +16,6 @@ import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { TableLazyLoadEvent } from 'primeng/table';
-import { ToastModule } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api'; // MessageService se consume desde la raíz de la app
 
 import { UserTable } from './components/user-table/user-table';
@@ -67,7 +66,6 @@ const UNEXPECTED_ERROR_FALLBACK = 'Ocurrió un error al procesar la solicitud. I
     CardModule,
     InputTextModule,
     Select,
-    ToastModule,
     UserTable,
     UserDialog,
     ChangeRoleDialog,

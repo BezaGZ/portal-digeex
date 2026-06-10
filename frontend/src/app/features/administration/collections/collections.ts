@@ -16,7 +16,6 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { Select } from 'primeng/select';
-import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageModule } from 'primeng/message';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
@@ -59,7 +58,6 @@ interface ProgramaFormPayload {
     ButtonModule,
     CardModule,
     Select,
-    ToastModule,
     ConfirmDialogModule,
     MessageModule,
     LoadingSpinnerComponent,

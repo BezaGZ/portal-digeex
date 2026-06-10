@@ -191,7 +191,19 @@
             box-shadow: var(--shadow-lg);
 
             .p-toast-message-content {
-                color: var(--text-color);
+                color: var(--color-text-on-dark);
+            }
+
+            // El preset de PrimeNG colorea summary y detail con tokens de
+            // severidad pensados para su fondo claro; sobre el overlay oscuro
+            // quedan ilegibles. Se repintan con la paleta semantica de
+            // styles.css (fuente unica de verdad institucional).
+            .p-toast-summary {
+                color: var(--color-text-on-dark);
+            }
+
+            .p-toast-detail {
+                color: var(--color-text-muted);
             }
         }
     }

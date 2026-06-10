@@ -13,7 +13,6 @@ import { map, switchMap } from 'rxjs/operators';
 import { TableLazyLoadEvent } from 'primeng/table';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageModule } from 'primeng/message';
 import { CardModule } from 'primeng/card';
@@ -53,7 +52,7 @@ const EMPTY_PAGE: PaginatedSubsView = { items: [], totalElements: 0 };
   selector: 'app-communities',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './communities.html',
-  imports: [ButtonModule, CardModule, ToastModule, ConfirmDialogModule, MessageModule, LoadingSpinnerComponent, CommunityTable, CommunityDialog],
+  imports: [ButtonModule, CardModule, ConfirmDialogModule, MessageModule, LoadingSpinnerComponent, CommunityTable, CommunityDialog],
 })
 export class Communities {
   private readonly communityApi = inject(CommunityApiService);
