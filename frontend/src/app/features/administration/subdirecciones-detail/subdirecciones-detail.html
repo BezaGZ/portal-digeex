@@ -50,7 +50,9 @@
             [dsoSubtitle]="sufijo()"
             [dsoDescription]="description()"
             dsoType="subdireccion"
-            [entries]="provenanceEntries()" />
+            [entries]="provenanceEntries()"
+            [handle]="community()?.handle"
+            [uuid]="community()?.uuid" />
         </div>
         <app-provenance-timeline [entries]="provenanceEntries()" />
       </p-card>

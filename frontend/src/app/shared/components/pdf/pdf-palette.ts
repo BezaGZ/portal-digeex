@@ -1,11 +1,10 @@
 import { INSTITUTIONAL_COLORS } from '../../../core/theme/institutional-colors';
 
 /**
- * Paleta del PDF de historial. Los tokens institucionales (`primary`,
- * `primaryAccent`, `white`) leen de `INSTITUTIONAL_COLORS` para no duplicar
- * la fuente de identidad. Los grises del cuerpo del reporte son la escala
- * Tailwind gray-* materializada como hex porque el PDF no tiene Tailwind
- * runtime (función pura sin DOM).
+ * Paleta compartida de los PDFs institucionales. Los tonos de identidad
+ * (`primary`, `primaryAccent`, `white`) leen de `INSTITUTIONAL_COLORS` para
+ * no duplicar la fuente; los grises van como hex de la escala Tailwind
+ * porque el PDF se genera sin Tailwind ni DOM.
  */
 export const PDF_PALETTE = {
   /** Encabezado del PDF, headers de tabla, títulos de sección. */

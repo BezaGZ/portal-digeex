@@ -42,6 +42,16 @@ export interface UsageReport {
 }
 
 /**
+ * Un reporte cargado en pantalla: su tipo y su información, o `null` si la
+ * consulta falló. Es el contrato entre la página de estadísticas y sus
+ * consumidores (tablas, grid, exportador).
+ */
+export interface LoadedReport {
+  reportType: UsageReportType;
+  report: UsageReport | null;
+}
+
+/**
  * Matriz de reportes por tipo de DSO. El endpoint nativo soporta cinco
  * tipos sobre Item, cuatro sobre Collection (sin `TotalDownloads`) y solo
  * `TotalVisits` global sobre Site. `Community` se omite porque el portal

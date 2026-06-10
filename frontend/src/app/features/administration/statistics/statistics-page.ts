@@ -19,31 +19,25 @@ import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 
 import { StatisticsApiService } from '../../../core/api/statistics-api.service';
 import { DSPACE_API_BASE } from '../../../core/api/dspace-rest.util';
-import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import {
+  LoadedReport,
   REPORTS_BY_DSO_TYPE,
-  UsageReport,
   UsageReportDsoType,
-  UsageReportType,
-} from './usage-report.model';
+} from '../../../core/api/usage-report.model';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { ExportStatisticsButton } from '../../../shared/components/export-statistics-button/export-statistics-button.component';
+import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { UsageReportTable } from './components/usage-report-table/usage-report-table';
 import { MonthlyVisitsGrid } from './components/monthly-visits-grid/monthly-visits-grid';
-
-/**
- * Representa un reporte cargado en la página, conteniendo el tipo de reporte
- * y su información asociada, o `null` si la consulta falló.
- */
-interface LoadedReport {
-  reportType: UsageReportType;
-  report: UsageReport | null;
-}
 
 const DSO_TYPE_TITLES: Readonly<Record<UsageReportDsoType, string>> = {
   site: 'Estadísticas del repositorio',
   item: 'Estadísticas del recurso',
   collection: 'Estadísticas del programa',
 };
+
+/** Título del PDF para scope=site: el Site de DSpace no tiene nombre curado. */
+const SITE_EXPORT_TITLE = 'Repositorio institucional DIGEEX';
 
 /**
  * Componente contenedor para visualizar las estadísticas de un objeto de DSpace (DSO).
@@ -62,6 +56,7 @@ const DSO_TYPE_TITLES: Readonly<Record<UsageReportDsoType, string>> = {
     SelectModule,
     LoadingSpinnerComponent,
     EmptyStateComponent,
+    ExportStatisticsButton,
     UsageReportTable,
     MonthlyVisitsGrid,
   ],
@@ -93,6 +88,21 @@ export class StatisticsPage {
   readonly title = computed(() => {
     const t = this.dsoType();
     return t ? DSO_TYPE_TITLES[t] : 'Estadísticas';
+  });
+
+  /** Nombre real del recurso, consultado al backend (null si la consulta falló). */
+  readonly dsoName = signal<string | null>(null);
+  /** Handle del recurso para el footer del PDF (null si falló o no aplica). */
+  readonly dsoHandle = signal<string | null>(null);
+
+  /**
+   * Título que identifica el recurso en el PDF exportado: etiqueta fija para
+   * site (el Site de DSpace no tiene nombre curado), nombre real para item y
+   * programa, y el título genérico como respaldo si la consulta falló.
+   */
+  readonly dsoTitle = computed(() => {
+    if (this.dsoType() === 'site') return SITE_EXPORT_TITLE;
+    return this.dsoName() ?? this.title();
   });
 
   readonly loading = computed(() => this.loaded() === null && !this.errored());
@@ -163,6 +173,26 @@ export class StatisticsPage {
         .subscribe({
           next: (results) => this.loaded.set(results),
           error: () => this.errored.set(true),
+        });
+    });
+
+    // Nombre y handle reales del recurso para el PDF. Si la consulta falla,
+    // dsoTitle cae al título genérico y el PDF sale igual, solo menos específico.
+    effect(() => {
+      const type = this.dsoType();
+      const uuid = this.resolvedUuid();
+      if (!type || !uuid || type === 'site') return;
+
+      const segment = type === 'item' ? 'items' : 'collections';
+      this.http
+        .get<{ name?: string; handle?: string }>(`${DSPACE_API_BASE}/core/${segment}/${uuid}`)
+        .pipe(
+          takeUntilDestroyed(this.destroyRef),
+          catchError(() => of(null)),
+        )
+        .subscribe((dso) => {
+          this.dsoName.set(dso?.name ?? null);
+          this.dsoHandle.set(dso?.handle ?? null);
         });
     });
   }

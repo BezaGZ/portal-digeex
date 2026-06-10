@@ -14,10 +14,15 @@ import {
 import { CardModule } from 'primeng/card';
 import { ChartModule } from 'primeng/chart';
 
+import {
+  MONTH_SHORT_ES,
+  applyMonthlyWindow,
+  parseMonthLabel,
+} from '../../../../../core/api/monthly-window';
+import { UsageReport } from '../../../../../core/api/usage-report.model';
 import { INSTITUTIONAL_COLORS, THEME_NEUTRALS } from '../../../../../core/theme/institutional-colors';
 import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
 import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
-import { UsageReport } from '../../usage-report.model';
 
 /**
  * Renderiza el reporte `TotalVisitsPerMonth` en un gráfico de barras horizontales
@@ -125,7 +130,7 @@ export class MonthlyVisitsGrid implements OnInit {
         a.year !== b.year ? a.year - b.year : a.monthIdx - b.monthIdx,
       );
 
-    const parsed = applyMonthlyWindow(parsedAll, this.monthsBack());
+    const parsed = applyMonthlyWindow(parsedAll, this.monthsBack(), new Date());
 
     this.data = {
       labels: parsed.map((p) => `${MONTH_SHORT_ES[p.monthIdx]} ${p.year}`),
@@ -190,39 +195,3 @@ interface ChartOptions {
   };
 }
 
-const MONTH_SHORT_ES = [
-  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
-] as const;
-
-/**
- * Procesa una etiqueta en formato "Month YYYY" y retorna un objeto con el año y el índice del mes (0-11).
- * Retorna `null` si el formato no es válido.
- */
-function parseMonthLabel(label: string): { year: number; monthIdx: number } | null {
-  const match = label.trim().match(/^([A-Za-z]+)\s+(\d{4})$/);
-  if (!match) return null;
-  const months = [
-    'january', 'february', 'march', 'april', 'may', 'june',
-    'july', 'august', 'september', 'october', 'november', 'december',
-  ];
-  const idx = months.indexOf(match[1].toLowerCase());
-  const year = Number(match[2]);
-  if (idx < 0 || !Number.isFinite(year)) return null;
-  return { year, monthIdx: idx };
-}
-
-/**
- * Filtra el arreglo de registros para incluir únicamente los correspondientes a los últimos
- * `monthsBack` meses, calculados a partir de la fecha actual.
- */
-function applyMonthlyWindow<T extends { year: number; monthIdx: number }>(
-  parsed: readonly T[],
-  monthsBack: number | null,
-): T[] {
-  if (!monthsBack || monthsBack <= 0) return [...parsed];
-  const now = new Date();
-  const currentKey = now.getFullYear() * 12 + now.getMonth();
-  const cutoff = currentKey - (monthsBack - 1);
-  return parsed.filter((p) => p.year * 12 + p.monthIdx >= cutoff);
-}

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { TimelineEntry } from '../../../features/administration/content/provenance/timeline-entry.model';
-import { HistoryPdfInput, buildHistoryPdf, slugifyForFilename } from './history-pdf-builder';
+import { slugifyForFilename } from '../pdf/pdf-filename';
+import { HistoryPdfInput, buildHistoryPdf } from './history-pdf-builder';
 
 /**
  * Tests de `history-pdf-builder`.
@@ -11,7 +12,7 @@ import { HistoryPdfInput, buildHistoryPdf, slugifyForFilename } from './history-
  * tenga el shape esperado (mime, header del PDF) y que `slugifyForFilename`
  * produzca slugs seguros para filesystem.
  *
- * Ciclo 28 TDD — Sprint 8.
+ * Ciclo 28 TDD — Sprint 8. Ajustado en Ciclo 29 (Sprint 8).
  */
 describe('history-pdf-builder', () => {
   function buildInput(overrides: Partial<HistoryPdfInput> = {}): HistoryPdfInput {

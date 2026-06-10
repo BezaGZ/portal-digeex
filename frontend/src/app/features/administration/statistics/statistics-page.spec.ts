@@ -8,7 +8,7 @@ import { of, throwError } from 'rxjs';
 
 import { StatisticsPage } from './statistics-page';
 import { StatisticsApiService } from '../../../core/api/statistics-api.service';
-import { UsageReport, UsageReportType } from './usage-report.model';
+import { UsageReport, UsageReportType } from '../../../core/api/usage-report.model';
 
 /**
  * Tests del container `StatisticsPage`.
@@ -20,7 +20,7 @@ import { UsageReport, UsageReportType } from './usage-report.model';
  * y la resiliencia ante fallo de un report individual (los demás siguen
  * renderizando porque el `catchError` lo degrada a `null`).
  *
- * Ciclo 23 TDD — Sprint 8. Ajustado en Ciclo 28 (Sprint 8).
+ * Ciclo 23 TDD — Sprint 8. Ajustado en Ciclos 28 y 29 (Sprint 8).
  */
 describe('StatisticsPage', () => {
   let getReportFn: ReturnType<typeof vi.fn>;
@@ -65,6 +65,16 @@ describe('StatisticsPage', () => {
     getReportsForSiteFn = vi.fn();
   });
 
+  /**
+   * Drena la consulta del nombre del DSO que la página dispara para el PDF
+   * de exportación, en los tests que no la asertan.
+   */
+  function flushDsoNameRequest(): void {
+    httpMock
+      .match((req) => /\/core\/(items|collections)\//.test(req.url))
+      .forEach((req) => req.flush({ name: 'DSO de prueba', handle: '123456789/1' }));
+  }
+
   afterEach(() => {
     httpMock?.verify();
   });
@@ -103,6 +113,7 @@ describe('StatisticsPage', () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
     const { fixture } = setup('item', 'item-uuid-1');
     fixture.detectChanges();
+    flushDsoNameRequest();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -116,6 +127,7 @@ describe('StatisticsPage', () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
     const { fixture } = setup('collection', 'col-uuid-1');
     fixture.detectChanges();
+    flushDsoNameRequest();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -135,6 +147,7 @@ describe('StatisticsPage', () => {
     );
     const { fixture } = setup('item', 'item-uuid-2');
     fixture.detectChanges();
+    flushDsoNameRequest();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -150,6 +163,7 @@ describe('StatisticsPage', () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
     const { fixture } = setup('item', 'item-uuid-3');
     fixture.detectChanges();
+    flushDsoNameRequest();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -162,6 +176,7 @@ describe('StatisticsPage', () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
     const { fixture } = setup('item', 'item-uuid-x');
     fixture.detectChanges();
+    flushDsoNameRequest();
 
     expect(fixture.componentInstance.monthsBack()).toBe(12);
   });
@@ -171,6 +186,7 @@ describe('StatisticsPage', () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
     const { fixture } = setup('item', 'item-uuid-y');
     fixture.detectChanges();
+    flushDsoNameRequest();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -201,5 +217,40 @@ describe('StatisticsPage', () => {
     expect(
       fixture.nativeElement.querySelector('[data-testid="stats-page-months-back-select"]'),
     ).toBeNull();
+  });
+
+  /**
+   * Verifica que scope=item consulte el nombre y handle reales del DSO para
+   * que el PDF de exportación identifique el recurso: sin nombre real el
+   * reporte no sirve como evidencia institucional.
+   */
+  it('should fetch the item name and handle to expose dsoTitle for the export', async () => {
+    getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
+    const { fixture } = setup('item', 'item-uuid-9');
+    fixture.detectChanges();
+
+    const req = httpMock.expectOne('/server/api/core/items/item-uuid-9');
+    req.flush({ name: 'Guía PEAC', handle: '123456789/77' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.dsoTitle()).toBe('Guía PEAC');
+    expect(fixture.componentInstance.dsoHandle()).toBe('123456789/77');
+  });
+
+  /** Verifica que el botón de exportar PDF aparezca cuando hay al menos un report cargado. */
+  it('should render the export statistics button when reports are loaded', async () => {
+    getReportFn.mockReturnValue(
+      of(buildReport('TotalVisits', [{ id: 'p', label: 'L', values: { views: 1 } }])),
+    );
+    const { fixture } = setup('item', 'item-uuid-z');
+    fixture.detectChanges();
+    flushDsoNameRequest();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="export-statistics-pdf"]'),
+    ).not.toBeNull();
   });
 });

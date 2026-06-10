@@ -3,11 +3,8 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 
 import { TimelineEntry } from '../../../features/administration/content/provenance/timeline-entry.model';
-import {
-  HistoryDsoType,
-  buildHistoryPdf,
-  slugifyForFilename,
-} from './history-pdf-builder';
+import { slugifyForFilename } from '../pdf/pdf-filename';
+import { HistoryDsoType, buildHistoryPdf } from './history-pdf-builder';
 
 /**
  * Componente de botón reusable para exportar el historial a PDF.
@@ -27,6 +24,7 @@ export class ExportHistoryButton {
   @Input({ required: true }) dsoType: HistoryDsoType = 'item';
   @Input({ required: true }) entries: readonly TimelineEntry[] = [];
   @Input() handle?: string;
+  @Input() uuid?: string;
 
   /** Genera el archivo PDF a partir de los datos de entrada e inicia su descarga. */
   onExport(): void {
@@ -37,6 +35,7 @@ export class ExportHistoryButton {
       dsoType: this.dsoType,
       entries: this.entries,
       handle: this.handle,
+      uuid: this.uuid,
       generatedAt: new Date(),
     });
     this.triggerDownload(blob, this.computeFilename());

@@ -50,7 +50,9 @@
             [dsoTitle]="title()"
             [dsoSubtitle]="author()"
             dsoType="item"
-            [entries]="provenanceEntries()" />
+            [entries]="provenanceEntries()"
+            [handle]="item()?.handle"
+            [uuid]="item()?.uuid" />
         </div>
         <app-provenance-timeline [entries]="provenanceEntries()" />
       </p-card>

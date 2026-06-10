@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import { MonthlyVisitsGrid } from './monthly-visits-grid';
-import { UsageReport } from '../../usage-report.model';
+import { UsageReport } from '../../../../../core/api/usage-report.model';
 
 /**
  * Tests del componente presentacional `MonthlyVisitsGrid`.
@@ -16,7 +16,7 @@ import { UsageReport } from '../../usage-report.model';
  * card proporcional al número de puntos para que el chart respete el
  * espacio sin dejar área vacía.
  *
- * Ciclo 23 TDD — Sprint 8. Ajustado en Ciclo 28 (Sprint 8).
+ * Ciclo 23 TDD — Sprint 8. Ajustado en Ciclos 28 y 29 (Sprint 8).
  */
 describe('MonthlyVisitsGrid', () => {
   beforeEach(() => {

@@ -62,7 +62,9 @@
             [dsoSubtitle]="sigla()"
             [dsoDescription]="description()"
             dsoType="programa"
-            [entries]="provenanceEntries()" />
+            [entries]="provenanceEntries()"
+            [handle]="collection()?.handle"
+            [uuid]="collection()?.uuid" />
         </div>
         <app-provenance-timeline [entries]="provenanceEntries()" />
       </p-card>

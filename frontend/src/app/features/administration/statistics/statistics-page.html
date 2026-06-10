@@ -26,8 +26,8 @@
       title="No se pudieron cargar las estadísticas"
       message="Intentá recargar la página. Si el error persiste, consultá al equipo de soporte." />
   } @else {
-    @if (dsoType() !== 'site') {
-      <div class="flex items-center justify-end mb-4 gap-3">
+    <div class="flex items-center justify-end mb-4 gap-3">
+      @if (dsoType() !== 'site') {
         <label class="text-sm text-gray-600 dark:text-gray-400" for="stats-page-months-back">
           Ventana mensual
         </label>
@@ -40,8 +40,15 @@
           [ngModel]="monthsBack()"
           (ngModelChange)="monthsBack.set($event)"
           styleClass="min-w-[180px]" />
-      </div>
-    }
+      }
+      <app-export-statistics-button
+        [dsoTitle]="dsoTitle()"
+        [dsoType]="dsoType()!"
+        [reports]="loaded() ?? []"
+        [monthsBack]="monthsBack()"
+        [handle]="dsoHandle() ?? undefined"
+        [uuid]="resolvedUuid() ?? undefined" />
+    </div>
     <div
       [class]="
         dsoType() === 'item'

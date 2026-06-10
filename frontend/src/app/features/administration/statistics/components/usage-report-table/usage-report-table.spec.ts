@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import { UsageReportTable } from './usage-report-table';
-import { UsageReport } from '../../usage-report.model';
+import { UsageReport } from '../../../../../core/api/usage-report.model';
 
 /**
  * Tests del componente presentacional `UsageReportTable`.
@@ -13,7 +13,7 @@ import { UsageReport } from '../../usage-report.model';
  * `views` sobre `downloads`, y el caso borde de un report con points pero
  * todos sus values en cero (cae al empty state porque no aporta info).
  *
- * Ciclo 23 TDD — Sprint 8.
+ * Ciclo 23 TDD — Sprint 8. Ajustado en Ciclo 29 (Sprint 8).
  */
 describe('UsageReportTable', () => {
   beforeEach(() => {

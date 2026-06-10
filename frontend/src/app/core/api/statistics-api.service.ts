@@ -2,12 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-
 import { DSPACE_API_BASE } from './dspace-rest.util';
-import {
-  UsageReport,
-  UsageReportType,
-} from '../../features/administration/statistics/usage-report.model';
+import { UsageReport, UsageReportType } from './usage-report.model';
 
 /**
  * Wrapper de lectura del módulo Solr Statistics de DSpace 9.x. Cada llamada
