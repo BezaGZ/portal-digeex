@@ -1,38 +1,4 @@
 :root.dark {
-
-    --surface-ground: #0f1419;
-    --surface-section: #1a1f26;
-    --surface-card: #1e2329;
-    --surface-overlay: #252b33;
-    --surface-border: #374151;
-    --surface-hover: #374151;
-
-    --p-surface-0: #1e2329;
-    --p-surface-50: #252b33;
-    --p-surface-100: #2d3440;
-    --p-surface-200: #374151;
-    --p-surface-300: #4b5563;
-    --p-surface-400: #6b7280;
-    --p-surface-500: #9ca3af;
-    --p-surface-600: #d1d5db;
-    --p-surface-700: #e5e7eb;
-    --p-surface-800: #f3f4f6;
-    --p-surface-900: #f9fafb;
-    --p-surface-950: #ffffff;
-
-    --text-color: #e5e7eb;
-    --text-color-secondary: #9ca3af;
-    --text-color-muted: #6b7280;
-
-    --code-background: #1e2329;
-    --code-color: #e5e7eb;
-
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.6), 0 1px 2px -1px rgba(0, 0, 0, 0.6);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -2px rgba(0, 0, 0, 0.6);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -4px rgba(0, 0, 0, 0.7);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7);
-
     .pi-gem,
     .pi {
         color: var(--text-color) !important;

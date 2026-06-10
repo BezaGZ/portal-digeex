@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LoadedReport, UsageReportType } from '../../../core/api/usage-report.model';
+import { LoadedReport, UsageReportType } from '../../../core/api/models/usage-report.model';
 import {
   StatisticsPdfInput,
   buildStatisticsPdf,

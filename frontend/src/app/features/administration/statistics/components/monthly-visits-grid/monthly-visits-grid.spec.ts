@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import { MonthlyVisitsGrid } from './monthly-visits-grid';
-import { UsageReport } from '../../../../../core/api/usage-report.model';
+import { UsageReport } from '../../../../../core/api/models/usage-report.model';
 
 /**
  * Tests del componente presentacional `MonthlyVisitsGrid`.

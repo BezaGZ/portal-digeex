@@ -18,8 +18,8 @@ import {
   MONTH_SHORT_ES,
   applyMonthlyWindow,
   parseMonthLabel,
-} from '../../../../../core/api/monthly-window';
-import { UsageReport } from '../../../../../core/api/usage-report.model';
+} from '../../../../../core/api/monthly-window.util';
+import { UsageReport } from '../../../../../core/api/models/usage-report.model';
 import { INSTITUTIONAL_COLORS, THEME_NEUTRALS } from '../../../../../core/theme/institutional-colors';
 import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
 import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';

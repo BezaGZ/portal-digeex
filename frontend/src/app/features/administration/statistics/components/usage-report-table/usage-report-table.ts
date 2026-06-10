@@ -5,7 +5,7 @@ import { TableModule } from 'primeng/table';
 
 import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
 import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
-import { UsageReport, UsageReportType, REPORT_LABELS } from '../../../../../core/api/usage-report.model';
+import { UsageReport, UsageReportType, REPORT_LABELS } from '../../../../../core/api/models/usage-report.model';
 
 /**
  * Componente presentacional que renderiza un `UsageReport` como tabla plana.

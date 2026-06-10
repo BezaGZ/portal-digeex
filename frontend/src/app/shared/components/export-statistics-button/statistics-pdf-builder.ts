@@ -5,13 +5,13 @@ import {
   MONTH_SHORT_ES,
   applyMonthlyWindow,
   parseMonthLabel,
-} from '../../../core/api/monthly-window';
+} from '../../../core/api/monthly-window.util';
 import {
   LoadedReport,
   REPORT_LABELS,
   UsageReportDsoType,
   UsageReportType,
-} from '../../../core/api/usage-report.model';
+} from '../../../core/api/models/usage-report.model';
 import { drawFooterOnAllPages, drawInstitutionalHeader } from '../pdf/pdf-header';
 import { PDF_PALETTE } from '../pdf/pdf-palette';
 import { PDF_TABLE_BASE_OPTIONS } from '../pdf/pdf-table';

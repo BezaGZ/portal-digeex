@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 
-import { LoadedReport, UsageReportDsoType } from '../../../core/api/usage-report.model';
+import { LoadedReport, UsageReportDsoType } from '../../../core/api/models/usage-report.model';
 import { slugifyForFilename } from '../pdf/pdf-filename';
 import { buildStatisticsPdf } from './statistics-pdf-builder';
 

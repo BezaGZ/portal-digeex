@@ -50,12 +50,12 @@
           @for (child of children; track child.id) {
             <div
               class="group bg-white rounded-2xl cursor-pointer border border-gray-200 shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ease-in-out flex flex-col"
-              style="border-color: #d9d5d0"
+              style="border-color: var(--color-border)"
               (click)="navigateToChild(child)"
             >
               <div
                 class="w-full aspect-[16/9] sm:aspect-[16/10] md:aspect-[16/10] lg:aspect-[16/10] bg-cover bg-center flex items-center justify-center overflow-hidden"
-                style="background-color: #f5f2ee"
+                style="background-color: var(--color-background)"
               >
                 @if (child.logoUrl) {
                   <img
@@ -65,7 +65,7 @@
                     class="w-full h-full object-cover"
                   />
                 } @else {
-                  <i class="pi pi-image text-6xl" style="color: #d9d5d0"></i>
+                  <i class="pi pi-image text-6xl" style="color: var(--color-border)"></i>
                 }
               </div>
 
@@ -98,14 +98,14 @@
           @for (item of items; track item.id) {
             <div
               class="group bg-white rounded-2xl cursor-pointer border border-gray-200 shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ease-in-out flex flex-col"
-              style="border-color: #d9d5d0"
+              style="border-color: var(--color-border)"
               (click)="navigateToDocument(item)"
             >
               <div
                 class="w-full aspect-[16/9] sm:aspect-[16/10] md:aspect-[16/10] lg:aspect-[16/10] bg-cover bg-center flex items-center justify-center"
-                style="background-color: #f5f2ee"
+                style="background-color: var(--color-background)"
               >
-                <i class="pi pi-image text-6xl" style="color: #d9d5d0"></i>
+                <i class="pi pi-image text-6xl" style="color: var(--color-border)"></i>
               </div>
 
               <div class="flex flex-col items-center justify-center p-4 flex-grow">

@@ -9,7 +9,7 @@
     <ng-template pTemplate="header">
       @if (item().coverImage && !imageError()) {
         <div
-          class="w-full aspect-[3/4] bg-[#F3F4F6] flex items-center justify-center overflow-hidden"
+          class="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center overflow-hidden"
         >
           <img
             [src]="item().coverImage"
@@ -20,7 +20,7 @@
           />
         </div>
       } @else {
-        <div class="w-full aspect-[3/4] bg-[#F3F4F6] flex items-center justify-center">
+        <div class="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center">
           <i
             [class]="isVideo ? 'pi pi-play-circle text-4xl' : 'pi pi-file-pdf text-4xl'"
             style="color: var(--gob-competitividad)"

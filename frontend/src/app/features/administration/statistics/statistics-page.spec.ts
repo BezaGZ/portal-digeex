@@ -8,7 +8,7 @@ import { of, throwError } from 'rxjs';
 
 import { StatisticsPage } from './statistics-page';
 import { StatisticsApiService } from '../../../core/api/statistics-api.service';
-import { UsageReport, UsageReportType } from '../../../core/api/usage-report.model';
+import { UsageReport, UsageReportType } from '../../../core/api/models/usage-report.model';
 
 /**
  * Tests del container `StatisticsPage`.

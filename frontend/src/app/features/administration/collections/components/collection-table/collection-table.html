@@ -33,7 +33,7 @@
         <td>
           <div
             class="w-10 h-10 rounded overflow-hidden flex items-center justify-center"
-            style="background-color: #f5f2ee"
+            style="background-color: var(--color-background)"
           >
             @if (getLogoUrl(row); as logoUrl) {
               <img
@@ -43,7 +43,7 @@
                 class="w-full h-full object-cover"
               />
             } @else {
-              <i class="pi pi-image text-lg" style="color: #d9d5d0"></i>
+              <i class="pi pi-image text-lg" style="color: var(--color-border)"></i>
             }
           </div>
         </td>

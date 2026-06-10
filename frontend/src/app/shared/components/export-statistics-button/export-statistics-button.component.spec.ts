@@ -1,8 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { describe, expect, it, vi } from 'vitest';
-
-import { LoadedReport } from '../../../core/api/usage-report.model';
+import { LoadedReport } from '../../../core/api/models/usage-report.model';
 import { ExportStatisticsButton } from './export-statistics-button.component';
 
 /**
