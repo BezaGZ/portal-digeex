@@ -149,6 +149,25 @@ describe('MonthlyVisitsGrid', () => {
   });
 
   /**
+   * Verifica que chartHeight use el dataset ya recortado por monthsBack.
+   * Calcularla con los points crudos deja un lienzo para 25 meses donde solo
+   * se pintan 3 barras y Chart.js las estira hasta deformarlas.
+   */
+  it('should compute chart height from the windowed dataset, not the raw points', () => {
+    const fx = render(
+      {
+        id: 'r',
+        reportType: 'TotalVisitsPerMonth',
+        points: buildMonthlyPoints(new Date(), 25),
+      },
+      false,
+      3,
+    );
+    // Ventana de 3 meses: 3*36 + 60 = 168, gana el minimo de 280
+    expect(fx.componentInstance.chartHeight()).toBe(280);
+  });
+
+  /**
    * Verifica que cuando `monthsBack` es un número finito el dataset se recorte
    * a los últimos N meses. El filtrado pasa de runtime en frontend usando el
    * label parseado del point contra la ventana hoy → hoy - monthsBack.

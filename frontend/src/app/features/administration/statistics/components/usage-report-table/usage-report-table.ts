@@ -19,7 +19,7 @@ import { UsageReport, UsageReportType, REPORT_LABELS } from '../../../../../core
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CardModule, TableModule, DecimalPipe, EmptyStateComponent, LoadingSpinnerComponent],
   templateUrl: './usage-report-table.html',
-  host: { class: 'block w-full' },
+  host: { class: 'block w-full h-full' },
 })
 export class UsageReportTable {
   readonly report = input<UsageReport | null>(null);

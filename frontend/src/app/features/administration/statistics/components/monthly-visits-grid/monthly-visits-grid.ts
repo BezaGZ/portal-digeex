@@ -73,14 +73,31 @@ export class MonthlyVisitsGrid implements OnInit {
   });
 
   /**
-   * Altura calculada del contenedor del gráfico, proporcional a la cantidad de registros.
-   * Reserva 36 píxeles por registro más un margen base de 60 píxeles, con un mínimo de 280 píxeles.
+   * Dataset mensual parseado, ordenado cronológicamente y recortado a la
+   * ventana activa. Única fuente para la altura y para el chart: si la
+   * altura se calculara con los points crudos, una ventana corta dejaría
+   * pocas barras estiradas en un lienzo dimensionado para todos los meses.
    */
-  readonly chartHeight = computed(() => {
+  private readonly windowedData = computed(() => {
     const r = this.report();
-    const count = r?.points.length ?? 0;
-    return Math.max(280, count * 36 + 60);
+    if (!r) return [];
+    const parsedAll = r.points
+      .map((p) => {
+        const meta = parseMonthLabel(p.label);
+        if (!meta) return null;
+        return { ...meta, value: p.values.views ?? p.values.downloads ?? 0 };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => (a.year !== b.year ? a.year - b.year : a.monthIdx - b.monthIdx));
+    return applyMonthlyWindow(parsedAll, this.monthsBack(), new Date());
   });
+
+  /**
+   * Altura calculada del contenedor del gráfico, proporcional a la cantidad de registros
+   * visibles. Reserva 36 píxeles por registro más un margen base de 60 píxeles, con un
+   * mínimo de 280 píxeles.
+   */
+  readonly chartHeight = computed(() => Math.max(280, this.windowedData().length * 36 + 60));
 
   constructor() {
     effect(() => {
@@ -119,18 +136,7 @@ export class MonthlyVisitsGrid implements OnInit {
     const textColorSecondary = isDarkMode ? THEME_NEUTRALS.mutedOnDark : THEME_NEUTRALS.mutedOnLight;
     const surfaceBorder = isDarkMode ? THEME_NEUTRALS.gridOnDark : THEME_NEUTRALS.gridOnLight;
 
-    const parsedAll = r.points
-      .map((p) => {
-        const meta = parseMonthLabel(p.label);
-        if (!meta) return null;
-        return { ...meta, value: p.values.views ?? p.values.downloads ?? 0 };
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null)
-      .sort((a, b) =>
-        a.year !== b.year ? a.year - b.year : a.monthIdx - b.monthIdx,
-      );
-
-    const parsed = applyMonthlyWindow(parsedAll, this.monthsBack(), new Date());
+    const parsed = this.windowedData();
 
     this.data = {
       labels: parsed.map((p) => `${MONTH_SHORT_ES[p.monthIdx]} ${p.year}`),
