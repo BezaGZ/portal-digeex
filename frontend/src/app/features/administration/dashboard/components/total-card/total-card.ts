@@ -17,6 +17,7 @@ import { LoadingSpinnerComponent } from '../../../../../shared/components/loadin
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, CardModule, LoadingSpinnerComponent],
+  host: { class: 'block h-full' },
   templateUrl: './total-card.html',
 })
 export class TotalCard {

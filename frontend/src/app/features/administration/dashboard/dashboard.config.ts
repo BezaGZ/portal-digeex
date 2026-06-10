@@ -47,16 +47,18 @@ export function buildLastNYearRanges(count: number, now: Date = new Date()): rea
  * Configuración de los widgets del Dashboard asignados para cada rol de usuario (`UserRole`).
  */
 export const DASHBOARD_WIDGETS_BY_ROLE: Readonly<Partial<Record<UserRole, readonly DashboardWidgetSpec[]>>> = {
+  // Orden de render: cortos primero (total + top-list comparten fila en el
+  // grid de 2 columnas) y los dos charts altos abajo, para filas parejas.
   superadmin: [
     { kind: 'total', label: 'Total de items' },
+    { kind: 'top-list', label: 'Top colecciones', limit: 5 },
     { kind: 'facet-bar', label: 'Distribución por tipo', facetName: 'entityType' },
     { kind: 'range-bar', label: 'Items por año' },
-    { kind: 'top-list', label: 'Top colecciones', limit: 5 },
   ],
   admin_subdireccion: [
     { kind: 'total', label: 'Items en mi subdirección' },
+    { kind: 'top-list', label: 'Top colecciones de mi subdirección', limit: 5 },
     { kind: 'facet-bar', label: 'Distribución por tipo', facetName: 'entityType' },
     { kind: 'range-bar', label: 'Items por año' },
-    { kind: 'top-list', label: 'Top colecciones de mi subdirección', limit: 5 },
   ],
 };

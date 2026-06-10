@@ -40,6 +40,7 @@ export interface TopListEntry {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, CardModule, ButtonModule, LoadingSpinnerComponent, EmptyStateComponent],
+  host: { class: 'block h-full' },
   templateUrl: './top-list-card.html',
 })
 export class TopListCard {

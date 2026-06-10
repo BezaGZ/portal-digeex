@@ -40,6 +40,7 @@ export interface DateRange {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, CardModule, LoadingSpinnerComponent, BarChartComponent, EmptyStateComponent],
+  host: { class: 'block h-full' },
   templateUrl: './range-bar-card.html',
 })
 export class RangeBarCard {

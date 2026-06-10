@@ -31,18 +31,18 @@ describe('dashboard.config', () => {
   });
 
   describe('DASHBOARD_WIDGETS_BY_ROLE', () => {
-    /** Verifica que SuperAdmin tenga la matriz de 4 widgets estándar del Sprint 8. */
+    /** Verifica que SuperAdmin tenga la matriz de 4 widgets, emparejados por altura para el grid de 2 columnas. */
     it('should define 4 widgets for superadmin', () => {
       const widgets = DASHBOARD_WIDGETS_BY_ROLE.superadmin;
       expect(widgets?.length).toBe(4);
-      expect(widgets?.map((w) => w.kind)).toEqual(['total', 'facet-bar', 'range-bar', 'top-list']);
+      expect(widgets?.map((w) => w.kind)).toEqual(['total', 'top-list', 'facet-bar', 'range-bar']);
     });
 
-    /** Verifica que admin_subdireccion tenga su matriz scope-aware. */
+    /** Verifica que admin_subdireccion tenga su matriz scope-aware con el mismo emparejamiento. */
     it('should define 4 widgets for admin_subdireccion', () => {
       const widgets = DASHBOARD_WIDGETS_BY_ROLE.admin_subdireccion;
       expect(widgets?.length).toBe(4);
-      expect(widgets?.map((w) => w.kind)).toEqual(['total', 'facet-bar', 'range-bar', 'top-list']);
+      expect(widgets?.map((w) => w.kind)).toEqual(['total', 'top-list', 'facet-bar', 'range-bar']);
     });
 
     /** Verifica que personal_delegado NO tenga widgets configurados (defensa). */

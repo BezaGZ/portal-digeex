@@ -29,6 +29,7 @@ import { ChartConfig } from '../../../../stats/models/stats-dashboard.model';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, CardModule, LoadingSpinnerComponent, BarChartComponent, EmptyStateComponent],
+  host: { class: 'block h-full' },
   templateUrl: './facet-bar-card.html',
 })
 export class FacetBarCard {
