@@ -15,6 +15,14 @@ export class CollectionCacheService {
   private loaded = false;
   private cache$: Observable<Collection[]> | null = null;
 
+  /**
+   * True cuando la primera carga de colecciones terminó, con datos o con
+   * error. Alimenta el splash de primera carga del portal público; es de
+   * una sola vía a propósito: invalidate() no lo apaga porque las recargas
+   * del cache no deben volver a tapar el portal.
+   */
+  readonly menuReady = signal(false);
+
   constructor(private collectionApi: CollectionApiService) {}
 
   /**
@@ -32,10 +40,16 @@ export class CollectionCacheService {
     if (!this.cache$) {
       this.cache$ = this.collectionApi.list(0, 100, { embed: 'logo' }).pipe(
         map((response) => response._embedded?.['collections'] || []),
-        tap((cols) => {
-          this.collections.set(cols);
-          this.loaded = true;
-          this.cache$ = null;
+        tap({
+          next: (cols) => {
+            this.collections.set(cols);
+            this.loaded = true;
+            this.cache$ = null;
+            this.menuReady.set(true);
+          },
+          // El error también libera el splash: el portal aparece con menús
+          // vacíos en lugar de quedarse encerrado en la pantalla de carga.
+          error: () => this.menuReady.set(true),
         }),
         shareReplay(1)
       );

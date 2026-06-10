@@ -96,6 +96,38 @@ describe('CollectionCacheService', () => {
     expect(service).toBeTruthy();
   });
 
+  /** menuReady — splash de primera carga */
+
+  /** Verifica que menuReady arranque en false y pase a true cuando la primera carga resuelve. */
+  it('should flip menuReady to true after the first load resolves', async () => {
+    expect(service.menuReady()).toBe(false);
+
+    const promise = new Promise((resolve, reject) => {
+      service.getAll().subscribe({ next: resolve, error: reject });
+    });
+    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    req.flush(mockCollectionsResponse);
+    await promise;
+
+    expect(service.menuReady()).toBe(true);
+  });
+
+  /**
+   * Verifica que un error HTTP también encienda menuReady.
+   * Si DSpace está caído, el portal debe aparecer con menús vacíos en
+   * lugar de quedarse encerrado en el splash de carga.
+   */
+  it('should flip menuReady to true when the first load fails', async () => {
+    const promise = new Promise((resolve) => {
+      service.getAll().subscribe({ next: resolve, error: resolve });
+    });
+    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    req.flush('boom', { status: 500, statusText: 'Server Error' });
+    await promise;
+
+    expect(service.menuReady()).toBe(true);
+  });
+
   /** getAll — caché y deduplicación */
 
   /** Verifica que getAll() haga UNA sola petición HTTP la primera vez. */

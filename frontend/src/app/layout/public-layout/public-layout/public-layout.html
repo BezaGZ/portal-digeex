@@ -1,3 +1,25 @@
+@if (!menuReady()) {
+  <div
+    data-testid="portal-splash"
+    class="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-6 bg-background"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="absolute top-0 left-0 right-0 h-2 bg-gob-primary"></div>
+    <div class="text-center">
+      <p class="text-5xl font-bold text-gob-primary tracking-wide" style="font-family: var(--font-heading)">
+        DIGEEX
+      </p>
+      <p class="mt-2 text-sm text-gray-600">Ministerio de Educación de Guatemala</p>
+    </div>
+    <div
+      class="h-12 w-12 rounded-full border-4 border-gob-primary border-t-transparent animate-spin"
+      aria-hidden="true"
+    ></div>
+    <p class="text-sm text-gray-600">Cargando portal...</p>
+  </div>
+}
+
 <div class="min-h-screen bg-background flex flex-col">
   <app-public-header></app-public-header>
   <app-public-breadcrumb></app-public-breadcrumb>
