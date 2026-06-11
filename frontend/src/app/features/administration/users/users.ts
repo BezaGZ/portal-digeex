@@ -8,8 +8,8 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, combineLatest } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
+import { BehaviorSubject, combineLatest, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -129,7 +129,9 @@ export class Users {
     ]).pipe(
       tap(() => this.loading.set(true)),
       switchMap(([query, scope, state]) =>
-        this.userService.searchUsers$({ scope, query, page: state.page, size: state.size }),
+        this.userService.searchUsers$({ scope, query, page: state.page, size: state.size }).pipe(
+          catchError(() => of(emptyPaginatedView(state.size))),
+        ),
       ),
       tap(() => this.loading.set(false)),
     ),

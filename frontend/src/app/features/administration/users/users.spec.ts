@@ -22,7 +22,7 @@ import { EPerson } from '../../../core/api/models/eperson.model';
  * mensaje específico por código, cualquier otro error cae al toast
  * genérico.
  *
- * Ciclo 12 TDD — Sprint 5. Ajustado en Ciclos 16, 17.
+ * Ciclo 12 TDD — Sprint 5. Ajustado en Ciclos 16, 17 y Ciclo 36 (Sprint 8).
  */
 describe('Users (contenedor)', () => {
   let component: Users;
@@ -172,6 +172,48 @@ describe('Users (contenedor)', () => {
       expect(searchUsersFn).toHaveBeenCalledWith(
         expect.objectContaining({ page: 1, size: 25 }),
       );
+    });
+
+    /**
+     * Verifica que un fetch fallido baje el spinner y el listado siga vivo.
+     * Sin catchError interno, el error mataba el stream del combineLatest.
+     */
+    it('should drop the spinner and keep the listing alive when a fetch fails', async () => {
+      searchUsersFn.mockReturnValueOnce(throwError(() => new Error('500')));
+      const fixture = TestBed.createComponent(Users);
+      const instance = fixture.componentInstance;
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(asAny(instance).loading()).toBe(false);
+
+      searchUsersFn.mockClear();
+      asAny(instance).onDeactivateRequested(buildUserView({ uuid: 'uuid-x' }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(searchUsersFn).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * Verifica que cada mutación dispare exactamente un refetch del listado.
+     * Es la red de seguridad del mecanismo de refresh post-mutación.
+     */
+    it('should refetch the listing once per mutation', async () => {
+      const fixture = TestBed.createComponent(Users);
+      const instance = fixture.componentInstance;
+      fixture.detectChanges();
+      await fixture.whenStable();
+      searchUsersFn.mockClear();
+
+      asAny(instance).onDeactivateRequested(buildUserView({ uuid: 'uuid-a' }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      asAny(instance).onReactivateRequested(buildUserView({ uuid: 'uuid-b' }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(searchUsersFn).toHaveBeenCalledTimes(2);
     });
 
     /**
