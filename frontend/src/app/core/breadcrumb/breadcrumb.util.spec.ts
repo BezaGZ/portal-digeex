@@ -97,4 +97,23 @@ describe('buildBreadcrumbTrail', () => {
 
     expect(buildBreadcrumbTrail(root)).toEqual([]);
   });
+
+  /**
+   * Verifica que un nodo sin snapshot no rompa el armado del trail.
+   * Observado en runtime: el snapshot puede faltar durante la transición de
+   * navegación y el TypeError mataba la suscripción del breadcrumb.
+   */
+  it('should tolerate route nodes whose snapshot is undefined', () => {
+    const leaf = fakeRoute({ path: 'usuarios', breadcrumb: 'Usuarios' });
+    const middle = {
+      routeConfig: { path: 'administrador', data: {} },
+      snapshot: undefined,
+      firstChild: leaf,
+    } as unknown as ActivatedRoute;
+    const root = fakeRoute({}, {}, {}, middle);
+
+    expect(buildBreadcrumbTrail(root)).toEqual([
+      { label: 'Usuarios', routerLink: '/administrador/usuarios' },
+    ]);
+  });
 });

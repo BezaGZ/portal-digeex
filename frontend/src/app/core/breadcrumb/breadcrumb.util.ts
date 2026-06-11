@@ -18,7 +18,8 @@ function collectBreadcrumbs(
 ): MenuItem[] {
   const path = route.routeConfig?.path || '';
   const breadcrumbLabel = route.routeConfig?.data?.['breadcrumb'];
-  const routeParams = route.snapshot.params;
+  //El snapshot puede faltar.
+  const routeParams = route.snapshot?.params ?? {};
 
   let resolvedPath = path;
   for (const key in routeParams) {
@@ -32,7 +33,7 @@ function collectBreadcrumbs(
   if (breadcrumbLabel) {
     const label =
       typeof breadcrumbLabel === 'function'
-        ? breadcrumbLabel(route.snapshot.data)
+        ? breadcrumbLabel(route.snapshot?.data ?? {})
         : breadcrumbLabel;
     breadcrumbs.push({ label, routerLink: nextUrl });
   }
