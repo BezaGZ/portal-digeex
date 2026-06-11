@@ -16,7 +16,7 @@ import { Group } from '../../../../../core/api/models/group.model';
  * del dropdown y el payload del emit (uuid del target + grupo nuevo uuid+name)
  * que permite al facade aplicar la transición add-before-remove.
  *
- * Ciclos 12, 17 TDD — Sprint 5.
+ * Ciclos 12, 17 TDD — Sprint 5. Ajustado en Ciclo 35 (Sprint 8).
  */
 describe('ChangeRoleDialog', () => {
   let fixture: ComponentFixture<ChangeRoleDialog>;
@@ -95,6 +95,25 @@ describe('ChangeRoleDialog', () => {
     expect(payload).toEqual({
       uuid: 'uuid-target',
       newGroup: { uuid: 'g-ae-trabajo', name: 'ADMIN_ED_TRABAJO' },
+    });
+  });
+
+  /**
+   * Verifica que un target sin rol pueda recibir asignación desde el mismo diálogo.
+   * El service ya es reconciliación idempotente: agrega el grupo y no hay nada que remover.
+   */
+  it('should accept a target without a portal role and emit the assignment', async () => {
+    fixture.componentRef.setInput('target', buildUserView({ uuid: 'uuid-orphan', role: null }));
+    fixture.detectChanges();
+    (component as any).form.patchValue({ targetGroupUuid: 'g-se-basica' });
+
+    const emitted = firstValueFrom(outputToObservable(component.changeSubmitted));
+    (component as any).onSubmit();
+    const payload = await emitted;
+
+    expect(payload).toEqual({
+      uuid: 'uuid-orphan',
+      newGroup: { uuid: 'g-se-basica', name: 'SUBMITTERS_ED_BASICA' },
     });
   });
 });

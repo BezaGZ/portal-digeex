@@ -22,7 +22,7 @@ import { HalListResponse, Paginated } from '../../../../core/api/models/hal.mode
  * por nombre del grupo (Administrator, ADMIN_*, SUBMITTERS_*) porque el link HAL
  * `_links.object` no apunta al DSO dueño en DSpace 9.2 para grupos custom.
  *
- * Ciclos 10, 11, 13, 17 TDD — Sprint 5.
+ * Ciclos 10, 11, 13, 17 TDD — Sprint 5. Ajustado en Ciclo 35 (Sprint 8).
  */
 describe('UserManagementService', () => {
   let service: UserManagementService;
@@ -296,6 +296,27 @@ describe('UserManagementService', () => {
       expect(result.items[0].uuid).toBe('uuid-found');
       expect(result.totalElements).toBe(1);
       expect(result.totalPages).toBe(1);
+    });
+
+    /**
+     * Verifica que un eperson sin grupo de rol entre al listado con role=null.
+     * Filtrarlo lo dejaba irreparable desde la tabla y desalineaba el totalElements.
+     */
+    it('should include epersons without portal role groups as role=null entries', async () => {
+      const orphan = buildEPerson({
+        uuid: 'uuid-orphan',
+        email: 'orfano@mineduc.gob.gt',
+        groups: [],
+      });
+      listEPersonsFn.mockReturnValue(of(paginated([orphan])));
+
+      const result = await firstValueFrom(
+        service.searchUsers$({ scope: 'metadata', query: '', page: 0, size: 10 }),
+      );
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].role).toBeNull();
+      expect(result.items[0].subdivision).toBeNull();
     });
 
     /** Verifica que scope=email sin match devuelva un Paginated vacío (no error). */

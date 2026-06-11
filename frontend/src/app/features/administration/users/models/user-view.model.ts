@@ -9,7 +9,8 @@ export interface UserView {
   email: string;
   firstName: string;
   lastName: string;
-  role: UserRole;
+  /** null = eperson sin grupo de rol del portal (huérfano reparable desde la tabla). */
+  role: UserRole | null;
   subdivision: string | null;
   status: UserStatus;
   lastActive: string | null;

@@ -227,10 +227,14 @@ export class UserManagementService {
     );
   }
 
+  /**
+   * Los epersons sin grupo de rol del portal entran con role=null en lugar
+   * de filtrarse: esconderlos dejaba usuarios irreparables desde la tabla y
+   * un totalElements que contaba filas invisibles.
+   */
   private mapPaginatedToUserViews(paginatedResult: Paginated<EPerson>): Paginated<UserView> {
     const items = paginatedResult.items
       .map((eperson) => this.resolveEPersonFromGroups(eperson, this.extractEmbeddedGroups(eperson)))
-      .filter((item): item is ResolvedEPerson => item.role !== null)
       .map((item) => this.assembleUserView(item));
     return { ...paginatedResult, items };
   }
@@ -264,7 +268,7 @@ export class UserManagementService {
     return eperson._embedded?.groups?._embedded?.[EMBED_GROUPS] ?? [];
   }
 
-  private assembleUserView(resolved: ResolvedEPerson): UserView {
+  private assembleUserView(resolved: ResolvedEPersonOrOrphan): UserView {
     const eperson = resolved.eperson;
     return {
       uuid: eperson.uuid,
@@ -610,7 +614,7 @@ export class UserManagementService {
     return this.currentUserView$.pipe(
       take(1),
       map((view) =>
-        view
+        view && view.role !== null
           ? { uuid: view.uuid, role: view.role, subdivisionSuffix: view.subdivision }
           : null,
       ),

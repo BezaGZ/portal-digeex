@@ -16,7 +16,7 @@ import { UserView } from '../../models/user-view.model';
  * restablecer contraseña. El contenedor Users hace el trabajo real
  * contra el facade y maneja los toasts.
  * 
- * Ciclo 12 — Sprint 5.
+ * Ciclo 12 — Sprint 5. Ajustado en Ciclo 35 (Sprint 8).
  * 
  */
 describe('UserTable', () => {
@@ -82,6 +82,33 @@ describe('UserTable', () => {
     expect(rendered).toContain('Ramírez');
     expect(rendered).toContain('Ana');
     expect(rendered).toContain('López');
+  });
+
+  /** Verifica que role=null se pinte como Sin rol en la columna de rol. */
+  it('should render the Sin rol label for users without a portal role', () => {
+    fixture.componentRef.setInput('users', [buildUserView({ uuid: 'uuid-orphan', role: null })]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Sin rol');
+  });
+
+  /**
+   * Verifica que la fila huérfana ofrezca solo Asignar rol.
+   * Editar, reset y desactivar quedan ocultos hasta que el usuario tenga rol.
+   */
+  it('should offer only the assign-role action for users without a portal role', () => {
+    fixture.componentRef.setInput('users', [buildUserView({ uuid: 'uuid-orphan', role: null })]);
+    fixture.componentRef.setInput(
+      'currentUser',
+      buildUserView({ uuid: 'uuid-caller', role: 'superadmin' }),
+    );
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement;
+    expect(el.querySelector('.pi-users')).not.toBeNull();
+    expect(el.querySelector('.pi-pencil')).toBeNull();
+    expect(el.querySelector('.pi-key')).toBeNull();
+    expect(el.querySelector('.pi-ban')).toBeNull();
   });
 
   /** Output deactivateRequested: el table no llama al servicio, el padre decide. */

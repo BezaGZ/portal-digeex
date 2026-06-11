@@ -14,9 +14,11 @@ import { Actor, Caller } from '../../content/specifications/scope-context.model'
 export class AuthCallerService {
   private readonly userMgmt = inject(UserManagementService);
 
+  // view.role nunca es null acá (currentUserView$ corta la sesión huérfana
+  // con error antes de emitir); el guard solo estrecha el tipo.
   readonly currentCaller$: Observable<Caller | null> = this.userMgmt.currentUserView$.pipe(
     map((view) =>
-      view
+      view && view.role !== null
         ? { role: view.role, sufijo: view.subdivision }
         : null,
     ),

@@ -52,7 +52,21 @@
 
           <td>
             <div class="flex gap-2 justify-end">
-              @if (user.status === 'active') {
+              @if (user.role === null) {
+                <!-- Huérfano de rol: la única acción útil es asignarle uno;
+                     el resto queda oculto hasta que el usuario sea reparado. -->
+                @if (canModifyRoles()) {
+                  <p-button
+                    icon="pi pi-users"
+                    severity="warn"
+                    [text]="true"
+                    [rounded]="true"
+                    (onClick)="onModifyRole(user)"
+                    pTooltip="Asignar rol"
+                    tooltipPosition="top"
+                  />
+                }
+              } @else if (user.status === 'active') {
                 <p-button
                   icon="pi pi-pencil"
                   severity="secondary"

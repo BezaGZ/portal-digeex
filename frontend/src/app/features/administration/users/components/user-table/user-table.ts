@@ -55,8 +55,8 @@ export class UserTable {
   editRequested = output<UserView>();
   lazyLoad = output<TableLazyLoadEvent>();
 
-  getRoleLabel(role: UserRole): string {
-    return RoleLabels[role];
+  getRoleLabel(role: UserRole | null): string {
+    return role === null ? 'Sin rol' : RoleLabels[role];
   }
 
   getFullName(user: UserView): string {
