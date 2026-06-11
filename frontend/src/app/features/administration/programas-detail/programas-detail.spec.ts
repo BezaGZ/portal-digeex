@@ -18,7 +18,7 @@ import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
  * `<app-provenance-timeline>` con las entradas derivadas por
  * `ProvenanceService.extractFrom` y publica el trail al `BreadcrumbService`.
  *
- * Ciclo 17 TDD — Sprint 8.
+ * Ciclo 17 TDD — Sprint 8. Ajustado en Ciclo 34.
  */
 describe('ProgramasDetail', () => {
   let getOneFn: Mock;
@@ -140,15 +140,19 @@ describe('ProgramasDetail', () => {
     expect(extractFromFn.mock.calls[0]?.[0]).toEqual(buildCollection().metadata);
   });
 
-  /** Verifica que `BreadcrumbService.setTrail` se invoque con el trail `[Programas, <nombre>]` cuando la colección resuelve. */
-  it('should call BreadcrumbService.setTrail with [Programas, <name>] when the collection resolves', () => {
+  /**
+   * Verifica que `BreadcrumbService.setTrail` se invoque con `[Programas, <nombre>, Historial]`.
+   * El nombre va sin link (es la página actual) y la hoja identifica la vista.
+   */
+  it('should call BreadcrumbService.setTrail with [Programas, <name>, Historial] when the collection resolves', () => {
     const fixture = TestBed.createComponent(ProgramasDetail);
     fixture.detectChanges();
 
     expect(setTrailFn).toHaveBeenCalledTimes(1);
     const trail = setTrailFn.mock.calls[0]?.[0];
     expect(trail[0]).toMatchObject({ label: 'Programas', routerLink: ['/administrador/programas'] });
-    expect(trail[1]).toMatchObject({ label: 'Normativa y Acuerdos Institucionales' });
+    expect(trail[1]).toEqual({ label: 'Normativa y Acuerdos Institucionales' });
+    expect(trail[2]).toEqual({ label: 'Historial' });
   });
 
   /** Verifica que ante un fallo del observable se renderice un fallback con `data-testid="programa-detail-failed"`. */

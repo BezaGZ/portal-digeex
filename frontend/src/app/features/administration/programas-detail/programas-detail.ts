@@ -106,6 +106,7 @@ export class ProgramasDetail {
       this.breadcrumb.setTrail([
         { label: 'Programas', routerLink: ['/administrador/programas'] },
         { label: coll.metadata['dc.title']?.[0]?.value ?? coll.name },
+        { label: 'Historial' },
       ]);
     });
   }

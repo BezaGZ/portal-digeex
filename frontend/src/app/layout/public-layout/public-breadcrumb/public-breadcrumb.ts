@@ -5,6 +5,7 @@ import { Subject } from 'rxjs';
 import { BreadcrumbModule } from 'primeng/breadcrumb';
 import { MenuItem } from 'primeng/api';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
+import { buildBreadcrumbTrail } from '../../../core/breadcrumb/breadcrumb.util';
 
 @Component({
   selector: 'app-public-breadcrumb',
@@ -39,8 +40,7 @@ export class PublicBreadcrumb implements OnInit, OnDestroy {
       )
       .subscribe(() => {
         const url = this.router.url;
-        const items = this.buildBreadCrumb(this.activatedRoute.root);
-        this.routeItems.set(items);
+        this.routeItems.set(buildBreadcrumbTrail(this.activatedRoute.root));
 
         if (!url.startsWith('/programas') && !url.startsWith('/documentos')) {
           this.breadcrumbService.clear();
@@ -51,40 +51,5 @@ export class PublicBreadcrumb implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
-  }
-
-  private buildBreadCrumb(
-    route: ActivatedRoute,
-    url: string = '',
-    breadcrumbs: MenuItem[] = [],
-  ): MenuItem[] {
-    const path = route.routeConfig?.path || '';
-    const breadcrumbLabel = route.routeConfig?.data?.['breadcrumb'];
-    const routeParams = route.snapshot.params;
-
-    let resolvedPath = path;
-    for (const key in routeParams) {
-      if (Object.prototype.hasOwnProperty.call(routeParams, key)) {
-        resolvedPath = resolvedPath.replace(`:${key}`, routeParams[key]);
-      }
-    }
-
-    const nextUrl = path ? `${url}/${resolvedPath}` : url;
-
-    if (breadcrumbLabel) {
-      const label =
-        typeof breadcrumbLabel === 'function'
-          ? breadcrumbLabel(route.snapshot.data)
-          : breadcrumbLabel;
-      breadcrumbs.push({ label, routerLink: nextUrl });
-    }
-
-    if (route.firstChild) {
-      return this.buildBreadCrumb(route.firstChild, nextUrl, breadcrumbs);
-    }
-
-    return breadcrumbs.filter(
-      (item, index, self) => index === self.findIndex((t) => t.label === item.label),
-    );
   }
 }

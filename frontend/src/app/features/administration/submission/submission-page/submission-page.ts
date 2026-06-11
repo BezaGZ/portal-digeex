@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -10,6 +11,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, switchMap } from 'rxjs/operators';
 import { EMPTY } from 'rxjs';
 
+import { ROLE_SCOPES } from '../../../../core/auth/role-scopes';
+import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
 import { Collection } from '../../../../core/api/models/collection.model';
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
@@ -38,6 +41,7 @@ export class SubmissionPage {
   private readonly authCaller = inject(AuthCallerService);
   private readonly router = inject(Router);
   private readonly toast = inject(MessageService);
+  private readonly breadcrumb = inject(BreadcrumbService);
 
   readonly collection = signal<Collection | null>(null);
   readonly caller = toSignal(this.authCaller.currentCaller$, { initialValue: null });
@@ -62,6 +66,31 @@ export class SubmissionPage {
         }),
       )
       .subscribe((c) => this.collection.set(c));
+
+    /**
+     * Trail según el scope del caller: las rutas de Programas exigen rol
+     * admin (ROLE_SCOPES.ADMIN), así que el delegado recibe como ancla
+     * Cargar contenido, que es su punto de entrada real y sí puede abrir.
+     */
+    effect(() => {
+      const c = this.collection();
+      if (!c) return;
+      const role = this.caller()?.role;
+      const isAdmin = role != null && ROLE_SCOPES.ADMIN.includes(role);
+      this.breadcrumb.setTrail(
+        isAdmin
+          ? [
+              { label: 'Programas', routerLink: '/administrador/programas' },
+              { label: c.name, routerLink: `/administrador/programas/${c.uuid}` },
+              { label: 'Cargar' },
+            ]
+          : [
+              { label: 'Cargar contenido', routerLink: '/administrador/cargar' },
+              { label: c.name },
+              { label: 'Cargar' },
+            ],
+      );
+    });
   }
 
   /** Redirige al listado de carga con toast cuando la colección no se resuelve. */

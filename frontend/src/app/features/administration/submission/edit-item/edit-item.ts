@@ -10,6 +10,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
 
+import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
 import { ItemApiService } from '../../../../core/api/item-api.service';
 import { Item } from '../../../../core/api/models/item.model';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
@@ -40,6 +41,7 @@ export class EditItem {
   private readonly itemApi = inject(ItemApiService);
   private readonly authCaller = inject(AuthCallerService);
   private readonly router = inject(Router);
+  private readonly breadcrumb = inject(BreadcrumbService);
 
   readonly item = signal<Item | null>(null);
   readonly loading = signal(true);
@@ -64,7 +66,14 @@ export class EditItem {
         next: (it) => {
           this.item.set(it);
           this.loading.set(false);
-          if (!it) this.router.navigate(['/administrador/envios']);
+          if (!it) {
+            this.router.navigate(['/administrador/envios']);
+            return;
+          }
+          this.breadcrumb.setTrail([
+            { label: 'Mis envíos', routerLink: '/administrador/envios' },
+            { label: 'Editar envío' },
+          ]);
         },
         error: () => {
           this.loading.set(false);

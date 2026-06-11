@@ -100,6 +100,7 @@ export class SubdireccionesDetail {
       this.breadcrumb.setTrail([
         { label: 'Subdirecciones', routerLink: ['/administrador'] },
         { label: sub.metadata['dc.title']?.[0]?.value ?? sub.name },
+        { label: 'Historial' },
       ]);
     });
   }

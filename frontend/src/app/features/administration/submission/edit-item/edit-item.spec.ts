@@ -7,6 +7,7 @@ import { vi } from 'vitest';
 import { of } from 'rxjs';
 
 import { EditItem } from './edit-item';
+import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
 import { ItemApiService } from '../../../../core/api/item-api.service';
 import { Item } from '../../../../core/api/models/item.model';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
@@ -23,7 +24,7 @@ import { MessageService } from 'primeng/api';
  * monta DocumentSubmissionForm, GallerySubmissionForm o StatsSubmissionForm
  * en modo edición pasándoles el item como input.
  *
- * Ciclo 32 TDD — Sprint 6. Ajustado en Ciclo 34.
+ * Ciclo 32 TDD — Sprint 6. Ajustado en Ciclo 34 (Sprint 6) y Ciclo 34 (Sprint 8).
  */
 describe('EditItem', () => {
   function buildItem(entityType: string, uuid = 'item-1'): Item {
@@ -46,9 +47,11 @@ describe('EditItem', () => {
   }
 
   let getOneFn: ReturnType<typeof vi.fn>;
+  let setTrailFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getOneFn = vi.fn().mockReturnValue(of(buildItem('Documento', 'item-1')));
+    setTrailFn = vi.fn();
 
     TestBed.configureTestingModule({
       imports: [EditItem],
@@ -57,6 +60,7 @@ describe('EditItem', () => {
         provideHttpClientTesting(),
         provideNoopAnimations(),
         { provide: ItemApiService, useValue: { getOne: getOneFn } },
+        { provide: BreadcrumbService, useValue: { setTrail: setTrailFn, clear: vi.fn() } },
         { provide: AuthCallerService, useValue: { currentCaller$: of({ role: 'superadmin', sufijo: 'PEAC' }) } },
         { provide: SubmissionFacade, useValue: { submitItem$: vi.fn() } },
         {
@@ -107,5 +111,16 @@ describe('EditItem', () => {
 
     expect(fixture.nativeElement.querySelector('app-gallery-submission-form')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('app-document-submission-form')).toBeFalsy();
+  });
+
+  /** Verifica que publique el trail [Mis envíos, Editar envío] al resolver el item. */
+  it('should publish the breadcrumb trail [Mis envíos, Editar envío] when the item resolves', () => {
+    const fixture = TestBed.createComponent(EditItem);
+    fixture.detectChanges();
+
+    expect(setTrailFn).toHaveBeenCalledWith([
+      { label: 'Mis envíos', routerLink: '/administrador/envios' },
+      { label: 'Editar envío' },
+    ]);
   });
 });

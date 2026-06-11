@@ -8,6 +8,7 @@ import { of, throwError } from 'rxjs';
 
 import { StatisticsPage } from './statistics-page';
 import { StatisticsApiService } from '../../../core/api/statistics-api.service';
+import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { UsageReport, UsageReportType } from '../../../core/api/models/usage-report.model';
 
 /**
@@ -20,11 +21,12 @@ import { UsageReport, UsageReportType } from '../../../core/api/models/usage-rep
  * y la resiliencia ante fallo de un report individual (los demás siguen
  * renderizando porque el `catchError` lo degrada a `null`).
  *
- * Ciclo 23 TDD — Sprint 8. Ajustado en Ciclos 28 y 29 (Sprint 8).
+ * Ciclo 23 TDD — Sprint 8. Ajustado en Ciclos 28, 29 y 34 (Sprint 8).
  */
 describe('StatisticsPage', () => {
   let getReportFn: ReturnType<typeof vi.fn>;
   let getReportsForSiteFn: ReturnType<typeof vi.fn>;
+  let setTrailFn: ReturnType<typeof vi.fn>;
   let httpMock: HttpTestingController;
 
   function buildReport(rt: UsageReportType, points: UsageReport['points']): UsageReport {
@@ -47,6 +49,10 @@ describe('StatisticsPage', () => {
           useValue: { getReport$: getReportFn, getReportsForSite$: getReportsForSiteFn },
         },
         {
+          provide: BreadcrumbService,
+          useValue: { setTrail: setTrailFn, clear: vi.fn() },
+        },
+        {
           provide: ActivatedRoute,
           useValue: {
             data: of({ dsoType }),
@@ -63,6 +69,7 @@ describe('StatisticsPage', () => {
   beforeEach(() => {
     getReportFn = vi.fn();
     getReportsForSiteFn = vi.fn();
+    setTrailFn = vi.fn();
   });
 
   /**
@@ -133,6 +140,38 @@ describe('StatisticsPage', () => {
 
     const calls = getReportFn.mock.calls.map((c) => c[1]);
     expect(calls).toEqual(['TotalVisits', 'TotalVisitsPerMonth']);
+  });
+
+  /** Verifica que publique el trail [Estadísticas de uso, <nombre real>] al resolver el DSO. */
+  it('should publish the breadcrumb trail with the resolved dso name for collection scope', async () => {
+    getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
+    const { fixture } = setup('collection', 'col-uuid-9');
+    fixture.detectChanges();
+    httpMock
+      .match((req) => /\/core\/collections\//.test(req.url))
+      .forEach((req) => req.flush({ name: 'Alfabetización Bilingüe', handle: '123456789/9' }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(setTrailFn).toHaveBeenLastCalledWith([
+      { label: 'Estadísticas de uso', routerLink: '/administrador/uso' },
+      { label: 'Alfabetización Bilingüe' },
+    ]);
+  });
+
+  /**
+   * Verifica que scope=site no publique trail.
+   * Su ruta ya declara data.breadcrumb y el trail derivado de rutas la cubre.
+   */
+  it('should not publish a breadcrumb trail for site scope', async () => {
+    getReportsForSiteFn.mockReturnValue(of([buildReport('TotalVisits', [])]));
+    const { fixture } = setup('site', null);
+    fixture.detectChanges();
+    httpMock.expectOne('/server/api/core/sites').flush({ _embedded: { sites: [] } });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(setTrailFn).not.toHaveBeenCalled();
   });
 
   /**

@@ -18,7 +18,7 @@ import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
  * con las entradas derivadas por `ProvenanceService.extractFrom` y publica
  * el trail al `BreadcrumbService` cuando la sub resuelve.
  *
- * Ciclo 16 TDD — Sprint 8.
+ * Ciclo 16 TDD — Sprint 8. Ajustado en Ciclo 34.
  */
 describe('SubdireccionesDetail', () => {
   let getOneFn: Mock;
@@ -121,15 +121,19 @@ describe('SubdireccionesDetail', () => {
     expect(empty).not.toBeNull();
   });
 
-  /** Verifica que `BreadcrumbService.setTrail` se invoque con el trail correcto cuando la sub resuelve. */
-  it('should call BreadcrumbService.setTrail with the correct trail when the community resolves', () => {
+  /**
+   * Verifica que `BreadcrumbService.setTrail` se invoque con `[Subdirecciones, <nombre>, Historial]`.
+   * El nombre va sin link (es la página actual) y la hoja identifica la vista.
+   */
+  it('should call BreadcrumbService.setTrail with [Subdirecciones, <name>, Historial] when the community resolves', () => {
     const fixture = TestBed.createComponent(SubdireccionesDetail);
     fixture.detectChanges();
 
     expect(setTrailFn).toHaveBeenCalledTimes(1);
     const trail = setTrailFn.mock.calls[0]?.[0];
     expect(trail[0]).toMatchObject({ label: 'Subdirecciones', routerLink: ['/administrador'] });
-    expect(trail[1]).toMatchObject({ label: 'Subdirección de Educación Básica' });
+    expect(trail[1]).toEqual({ label: 'Subdirección de Educación Básica' });
+    expect(trail[2]).toEqual({ label: 'Historial' });
   });
 
   /** Verifica que ante un fallo del observable se renderice un fallback con `data-testid="subdireccion-detail-failed"`. */

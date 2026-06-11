@@ -18,6 +18,7 @@ import { SelectModule } from 'primeng/select';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 
 import { StatisticsApiService } from '../../../core/api/statistics-api.service';
+import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { DSPACE_API_BASE } from '../../../core/api/dspace-rest.util';
 import {
   LoadedReport,
@@ -68,6 +69,7 @@ export class StatisticsPage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(StatisticsApiService);
   private readonly http = inject(HttpClient);
+  private readonly breadcrumb = inject(BreadcrumbService);
 
   /** dsoType viene de `route.data['dsoType']` declarado en `app.routes.ts`. */
   readonly dsoType = toSignal(
@@ -194,6 +196,21 @@ export class StatisticsPage {
           this.dsoName.set(dso?.name ?? null);
           this.dsoHandle.set(dso?.handle ?? null);
         });
+    });
+
+    /**
+     * Trail dinámico para los scopes con recurso concreto; site no publica
+     * porque su ruta ya declara `data.breadcrumb`. Publica con etiqueta
+     * genérica mientras el nombre resuelve y republica al llegar.
+     */
+    effect(() => {
+      const type = this.dsoType();
+      if (!type || type === 'site') return;
+      const generic = type === 'collection' ? 'Programa' : 'Recurso';
+      this.breadcrumb.setTrail([
+        { label: 'Estadísticas de uso', routerLink: '/administrador/uso' },
+        { label: this.dsoName() ?? generic },
+      ]);
     });
   }
 

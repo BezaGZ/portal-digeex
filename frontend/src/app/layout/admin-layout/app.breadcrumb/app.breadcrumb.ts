@@ -1,10 +1,19 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MenuItem } from 'primeng/api';
 import { ActivatedRoute, Router, NavigationEnd, RouterLink } from '@angular/router';
-import { Subject } from 'rxjs';
-import { filter, distinctUntilChanged, map, startWith, takeUntil } from 'rxjs/operators';
+import { filter, distinctUntilChanged, startWith } from 'rxjs/operators';
 import { BreadcrumbModule } from 'primeng/breadcrumb';
 import { CommonModule } from '@angular/common';
+import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
+import { buildBreadcrumbTrail } from '../../../core/breadcrumb/breadcrumb.util';
+
+/**
+ * Raíz fija del trail admin. Las páginas de detalle publican su trail sin
+ * incluirla ([sección, nombre real]); el componente la antepone para que
+ * el resultado quede parejo con los trails derivados de rutas.
+ */
+const ADMIN_ROOT: MenuItem = { label: 'Administrador', routerLink: '/administrador' };
 
 @Component({
   selector: 'app-breadcrumb',
@@ -12,81 +21,38 @@ import { CommonModule } from '@angular/common';
   imports: [RouterLink, BreadcrumbModule, CommonModule],
   templateUrl: './app.breadcrumb.html',
 })
-export class BreadcrumbComponent implements OnInit, OnDestroy {
-  private destroy$ = new Subject<void>();
+export class BreadcrumbComponent {
+  private router = inject(Router);
+  private activatedRoute = inject(ActivatedRoute);
+  private breadcrumbService = inject(BreadcrumbService);
 
-  items: MenuItem[] = [];
   home: MenuItem = { icon: 'pi pi-home', routerLink: '/administrador/estadisticas' };
 
-  constructor(
-    private router: Router,
-    private activatedRoute: ActivatedRoute
-  ) {}
+  private routeItems = signal<MenuItem[]>([]);
 
-  ngOnInit() {
+  /**
+   * El trail publicado por la página activa (nombre real del recurso) tiene
+   * prioridad; sin publicación se usa el derivado de `data.breadcrumb`.
+   * Mismo contrato que PublicBreadcrumb.
+   */
+  displayItems = computed(() => {
+    const serviceTrail = this.breadcrumbService.trail();
+    return serviceTrail.length > 0 ? [ADMIN_ROOT, ...serviceTrail] : this.routeItems();
+  });
+
+  constructor() {
     this.router.events
       .pipe(
         filter((event) => event instanceof NavigationEnd),
         distinctUntilChanged(),
         startWith(null),
-        map(() => {
-
-          return this.buildBreadCrumb(this.activatedRoute.root);
-        }),
-        takeUntil(this.destroy$)
+        takeUntilDestroyed(),
       )
-      .subscribe((breadcrumbs) => {
-        this.items = breadcrumbs;
+      .subscribe((event) => {
+        this.routeItems.set(buildBreadcrumbTrail(this.activatedRoute.root));
+        // Solo en navegación real (no en el arranque): la página entrante
+        // republica su trail al resolver datos; uno viejo no debe sobrevivir.
+        if (event !== null) this.breadcrumbService.clear();
       });
-
-    this.items = this.buildBreadCrumb(this.activatedRoute.root);
-  }
-
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  buildBreadCrumb(
-    route: ActivatedRoute,
-    url: string = '',
-    breadcrumbs: MenuItem[] = []
-  ): MenuItem[] {
-
-    const path = route.routeConfig?.path || '';
-    const breadcrumbLabel = route.routeConfig?.data?.['breadcrumb'];
-
-    const routeParams = route.snapshot.params;
-    let resolvedPath = path;
-
-    for (const key in routeParams) {
-      if (routeParams.hasOwnProperty(key)) {
-        resolvedPath = resolvedPath.replace(`:${key}`, routeParams[key]);
-      }
-    }
-
-    const nextUrl = path ? `${url}/${resolvedPath}` : url;
-
-    if (breadcrumbLabel) {
-
-      const label =
-        typeof breadcrumbLabel === 'function'
-          ? breadcrumbLabel(route.snapshot.data)
-          : breadcrumbLabel;
-
-      const breadcrumbItem: MenuItem = {
-        label: label,
-        routerLink: nextUrl,
-      };
-      breadcrumbs.push(breadcrumbItem);
-    }
-
-    if (route.firstChild) {
-      return this.buildBreadCrumb(route.firstChild, nextUrl, breadcrumbs);
-    }
-
-    return breadcrumbs.filter(
-      (item, index, self) => index === self.findIndex((t) => t.label === item.label)
-    );
   }
 }

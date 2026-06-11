@@ -1,5 +1,5 @@
 <div class="breadcrumb-container breadcrumb-topbar">
-  <p-breadcrumb [model]="items" [home]="home" styleClass="breadcrumb-digeex">
+  <p-breadcrumb [model]="displayItems()" [home]="home" styleClass="breadcrumb-digeex">
     <ng-template pTemplate="item" let-item let-index="index">
       <a
         *ngIf="item.routerLink; else noLink"

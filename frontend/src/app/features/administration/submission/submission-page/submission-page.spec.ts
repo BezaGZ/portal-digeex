@@ -7,6 +7,7 @@ import { vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 
 import { SubmissionPage } from './submission-page';
+import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { Collection } from '../../../../core/api/models/collection.model';
@@ -19,7 +20,7 @@ import { Collection } from '../../../../core/api/models/collection.model';
  * o un getOne fallido redirige al listado de carga con un toast en vez de
  * quedar en spinner indefinido.
  *
- * Ciclo 26 TDD — Sprint 6. Ajustado en Ciclo 17 (Sprint 7).
+ * Ciclo 26 TDD — Sprint 6. Ajustado en Ciclo 17 (Sprint 7) y Ciclo 34 (Sprint 8).
  */
 describe('SubmissionPage', () => {
   function buildCollection(uuid: string): Collection {
@@ -42,6 +43,8 @@ describe('SubmissionPage', () => {
     uuid: string | null;
     navigate: ReturnType<typeof vi.fn>;
     toastAdd: ReturnType<typeof vi.fn>;
+    setTrail?: ReturnType<typeof vi.fn>;
+    role?: string;
   }): void {
     TestBed.configureTestingModule({
       imports: [SubmissionPage],
@@ -49,8 +52,14 @@ describe('SubmissionPage', () => {
         provideNoopAnimations(),
         { provide: CollectionApiService, useValue: { getOne: opts.getOne } },
         {
+          provide: BreadcrumbService,
+          useValue: { setTrail: opts.setTrail ?? vi.fn(), clear: vi.fn() },
+        },
+        {
           provide: AuthCallerService,
-          useValue: { currentCaller$: of({ role: 'superadmin', sufijo: null }) },
+          useValue: {
+            currentCaller$: of({ role: opts.role ?? 'superadmin', sufijo: null }),
+          },
         },
         {
           provide: ActivatedRoute,
@@ -103,5 +112,47 @@ describe('SubmissionPage', () => {
 
     expect(navigate).toHaveBeenCalledWith(['/administrador/cargar']);
     expect(getOne).not.toHaveBeenCalled();
+  });
+
+  /** Verifica que publique el trail [Programas, <nombre>, Cargar] al resolver la colección. */
+  it('should publish the breadcrumb trail [Programas, <name>, Cargar] when the collection resolves', () => {
+    const getOne = vi.fn().mockReturnValue(of(buildCollection('peac-uuid')));
+    const setTrail = vi.fn();
+    configure({ getOne, uuid: 'peac-uuid', navigate: vi.fn(), toastAdd: vi.fn(), setTrail });
+
+    const fixture = TestBed.createComponent(SubmissionPage);
+    fixture.detectChanges();
+
+    expect(setTrail).toHaveBeenCalledWith([
+      { label: 'Programas', routerLink: '/administrador/programas' },
+      { label: 'PEAC', routerLink: '/administrador/programas/peac-uuid' },
+      { label: 'Cargar' },
+    ]);
+  });
+
+  /**
+   * Verifica el trail sin links admin para personal_delegado.
+   * Las rutas de Programas exigen ROLE_SCOPES.ADMIN; su ancla navegable es Cargar contenido.
+   */
+  it('should publish [Cargar contenido, <name>, Cargar] without admin links for personal_delegado', () => {
+    const getOne = vi.fn().mockReturnValue(of(buildCollection('peac-uuid')));
+    const setTrail = vi.fn();
+    configure({
+      getOne,
+      uuid: 'peac-uuid',
+      navigate: vi.fn(),
+      toastAdd: vi.fn(),
+      setTrail,
+      role: 'personal_delegado',
+    });
+
+    const fixture = TestBed.createComponent(SubmissionPage);
+    fixture.detectChanges();
+
+    expect(setTrail).toHaveBeenLastCalledWith([
+      { label: 'Cargar contenido', routerLink: '/administrador/cargar' },
+      { label: 'PEAC' },
+      { label: 'Cargar' },
+    ]);
   });
 });
