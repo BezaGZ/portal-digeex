@@ -1,8 +1,8 @@
-import { Component, HostBinding, Input, OnDestroy } from '@angular/core';
+import { Component, HostBinding, Input } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { animate, state, style, transition, trigger } from '@angular/animations';
-import { Subject } from 'rxjs';
-import { filter, takeUntil } from 'rxjs/operators';
+import { filter } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { RippleModule } from 'primeng/ripple';
 import { MenuItem } from 'primeng/api';
@@ -31,9 +31,7 @@ import { LayoutService } from '../services/layout.service';
   ],
   providers: [LayoutService],
 })
-export class AppMenuitem implements OnDestroy {
-  private destroy$ = new Subject<void>();
-
+export class AppMenuitem {
   @Input() item!: MenuItem;
 
   @Input() index!: number;
@@ -50,7 +48,7 @@ export class AppMenuitem implements OnDestroy {
     public router: Router,
     private layoutService: LayoutService,
   ) {
-    this.layoutService.menuSource$.pipe(takeUntil(this.destroy$)).subscribe((value) => {
+    this.layoutService.menuSource$.pipe(takeUntilDestroyed()).subscribe((value) => {
       Promise.resolve(null).then(() => {
         if (value.routeEvent) {
           this.active =
@@ -63,14 +61,14 @@ export class AppMenuitem implements OnDestroy {
       });
     });
 
-    this.layoutService.resetSource$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+    this.layoutService.resetSource$.pipe(takeUntilDestroyed()).subscribe(() => {
       this.active = false;
     });
 
     this.router.events
       .pipe(
         filter((event) => event instanceof NavigationEnd),
-        takeUntil(this.destroy$),
+        takeUntilDestroyed(),
       )
       .subscribe(() => {
         if (this.item.routerLink) {
@@ -124,10 +122,5 @@ export class AppMenuitem implements OnDestroy {
   @HostBinding('class.active-menuitem')
   get activeClass() {
     return this.active && !this.root;
-  }
-
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 }

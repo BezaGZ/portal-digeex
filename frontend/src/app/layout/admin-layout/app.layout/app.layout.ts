@@ -1,7 +1,8 @@
 import { Component, OnDestroy, Renderer2, ViewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
-import { filter, Subject, takeUntil } from 'rxjs';
+import { filter } from 'rxjs';
 import { AppTopbar } from '../app.topbar/app.topbar';
 import { AppSidebar } from '../app.sidebar/app.sidebar';
 import { AppFooter } from '../app.footer/app.footer';
@@ -14,8 +15,6 @@ import { LayoutService } from '../services/layout.service';
   templateUrl: './app.layout.html',
 })
 export class AppLayout implements OnDestroy {
-  private destroy$ = new Subject<void>();
-
   menuOutsideClickListener: (() => void) | null = null;
 
   @ViewChild(AppSidebar) appSidebar!: AppSidebar;
@@ -28,7 +27,7 @@ export class AppLayout implements OnDestroy {
     public router: Router
   ) {
     this.layoutService.overlayOpen$.pipe(
-      takeUntil(this.destroy$)
+      takeUntilDestroyed()
     ).subscribe(() => {
       if (!this.menuOutsideClickListener) {
         this.menuOutsideClickListener = this.renderer.listen('document', 'click', (event) => {
@@ -45,7 +44,7 @@ export class AppLayout implements OnDestroy {
 
     this.router.events.pipe(
       filter((event) => event instanceof NavigationEnd),
-      takeUntil(this.destroy$)
+      takeUntilDestroyed()
     ).subscribe(() => {
       this.hideMenu();
     });
@@ -82,10 +81,8 @@ export class AppLayout implements OnDestroy {
     };
   }
 
+  // OnDestroy se conserva solo para soltar el listener global de document.
   ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
-
     if (this.menuOutsideClickListener) {
       this.menuOutsideClickListener();
     }

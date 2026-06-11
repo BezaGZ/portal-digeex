@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MenuItem } from 'primeng/api';
 import { ActivatedRoute, Router, NavigationEnd, RouterLink } from '@angular/router';
-import { filter, distinctUntilChanged, startWith } from 'rxjs/operators';
+import { filter, startWith } from 'rxjs/operators';
 import { BreadcrumbModule } from 'primeng/breadcrumb';
 import { CommonModule } from '@angular/common';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
@@ -44,7 +44,6 @@ export class BreadcrumbComponent {
     this.router.events
       .pipe(
         filter((event) => event instanceof NavigationEnd),
-        distinctUntilChanged(),
         startWith(null),
         takeUntilDestroyed(),
       )

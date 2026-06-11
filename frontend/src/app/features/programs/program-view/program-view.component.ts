@@ -22,6 +22,7 @@ import { inferBitstreamFormat } from '../../../core/api/bitstream-format.util';
 import { CollectionView, ItemView, BitstreamView, PaginatorEvent, Bitstream } from '../../../core/api/models';
 import { SkeletonCardComponent, EmptyStateComponent, DocumentCardComponent } from '../../../shared';
 import { switchMap } from 'rxjs/operators';
+import { lastValueFrom } from 'rxjs';
 import { getCollectionRoute } from '../../../core/config/collection-format.config';
 import { ENTITY_TYPE } from '../../../core/config/digeex-values.config';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -212,7 +213,7 @@ export class ProgramViewComponent implements OnInit {
           if (!original) {
             return Promise.resolve([] as BitstreamView[]);
           }
-          return this.dspaceApi.getBitstreamsFromBundle(original.uuid).toPromise().then((res) => {
+          return lastValueFrom(this.dspaceApi.getBitstreamsFromBundle(original.uuid)).then((res) => {
             const list = res?._embedded?.['bitstreams'] || [];
             return list.map((b: Bitstream) => {
               const fmt = inferBitstreamFormat(b.name || '');

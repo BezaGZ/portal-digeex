@@ -1,7 +1,7 @@
-import { Component, OnInit, OnDestroy, computed, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, NavigationEnd } from '@angular/router';
-import { filter, distinctUntilChanged, startWith, takeUntil } from 'rxjs/operators';
-import { Subject } from 'rxjs';
+import { filter, startWith } from 'rxjs/operators';
 import { BreadcrumbModule } from 'primeng/breadcrumb';
 import { MenuItem } from 'primeng/api';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
@@ -13,8 +13,9 @@ import { buildBreadcrumbTrail } from '../../../core/breadcrumb/breadcrumb.util';
   imports: [BreadcrumbModule],
   templateUrl: './public-breadcrumb.html',
 })
-export class PublicBreadcrumb implements OnInit, OnDestroy {
-  private destroy$ = new Subject<void>();
+export class PublicBreadcrumb implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
   home: MenuItem = { icon: 'pi pi-home', routerLink: '/', label: 'Inicio' };
 
   private routeItems = signal<MenuItem[]>([]);
@@ -34,9 +35,8 @@ export class PublicBreadcrumb implements OnInit, OnDestroy {
     this.router.events
       .pipe(
         filter((event) => event instanceof NavigationEnd),
-        distinctUntilChanged(),
         startWith(null),
-        takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => {
         const url = this.router.url;
@@ -46,10 +46,5 @@ export class PublicBreadcrumb implements OnInit, OnDestroy {
           this.breadcrumbService.clear();
         }
       });
-  }
-
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 }
