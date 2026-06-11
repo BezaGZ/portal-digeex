@@ -5,7 +5,12 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { BehaviorSubject, of } from 'rxjs';
-import { LoginComponent, LOGIN_MISSING_ROLE_MESSAGE } from './login';
+import {
+  LoginComponent,
+  LOGIN_MISSING_ROLE_MESSAGE,
+  LOGIN_INVALID_CREDENTIALS_MESSAGE,
+  LOGIN_SERVICE_UNAVAILABLE_MESSAGE,
+} from './login';
 import { AuthService } from '../../../core/auth/auth.service';
 import { UserManagementService } from '../../administration/users/services/user-management.service';
 import { UserView } from '../../administration/users/models/user-view.model';
@@ -142,7 +147,11 @@ describe('LoginComponent', () => {
   });
 
   describe('login fallido', () => {
-    it('should show error message on failed login', async () => {
+    /**
+     * El 401 de DSpace es deliberadamente genérico (credenciales malas, cuenta
+     * desactivada o sin activar se ven iguales); el mensaje cubre los tres casos.
+     */
+    it('should show the credentials message on 401', async () => {
       component.email.set('juan@mineduc.gob.gt');
       component.password.set('wrong-password');
 
@@ -153,7 +162,39 @@ describe('LoginComponent', () => {
 
       await fixture.whenStable();
 
-      expect(component.errorMessage()).toBeTruthy();
+      expect(component.errorMessage()).toBe(LOGIN_INVALID_CREDENTIALS_MESSAGE);
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    /** Un 5xx no es un problema de credenciales: el mensaje debe decir que el servicio falló. */
+    it('should show the service unavailable message on 5xx', async () => {
+      component.email.set('juan@mineduc.gob.gt');
+      component.password.set('secret');
+
+      component.onLogin();
+
+      const loginReq = httpMock.expectOne('/server/api/authn/login');
+      loginReq.flush(null, { status: 503, statusText: 'Service Unavailable' });
+
+      await fixture.whenStable();
+
+      expect(component.errorMessage()).toBe(LOGIN_SERVICE_UNAVAILABLE_MESSAGE);
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    /** Un error de red (status 0, DSpace inalcanzable) tampoco es culpa de las credenciales. */
+    it('should show the service unavailable message on network error', async () => {
+      component.email.set('juan@mineduc.gob.gt');
+      component.password.set('secret');
+
+      component.onLogin();
+
+      const loginReq = httpMock.expectOne('/server/api/authn/login');
+      loginReq.error(new ProgressEvent('error'));
+
+      await fixture.whenStable();
+
+      expect(component.errorMessage()).toBe(LOGIN_SERVICE_UNAVAILABLE_MESSAGE);
       expect(router.navigate).not.toHaveBeenCalled();
     });
   });

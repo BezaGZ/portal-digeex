@@ -14,9 +14,19 @@ import { AuthCardShell } from '../../../shared/components/auth-card-shell/auth-c
 export const LOGIN_MISSING_ROLE_MESSAGE =
   'Tu cuenta está activa pero sin rol asignado. Contacta al administrador para asignarte acceso.';
 
-/** Mensaje que se muestra cuando las credenciales son inválidas. */
+/**
+ * Mensaje del 401. DSpace responde el mismo 401 genérico para contraseña
+ * incorrecta, cuenta desactivada (canLogIn=false) y cuenta que aún no
+ * definió su contraseña — no revelar cuál caso es evita la enumeración de
+ * cuentas, así que el mensaje orienta los tres sin confirmar ninguno.
+ */
 export const LOGIN_INVALID_CREDENTIALS_MESSAGE =
-  'Correo o contraseña incorrectos. Intente de nuevo.';
+  'Correo o contraseña incorrectos. Si aún no ha definido su contraseña, ' +
+  'revise el correo de activación; si su cuenta fue desactivada, contacte al administrador.';
+
+/** Mensaje para fallos que no son de credenciales: red caída o error del servidor. */
+export const LOGIN_SERVICE_UNAVAILABLE_MESSAGE =
+  'No se pudo conectar con el servidor. Intente de nuevo en unos minutos.';
 
 @Component({
   selector: 'app-login',
@@ -60,9 +70,13 @@ export class LoginComponent {
           },
         );
       },
-      error: () => {
+      error: (err: { status?: number }) => {
         this.isLoading.set(false);
-        this.errorMessage.set(LOGIN_INVALID_CREDENTIALS_MESSAGE);
+        // Solo el 401 habla de credenciales; un status 0 (red) o 5xx es
+        // problema del servicio y culpar a la contraseña confunde al usuario.
+        this.errorMessage.set(
+          err?.status === 401 ? LOGIN_INVALID_CREDENTIALS_MESSAGE : LOGIN_SERVICE_UNAVAILABLE_MESSAGE,
+        );
       },
     });
   }
