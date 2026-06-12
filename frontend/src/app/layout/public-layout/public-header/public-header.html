@@ -2,22 +2,51 @@
   class="text-white shadow-lg sticky top-0 z-50"
   style="background-color: var(--gob-azul-gobierno)"
 >
-  <p-menu #resourcesMenu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
-
   <div class="container mx-auto px-6 py-4 flex justify-between items-center">
     <a routerLink="/" class="flex items-center hover:opacity-90 transition-opacity">
       <img src="/logo-dark.png" alt="Logo DIGEEX" class="h-12" />
     </a>
 
     <div class="flex items-center gap-3">
-      <button
-        class="hidden md:flex items-center gap-2 px-5 py-2 rounded-full hover:bg-white/10 transition-all duration-200 font-medium text-sm cursor-pointer"
-        (click)="resourcesMenu.toggle($event)"
-      >
-        <i class="pi pi-th-large text-base"></i>
-        <span>Recursos</span>
-        <i class="pi pi-chevron-down text-xs"></i>
-      </button>
+      <div class="hidden md:block">
+        <button
+          class="flex items-center gap-2 px-5 py-2 rounded-full hover:bg-white/10 transition-all duration-200 font-medium text-sm cursor-pointer"
+          (click)="resourcesPanel.toggle($event)"
+        >
+          <i class="pi pi-th-large text-base"></i>
+          <span>Recursos</span>
+          <i class="pi pi-chevron-down text-xs"></i>
+        </button>
+
+        <p-popover #resourcesPanel appendTo="body" styleClass="w-64">
+          @if (menuError()) {
+            <div class="px-2 py-3 text-center">
+              <p class="text-sm mb-3 text-[var(--color-text-secondary)]">
+                No se pudieron cargar los recursos.
+              </p>
+              <button
+                class="text-sm font-medium text-gob-primary hover:underline cursor-pointer"
+                (click)="retryMenu()"
+              >
+                Reintentar
+              </button>
+            </div>
+          } @else {
+            @for (item of menuItems; track $index) {
+              @if (item.separator) {
+                <div class="border-t my-1 border-[var(--color-divider)]"></div>
+              } @else {
+                <a
+                  [routerLink]="item.routerLink"
+                  class="block px-3 py-2 rounded text-sm text-gob-primary hover:bg-background transition-colors"
+                  (click)="resourcesPanel.hide()"
+                  >{{ item.label }}</a
+                >
+              }
+            }
+          }
+        </p-popover>
+      </div>
 
       <div class="hidden md:block">
         <p-button
