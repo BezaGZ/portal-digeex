@@ -29,7 +29,7 @@ import { Collection } from '../../../core/api/models/collection.model';
  * bloqueado en su sufijo. Cada acción mutativa delega al
  * `CollectionFacade`.
  *
- * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4 (Sprint 7), Ciclos 12, 13, 24 (Sprint 8).
+ * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4 (Sprint 7), Ciclos 12, 13, 24 y 38 (Sprint 8).
  */
 describe('Collections (contenedor)', () => {
   let searchTopFn: ReturnType<typeof vi.fn>;
@@ -524,6 +524,10 @@ describe('Collections (contenedor)', () => {
       c.selectSubdireccion(sub);
       fixture.detectChanges();
       const target = buildCollection('PEAC', 'coll-peac');
+      target.metadata = {
+        'dc.title': [{ value: 'PEAC original', language: null, authority: null, confidence: -1, place: 0 }],
+        'digeex.navLocation': [{ value: 'menu-principal', language: null, authority: null, confidence: -1, place: 0 }],
+      };
       c.openEditDialog(target);
 
       c.handleEditSubmit({
@@ -545,8 +549,9 @@ describe('Collections (contenedor)', () => {
             value: 'Programa de Educación de Adultos por Correspondencia (renombrado)',
           }),
           expect.objectContaining({
-            op: 'add',
-            path: '/metadata/digeex.navLocation',
+            op: 'replace',
+            path: '/metadata/digeex.navLocation/0/value',
+            value: 'menu-secundario',
           }),
         ]),
         'ED_BASICA',
@@ -555,6 +560,52 @@ describe('Collections (contenedor)', () => {
       const patch = updateColeccionFn.mock.calls[0][1] as Array<{ path: string }>;
       expect(patch.some((op) => op.path.startsWith('/metadata/dspace.entity.type'))).toBe(false);
       expect(c.dialogMode()).toBe('closed');
+    });
+
+    /**
+     * Verifica que el patch de edición salga del diff contra el metadata del target.
+     * El add de DSpace anexa sobre campos existentes; los duplicados históricos se limpian acá.
+     */
+    it('should build the edit patch from the target metadata without add on existing fields', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      c.selectSubdireccion(sub);
+      fixture.detectChanges();
+      const target = buildCollection('PEAC', 'coll-peac');
+      target.metadata = {
+        'dc.title': [{ value: 'Título viejo', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.description': [
+          { value: 'Dup', language: null, authority: null, confidence: -1, place: 0 },
+          { value: 'Dup', language: null, authority: null, confidence: -1, place: 1 },
+          { value: 'Dup', language: null, authority: null, confidence: -1, place: 2 },
+        ],
+        'digeex.navLocation': [{ value: 'menu-principal', language: null, authority: null, confidence: -1, place: 0 }],
+      };
+      c.openEditDialog(target);
+
+      c.handleEditSubmit({
+        siglas: 'PEAC',
+        titulo: 'Título nuevo',
+        description: 'Descripción editada',
+        entityType: 'Documento',
+        navLocation: 'menu-principal',
+        orden: '2',
+        coverFile: null,
+      });
+
+      expect(updateColeccionFn).toHaveBeenCalledWith(
+        'coll-peac',
+        [
+          { op: 'replace', path: '/metadata/dc.title/0/value', value: 'Título nuevo' },
+          { op: 'remove', path: '/metadata/dc.description/2' },
+          { op: 'remove', path: '/metadata/dc.description/1' },
+          { op: 'replace', path: '/metadata/dc.description/0/value', value: 'Descripción editada' },
+          { op: 'add', path: '/metadata/dc.identifier.other', value: [{ value: '2' }] },
+        ],
+        'ED_BASICA',
+      );
     });
 
     /** Verifica que al crear con cover el facade reciba el File en el cuarto argumento. */

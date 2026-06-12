@@ -9,6 +9,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
     include: ['src/**/*.{test,spec}.{js,ts}'],
+    /**
+     * El primer it de cada spec paga la compilación TestBed del componente;
+     * con la máquina cargada (watch + ng serve + DSpace) los 5s default de
+     * Vitest producen timeouts falsos en los forms pesados de PrimeNG.
+     */
+    testTimeout: 15000,
     /** 
      * Usar 'forks' para aislar cada archivo de test y evitar OOM en CI;
      * maxForks: 2 equilibra uso de RAM y concurrencia.

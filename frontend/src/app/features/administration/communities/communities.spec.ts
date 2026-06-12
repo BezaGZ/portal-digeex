@@ -29,7 +29,7 @@ import { Caller } from '../content/specifications/scope-context.model';
  * puro (solo setean signals) y el `fixture.detectChanges()` después de
  * cada mutación hace correr el effect que dispara el fetch.
  *
- * Ciclo 17 TDD — Sprint 6. Ajustado en Ciclo 25 (Sprint 8).
+ * Ciclo 17 TDD — Sprint 6. Ajustado en Ciclos 25 y 38 (Sprint 8).
  */
 describe('Communities (contenedor)', () => {
   let searchTopFn: ReturnType<typeof vi.fn>;
@@ -262,6 +262,9 @@ describe('Communities (contenedor)', () => {
       fixture.detectChanges();
       const c = fixture.componentInstance;
       const target = buildCommunity('Educación Básica', 'sub-1');
+      target.metadata = {
+        'dc.title': [{ value: 'Subdirección de Educación Básica', language: null, authority: null, confidence: -1, place: 0 }],
+      };
       c.openEditDialog(target);
       listSubcommunitiesFn.mockClear();
 
@@ -288,6 +291,43 @@ describe('Communities (contenedor)', () => {
       expect(listSubcommunitiesFn).toHaveBeenCalled();
       expect(messageAddFn).toHaveBeenCalledWith(
         expect.objectContaining({ severity: 'success' }),
+      );
+    });
+
+    /**
+     * Verifica que la edición limpie los duplicados históricos de la descripción.
+     * El add de DSpace anexa sobre campos existentes; el helper emite removes + replace.
+     */
+    it('should clean duplicated description values and never add over existing fields on edit', () => {
+      const fixture = TestBed.createComponent(Communities);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const target = buildCommunity('Educación Básica', 'sub-1');
+      target.metadata = {
+        'dc.title': [{ value: 'Subdirección de Educación Básica', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.description': [
+          { value: 'Dup', language: null, authority: null, confidence: -1, place: 0 },
+          { value: 'Dup', language: null, authority: null, confidence: -1, place: 1 },
+          { value: 'Dup', language: null, authority: null, confidence: -1, place: 2 },
+        ],
+      };
+      c.openEditDialog(target);
+
+      c.handleEditSubmit({
+        nombreCorto: 'Educación Básica',
+        tituloCompleto: 'Subdirección de Educación Básica',
+        sufijo: 'ED_BASICA',
+        description: 'Descripción editada',
+      });
+
+      expect(updateSubdireccionFn).toHaveBeenCalledWith(
+        'sub-1',
+        [
+          { op: 'remove', path: '/metadata/dc.description/2' },
+          { op: 'remove', path: '/metadata/dc.description/1' },
+          { op: 'replace', path: '/metadata/dc.description/0/value', value: 'Descripción editada' },
+        ],
+        'ED_BASICA',
       );
     });
 

@@ -24,6 +24,7 @@ import { Community, CommunityCreateBody } from '../../../core/api/models/communi
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { CommunityFacade } from '../content/services/community-facade';
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
+import { buildMetadataPatch } from '../../../core/api/metadata-patch.util';
 import { CommunityTable } from './components/community-table/community-table';
 import { CommunityDialog } from './components/community-dialog/community-dialog';
 import { SubdireccionView } from './models/subdireccion-view.model';
@@ -236,20 +237,16 @@ export class Communities {
     // la sigla en programas) y sufijo rompe los grupos ADMIN_<sufijo>/
     // SUBMITTERS_<sufijo>. Solo se patchean tituloCompleto (dc.title)
     // y descripción.
-    const patch: JsonPatchEntry[] = [
-      { op: 'replace', path: '/metadata/dc.title/0/value', value: payload.tituloCompleto },
-      // El path /metadata/dc.description con value array funciona aunque el
-      // campo no exista todavía: JSON Patch add reemplaza si existe y crea
-      // si no. Cubre las subdirecciones de setup que ya tienen descripción
-      // y futuras creadas desde la UI sin descripción inicial.
+    // El diff lo arma el helper: el add de DSpace anexa sobre campos
+    // existentes (duplicaba la descripción en cada edición) y el helper
+    // emite replace/add/remove según el metadata actual del target.
+    const patch: JsonPatchEntry[] = buildMetadataPatch(
       {
-        op: 'add',
-        path: '/metadata/dc.description',
-        value: [
-          { value: payload.description ?? '', language: null, authority: null, confidence: -1, place: 0 },
-        ],
+        'dc.title': payload.tituloCompleto,
+        'dc.description': payload.description,
       },
-    ];
+      target.metadata ?? {},
+    );
     this.facade.updateSubdireccion$(target.uuid, patch, payload.sufijo).subscribe({
       next: () => {
         this.closeDialog();

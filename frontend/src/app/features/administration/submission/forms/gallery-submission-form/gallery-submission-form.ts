@@ -14,7 +14,7 @@ import { ButtonModule } from 'primeng/button';
 import { BaseSubmissionForm } from '../../base-submission-form';
 import { registerSubmissionForm } from '../../submission-form-registry';
 import { mv } from '../../metadata-value.util';
-import { buildMetadataPatch } from '../../metadata-patch.util';
+import { buildMetadataPatch } from '../../../../../core/api/metadata-patch.util';
 import { toLocalIsoDate } from '../../../../../core/i18n/iso-date.util';
 import { MetadataValue } from '../../../../../core/api/models/metadata.model';
 import { Bitstream } from '../../../../../core/api/models/bitstream.model';

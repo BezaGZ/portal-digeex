@@ -26,6 +26,7 @@ import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { Community } from '../../../core/api/models/community.model';
 import { Collection, CollectionCreateBody } from '../../../core/api/models/collection.model';
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
+import { buildMetadataPatch } from '../../../core/api/metadata-patch.util';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { CollectionFacade } from '../content/services/collection-facade';
 import { findCallerSub } from '../shared/services/scope-resolver';
@@ -269,31 +270,19 @@ export class Collections {
     // dspace.entity.type y siglas (name) son inmutables después de
     // crear: el primero rompe el routing del frontend, el segundo
     // rompe los SAFs y URLs externas. Solo se patchean título completo,
-    // descripción y ubicación menú.
-    const patch: JsonPatchEntry[] = [
-      { op: 'replace', path: '/metadata/dc.title/0/value', value: payload.titulo },
+    // descripción, ubicación menú y orden. El diff lo arma el helper:
+    // el add de DSpace anexa sobre campos existentes (duplicaba metadata
+    // en cada edición) y el helper emite replace/add/remove según el
+    // metadata actual del target.
+    const patch: JsonPatchEntry[] = buildMetadataPatch(
       {
-        op: 'add',
-        path: '/metadata/dc.description',
-        value: [
-          { value: payload.description ?? '', language: null, authority: null, confidence: -1, place: 0 },
-        ],
+        'dc.title': payload.titulo,
+        'dc.description': payload.description,
+        'digeex.navLocation': payload.navLocation,
+        'dc.identifier.other': payload.orden,
       },
-      {
-        op: 'add',
-        path: '/metadata/digeex.navLocation',
-        value: [
-          { value: payload.navLocation, language: null, authority: null, confidence: -1, place: 0 },
-        ],
-      },
-      {
-        op: 'add',
-        path: '/metadata/dc.identifier.other',
-        value: [
-          { value: payload.orden, language: null, authority: null, confidence: -1, place: 0 },
-        ],
-      },
-    ];
+      target.metadata ?? {},
+    );
     this.facade.updateColeccion$(target.uuid, patch, sufijo).subscribe({
       next: () => {
         if (payload.coverFile) {
