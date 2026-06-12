@@ -93,6 +93,30 @@ describe('SessionWarningModal', () => {
       expect(authService.refreshToken).toHaveBeenCalled();
       expect(idleService.warningVisible()).toBe(false);
     });
+
+    /** Si el refresh falla la sesión no se pudo extender: se fuerza el logout. */
+    it('should force logout when refreshToken fails on "Seguir trabajando"', () => {
+      const { Observable, throwError } = require('rxjs');
+      vi.spyOn(authService, 'refreshToken').mockReturnValue(
+        throwError(() => new Error('refresh failed')),
+      );
+      vi.spyOn(authService, 'logout').mockReturnValue(
+        new Observable((subscriber: { next: (v: unknown) => void; complete: () => void }) => {
+          subscriber.next(undefined);
+          subscriber.complete();
+        }),
+      );
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+      idleService.warningVisible.set(true);
+      fixture.detectChanges();
+
+      const button = fixture.nativeElement.querySelector('[data-testid="btn-continue"]');
+      button.click();
+
+      expect(authService.logout).toHaveBeenCalled();
+      expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
+    });
   });
 
   /** Botón "Cerrar sesión" */
@@ -116,6 +140,38 @@ describe('SessionWarningModal', () => {
       button.click();
 
       expect(authService.logout).toHaveBeenCalled();
+      expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
+    });
+
+    /** El redirect depende de la respuesta del logout: con la petición en vuelo aún no navega. */
+    it('should not navigate until the logout request settles', () => {
+      const { Observable } = require('rxjs');
+      vi.spyOn(authService, 'logout').mockReturnValue(new Observable(() => {}));
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+      idleService.warningVisible.set(true);
+      fixture.detectChanges();
+
+      const button = fixture.nativeElement.querySelector('[data-testid="btn-logout"]');
+      button.click();
+
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    /** Aunque el logout falle en el backend, el usuario debe terminar en login. */
+    it('should still navigate to /login when logout fails', () => {
+      const { throwError } = require('rxjs');
+      vi.spyOn(authService, 'logout').mockReturnValue(
+        throwError(() => new Error('logout failed')),
+      );
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+      idleService.warningVisible.set(true);
+      fixture.detectChanges();
+
+      const button = fixture.nativeElement.querySelector('[data-testid="btn-logout"]');
+      button.click();
+
       expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
     });
   });

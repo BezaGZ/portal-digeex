@@ -37,14 +37,21 @@ export class SessionWarningModal {
 
   /** Refresca el token y resetea el timer de inactividad. */
   onContinue(): void {
-    this.authService.refreshToken().subscribe();
+    // Si el refresh falla la sesión no se pudo extender; se trata como expirada.
+    this.authService.refreshToken().subscribe({
+      error: () => this.onLogout(),
+    });
     this.idleService.warningVisible.set(false);
   }
 
   /** Cierra sesión y redirige al login. */
   onLogout(): void {
     this.idleService.stop();
-    this.authService.logout().subscribe();
-    this.router.navigate(['/iniciar-sesion']);
+    // El redirect ocurre al resolverse el logout; aunque el backend falle el
+    // usuario debe terminar en login, así que ambas ramas navegan.
+    this.authService.logout().subscribe({
+      next: () => this.router.navigate(['/iniciar-sesion']),
+      error: () => this.router.navigate(['/iniciar-sesion']),
+    });
   }
 }
