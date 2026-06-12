@@ -7,6 +7,7 @@ import { switchMap, map, catchError } from 'rxjs/operators';
 import { DiscoveryService } from '../../core/api/discovery.service';
 import { SearchResult, FacetFilter } from '../../core/api/models/discovery.model';
 import { Item } from '../../core/api/models/item.model';
+import { Collection } from '../../core/api/models/collection.model';
 import { Bitstream } from '../../core/api/models/bitstream.model';
 import { ItemView, BitstreamView, PaginatorEvent } from '../../core/api/models/view.model';
 import { inferBitstreamFormat } from '../../core/api/bitstream-format.util';
@@ -73,7 +74,9 @@ export class AdvancedSearch implements OnInit {
       }
       this.loadFacetsForScope(this.searchState.scope());
       this.executeSearch();
-    } else {
+    } else if (this.searchState.scopeOptions().length === 0) {
+      // Las opciones sobreviven en SearchStateService entre visitas: reentrar
+      // sin scope elegido no debe repetir las peticiones del dropdown.
       this.loadScopeOptions();
     }
   }
@@ -178,66 +181,79 @@ export class AdvancedSearch implements OnInit {
   }
 
   /**
-   * Carga opciones de ámbito: sub-comunidades como grupos, colecciones como programas individuales.
-   * También agrega una opción "Todos los programas" usando el UUID de la comunidad raíz DIGEEX.
+   * Carga opciones de ámbito: sub-comunidades como grupos, colecciones como
+   * programas individuales, más la opción "Todos los programas" con el UUID
+   * de la comunidad raíz DIGEEX. Las colecciones se piden en paralelo con
+   * `forkJoin` y el orden del dropdown sigue al de las subdirecciones.
    */
   private loadScopeOptions() {
-    this.communityApi.list(0, 10).subscribe((response) => {
-      const communities = response._embedded?.['communities'] || [];
-      const digeex = communities.find(
-        (c) =>
-          c.name?.includes('DIGEEX') ||
-          c.metadata?.['dc.title']?.[0]?.value?.includes('DIGEEX') ||
-          c.metadata?.['dc.title']?.[0]?.value?.includes('Extraescolar')
-      );
-
-      if (!digeex) return;
-      this.digeexCommunityUuid = digeex.uuid;
-
-      this.communityApi.listSubcommunities(digeex.uuid, 0, 20).subscribe((subResponse) => {
-        const subCommunities = subResponse._embedded?.['subcommunities'] || [];
-        const options: ScopeOption[] = [
-          { label: 'Todos los programas (DIGEEX)', value: digeex.uuid, scopeType: 'community' },
-        ];
-
-        let remaining = subCommunities.length;
-        if (remaining === 0) {
-          this.searchState.scopeOptions.set(options);
-          return;
-        }
-
-        for (const sub of subCommunities) {
-          const subName = sub.metadata?.['dc.title']?.[0]?.value || sub.name;
-
-          options.push({
-            label: `${subName} (todos)`,
-            value: sub.uuid,
-            group: subName,
+    this.communityApi
+      .list(0, 10)
+      .pipe(
+        map((response) => {
+          const communities = response._embedded?.['communities'] || [];
+          return (
+            communities.find(
+              (c) =>
+                c.name?.includes('DIGEEX') ||
+                c.metadata?.['dc.title']?.[0]?.value?.includes('DIGEEX') ||
+                c.metadata?.['dc.title']?.[0]?.value?.includes('Extraescolar'),
+            ) ?? null
+          );
+        }),
+        switchMap((digeex) => {
+          if (!digeex) return EMPTY;
+          this.digeexCommunityUuid = digeex.uuid;
+          const base: ScopeOption = {
+            label: 'Todos los programas (DIGEEX)',
+            value: digeex.uuid,
             scopeType: 'community',
-          });
+          };
+          // Variantes listAll (expand+reduce hasta la última página): el
+          // dropdown debe mostrar todas las subdirecciones y programas, no
+          // la primera página de cada uno.
+          return this.communityApi.listAllSubcommunities(digeex.uuid).pipe(
+            switchMap((subCommunities) => {
+              if (subCommunities.length === 0) return of([base]);
+              const perSub$ = subCommunities.map((sub) =>
+                this.collectionApi.listAllByCommunity(sub.uuid).pipe(
+                  // Una subdirección caída no debe colgar el dropdown completo:
+                  // sus programas se omiten y el resto se publica igual.
+                  catchError(() => of([] as Collection[])),
+                  map((collections) => this.buildSubdireccionOptions(sub, collections)),
+                ),
+              );
+              return forkJoin(perSub$).pipe(map((groups) => [base, ...groups.flat()]));
+            }),
+          );
+        }),
+        // Fallo de los niveles superiores: no hay nada que publicar, pero el
+        // error no debe escaparse sin manejador.
+        catchError(() => EMPTY),
+      )
+      .subscribe((options) => this.searchState.scopeOptions.set(options));
+  }
 
-          this.collectionApi.listByCommunity(sub.uuid, 0, 20).subscribe((colResponse) => {
-            const collections = colResponse._embedded?.['collections'] || [];
-            for (const col of collections) {
-              const format = col.metadata?.['dspace.entity.type']?.[0]?.value;
-              if (format === ENTITY_TYPE.DOCUMENTO) {
-                options.push({
-                  label: col.metadata?.['dc.title']?.[0]?.value || col.name,
-                  value: col.uuid,
-                  group: subName,
-                  scopeType: 'collection',
-                });
-              }
-            }
-
-            remaining--;
-            if (remaining === 0) {
-              this.searchState.scopeOptions.set(options);
-            }
-          });
-        }
-      });
-    });
+  /** Arma el grupo del dropdown de una subdirección: su "(todos)" + sus programas Documento. */
+  private buildSubdireccionOptions(
+    sub: { uuid: string; name?: string; metadata?: Record<string, { value?: string }[]> },
+    collections: { uuid: string; name?: string; metadata?: Record<string, { value?: string }[]> }[],
+  ): ScopeOption[] {
+    const subName = sub.metadata?.['dc.title']?.[0]?.value || sub.name || '';
+    const options: ScopeOption[] = [
+      { label: `${subName} (todos)`, value: sub.uuid, group: subName, scopeType: 'community' },
+    ];
+    for (const col of collections) {
+      if (col.metadata?.['dspace.entity.type']?.[0]?.value === ENTITY_TYPE.DOCUMENTO) {
+        options.push({
+          label: col.metadata?.['dc.title']?.[0]?.value || col.name || '',
+          value: col.uuid,
+          group: subName,
+          scopeType: 'collection',
+        });
+      }
+    }
+    return options;
   }
 
   /**

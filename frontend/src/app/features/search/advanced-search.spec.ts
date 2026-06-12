@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { AdvancedSearch } from './advanced-search';
 import { DiscoveryService } from '../../core/api/discovery.service';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
@@ -23,9 +23,7 @@ import { SearchResult } from '../../core/api/models/discovery.model';
  * f.contentType=documento para excluir galería/estadísticas cuando el scope
  * es community o sub-community.
  *
- * Ciclos del Sprint 4. Ajustado en Sprint 6.
-  *
- * Ciclo 37 TDD — Sprint 6.
+ * Ciclos del Sprint 4. Ajustado en Sprint 6 (Ciclo 37) y en Ciclo 37 (Sprint 8).
  */
 describe('AdvancedSearch', () => {
   let component: AdvancedSearch;
@@ -336,6 +334,113 @@ describe('AdvancedSearch', () => {
     // onClear should NOT trigger a new search
     expect(searchSpy).toHaveBeenCalledTimes(1);
   });
+
+  /** Carga del dropdown de ámbito */
+
+  /* eslint-disable @typescript-eslint/no-explicit-any -- mocks de respuestas HAL */
+  describe('loadScopeOptions', () => {
+    const digeexResponse = {
+      _embedded: {
+        communities: [{ uuid: 'digeex-uuid', name: 'DIGEEX', handle: '', metadata: {}, type: 'community' }],
+      },
+      page: { size: 10, totalElements: 1, totalPages: 1, number: 0 },
+    };
+
+    const subs = [
+      { uuid: 'sub-a', name: 'A', metadata: { 'dc.title': [{ value: 'Educación Básica' }] }, type: 'community' },
+      { uuid: 'sub-b', name: 'B', metadata: { 'dc.title': [{ value: 'Trabajo y Cultura' }] }, type: 'community' },
+    ];
+
+    function buildCol(uuid: string, title: string, entityType: string) {
+      return {
+        uuid,
+        name: title,
+        metadata: {
+          'dc.title': [{ value: title }],
+          'dspace.entity.type': [{ value: entityType }],
+        },
+        type: 'collection',
+      };
+    }
+
+    /**
+     * Verifica que el dropdown se publique aunque falle la carga de colecciones de una subdirección.
+     * Sin tolerancia al fallo, el contador manual nunca llegaba a cero y el dropdown quedaba vacío.
+     */
+    it('should publish the scope options even when one collections request fails', () => {
+      vi.spyOn(communityApi, 'list').mockReturnValue(of(digeexResponse as any));
+      vi.spyOn(communityApi, 'listAllSubcommunities').mockReturnValue(of(subs as any));
+      vi.spyOn(collectionApi, 'listAllByCommunity').mockImplementation(((uuid: string) =>
+        uuid === 'sub-a'
+          ? of([buildCol('col-peac', 'PEAC', ENTITY_TYPE.DOCUMENTO)] as any)
+          : throwError(() => new Error('500'))) as any);
+
+      (component as any).loadScopeOptions();
+
+      expect(component.scopeOptions().map((o) => o.label)).toEqual([
+        'Todos los programas (DIGEEX)',
+        'Educación Básica (todos)',
+        'PEAC',
+        'Trabajo y Cultura (todos)',
+      ]);
+    });
+
+    it('should list every collection of a subcommunity without a page-size cap', () => {
+      const manyCols = Array.from({ length: 25 }, (_, i) =>
+        buildCol(`col-${i}`, `Programa ${String(i).padStart(2, '0')}`, ENTITY_TYPE.DOCUMENTO),
+      );
+      vi.spyOn(communityApi, 'list').mockReturnValue(of(digeexResponse as any));
+      vi.spyOn(communityApi, 'listAllSubcommunities').mockReturnValue(of(subs.slice(0, 1) as any));
+      vi.spyOn(collectionApi, 'listAllByCommunity').mockReturnValue(of(manyCols as any));
+
+      (component as any).loadScopeOptions();
+
+      // 1 raíz + 1 "(todos)" + las 25 colecciones: nada se recorta a una página.
+      expect(component.scopeOptions()).toHaveLength(27);
+    });
+
+    /** Verifica el orden estable del dropdown (subdirección + sus programas Documento, galerías excluidas). */
+    it('should group only Documento collections under each subcommunity in declaration order', () => {
+      vi.spyOn(communityApi, 'list').mockReturnValue(of(digeexResponse as any));
+      vi.spyOn(communityApi, 'listAllSubcommunities').mockReturnValue(of(subs as any));
+      vi.spyOn(collectionApi, 'listAllByCommunity').mockImplementation(((uuid: string) =>
+        uuid === 'sub-a'
+          ? of([
+              buildCol('col-peac', 'PEAC', ENTITY_TYPE.DOCUMENTO),
+              buildCol('col-galeria', 'Galería Institucional', 'Galeria'),
+            ] as any)
+          : of([buildCol('col-cemucaf', 'CEMUCAF', ENTITY_TYPE.DOCUMENTO)] as any)) as any);
+
+      (component as any).loadScopeOptions();
+
+      expect(component.scopeOptions().map((o) => o.label)).toEqual([
+        'Todos los programas (DIGEEX)',
+        'Educación Básica (todos)',
+        'PEAC',
+        'Trabajo y Cultura (todos)',
+        'CEMUCAF',
+      ]);
+    });
+
+    /**
+     * Verifica que reentrar a la pantalla sin scope elegido no repita las
+     * peticiones del dropdown: las opciones sobreviven en SearchStateService.
+     */
+    it('should not reload the scope options on init when they are already in the state', () => {
+      const listSpy = vi.spyOn(communityApi, 'list');
+      listSpy.mockClear();
+      const searchState = TestBed.inject(SearchStateService);
+      searchState.scopeOptions.set([
+        { label: 'Todos los programas (DIGEEX)', value: 'digeex-uuid', scopeType: 'community' },
+      ]);
+
+      const fixture2 = TestBed.createComponent(AdvancedSearch);
+      fixture2.detectChanges();
+
+      expect(listSpy).not.toHaveBeenCalled();
+    });
+  });
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   /** Persistencia tras volver del detalle */
 
