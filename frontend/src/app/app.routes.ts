@@ -134,10 +134,10 @@ export const routes: Routes = [
         data: { breadcrumb: 'Subdirecciones' }
       },
       {
-        path: 'subdirecciones/:uuid',
+        path: 'historial/subdirecciones/:uuid',
         canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
         loadComponent: () =>
-          import('./features/administration/subdirecciones-detail/subdirecciones-detail').then(
+          import('./features/administration/history/subdirecciones-detail/subdirecciones-detail').then(
             (m) => m.SubdireccionesDetail,
           ),
       },
@@ -148,26 +148,18 @@ export const routes: Routes = [
         data: { breadcrumb: 'Programas' }
       },
       {
-        path: 'programas/:uuid',
+        path: 'historial/programas/:uuid',
         canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
         loadComponent: () =>
-          import('./features/administration/programas-detail/programas-detail').then(
+          import('./features/administration/history/programas-detail/programas-detail').then(
             (m) => m.ProgramasDetail,
           ),
       },
       {
-        path: 'programas/:colUuid/items/:itemUuid',
+        path: 'historial/items/:uuid',
         canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
         loadComponent: () =>
-          import('./features/administration/items-detail/items-detail').then(
-            (m) => m.ItemsDetail,
-          ),
-      },
-      {
-        path: 'items/:itemUuid',
-        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
-        loadComponent: () =>
-          import('./features/administration/items-detail/items-detail').then(
+          import('./features/administration/history/items-detail/items-detail').then(
             (m) => m.ItemsDetail,
           ),
       },

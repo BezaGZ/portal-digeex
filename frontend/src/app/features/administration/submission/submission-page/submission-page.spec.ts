@@ -125,7 +125,7 @@ describe('SubmissionPage', () => {
 
     expect(setTrail).toHaveBeenCalledWith([
       { label: 'Programas', routerLink: '/administrador/programas' },
-      { label: 'PEAC', routerLink: '/administrador/programas/peac-uuid' },
+      { label: 'PEAC', routerLink: '/administrador/historial/programas/peac-uuid' },
       { label: 'Cargar' },
     ]);
   });

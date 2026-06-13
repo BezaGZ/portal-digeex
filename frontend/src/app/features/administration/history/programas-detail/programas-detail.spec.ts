@@ -5,10 +5,10 @@ import { Subject, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 
 import { ProgramasDetail } from './programas-detail';
-import { CollectionApiService } from '../../../core/api/collection-api.service';
-import { Collection } from '../../../core/api/models/collection.model';
-import { ProvenanceService } from '../content/provenance/provenance.service';
-import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
+import { CollectionApiService } from '../../../../core/api/collection-api.service';
+import { Collection } from '../../../../core/api/models/collection.model';
+import { ProvenanceService } from '../../content/provenance/provenance.service';
+import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
 
 /**
  * Tests de `ProgramasDetail`.

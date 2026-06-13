@@ -164,8 +164,8 @@ describe('Dashboard', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="dashboard-widget-grid"]')).toBeNull();
   });
 
-  /** Verifica que onTopListEntryClick navegue a /administrador/programas/<uuid>. */
-  it('should navigate to /administrador/programas/<uuid> when onTopListEntryClick fires', () => {
+  /** Verifica que onTopListEntryClick navegue a /administrador/historial/programas/<uuid>. */
+  it('should navigate to /administrador/historial/programas/<uuid> when onTopListEntryClick fires', () => {
     caller$.next({ role: 'superadmin', sufijo: null });
 
     const fixture = TestBed.createComponent(Dashboard);
@@ -177,7 +177,7 @@ describe('Dashboard', () => {
       count: 34,
     });
 
-    expect(routerNavigateFn).toHaveBeenCalledWith(['/administrador/programas', 'coll-peac']);
+    expect(routerNavigateFn).toHaveBeenCalledWith(['/administrador/historial/programas', 'coll-peac']);
   });
 
   /** Verifica que goBack navegue a la raíz. */

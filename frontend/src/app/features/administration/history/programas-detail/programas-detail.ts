@@ -14,14 +14,14 @@ import { map } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 
-import { CollectionApiService } from '../../../core/api/collection-api.service';
-import { Collection } from '../../../core/api/models/collection.model';
-import { ProvenanceService } from '../content/provenance/provenance.service';
-import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
-import { ExportHistoryButton } from '../../../shared/components/export-history-button/export-history-button.component';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { ProvenanceTimeline } from '../content/provenance/timeline/provenance-timeline';
+import { CollectionApiService } from '../../../../core/api/collection-api.service';
+import { Collection } from '../../../../core/api/models/collection.model';
+import { ProvenanceService } from '../../content/provenance/provenance.service';
+import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
+import { ExportHistoryButton } from '../../../../shared/components/export-history-button/export-history-button.component';
+import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { ProvenanceTimeline } from '../../content/provenance/timeline/provenance-timeline';
 
 /**
  * Pantalla detail administrativa de programa. Orquesta el fetch de la colección

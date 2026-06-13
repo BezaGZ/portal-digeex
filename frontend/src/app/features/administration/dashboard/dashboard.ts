@@ -97,10 +97,10 @@ export class Dashboard {
   }
 
   /**
-   * Navega a la vista de programas filtrada por la colección especificada en la entrada seleccionada.
+   * Navega al historial del programa de la entrada seleccionada.
    */
   onTopListEntryClick(entry: TopListEntry): void {
-    this.router.navigate(['/administrador/programas', entry.uuid]);
+    this.router.navigate(['/administrador/historial/programas', entry.uuid]);
   }
 
   /**

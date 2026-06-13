@@ -14,14 +14,14 @@ import { map } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 
-import { CommunityApiService } from '../../../core/api/community-api.service';
-import { Community } from '../../../core/api/models/community.model';
-import { ProvenanceService } from '../content/provenance/provenance.service';
-import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
-import { ExportHistoryButton } from '../../../shared/components/export-history-button/export-history-button.component';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { ProvenanceTimeline } from '../content/provenance/timeline/provenance-timeline';
+import { CommunityApiService } from '../../../../core/api/community-api.service';
+import { Community } from '../../../../core/api/models/community.model';
+import { ProvenanceService } from '../../content/provenance/provenance.service';
+import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
+import { ExportHistoryButton } from '../../../../shared/components/export-history-button/export-history-button.component';
+import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { ProvenanceTimeline } from '../../content/provenance/timeline/provenance-timeline';
 
 /**
  * Pantalla detail administrativa de subdirección. Orquesta el fetch del recurso,

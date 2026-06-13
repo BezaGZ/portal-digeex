@@ -14,14 +14,14 @@ import { map } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 
-import { ItemApiService } from '../../../core/api/item-api.service';
-import { Item } from '../../../core/api/models/item.model';
-import { ProvenanceService } from '../content/provenance/provenance.service';
-import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
-import { ExportHistoryButton } from '../../../shared/components/export-history-button/export-history-button.component';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { ProvenanceTimeline } from '../content/provenance/timeline/provenance-timeline';
+import { ItemApiService } from '../../../../core/api/item-api.service';
+import { Item } from '../../../../core/api/models/item.model';
+import { ProvenanceService } from '../../content/provenance/provenance.service';
+import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
+import { ExportHistoryButton } from '../../../../shared/components/export-history-button/export-history-button.component';
+import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { ProvenanceTimeline } from '../../content/provenance/timeline/provenance-timeline';
 
 /**
  * Pantalla detail administrativa de item. Orquesta el fetch del recurso,
@@ -50,7 +50,7 @@ export class ItemsDetail {
   }
 
   private readonly itemUuid = toSignal(
-    this.route.paramMap.pipe(map((p) => p.get('itemUuid') ?? '')),
+    this.route.paramMap.pipe(map((p) => p.get('uuid') ?? '')),
     { initialValue: '' },
   );
 

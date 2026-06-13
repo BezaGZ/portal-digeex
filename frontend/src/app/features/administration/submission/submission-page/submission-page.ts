@@ -81,7 +81,7 @@ export class SubmissionPage {
         isAdmin
           ? [
               { label: 'Programas', routerLink: '/administrador/programas' },
-              { label: c.name, routerLink: `/administrador/programas/${c.uuid}` },
+              { label: c.name, routerLink: `/administrador/historial/programas/${c.uuid}` },
               { label: 'Cargar' },
             ]
           : [

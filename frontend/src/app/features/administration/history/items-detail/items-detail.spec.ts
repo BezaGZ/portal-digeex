@@ -5,20 +5,20 @@ import { Subject, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 
 import { ItemsDetail } from './items-detail';
-import { ItemApiService } from '../../../core/api/item-api.service';
-import { Item } from '../../../core/api/models/item.model';
-import { ProvenanceService } from '../content/provenance/provenance.service';
-import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
+import { ItemApiService } from '../../../../core/api/item-api.service';
+import { Item } from '../../../../core/api/models/item.model';
+import { ProvenanceService } from '../../content/provenance/provenance.service';
+import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
 
 /**
  * Tests de `ItemsDetail`.
  *
- * Container de la ruta `/administrador/programas/:colUuid/items/:itemUuid`.
- * Resuelve el item vía `ItemApiService.getOne` con el `:itemUuid`, monta
+ * Container de la ruta `/administrador/historial/items/:uuid`.
+ * Resuelve el item vía `ItemApiService.getOne` con el `:uuid`, monta
  * `<app-provenance-timeline>` con las entradas derivadas por
  * `ProvenanceService.extractFrom` y publica el trail al `BreadcrumbService`.
  *
- * Ciclo 18 TDD — Sprint 8. Ajustado en Ciclo 34.
+ * Ciclo 18 TDD — Sprint 8. Ajustado en Ciclos 34 y 42.
  */
 describe('ItemsDetail', () => {
   let getOneFn: Mock;
@@ -66,15 +66,15 @@ describe('ItemsDetail', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            paramMap: of(convertToParamMap({ colUuid: 'col-1', itemUuid: 'item-1' })),
+            paramMap: of(convertToParamMap({ uuid: 'item-1' })),
           },
         },
       ],
     }).compileComponents();
   });
 
-  /** Verifica que el container invoque `ItemApiService.getOne` con el `:itemUuid` del route param. */
-  it('should call ItemApiService.getOne with the itemUuid from the route param', () => {
+  /** Verifica que el container invoque `ItemApiService.getOne` con el `:uuid` del route param. */
+  it('should call ItemApiService.getOne with the uuid from the route param', () => {
     const fixture = TestBed.createComponent(ItemsDetail);
     fixture.detectChanges();
 
