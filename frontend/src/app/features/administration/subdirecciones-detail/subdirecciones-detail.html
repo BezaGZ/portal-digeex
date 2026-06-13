@@ -1,11 +1,12 @@
 @if (loading()) {
   <app-loading-spinner />
 } @else if (failed()) {
-  <div
-    data-testid="subdireccion-detail-failed"
-    class="container mx-auto px-4 py-8 text-center"
-  >
-    <p class="text-gray-600 dark:text-gray-400">—</p>
+  <div class="container mx-auto px-4 py-8">
+    <app-empty-state
+      icon="pi pi-exclamation-triangle"
+      title="No se pudo cargar la subdirección"
+      message="El recurso no existe o hubo un problema al cargarlo."
+      testId="subdireccion-detail-failed" />
   </div>
 } @else {
   <div class="container mx-auto px-4 py-8">

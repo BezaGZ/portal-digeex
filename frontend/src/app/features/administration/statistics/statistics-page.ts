@@ -178,8 +178,9 @@ export class StatisticsPage {
         });
     });
 
-    // Nombre y handle reales del recurso para el PDF. Si la consulta falla,
-    // dsoTitle cae al título genérico y el PDF sale igual, solo menos específico.
+    // Nombre/handle reales del recurso para el PDF y check de existencia: un
+    // 404 acá significa que el recurso no existe, así que prende el estado de
+    // error en vez de dejar que la página caiga al vacío de "sin datos".
     effect(() => {
       const type = this.dsoType();
       const uuid = this.resolvedUuid();
@@ -190,7 +191,10 @@ export class StatisticsPage {
         .get<{ name?: string; handle?: string }>(`${DSPACE_API_BASE}/core/${segment}/${uuid}`)
         .pipe(
           takeUntilDestroyed(this.destroyRef),
-          catchError(() => of(null)),
+          catchError(() => {
+            this.errored.set(true);
+            return of(null);
+          }),
         )
         .subscribe((dso) => {
           this.dsoName.set(dso?.name ?? null);

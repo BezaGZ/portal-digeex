@@ -292,4 +292,19 @@ describe('StatisticsPage', () => {
       fixture.nativeElement.querySelector('[data-testid="export-statistics-pdf"]'),
     ).not.toBeNull();
   });
+
+  /** Verifica que un 404 del recurso muestre el estado de error, no el vacío de "sin datos". */
+  it('should show the error state when the resource does not exist (404)', async () => {
+    getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
+    const { fixture } = setup('collection', 'uuid-inexistente');
+    fixture.detectChanges();
+
+    httpMock
+      .match((req) => /\/core\/(items|collections)\//.test(req.url))
+      .forEach((req) => req.flush('Not Found', { status: 404, statusText: 'Not Found' }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="statistics-error"]')).not.toBeNull();
+  });
 });

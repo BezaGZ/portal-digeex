@@ -145,4 +145,14 @@ describe('SubdireccionesDetail', () => {
 
     expect(fixture.nativeElement.querySelector('[data-testid="subdireccion-detail-failed"]')).not.toBeNull();
   });
+
+  /** Verifica que el estado de fallo muestre el componente compartido app-empty-state. */
+  it('should render app-empty-state in the failed fallback when getOne errors', () => {
+    getOneFn.mockReturnValue(throwError(() => new Error('404 Not Found')));
+
+    const fixture = TestBed.createComponent(SubdireccionesDetail);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-empty-state')).not.toBeNull();
+  });
 });

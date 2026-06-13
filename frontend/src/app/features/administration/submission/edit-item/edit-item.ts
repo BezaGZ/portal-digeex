@@ -9,6 +9,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
+import { MessageService } from 'primeng/api';
 
 import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
 import { ItemApiService } from '../../../../core/api/item-api.service';
@@ -42,6 +43,7 @@ export class EditItem {
   private readonly authCaller = inject(AuthCallerService);
   private readonly router = inject(Router);
   private readonly breadcrumb = inject(BreadcrumbService);
+  private readonly toast = inject(MessageService);
 
   readonly item = signal<Item | null>(null);
   readonly loading = signal(true);
@@ -77,6 +79,11 @@ export class EditItem {
         },
         error: () => {
           this.loading.set(false);
+          this.toast.add({
+            severity: 'error',
+            summary: 'Envío no encontrado',
+            detail: 'El envío solicitado no existe o no está disponible.',
+          });
           this.router.navigate(['/administrador/envios']);
         },
       });

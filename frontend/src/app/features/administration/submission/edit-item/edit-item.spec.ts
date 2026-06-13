@@ -4,7 +4,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { vi } from 'vitest';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { EditItem } from './edit-item';
 import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
@@ -122,5 +122,22 @@ describe('EditItem', () => {
       { label: 'Mis envíos', routerLink: '/administrador/envios' },
       { label: 'Editar envío' },
     ]);
+  });
+
+  /** Verifica que un fallo al cargar el item muestre un toast de error y redirija a Mis envíos. */
+  it('should show an error toast and navigate to Mis envíos when getOne fails', () => {
+    getOneFn.mockReturnValue(throwError(() => new Error('404 Not Found')));
+    const toast = TestBed.inject(MessageService);
+    const router = TestBed.inject(Router);
+
+    const fixture = TestBed.createComponent(EditItem);
+    fixture.detectChanges();
+
+    expect(toast.add).toHaveBeenCalledWith({
+      severity: 'error',
+      summary: 'Envío no encontrado',
+      detail: 'El envío solicitado no existe o no está disponible.',
+    });
+    expect(router.navigate).toHaveBeenCalledWith(['/administrador/envios']);
   });
 });
