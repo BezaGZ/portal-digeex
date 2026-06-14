@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CardModule } from 'primeng/card';
 
-import { PROVENANCE_ACTION_LABELS } from '../action-labels';
-import { TimelineEntry } from '../timeline-entry.model';
+import { PROVENANCE_ACTION_LABELS } from '../../../../../core/provenance/action-labels';
+import { TimelineEntry } from '../../../../../core/provenance/timeline-entry.model';
 
 /**
  * Timeline cronológica de actividad del recurso. Componente presentacional puro:

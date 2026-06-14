@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { MetadataMap, MetadataValue } from '../../../../core/api/models/metadata.model';
-import { TimelineEntry } from './timeline-entry.model';
+import { TimelineEntry } from '../../../../core/provenance/timeline-entry.model';
 
 /**
  * Patrones reconocidos en `dc.description.provenance`. Sumar un patrón

@@ -4,8 +4,8 @@ import autoTable from 'jspdf-autotable';
 import {
   PROVENANCE_ACTION_LABELS,
   PROVENANCE_PHRASES,
-} from '../../../features/administration/content/provenance/action-labels';
-import { TimelineEntry } from '../../../features/administration/content/provenance/timeline-entry.model';
+} from '../../../core/provenance/action-labels';
+import { TimelineEntry } from '../../../core/provenance/timeline-entry.model';
 import {
   drawFooterOnAllPages,
   drawInstitutionalHeader,

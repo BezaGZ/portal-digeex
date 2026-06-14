@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { TimelineEntry } from '../../../features/administration/content/provenance/timeline-entry.model';
+import { TimelineEntry } from '../../../core/provenance/timeline-entry.model';
 import { slugifyForFilename } from '../pdf/pdf-filename';
 import { HistoryPdfInput, buildHistoryPdf } from './history-pdf-builder';
 

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 
-import { TimelineEntry } from '../../../features/administration/content/provenance/timeline-entry.model';
+import { TimelineEntry } from '../../../core/provenance/timeline-entry.model';
 import { slugifyForFilename } from '../pdf/pdf-filename';
 import { HistoryDsoType, buildHistoryPdf } from './history-pdf-builder';
 

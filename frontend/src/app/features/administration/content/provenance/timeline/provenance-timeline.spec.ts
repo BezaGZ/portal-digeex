@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import { ProvenanceTimeline } from './provenance-timeline';
-import { TimelineEntry } from '../timeline-entry.model';
+import { TimelineEntry } from '../../../../../core/provenance/timeline-entry.model';
 
 /**
  * Tests de `ProvenanceTimeline`.
