@@ -1,6 +1,6 @@
 import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalErrorListeners, provideZoneChangeDetection, LOCALE_ID } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, withNoXsrfProtection } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { providePrimeNG } from 'primeng/config';
 import { ConfirmationService, MessageService } from 'primeng/api';
@@ -38,10 +38,11 @@ import localeEsGT from '@angular/common/locales/es-GT';
 registerLocaleData(localeEsGT);
 
 import { routes } from './app.routes';
-import { csrfInterceptor } from './core/csrf/csrf.interceptor';
+import { xsrfInterceptor } from './core/xsrf/xsrf.interceptor';
 import { jwtInterceptor } from './core/auth/auth.interceptor';
 import { errorInterceptor } from './core/error/error.interceptor';
 import { AuthService } from './core/auth/auth.service';
+import { XsrfService } from './core/xsrf/xsrf.service';
 
 
 
@@ -267,8 +268,10 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideHttpClient(
-      withInterceptors([csrfInterceptor, jwtInterceptor, errorInterceptor])
+      withInterceptors([xsrfInterceptor, jwtInterceptor, errorInterceptor]),
+      withNoXsrfProtection()
     ),
+    provideAppInitializer(() => inject(XsrfService).initXSRFToken()),
     provideAppInitializer(() => firstValueFrom(inject(AuthService).restoreSession())),
     provideAnimations(),
     { provide: LOCALE_ID, useValue: 'es-GT' },

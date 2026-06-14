@@ -1,5 +1,5 @@
-import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, ChangeDetectionStrategy, OnInit, signal, inject } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { InputTextModule } from 'primeng/inputtext';
@@ -7,8 +7,12 @@ import { PasswordModule } from 'primeng/password';
 import { CheckboxModule } from 'primeng/checkbox';
 import { ButtonModule } from 'primeng/button';
 import { AuthService } from '../../../core/auth/auth.service';
+import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
 import { UserManagementService } from '../../administration/users/services/user-management.service';
 import { AuthCardShell } from '../../../shared/components/auth-card-shell/auth-card-shell';
+
+/** Valor del query param `error` con que el caso "sin rol" recarga el login para restaurar el mensaje. */
+const NO_ROLE_ERROR_PARAM = 'sin-rol';
 
 /** Mensaje que se muestra cuando el eperson autenticado no tiene un grupo de rol del portal. */
 export const LOGIN_MISSING_ROLE_MESSAGE =
@@ -34,9 +38,11 @@ export const LOGIN_SERVICE_UNAVAILABLE_MESSAGE =
   imports: [FormsModule, RouterLink, InputTextModule, PasswordModule, CheckboxModule, ButtonModule, AuthCardShell],
   templateUrl: './login.html',
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private authService = inject(AuthService);
+  private hardRedirect = inject(HardRedirectService);
   private userManagement = inject(UserManagementService);
 
   email = signal('');
@@ -44,6 +50,17 @@ export class LoginComponent {
   rememberMe = signal(false);
   errorMessage = signal('');
   isLoading = signal(false);
+
+  /**
+   * Restaura el mensaje "sin rol" cuando el login se cargó por recarga dura con
+   * `?error=sin-rol`. El caso sin rol cierra sesión y recarga; el query param
+   * sobrevive a la recarga (mismo patrón que `?expired=true` de dspace).
+   */
+  ngOnInit(): void {
+    if (this.route.snapshot.queryParamMap.get('error') === NO_ROLE_ERROR_PARAM) {
+      this.errorMessage.set(LOGIN_MISSING_ROLE_MESSAGE);
+    }
+  }
 
   /**
    * Tras un login exitoso contra DSpace espera el primer valor de
@@ -64,9 +81,13 @@ export class LoginComponent {
             this.router.navigate(['/administrador']);
           },
           () => {
-            this.authService.logout().subscribe();
-            this.isLoading.set(false);
-            this.errorMessage.set(LOGIN_MISSING_ROLE_MESSAGE);
+            // Sin rol: cerrar sesión y recargar duro al login con el motivo en el
+            // query param. La recarga resincroniza el CSRF y el param restaura el
+            // mensaje (mismo patrón que `?expired=true` de dspace).
+            this.authService.logout().subscribe({
+              next: () => this.hardRedirect.redirect(`/iniciar-sesion?error=${NO_ROLE_ERROR_PARAM}`),
+              error: () => this.hardRedirect.redirect(`/iniciar-sesion?error=${NO_ROLE_ERROR_PARAM}`),
+            });
           },
         );
       },

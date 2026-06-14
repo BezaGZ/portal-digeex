@@ -140,7 +140,7 @@ describe('jwtInterceptor', () => {
      * el AuthService tenga un token. DSpace filtra hits autenticados como
      * admin para no inflar los reportes con tráfico de administración; el
      * portal registra visitas siempre como anónimo aunque el visitante esté
-     * logueado en otro tab. Ver `csrf.interceptor` que agrega `X-XSRF-TOKEN`
+     * logueado en otro tab. Ver `xsrf.interceptor` que agrega `X-XSRF-TOKEN`
      * y `withCredentials` automáticamente.
      */
     it('should NOT attach Bearer on /statistics/viewevents requests', async () => {

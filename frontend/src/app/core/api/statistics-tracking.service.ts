@@ -24,7 +24,7 @@ export type TrackingTargetType = 'item' | 'collection';
  * requieren llamadas de este service.
  *
  * El POST se hace anónimo (sin Bearer): inflar las stats con sesión de
- * admin distorsiona los reportes. El csrfInterceptor del proyecto agrega
+ * admin distorsiona los reportes. El xsrfInterceptor del proyecto agrega
  * automáticamente el header `X-XSRF-TOKEN` y `withCredentials: true`, así
  * que este service no maneja CSRF — solo arma el body y delega al HttpClient.
  *

@@ -183,7 +183,7 @@ export class CollectionApiService {
   /**
    * Crea una collection bajo la community padre indicada. DSpace devuelve
    * la collection con `uuid`, `handle` y los `_links` asignados. El CSRF
-   * token y el JWT los inyecta el `csrfInterceptor` y el `authInterceptor`
+   * token y el JWT los inyecta el `xsrfInterceptor` y el `authInterceptor`
    * automáticamente sobre toda mutación.
    */
   create(parentUuid: string, body: CollectionCreateBody): Observable<Collection> {

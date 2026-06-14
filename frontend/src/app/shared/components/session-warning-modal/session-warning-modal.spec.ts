@@ -1,31 +1,34 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { SessionWarningModal } from './session-warning-modal';
 import { IdleTimeoutService } from '../../../core/auth/idle-timeout.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
 
 /**
  * Tests para SessionWarningModal.
  *
  * Modal que se muestra cuando el usuario lleva 25 min inactivo.
  * Ofrece dos opciones: "Seguir trabajando" (refresh + reset)
- * o "Cerrar sesión" (logout + redirect a /login).
+ * o "Cerrar sesión" (logout + recarga dura al login).
  * Si llega a 30 min, ejecuta logout automático.
  *
- * Ciclo 3 TDD — Sprint 5
+ * Ciclo 3 TDD — Sprint 5. Recarga dura en Ciclo 43 — Sprint 8.
  */
 describe('SessionWarningModal', () => {
   let component: SessionWarningModal;
   let fixture: ComponentFixture<SessionWarningModal>;
   let idleService: IdleTimeoutService;
   let authService: AuthService;
-  let router: Router;
+  let hardRedirect: { redirect: ReturnType<typeof vi.fn> };
 
   /** Setup */
 
   beforeEach(() => {
+    hardRedirect = { redirect: vi.fn() };
+
     TestBed.configureTestingModule({
       imports: [SessionWarningModal],
       providers: [
@@ -34,6 +37,7 @@ describe('SessionWarningModal', () => {
         provideRouter([]),
         IdleTimeoutService,
         AuthService,
+        { provide: HardRedirectService, useValue: hardRedirect },
       ],
     });
 
@@ -41,7 +45,6 @@ describe('SessionWarningModal', () => {
     component = fixture.componentInstance;
     idleService = TestBed.inject(IdleTimeoutService);
     authService = TestBed.inject(AuthService);
-    router = TestBed.inject(Router);
   });
 
   /** Verifica que el componente se instancie correctamente. */
@@ -106,7 +109,6 @@ describe('SessionWarningModal', () => {
           subscriber.complete();
         }),
       );
-      vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
       idleService.warningVisible.set(true);
       fixture.detectChanges();
@@ -115,15 +117,15 @@ describe('SessionWarningModal', () => {
       button.click();
 
       expect(authService.logout).toHaveBeenCalled();
-      expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
+      expect(hardRedirect.redirect).toHaveBeenCalledWith('/iniciar-sesion');
     });
   });
 
   /** Botón "Cerrar sesión" */
 
   describe('log out', () => {
-    /** Verifica que el botón llame a logout y redirija a /login. */
-    it('should call logout and navigate to /login on "Cerrar sesión"', () => {
+    /** Verifica que el botón llame a logout y haga la recarga dura al login. */
+    it('should call logout and hard-redirect to login on "Cerrar sesión"', () => {
       const { Observable } = require('rxjs');
       vi.spyOn(authService, 'logout').mockReturnValue(
         new Observable((subscriber: { next: (v: unknown) => void; complete: () => void }) => {
@@ -131,7 +133,6 @@ describe('SessionWarningModal', () => {
           subscriber.complete();
         }),
       );
-      vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
       idleService.warningVisible.set(true);
       fixture.detectChanges();
@@ -140,14 +141,13 @@ describe('SessionWarningModal', () => {
       button.click();
 
       expect(authService.logout).toHaveBeenCalled();
-      expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
+      expect(hardRedirect.redirect).toHaveBeenCalledWith('/iniciar-sesion');
     });
 
-    /** El redirect depende de la respuesta del logout: con la petición en vuelo aún no navega. */
-    it('should not navigate until the logout request settles', () => {
+    /** El redirect depende de la respuesta del logout: con la petición en vuelo aún no recarga. */
+    it('should not redirect until the logout request settles', () => {
       const { Observable } = require('rxjs');
       vi.spyOn(authService, 'logout').mockReturnValue(new Observable(() => {}));
-      vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
       idleService.warningVisible.set(true);
       fixture.detectChanges();
@@ -155,16 +155,15 @@ describe('SessionWarningModal', () => {
       const button = fixture.nativeElement.querySelector('[data-testid="btn-logout"]');
       button.click();
 
-      expect(router.navigate).not.toHaveBeenCalled();
+      expect(hardRedirect.redirect).not.toHaveBeenCalled();
     });
 
     /** Aunque el logout falle en el backend, el usuario debe terminar en login. */
-    it('should still navigate to /login when logout fails', () => {
+    it('should still hard-redirect to login when logout fails', () => {
       const { throwError } = require('rxjs');
       vi.spyOn(authService, 'logout').mockReturnValue(
         throwError(() => new Error('logout failed')),
       );
-      vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
       idleService.warningVisible.set(true);
       fixture.detectChanges();
@@ -172,7 +171,7 @@ describe('SessionWarningModal', () => {
       const button = fixture.nativeElement.querySelector('[data-testid="btn-logout"]');
       button.click();
 
-      expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
+      expect(hardRedirect.redirect).toHaveBeenCalledWith('/iniciar-sesion');
     });
   });
 
@@ -188,13 +187,12 @@ describe('SessionWarningModal', () => {
           subscriber.complete();
         }),
       );
-      vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
       idleService.sessionExpired.set(true);
       fixture.detectChanges();
 
       expect(authService.logout).toHaveBeenCalled();
-      expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
+      expect(hardRedirect.redirect).toHaveBeenCalledWith('/iniciar-sesion');
     });
   });
 });

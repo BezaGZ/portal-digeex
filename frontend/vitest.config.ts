@@ -45,7 +45,7 @@ export default defineConfig({
 
         /** Sprint 5 — Auth, sesión e interceptors */
         'src/app/core/auth/**/*.ts',
-        'src/app/core/csrf/**/*.ts',
+        'src/app/core/xsrf/**/*.ts',
         'src/app/core/error/**/*.ts',
 
         /** Sprint 5 — Wrappers HTTP para gestión de usuarios */

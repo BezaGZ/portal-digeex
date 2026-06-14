@@ -1,7 +1,7 @@
 import { Component, effect, inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { IdleTimeoutService } from '../../../core/auth/idle-timeout.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
 
 /**
  * Modal de advertencia de sesión por inactividad.
@@ -25,7 +25,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 export class SessionWarningModal {
   readonly idleService = inject(IdleTimeoutService);
   private readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
+  private readonly hardRedirect = inject(HardRedirectService);
 
   constructor() {
     effect(() => {
@@ -44,14 +44,15 @@ export class SessionWarningModal {
     this.idleService.warningVisible.set(false);
   }
 
-  /** Cierra sesión y redirige al login. */
+  /** Cierra sesión y hace una recarga dura al login. */
   onLogout(): void {
     this.idleService.stop();
-    // El redirect ocurre al resolverse el logout; aunque el backend falle el
-    // usuario debe terminar en login, así que ambas ramas navegan.
+    // Recarga dura (no SPA): reinicia la app y vuelve a correr initXSRFToken,
+    // dejando el token CSRF sincronizado para el próximo login. Misma recarga en
+    // ambas ramas: aunque el backend falle, el usuario debe terminar en login.
     this.authService.logout().subscribe({
-      next: () => this.router.navigate(['/iniciar-sesion']),
-      error: () => this.router.navigate(['/iniciar-sesion']),
+      next: () => this.hardRedirect.redirect('/iniciar-sesion'),
+      error: () => this.hardRedirect.redirect('/iniciar-sesion'),
     });
   }
 }

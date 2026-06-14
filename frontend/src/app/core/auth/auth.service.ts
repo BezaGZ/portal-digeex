@@ -4,7 +4,6 @@ import { Observable, of, tap, switchMap, map, catchError } from 'rxjs';
 import Cookies from 'js-cookie';
 import { AuthStatus, AuthUser } from './models/auth-session.model';
 import { EPerson } from '../api/models';
-import { resetCsrfToken } from '../csrf/csrf.interceptor';
 import { environment } from '../../../environments/environment';
 
 /**
@@ -113,7 +112,6 @@ export class AuthService {
         this.isAuthenticated.set(false);
         this.currentUser.set(null);
         this.currentEPerson.set(null);
-        resetCsrfToken();
       }),
     );
   }

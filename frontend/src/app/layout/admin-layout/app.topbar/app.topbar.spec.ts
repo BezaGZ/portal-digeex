@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
@@ -9,22 +9,23 @@ import { vi } from 'vitest';
 import { AppTopbar } from './app.topbar';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AuthUser } from '../../../core/auth/models/auth-session.model';
+import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
 
 /**
  * Tests de `AppTopbar`.
  *
  * Lee el usuario autenticado desde `AuthService.currentUser()` y delega el
- * cierre de sesion en `AuthService.logout()`, navegando al login al terminar
- * tanto en exito como en error (mismo patron que dspace-angular: limpiar
- * sesion local y mandar al login pase lo que pase con el backend).
+ * cierre de sesion en `AuthService.logout()`. Al terminar (exito o error) hace
+ * una recarga dura al login via `HardRedirectService`: reinicia la app para
+ * resincronizar el token CSRF, igual que dspace (refreshAfterLogout).
  *
- * Ciclo 15 — Sprint 5.
+ * Ciclo 15 — Sprint 5. Recarga dura en Ciclo 43 — Sprint 8.
  */
 describe('AppTopbar', () => {
   let component: AppTopbar;
   let fixture: ComponentFixture<AppTopbar>;
   let logoutFn: ReturnType<typeof vi.fn>;
-  let router: Router;
+  let redirectFn: ReturnType<typeof vi.fn>;
 
   function buildAuthUser(overrides: Partial<AuthUser> = {}): AuthUser {
     return {
@@ -38,6 +39,7 @@ describe('AppTopbar', () => {
 
   function configure(currentUser: AuthUser | null): void {
     logoutFn = vi.fn().mockReturnValue(of(null));
+    redirectFn = vi.fn();
 
     const authStub: Partial<AuthService> = {
       currentUser: signal<AuthUser | null>(currentUser),
@@ -50,13 +52,12 @@ describe('AppTopbar', () => {
         provideNoopAnimations(),
         provideRouter([]),
         { provide: AuthService, useValue: authStub },
+        { provide: HardRedirectService, useValue: { redirect: redirectFn } },
       ],
     });
 
     fixture = TestBed.createComponent(AppTopbar);
     component = fixture.componentInstance;
-    router = TestBed.inject(Router);
-    vi.spyOn(router, 'navigate').mockResolvedValue(true);
   }
 
   /** Verifica que el topbar exponga userName y userEmail leyendo AuthService.currentUser(). */
@@ -70,21 +71,22 @@ describe('AppTopbar', () => {
   });
 
   /**
-   * Verifica que onLogout() llame a AuthService.logout() y navegue a /login.
-   * Navega igual en exito y en error: si el backend falla igual limpiamos sesion y mandamos al login.
+   * Verifica que onLogout() llame a AuthService.logout() y haga la recarga dura
+   * al login. Misma recarga en exito y en error: si el backend falla igual se
+   * reinicia la app y se manda al login.
    */
-  it('should call AuthService.logout() and navigate to /login on onLogout()', async () => {
+  it('should call AuthService.logout() and hard-redirect to login on onLogout()', () => {
     configure(buildAuthUser());
     fixture.detectChanges();
 
     component.onLogout();
 
     expect(logoutFn).toHaveBeenCalled();
-    expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
+    expect(redirectFn).toHaveBeenCalledWith('/iniciar-sesion');
 
     logoutFn.mockReturnValue(throwError(() => new Error('boom')));
-    (router.navigate as any).mockClear();
+    redirectFn.mockClear();
     component.onLogout();
-    expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
+    expect(redirectFn).toHaveBeenCalledWith('/iniciar-sesion');
   });
 });

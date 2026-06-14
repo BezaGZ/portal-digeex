@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { Router } from '@angular/router';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { BehaviorSubject, of } from 'rxjs';
@@ -12,6 +11,7 @@ import {
   LOGIN_SERVICE_UNAVAILABLE_MESSAGE,
 } from './login';
 import { AuthService } from '../../../core/auth/auth.service';
+import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
 import { UserManagementService } from '../../administration/users/services/user-management.service';
 import { UserView } from '../../administration/users/models/user-view.model';
 
@@ -19,9 +19,10 @@ import { UserView } from '../../administration/users/models/user-view.model';
  * Tests de `LoginComponent`. Conecta el formulario con `AuthService` y, tras un login exitoso,
  * consulta `UserManagementService.currentUserView$` para resolver el rol del eperson autenticado.
  * Si el rol es válido navega a `/administrador`; si la resolución falla cierra la
- * sesión y muestra el mensaje "sin rol asignado".
+ * sesión y hace una recarga dura al login con `?error=sin-rol` (la recarga resincroniza
+ * el CSRF; el query param restaura el mensaje, como dspace con `?expired=true`).
  *
- * Ciclo 4 TDD — Sprint 5. Ajustado en Ciclo 13.
+ * Ciclo 4 TDD — Sprint 5. Ajustado en Ciclo 13. Recarga dura en Ciclo 43 — Sprint 8.
  */
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -30,11 +31,13 @@ describe('LoginComponent', () => {
   let router: Router;
   let httpMock: HttpTestingController;
   let currentUserView$: BehaviorSubject<UserView | null>;
+  let redirectFn: ReturnType<typeof vi.fn>;
 
   /** Setup */
 
   beforeEach(async () => {
     currentUserView$ = new BehaviorSubject<UserView | null>(null);
+    redirectFn = vi.fn();
 
     const userManagementStub: Partial<UserManagementService> = {
       currentUserView$: currentUserView$.asObservable(),
@@ -51,6 +54,7 @@ describe('LoginComponent', () => {
         ]),
         AuthService,
         { provide: UserManagementService, useValue: userManagementStub },
+        { provide: HardRedirectService, useValue: { redirect: redirectFn } },
       ],
     }).compileComponents();
 
@@ -202,9 +206,9 @@ describe('LoginComponent', () => {
   describe('role resolution failure', () => {
     /**
      * Si la autenticación pasa pero `currentUserView$` propaga error, el componente cierra
-     * sesión, muestra la copy "sin rol asignado" y no navega al panel.
+     * sesión y hace recarga dura al login con `?error=sin-rol`. No navega al panel.
      */
-    it('should logout and show the "sin rol" warning when currentUserView$ throws', async () => {
+    it('should logout and hard-redirect to login with ?error=sin-rol when currentUserView$ throws', async () => {
       currentUserView$.error(new Error('boom: currentUserView$ falló'));
 
       const logoutSpy = vi.spyOn(authService, 'logout').mockReturnValue(of(null));
@@ -219,8 +223,37 @@ describe('LoginComponent', () => {
       await fixture.whenStable();
 
       expect(logoutSpy).toHaveBeenCalled();
-      expect(component.errorMessage()).toBe(LOGIN_MISSING_ROLE_MESSAGE);
+      expect(redirectFn).toHaveBeenCalledWith('/iniciar-sesion?error=sin-rol');
       expect(router.navigate).not.toHaveBeenCalledWith(['/administrador']);
     });
+  });
+});
+
+/**
+ * Al cargar el login con `?error=sin-rol` (tras la recarga dura del caso sin rol),
+ * el componente restaura el mensaje "sin rol" desde el query param.
+ */
+describe('LoginComponent mensaje por query param', () => {
+  it('should show the missing-role message when loaded with ?error=sin-rol', () => {
+    TestBed.configureTestingModule({
+      imports: [LoginComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        AuthService,
+        { provide: UserManagementService, useValue: { currentUserView$: of(null) } },
+        { provide: HardRedirectService, useValue: { redirect: vi.fn() } },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({ error: 'sin-rol' }) } },
+        },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(LoginComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.errorMessage()).toBe(LOGIN_MISSING_ROLE_MESSAGE);
   });
 });

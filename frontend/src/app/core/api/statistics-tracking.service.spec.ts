@@ -8,7 +8,7 @@ import { StatisticsTrackingService } from './statistics-tracking.service';
  * Tests del `StatisticsTrackingService`.
  *
  * El método público `trackView$` hace POST a `/server/api/statistics/viewevents`
- * con body `{ targetId, targetType }`. El csrfInterceptor del proyecto se
+ * con body `{ targetId, targetType }`. El xsrfInterceptor del proyecto se
  * encarga del header `X-XSRF-TOKEN` y `withCredentials`; este service no
  * maneja CSRF. El POST se hace sin Bearer (anónimo) porque las visitas en
  * DSpace son de usuarios públicos y el backend filtra hits autenticados

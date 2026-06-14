@@ -6,6 +6,7 @@ import { StyleClassModule } from 'primeng/styleclass';
 import { LayoutService } from '../services/layout.service';
 import { BreadcrumbComponent } from '../app.breadcrumb/app.breadcrumb';
 import { AuthService } from '../../../core/auth/auth.service';
+import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
 
 /**
  * Texto que se muestra cuando todavia no hay sesion cargada (signal vacia).
@@ -25,6 +26,7 @@ export class AppTopbar {
 
   private router = inject(Router);
   private authService = inject(AuthService);
+  private hardRedirect = inject(HardRedirectService);
   isUserMenuOpen = false;
 
   /**
@@ -80,14 +82,17 @@ export class AppTopbar {
   }
 
   /**
-   * Cierra la sesion en el backend y manda al login. Misma navegacion en `next`
-   * y en `error`: si el POST /authn/logout falla (red caida, token expirado).
+   * Cierra la sesion en el backend y hace una recarga dura al login. La recarga
+   * reinicia la app y vuelve a correr el initXSRFToken, dejando el token CSRF
+   * sincronizado para el proximo login (sin la recarga, el primer login tras el
+   * logout chocaria por token desincronizado). Misma recarga en `next` y `error`:
+   * si el POST /authn/logout falla, igual se reinicia y se manda al login.
    */
   onLogout() {
     this.isUserMenuOpen = false;
     this.authService.logout().subscribe({
-      next: () => this.router.navigate(['/iniciar-sesion']),
-      error: () => this.router.navigate(['/iniciar-sesion']),
+      next: () => this.hardRedirect.redirect('/iniciar-sesion'),
+      error: () => this.hardRedirect.redirect('/iniciar-sesion'),
     });
   }
 }
