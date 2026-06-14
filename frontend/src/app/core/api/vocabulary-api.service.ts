@@ -1,9 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { EMPTY, Observable } from 'rxjs';
-import { expand, reduce } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 import { VocabularyEntry } from './models/vocabulary-entry.model';
-import { DSPACE_API_BASE, VOCABULARIES_PATH } from './dspace-rest.util';
+import { DSPACE_API_BASE, VOCABULARIES_PATH, paginateAll$ } from './dspace-rest.util';
 
 /**
  * Shape literal que devuelve DSpace 9.x para
@@ -31,12 +30,12 @@ interface VocabularyEntriesResponse {
 /**
  * Wrapper HTTP del recurso `/api/submission/vocabularies` de DSpace.
  *
- * `getEntries` devuelve el universo completo del vocabulario iterando todas
- * las páginas con `expand` + `reduce` sin pasar `size`; el backend usa su
- * default configurado (`spring.data.rest.default-page-size`) y reporta
- * `totalPages` coherente. La firma sin parámetros `page/size` ya promete
- * "todas las entries"; la implementación honra esa promesa sin imponer un
- * tamaño de página arbitrario desde el frontend.
+ * `getEntries` devuelve el universo completo del vocabulario agotando todas
+ * las páginas con `paginateAll$` sin pasar `size`; el backend usa su default
+ * configurado (`spring.data.rest.default-page-size`) y reporta `totalPages`
+ * coherente. La firma sin parámetros `page/size` ya promete "todas las
+ * entries"; la implementación honra esa promesa sin imponer un tamaño de
+ * página arbitrario desde el frontend.
  */
 @Injectable({ providedIn: 'root' })
 export class VocabularyApiService {
@@ -50,23 +49,13 @@ export class VocabularyApiService {
    * poblar los dropdowns de los formularios de submission.
    */
   getEntries(vocabularyName: string): Observable<VocabularyEntry[]> {
-    return this.fetchPage$(vocabularyName, 0).pipe(
-      expand((response) => {
-        const next = response.page.number + 1;
-        return next < response.page.totalPages
-          ? this.fetchPage$(vocabularyName, next)
-          : EMPTY;
-      }),
-      reduce(
-        (acc, response) => [
-          ...acc,
-          ...response._embedded.entries.map((entry) => ({
-            display: entry.display,
-            value: entry.value,
-          })),
-        ],
-        [] as VocabularyEntry[],
-      ),
+    return paginateAll$(
+      (page) => this.fetchPage$(vocabularyName, page),
+      (response) =>
+        response._embedded.entries.map((entry) => ({
+          display: entry.display,
+          value: entry.value,
+        })),
     );
   }
 

@@ -1,4 +1,6 @@
 import { HttpParams } from '@angular/common/http';
+import { EMPTY, Observable } from 'rxjs';
+import { expand, reduce } from 'rxjs/operators';
 import { HalListResponse, Paginated } from './models/hal.model';
 
 /**
@@ -79,6 +81,30 @@ export function mapHalList<T>(response: HalListResponse<T>, embeddedKey: string)
     size: response.page.size,
     page: response.page.number,
   };
+}
+
+/** Respuesta HAL paginada mínima que `paginateAll$` necesita para iterar. */
+interface PagedHalResponse {
+  page?: { number: number; totalPages: number };
+}
+
+/**
+ * Agota todas las páginas de un listado HAL y devuelve los ítems acumulados.
+ * `fetchPage` pide la página N; `extractItems` saca (o mapea) los ítems de cada
+ * respuesta. Centraliza el bucle expand+reduce que repetían los wrappers de
+ * listados completos; preserva los defaults `?? 0` y la terminación con EMPTY.
+ */
+export function paginateAll$<R extends PagedHalResponse, T>(
+  fetchPage: (page: number) => Observable<R>,
+  extractItems: (response: R) => T[],
+): Observable<T[]> {
+  return fetchPage(0).pipe(
+    expand((response) => {
+      const next = (response.page?.number ?? 0) + 1;
+      return next < (response.page?.totalPages ?? 0) ? fetchPage(next) : EMPTY;
+    }),
+    reduce((acc, response) => [...acc, ...extractItems(response)], [] as T[]),
+  );
 }
 
 /**

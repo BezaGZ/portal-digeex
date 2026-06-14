@@ -1,11 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { EMPTY, Observable } from 'rxjs';
-import { expand, reduce } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 import { Community, CommunityCreateBody } from './models/community.model';
 import { Group, AssociatedGroupCreateBody } from './models/group.model';
 import { HalListResponse } from './models/hal.model';
-import { COMMUNITIES_PATH, DSPACE_API_BASE } from './dspace-rest.util';
+import { COMMUNITIES_PATH, DSPACE_API_BASE, paginateAll$ } from './dspace-rest.util';
 import { JsonPatchEntry } from './json-patch.util';
 
 /**
@@ -71,27 +70,15 @@ export class CommunityApiService {
 
   /**
    * Materializa TODAS las sub-comunidades de una community padre agotando
-   * páginas (`expand`+`reduce`) sin imponer `size` desde el frontend.
-   * Mismo patrón que `VocabularyApiService.getEntries`: el backend usa su
-   * default configurado (`spring.data.rest.default-page-size`).
+   * páginas con `paginateAll$` sin imponer `size` desde el frontend. Mismo
+   * patrón que `VocabularyApiService.getEntries`: el backend usa su default
+   * configurado (`spring.data.rest.default-page-size`).
    */
   listAllSubcommunities(parentUuid: string): Observable<Community[]> {
-    return this.fetchSubcommunitiesPage$(parentUuid, 0).pipe(
-      expand((resp) => {
-        const next = (resp.page?.number ?? 0) + 1;
-        return next < (resp.page?.totalPages ?? 0)
-          ? this.fetchSubcommunitiesPage$(parentUuid, next)
-          : EMPTY;
-      }),
-      reduce(
-        (acc, resp) => [
-          ...acc,
-          ...((resp._embedded as Record<string, Community[] | undefined>)?.[
-            'subcommunities'
-          ] ?? []),
-        ],
-        [] as Community[],
-      ),
+    return paginateAll$(
+      (page) => this.fetchSubcommunitiesPage$(parentUuid, page),
+      (resp) =>
+        (resp._embedded as Record<string, Community[] | undefined>)?.['subcommunities'] ?? [],
     );
   }
 

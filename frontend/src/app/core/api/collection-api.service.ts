@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
-import { EMPTY, Observable } from 'rxjs';
-import { expand, map, reduce } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Collection, CollectionCreateBody } from './models/collection.model';
 import { Group, AssociatedGroupCreateBody } from './models/group.model';
 import { Bitstream } from './models/bitstream.model';
@@ -11,6 +11,7 @@ import {
   COMMUNITIES_PATH,
   DSPACE_API_BASE,
   ITEMS_PATH,
+  paginateAll$,
 } from './dspace-rest.util';
 import { JsonPatchEntry } from './json-patch.util';
 
@@ -79,23 +80,15 @@ export class CollectionApiService {
   }
 
   /**
-   * Materializa TODAS las colecciones del repositorio agotando páginas
-   * (`expand`+`reduce`) sin imponer `size` desde el frontend. Mismo
-   * patrón que `VocabularyApiService.getEntries`: el backend usa su
-   * default `spring.data.rest.default-page-size`.
+   * Materializa TODAS las colecciones del repositorio agotando páginas con
+   * `paginateAll$` sin imponer `size` desde el frontend. Mismo patrón que
+   * `VocabularyApiService.getEntries`: el backend usa su default
+   * `spring.data.rest.default-page-size`.
    */
   listAll(options: { embed?: string } = {}): Observable<Collection[]> {
-    return this.fetchAllPage$(0, options.embed).pipe(
-      expand((resp) => {
-        const next = (resp.page?.number ?? 0) + 1;
-        return next < (resp.page?.totalPages ?? 0)
-          ? this.fetchAllPage$(next, options.embed)
-          : EMPTY;
-      }),
-      reduce(
-        (acc, resp) => [...acc, ...(resp._embedded?.['collections'] ?? [])],
-        [] as Collection[],
-      ),
+    return paginateAll$(
+      (page) => this.fetchAllPage$(page, options.embed),
+      (resp) => resp._embedded?.['collections'] ?? [],
     );
   }
 
@@ -104,17 +97,9 @@ export class CollectionApiService {
     communityUuid: string,
     options: { embed?: string } = {},
   ): Observable<Collection[]> {
-    return this.fetchByCommunityPage$(communityUuid, 0, options.embed).pipe(
-      expand((resp) => {
-        const next = (resp.page?.number ?? 0) + 1;
-        return next < (resp.page?.totalPages ?? 0)
-          ? this.fetchByCommunityPage$(communityUuid, next, options.embed)
-          : EMPTY;
-      }),
-      reduce(
-        (acc, resp) => [...acc, ...(resp._embedded?.['collections'] ?? [])],
-        [] as Collection[],
-      ),
+    return paginateAll$(
+      (page) => this.fetchByCommunityPage$(communityUuid, page, options.embed),
+      (resp) => resp._embedded?.['collections'] ?? [],
     );
   }
 
