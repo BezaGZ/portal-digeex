@@ -32,7 +32,7 @@
               </button>
             </div>
           } @else {
-            @for (item of menuItems; track $index) {
+            @for (item of menuItems(); track $index) {
               @if (item.separator) {
                 <div class="border-t my-1 border-[var(--color-divider)]"></div>
               } @else {
@@ -105,7 +105,7 @@
       style="background-color: var(--gob-azul-acento)"
     >
       <div class="container mx-auto px-4 py-3 flex flex-col gap-1">
-        @for (item of menuItems; track $index) {
+        @for (item of menuItems(); track $index) {
           @if (item.separator) {
             <div class="border-t border-white/20 my-1"></div>
           } @else {

@@ -1,4 +1,4 @@
-import { Component, signal, HostListener, OnInit, ChangeDetectorRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal, HostListener, OnInit } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { Popover } from 'primeng/popover';
@@ -14,17 +14,18 @@ import { NAV_LOCATION, ENTITY_TYPE } from '../../../core/config/digeex-values.co
   imports: [RouterModule, ButtonModule, CommonModule, Popover],
   templateUrl: './public-header.html',
   styleUrls: ['./public-header.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PublicHeader implements OnInit {
   mobileOpen = signal(false);
   menuError = signal(false);
 
-  menuItems: MenuItem[] = [];
+  /** Ítems del menú secundario. Signal para que OnPush refresque al cargarlos. */
+  readonly menuItems = signal<MenuItem[]>([]);
 
   constructor(
     private router: Router,
     private collectionCache: CollectionCacheService,
-    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -35,25 +36,24 @@ export class PublicHeader implements OnInit {
     this.menuError.set(false);
     this.collectionCache.getByMenuType(NAV_LOCATION.MENU_SECUNDARIO).subscribe({
       next: (menuCollections) => {
-        this.menuItems = [];
+        const items: MenuItem[] = [];
         menuCollections.forEach((collection, index) => {
           const format = collection.metadata?.['dspace.entity.type']?.[0]?.value || ENTITY_TYPE.DOCUMENTO;
 
-          this.menuItems.push({
+          items.push({
             label: collection.name,
-            routerLink: getCollectionRoute(format, collection.uuid)
+            routerLink: getCollectionRoute(format, collection.uuid),
           });
 
           if (index < menuCollections.length - 1) {
-            this.menuItems.push({ separator: true });
+            items.push({ separator: true });
           }
         });
 
-        this.cdr.markForCheck();
+        this.menuItems.set(items);
       },
       error: () => {
         this.menuError.set(true);
-        this.cdr.markForCheck();
       },
     });
   }

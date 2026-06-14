@@ -2,9 +2,9 @@ import {
   Component,
   OnInit,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   inject,
   DestroyRef,
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
@@ -36,20 +36,21 @@ export class DocumentDetailComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   documentId: string = '';
   programId: string = '';
-  documentTitle: string = 'Documento';
-  documentDescription: string = '';
-  documentCoverImage: string = '';
+  readonly documentTitle = signal('Documento');
+  readonly documentDescription = signal('');
+  readonly documentCoverImage = signal('');
   /** True cuando el <img> de la portada falla; el template muestra el ícono PDF. */
-  coverImageError = false;
-  documentBitstreams: BitstreamView[] = [];
-  metadataFields: MetadataFieldView[] = [];
-  isLoading = false;
-  isVideo = false;
-  videoUrl = '';
+  readonly coverImageError = signal(false);
+  readonly documentBitstreams = signal<BitstreamView[]>([]);
+  readonly metadataFields = signal<MetadataFieldView[]>([]);
+  readonly isLoading = signal(false);
+  readonly isVideo = signal(false);
+  readonly videoUrl = signal('');
+  /** Estado del boton ZIP mientras se arma el archivo en memoria. */
+  readonly downloadingZip = signal(false);
 
   onCoverImageError(): void {
-    this.coverImageError = true;
-    this.cdr.markForCheck();
+    this.coverImageError.set(true);
   }
 
   constructor(
@@ -59,7 +60,6 @@ export class DocumentDetailComponent implements OnInit {
     private collectionApi: CollectionApiService,
     private vocabDisplay: VocabularyDisplayService,
     private downloader: BitstreamDownloadService,
-    private cdr: ChangeDetectorRef,
     private tracking: StatisticsTrackingService,
   ) {}
 
@@ -72,14 +72,14 @@ export class DocumentDetailComponent implements OnInit {
   }
 
   private loadDocument(itemUuid: string) {
-    this.isLoading = true;
+    this.isLoading.set(true);
 
     this.dspaceApi.getItem(itemUuid).pipe(
       switchMap((item: Item) => {
-        this.documentTitle = item.metadata?.['dc.title']?.[0]?.value || 'Sin título';
-        this.documentDescription = item.metadata?.['dc.description.abstract']?.[0]?.value || '';
-        this.isVideo = item.metadata?.['dc.type']?.[0]?.value === 'Video';
-        this.videoUrl = item.metadata?.['dc.relation.uri']?.[0]?.value || '';
+        this.documentTitle.set(item.metadata?.['dc.title']?.[0]?.value || 'Sin título');
+        this.documentDescription.set(item.metadata?.['dc.description.abstract']?.[0]?.value || '');
+        this.isVideo.set(item.metadata?.['dc.type']?.[0]?.value === 'Video');
+        this.videoUrl.set(item.metadata?.['dc.relation.uri']?.[0]?.value || '');
 
         // Registra la visita al item en Solr Statistics (best-effort).
         this.tracking
@@ -116,7 +116,7 @@ export class DocumentDetailComponent implements OnInit {
         this.buildMetadataFields(response.item.metadata, null, response.vocabLabels);
         if (response.bundles.original) {
           const originalBitstreams = response.bundles.original._embedded?.['bitstreams'] || [];
-          this.documentBitstreams = originalBitstreams
+          this.documentBitstreams.set(originalBitstreams
             .filter((b: Bitstream) => b.name !== '_video_link.txt')
             .map((bitstream: Bitstream) => {
               const fmt = inferBitstreamFormat(bitstream.name || '');
@@ -128,43 +128,41 @@ export class DocumentDetailComponent implements OnInit {
                 formatLabel: fmt.label,
                 uuid: bitstream.uuid,
               } as BitstreamView;
-            });
+            }));
         }
 
         if (response.bundles.thumbnail) {
           const thumbnailBitstreams = response.bundles.thumbnail._embedded?.['bitstreams'] || [];
           if (thumbnailBitstreams.length > 0) {
             const thumbnail = thumbnailBitstreams[0];
-            this.documentCoverImage = `/server/api/core/bitstreams/${thumbnail.uuid}/content`;
+            this.documentCoverImage.set(`/server/api/core/bitstreams/${thumbnail.uuid}/content`);
           }
         } else {
-          const imageBitstream = this.documentBitstreams.find((b) =>
+          const imageBitstream = this.documentBitstreams().find((b) =>
             b.format.startsWith('image/'),
           );
           if (imageBitstream) {
-            this.documentCoverImage = imageBitstream.url;
+            this.documentCoverImage.set(imageBitstream.url);
           }
         }
 
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        this.isLoading.set(false);
 
         const ancestorTrail: MenuItem[] = history.state?.trail || [];
 
         if (ancestorTrail.length > 0) {
-          this.breadcrumbService.setTrail([...ancestorTrail, { label: this.documentTitle }]);
+          this.breadcrumbService.setTrail([...ancestorTrail, { label: this.documentTitle() }]);
         } else if (this.programId) {
           this.loadProgramForBreadcrumb(this.programId);
         } else {
-          this.breadcrumbService.setTrail([{ label: this.documentTitle }]);
+          this.breadcrumbService.setTrail([{ label: this.documentTitle() }]);
         }
       },
       error: (error) => {
         console.error('Error al cargar Item desde DSpace:', error);
-        this.documentTitle = 'Error';
-        this.documentDescription = 'No se pudo cargar el documento';
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        this.documentTitle.set('Error');
+        this.documentDescription.set('No se pudo cargar el documento');
+        this.isLoading.set(false);
       },
     });
   }
@@ -175,12 +173,12 @@ export class DocumentDetailComponent implements OnInit {
         const programName = collection.metadata?.['dc.title.alternative']?.[0]?.value || collection.name;
         this.breadcrumbService.setTrail([
           { label: programName, routerLink: `/programas/${collectionUuid}` },
-          { label: this.documentTitle },
+          { label: this.documentTitle() },
         ]);
       },
       error: (error) => {
         console.error('Error al cargar programa para breadcrumb:', error);
-        this.breadcrumbService.setTrail([{ label: this.documentTitle }]);
+        this.breadcrumbService.setTrail([{ label: this.documentTitle() }]);
       },
     });
   }
@@ -216,7 +214,7 @@ export class DocumentDetailComponent implements OnInit {
     collectionName: string | null,
     vocabLabels: { language: string | null; audience: string | null; type: string | null },
   ) {
-    this.metadataFields = [];
+    const fields: MetadataFieldView[] = [];
 
     const fieldLabels: Record<string, string> = {
       'dc.contributor.author': 'Autor / Área responsable',
@@ -229,7 +227,7 @@ export class DocumentDetailComponent implements OnInit {
     };
 
     if (collectionName) {
-      this.metadataFields.push({
+      fields.push({
         label: 'Colección / Programa',
         value: collectionName,
         type: 'text',
@@ -237,32 +235,32 @@ export class DocumentDetailComponent implements OnInit {
     }
 
     for (const [fieldKey, fieldLabel] of Object.entries(fieldLabels)) {
-      if (this.isVideo && fieldKey === 'dc.audience') continue;
+      if (this.isVideo() && fieldKey === 'dc.audience') continue;
 
       const fieldValues = metadata?.[fieldKey];
 
       if (fieldValues && fieldValues.length > 0) {
         if (fieldKey === 'dc.subject') {
           const keywords = fieldValues.map((v) => v.value);
-          this.metadataFields.push({
+          fields.push({
             label: fieldLabel,
             value: keywords,
             type: 'list',
           });
         } else if (fieldKey === 'dc.language.iso') {
-          this.metadataFields.push({
+          fields.push({
             label: fieldLabel,
             value: vocabLabels.language ?? fieldValues[0].value,
             type: 'text',
           });
         } else if (fieldKey === 'dc.audience') {
-          this.metadataFields.push({
+          fields.push({
             label: fieldLabel,
             value: vocabLabels.audience ?? fieldValues[0].value,
             type: 'text',
           });
         } else if (fieldKey === 'dc.type') {
-          this.metadataFields.push({
+          fields.push({
             label: fieldLabel,
             value: vocabLabels.type ?? fieldValues[0].value,
             type: 'text',
@@ -270,13 +268,13 @@ export class DocumentDetailComponent implements OnInit {
         } else if (fieldKey === 'dc.date.issued') {
           const dateValue = fieldValues[0].value;
           const displayValue = dateValue.length === 4 ? dateValue : this.formatDate(dateValue);
-          this.metadataFields.push({
+          fields.push({
             label: fieldLabel,
             value: displayValue,
             type: 'date',
           });
         } else {
-          this.metadataFields.push({
+          fields.push({
             label: fieldLabel,
             value: fieldValues[0].value,
             type: 'text',
@@ -284,6 +282,8 @@ export class DocumentDetailComponent implements OnInit {
         }
       }
     }
+
+    this.metadataFields.set(fields);
   }
 
   private formatDate(dateString: string): string {
@@ -294,9 +294,6 @@ export class DocumentDetailComponent implements OnInit {
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   }
-
-  /** Estado del boton ZIP mientras se arma el archivo en memoria. */
-  downloadingZip = false;
 
   /** Dispara la descarga del bitstream individual via <a download>. */
   downloadBitstream(bitstream: BitstreamView): void {
@@ -337,23 +334,21 @@ export class DocumentDetailComponent implements OnInit {
    * del <a download>.
    */
   async downloadAllAsZip(): Promise<void> {
-    if (this.downloadingZip || this.documentBitstreams.length === 0) return;
-    this.downloadingZip = true;
-    this.cdr.markForCheck();
+    if (this.downloadingZip() || this.documentBitstreams().length === 0) return;
+    this.downloadingZip.set(true);
     try {
       await this.downloader.downloadAuto(
-        this.documentBitstreams,
-        this.documentTitle || 'documento',
+        this.documentBitstreams(),
+        this.documentTitle() || 'documento',
       );
     } finally {
-      this.downloadingZip = false;
-      this.cdr.markForCheck();
+      this.downloadingZip.set(false);
     }
   }
 
   openVideo() {
-    if (this.videoUrl) {
-      window.open(this.videoUrl, '_blank', 'noopener');
+    if (this.videoUrl()) {
+      window.open(this.videoUrl(), '_blank', 'noopener');
     }
   }
 

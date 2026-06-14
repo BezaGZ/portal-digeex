@@ -62,8 +62,8 @@ describe('Home', () => {
     fixture.detectChanges();
     const component = fixture.componentInstance;
 
-    expect(component.children[0].name).toBe('PEAC');
-    expect(component.children[0].description).toBe('Programa de Educación de Adultos por Correspondencia');
+    expect(component.children()[0].name).toBe('PEAC');
+    expect(component.children()[0].description).toBe('Programa de Educación de Adultos por Correspondencia');
   });
 
   /**
@@ -82,7 +82,7 @@ describe('Home', () => {
     const fixture = TestBed.createComponent(Home);
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.children[0].logoUrl)
+    expect(fixture.componentInstance.children()[0].logoUrl)
       .toBe('/server/api/core/bitstreams/logo-bs-eva/content');
   });
 
@@ -99,6 +99,6 @@ describe('Home', () => {
     const fixture = TestBed.createComponent(Home);
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.children[0].logoUrl).toBeNull();
+    expect(fixture.componentInstance.children()[0].logoUrl).toBeNull();
   });
 });

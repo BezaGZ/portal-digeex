@@ -2,9 +2,9 @@ import {
   Component,
   OnInit,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   inject,
-  DestroyRef
+  DestroyRef,
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -46,19 +46,18 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 export class ProgramViewComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private collectionUuid = '';
-  currentNode: CollectionView | null = null;
-  items: ItemView[] = [];
-  isLoading = false;
+  readonly currentNode = signal<CollectionView | null>(null);
+  readonly items = signal<ItemView[]>([]);
+  readonly isLoading = signal(false);
   itemsPerPage = 8;
   currentPage = 0;
-  totalRecords = 0;
+  readonly totalRecords = signal(0);
   /** Set de itemIds que están en proceso de descarga lazy; los cards los bindean a [downloading]. */
-  downloadingItems = new Set<string>();
+  readonly downloadingItems = signal(new Set<string>());
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private cdr: ChangeDetectorRef,
     private breadcrumbService: BreadcrumbService,
     private dspaceApi: DSpaceApiService,
     private collectionApi: CollectionApiService,
@@ -76,8 +75,7 @@ export class ProgramViewComponent implements OnInit {
   }
 
   private loadCollection(collectionUuid: string) {
-    this.isLoading = true;
-    this.cdr.markForCheck();
+    this.isLoading.set(true);
 
     this.collectionApi.getOne(collectionUuid).subscribe({
       next: (collection) => {
@@ -96,43 +94,41 @@ export class ProgramViewComponent implements OnInit {
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe();
 
-        this.currentNode = {
+        this.currentNode.set({
           id: collection.uuid,
           name: collection.metadata?.['dc.title.alternative']?.[0]?.value || collection.name,
           description: collection.metadata?.['dc.title']?.[0]?.value || '',
           type: 'collection',
-        };
+        });
 
         this.collectionUuid = collection.uuid;
         this.loadItems(collection.uuid, 0);
       },
       error: (error) => {
         console.error('Error al cargar colección desde DSpace:', error);
-        this.currentNode = {
+        this.currentNode.set({
           id: collectionUuid,
           name: 'Error',
           description: 'No se pudo cargar el contenido',
           type: 'collection',
-        };
-        this.items = [];
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        });
+        this.items.set([]);
+        this.isLoading.set(false);
       },
     });
   }
 
   private loadItems(collectionUuid: string, page: number) {
-    this.isLoading = true;
-    this.cdr.markForCheck();
+    this.isLoading.set(true);
 
     this.dspaceApi.getItems(collectionUuid, page, this.itemsPerPage).subscribe({
       next: (itemsResponse) => {
         const items = itemsResponse._embedded?.['items'] || [];
-        this.totalRecords = itemsResponse.page?.totalElements ?? 0;
+        this.totalRecords.set(itemsResponse.page?.totalElements ?? 0);
 
         // El thumbnail viene embebido en cada item; los bitstreams se
         // consultan solo al click "Descargar" en el card.
-        this.items = items.map((item) => ({
+        this.items.set(items.map((item) => ({
           id: item.uuid,
           name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
           description: item.metadata?.['dc.description']?.[0]?.value || '',
@@ -144,36 +140,36 @@ export class ProgramViewComponent implements OnInit {
           bitstreams: [],
           type: item.metadata?.['dc.type']?.[0]?.value || '',
           relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
-        }));
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        })));
+        this.isLoading.set(false);
         this.updateBreadcrumb();
       },
       error: (error) => {
         console.error('Error al cargar items desde DSpace:', error);
-        this.items = [];
-        this.totalRecords = 0;
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        this.items.set([]);
+        this.totalRecords.set(0);
+        this.isLoading.set(false);
       },
     });
   }
 
   private updateBreadcrumb() {
-    if (!this.currentNode) return;
+    const node = this.currentNode();
+    if (!node) return;
 
     const ancestorTrail: MenuItem[] = history.state?.trail || [];
     this.breadcrumbService.setTrail([
       ...ancestorTrail,
-      { label: this.currentNode.name, routerLink: this.router.url },
+      { label: node.name, routerLink: this.router.url },
     ]);
   }
 
   navigateToDocument(item: ItemView) {
-    if (!this.currentNode) return;
+    const node = this.currentNode();
+    if (!node) return;
 
     const currentTrail: MenuItem[] = this.breadcrumbService.trail();
-    this.router.navigate(['/programas', this.currentNode.id, 'documentos', item.id], {
+    this.router.navigate(['/programas', node.id, 'documentos', item.id], {
       state: { trail: currentTrail },
     });
   }
@@ -196,13 +192,12 @@ export class ProgramViewComponent implements OnInit {
    * muestre el [loading] del p-button mientras llega la respuesta.
    */
   isDownloading(itemId: string): boolean {
-    return this.downloadingItems.has(itemId);
+    return this.downloadingItems().has(itemId);
   }
 
   onDownloadItem(item: ItemView): void {
-    if (this.downloadingItems.has(item.id)) return;
-    this.downloadingItems.add(item.id);
-    this.cdr.markForCheck();
+    if (this.downloadingItems().has(item.id)) return;
+    this.downloadingItems.update((set) => new Set(set).add(item.id));
 
     this.dspaceApi
       .getBundles(item.id)
@@ -232,14 +227,21 @@ export class ProgramViewComponent implements OnInit {
       .subscribe({
         next: async (bitstreams) => {
           await this.downloader.downloadAuto(bitstreams, item.name || 'documento');
-          this.downloadingItems.delete(item.id);
-          this.cdr.markForCheck();
+          this.removeFromDownloading(item.id);
         },
         error: () => {
-          this.downloadingItems.delete(item.id);
-          this.cdr.markForCheck();
+          this.removeFromDownloading(item.id);
         },
       });
+  }
+
+  /** Quita el itemId del set de descargas creando un Set nuevo (el signal detecta el cambio por referencia). */
+  private removeFromDownloading(itemId: string): void {
+    this.downloadingItems.update((set) => {
+      const next = new Set(set);
+      next.delete(itemId);
+      return next;
+    });
   }
 
   goBack() {

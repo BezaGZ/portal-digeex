@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, ViewChild, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -21,13 +21,16 @@ const PLACEHOLDER_USER_EMAIL = '';
   standalone: true,
   imports: [RouterModule, CommonModule, StyleClassModule, BreadcrumbComponent],
   templateUrl: './app.topbar.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppTopbar {
 
   private router = inject(Router);
   private authService = inject(AuthService);
   private hardRedirect = inject(HardRedirectService);
-  isUserMenuOpen = false;
+
+  /** Estado del panel de usuario. Signal para que OnPush refresque al togglearlo. */
+  readonly isUserMenuOpen = signal(false);
 
   /**
    * Nombre y correo del usuario autenticado. Caen al placeholder cuando la
@@ -59,7 +62,7 @@ export class AppTopbar {
 
   toggleUserMenu(event: Event) {
     event.stopPropagation();
-    this.isUserMenuOpen = !this.isUserMenuOpen;
+    this.isUserMenuOpen.set(!this.isUserMenuOpen());
   }
 
   @HostListener('document:click', ['$event.target'])
@@ -68,17 +71,17 @@ export class AppTopbar {
     if (!host || !target || host.contains(target as Node)) {
       return;
     }
-    this.isUserMenuOpen = false;
+    this.isUserMenuOpen.set(false);
   }
 
   onProfileClick() {
     this.router.navigate(['/administrador/perfil']);
-    this.isUserMenuOpen = false;
+    this.isUserMenuOpen.set(false);
   }
 
   onUploadsClick() {
     this.router.navigate(['/administrador/envios']);
-    this.isUserMenuOpen = false;
+    this.isUserMenuOpen.set(false);
   }
 
   /**
@@ -89,7 +92,7 @@ export class AppTopbar {
    * si el POST /authn/logout falla, igual se reinicia y se manda al login.
    */
   onLogout() {
-    this.isUserMenuOpen = false;
+    this.isUserMenuOpen.set(false);
     this.authService.logout().subscribe({
       next: () => this.hardRedirect.redirect('/iniciar-sesion'),
       error: () => this.hardRedirect.redirect('/iniciar-sesion'),

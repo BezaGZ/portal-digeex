@@ -167,10 +167,10 @@ describe('DocumentDetailComponent', () => {
     it('should display metadata fields from item response', () => {
       component.ngOnInit();
 
-      expect(component.documentTitle).toBe('Guía Curricular PEAC');
-      expect(component.documentDescription).toBe('Guía para el programa PEAC de educación.');
+      expect(component.documentTitle()).toBe('Guía Curricular PEAC');
+      expect(component.documentDescription()).toBe('Guía para el programa PEAC de educación.');
 
-      const labels = component.metadataFields.map((f) => f.label);
+      const labels = component.metadataFields().map((f) => f.label);
       expect(labels).toContain('Autor / Área responsable');
       expect(labels).toContain('Fecha de publicación');
       expect(labels).toContain('Tipo de documento');
@@ -179,15 +179,15 @@ describe('DocumentDetailComponent', () => {
       expect(labels).toContain('Idioma');
       expect(labels).toContain('Publicado por');
 
-      const autorField = component.metadataFields.find((f) => f.label === 'Autor / Área responsable');
+      const autorField = component.metadataFields().find((f) => f.label === 'Autor / Área responsable');
       expect(autorField?.value).toBe('DIGEEX');
       expect(autorField?.type).toBe('text');
 
-      const keywordsField = component.metadataFields.find((f) => f.label === 'Palabras clave');
+      const keywordsField = component.metadataFields().find((f) => f.label === 'Palabras clave');
       expect(keywordsField?.value).toEqual(['Educación', 'PEAC']);
       expect(keywordsField?.type).toBe('list');
 
-      const idiomaField = component.metadataFields.find((f) => f.label === 'Idioma');
+      const idiomaField = component.metadataFields().find((f) => f.label === 'Idioma');
       expect(idiomaField?.value).toBe('Español');
     });
   });
@@ -202,7 +202,7 @@ describe('DocumentDetailComponent', () => {
       expect(dspaceApi.getBundles).toHaveBeenCalledWith('item-doc-001');
       expect(dspaceApi.getBitstreamsFromBundle).toHaveBeenCalledWith('thumb-bundle-001');
       expect(dspaceApi.getBitstreamsFromBundle).toHaveBeenCalledWith('orig-bundle-001');
-      expect(component.documentCoverImage).toBe('/server/api/core/bitstreams/thumb-bs-001/content');
+      expect(component.documentCoverImage()).toBe('/server/api/core/bitstreams/thumb-bs-001/content');
     });
 
     /**
@@ -223,11 +223,11 @@ describe('DocumentDetailComponent', () => {
     it('should build download URL and map bitstreams to BitstreamView', () => {
       component.ngOnInit();
 
-      expect(component.documentBitstreams.length).toBe(1);
-      expect(component.documentBitstreams[0].url).toBe('/server/api/core/bitstreams/orig-bs-001/content');
-      expect(component.documentBitstreams[0].name).toBe('guia-peac.pdf');
-      expect(component.documentBitstreams[0].format).toBe('application/pdf');
-      expect(component.documentBitstreams[0].size).toBe(245000);
+      expect(component.documentBitstreams().length).toBe(1);
+      expect(component.documentBitstreams()[0].url).toBe('/server/api/core/bitstreams/orig-bs-001/content');
+      expect(component.documentBitstreams()[0].name).toBe('guia-peac.pdf');
+      expect(component.documentBitstreams()[0].format).toBe('application/pdf');
+      expect(component.documentBitstreams()[0].size).toBe(245000);
     });
   });
 
@@ -241,8 +241,8 @@ describe('DocumentDetailComponent', () => {
 
       component.ngOnInit();
 
-      expect(component.isVideo).toBe(true);
-      expect(component.videoUrl).toBe('https://youtube.com/watch?v=abc123');
+      expect(component.isVideo()).toBe(true);
+      expect(component.videoUrl()).toBe('https://youtube.com/watch?v=abc123');
     });
   });
 
@@ -271,9 +271,9 @@ describe('DocumentDetailComponent', () => {
       component.ngOnInit();
 
       // Ambos bitstreams quedan en la lista (no se filtra por extension a nivel componente).
-      expect(component.documentBitstreams.length).toBe(2);
-      const pdf = component.documentBitstreams.find((b) => b.name === 'guia-peac.pdf');
-      const docx = component.documentBitstreams.find((b) => b.name === 'anexo.docx');
+      expect(component.documentBitstreams().length).toBe(2);
+      const pdf = component.documentBitstreams().find((b) => b.name === 'guia-peac.pdf');
+      const docx = component.documentBitstreams().find((b) => b.name === 'anexo.docx');
       expect(pdf?.formatLabel).toBe('PDF');
       expect(docx?.formatLabel).toBe('Word');
       expect(docx?.format).toBe(
@@ -358,7 +358,7 @@ describe('DocumentDetailComponent', () => {
       expect(fakeAnchor.click).toHaveBeenCalledTimes(1);
       expect(fakeAnchor.download).toMatch(/\.zip$/);
       // El flag de loading queda en false al cerrar el flujo (try/finally).
-      expect(component.downloadingZip).toBe(false);
+      expect(component.downloadingZip()).toBe(false);
     });
 
     /** Verifica que el botón "Descargar todo" aparezca cuando hay dos o más bitstreams. */
@@ -398,7 +398,7 @@ describe('DocumentDetailComponent', () => {
       component.ngOnInit();
 
       expect(vocabDisplay.display$).toHaveBeenCalledWith('idiomas-digeex', 'acr');
-      const idiomaField = component.metadataFields.find((f) => f.label === 'Idioma');
+      const idiomaField = component.metadataFields().find((f) => f.label === 'Idioma');
       expect(idiomaField?.value).toBe('Achi');
     });
 
@@ -407,7 +407,7 @@ describe('DocumentDetailComponent', () => {
       component.ngOnInit();
 
       expect(vocabDisplay.display$).toHaveBeenCalledWith('niveles-educativos', 'Primaria');
-      const audienceField = component.metadataFields.find((f) => f.label === 'Nivel educativo');
+      const audienceField = component.metadataFields().find((f) => f.label === 'Nivel educativo');
       expect(audienceField?.value).toBe('Primaria');
     });
 
@@ -416,7 +416,7 @@ describe('DocumentDetailComponent', () => {
       component.ngOnInit();
 
       expect(vocabDisplay.display$).toHaveBeenCalledWith('tipos-documento', 'Guía');
-      const typeField = component.metadataFields.find((f) => f.label === 'Tipo de documento');
+      const typeField = component.metadataFields().find((f) => f.label === 'Tipo de documento');
       expect(typeField?.value).toBe('Guía');
     });
   });
@@ -428,7 +428,7 @@ describe('DocumentDetailComponent', () => {
     it('should set isLoading to false after load completes', () => {
       component.ngOnInit();
 
-      expect(component.isLoading).toBe(false);
+      expect(component.isLoading()).toBe(false);
     });
 
     /** Verifica el manejo graceful de errores del API. */
@@ -437,9 +437,9 @@ describe('DocumentDetailComponent', () => {
 
       component.ngOnInit();
 
-      expect(component.documentTitle).toBe('Error');
-      expect(component.documentDescription).toBe('No se pudo cargar el documento');
-      expect(component.isLoading).toBe(false);
+      expect(component.documentTitle()).toBe('Error');
+      expect(component.documentDescription()).toBe('No se pudo cargar el documento');
+      expect(component.isLoading()).toBe(false);
     });
   });
 
@@ -458,7 +458,7 @@ describe('DocumentDetailComponent', () => {
 
       component.ngOnInit();
 
-      const labels = component.metadataFields.map((f) => f.label);
+      const labels = component.metadataFields().map((f) => f.label);
       expect(labels).not.toContain('Nivel educativo');
     });
   });
@@ -478,7 +478,7 @@ describe('DocumentDetailComponent', () => {
 
       component.ngOnInit();
 
-      const dateField = component.metadataFields.find((f) => f.label === 'Fecha de publicación');
+      const dateField = component.metadataFields().find((f) => f.label === 'Fecha de publicación');
       expect(dateField?.value).toBe('04/05/2026');
     });
   });

@@ -39,7 +39,7 @@
         Selecciona el área que deseas explorar
       </p>
 
-      @if (isLoading) {
+      @if (isLoading()) {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
             <app-skeleton-card />
@@ -47,7 +47,7 @@
         </div>
       } @else {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          @for (child of children; track child.id) {
+          @for (child of children(); track child.id) {
             <div
               class="group bg-white rounded-2xl cursor-pointer border border-gray-200 shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ease-in-out flex flex-col"
               style="border-color: var(--color-border)"
@@ -95,7 +95,7 @@
             </div>
           }
 
-          @for (item of items; track item.id) {
+          @for (item of items(); track item.id) {
             <div
               class="group bg-white rounded-2xl cursor-pointer border border-gray-200 shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ease-in-out flex flex-col"
               style="border-color: var(--color-border)"
@@ -135,7 +135,7 @@
           }
         </div>
 
-        @if (children.length === 0 && items.length === 0) {
+        @if (children().length === 0 && items().length === 0) {
           <app-empty-state
             icon="pi pi-inbox"
             title="No hay contenido disponible"

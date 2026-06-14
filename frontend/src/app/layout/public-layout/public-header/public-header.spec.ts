@@ -59,7 +59,7 @@ describe('PublicHeader', () => {
       },
     ]);
 
-    const labels = fixture.componentInstance.menuItems
+    const labels = fixture.componentInstance.menuItems()
       .filter((m) => !m.separator)
       .map((m) => m.label);
     expect(labels).toEqual(['Datos Estadísticos Institucionales']);
@@ -102,7 +102,7 @@ describe('PublicHeader', () => {
     expect(cache.invalidate).toHaveBeenCalled();
     expect(fixture.componentInstance.menuError()).toBe(false);
     expect(
-      fixture.componentInstance.menuItems.filter((m) => !m.separator).length,
+      fixture.componentInstance.menuItems().filter((m) => !m.separator).length,
     ).toBe(1);
   });
 });

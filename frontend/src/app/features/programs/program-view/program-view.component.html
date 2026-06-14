@@ -1,6 +1,6 @@
 <div class="content-browser">
   <div class="container mx-auto px-4 py-8">
-    @if (isLoading) {
+    @if (isLoading()) {
       <div class="max-w-[1400px] mx-auto">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
@@ -8,7 +8,7 @@
           }
         </div>
       </div>
-    } @else if (items.length > 0) {
+    } @else if (items().length > 0) {
       <div class="max-w-[1400px] mx-auto">
         <div class="mb-4">
           <p-button
@@ -30,24 +30,24 @@
               font-weight: 700;
             "
           >
-            {{ currentNode?.name }}
+            {{ currentNode()?.name }}
           </h2>
           <p
             class="text-sm mb-2"
             style="color: var(--color-text-secondary); font-family: var(--font-body)"
           >
-            {{ currentNode?.description }}
+            {{ currentNode()?.description }}
           </p>
           <p
             class="text-sm"
             style="color: var(--color-text-secondary); font-family: var(--font-body)"
           >
-            {{ totalRecords }} documentos disponibles
+            {{ totalRecords() }} documentos disponibles
           </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
-          @for (item of items; track item.id) {
+          @for (item of items(); track item.id) {
             <app-document-card
               [item]="item"
               [downloading]="isDownloading(item.id)"
@@ -58,19 +58,19 @@
           }
         </div>
 
-       
-       
+
+
           <div class="mt-6">
             <p-paginator
               [rows]="itemsPerPage"
-              [totalRecords]="totalRecords"
+              [totalRecords]="totalRecords()"
               [first]="currentPage * itemsPerPage"
               (onPageChange)="onPageChange($event)"
             >
             </p-paginator>
           </div>
-        
-        
+
+
       </div>
     } @else {
       <app-empty-state

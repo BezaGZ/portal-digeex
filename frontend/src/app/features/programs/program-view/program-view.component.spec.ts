@@ -101,7 +101,7 @@ describe('ProgramViewComponent', () => {
     fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.currentNode?.name).toBe('PEAC');
+    expect(fixture.componentInstance.currentNode()?.name).toBe('PEAC');
   });
 
   /** Verifica que el listado lazy no dispare llamadas a getBundles ni getBitstreamsFromBundle. */
@@ -121,7 +121,7 @@ describe('ProgramViewComponent', () => {
     fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
 
-    const items = fixture.componentInstance.items;
+    const items = fixture.componentInstance.items();
     expect(items.length).toBe(2);
     // El endpoint nativo devuelve el bitstream del bundle THUMBNAIL o 204 si
     // no existe; el <img> se encarga de fallback al onError.
@@ -157,7 +157,7 @@ describe('ProgramViewComponent', () => {
     fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.items[0].coverImage).toBe(
+    expect(fixture.componentInstance.items()[0].coverImage).toBe(
       '/server/api/core/bitstreams/thumb-bs-9/content',
     );
   });
@@ -168,7 +168,7 @@ describe('ProgramViewComponent', () => {
     fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
 
-    const items = fixture.componentInstance.items;
+    const items = fixture.componentInstance.items();
     expect(items[0].bitstreams).toEqual([]);
     expect(items[1].bitstreams).toEqual([]);
   });

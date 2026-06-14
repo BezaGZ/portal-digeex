@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { CollectionCacheService } from '../../core/api/collection-cache.service';
@@ -16,13 +16,12 @@ import { SkeletonCardComponent, EmptyStateComponent } from '../../shared';
   templateUrl: './home.html',
 })
 export class Home implements OnInit {
-  children: CollectionView[] = [];
-  items: ItemView[] = [];
-  isLoading = false;
+  readonly children = signal<CollectionView[]>([]);
+  readonly items = signal<ItemView[]>([]);
+  readonly isLoading = signal(false);
 
   constructor(
     private router: Router,
-    private cdr: ChangeDetectorRef,
     private collectionCache: CollectionCacheService,
   ) {}
 
@@ -31,28 +30,25 @@ export class Home implements OnInit {
   }
 
   loadRootContent() {
-    this.isLoading = true;
-    this.cdr.markForCheck();
+    this.isLoading.set(true);
 
     this.collectionCache.getByMenuType(NAV_LOCATION.MENU_PRINCIPAL).subscribe({
       next: (menuCollections) => {
-        this.children = menuCollections.map((collection) => ({
+        this.children.set(menuCollections.map((collection) => ({
           id: collection.uuid,
           name: collection.metadata?.['dc.title.alternative']?.[0]?.value || collection.name,
           description: collection.metadata?.['dc.title']?.[0]?.value || '',
           type: 'collection',
           format: collection.metadata?.['dspace.entity.type']?.[0]?.value || ENTITY_TYPE.DOCUMENTO,
           logoUrl: extractLogoUrl(collection),
-        }));
+        })));
 
-        this.items = [];
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        this.items.set([]);
+        this.isLoading.set(false);
       },
       error: (error) => {
         console.error('Error al cargar collections desde DSpace:', error);
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        this.isLoading.set(false);
       },
     });
   }
