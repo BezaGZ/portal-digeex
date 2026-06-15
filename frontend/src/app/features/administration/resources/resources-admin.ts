@@ -18,6 +18,7 @@ import { MyDSpaceObject } from '../../../core/api/models/my-dspace.model';
 import { EmptyStateComponent } from '../../../shared';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemAdminFacade } from '../content/services/item-admin-facade';
+import { LoadingService, withLoading } from '../../../core/loading';
 import { ResourcesAdminFacade } from '../content/services/resources-admin-facade';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import {
@@ -85,6 +86,7 @@ export class ResourcesAdmin {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly authCaller = inject(AuthCallerService);
+  private readonly loadingService = inject(LoadingService);
 
   readonly objects = signal<MyDSpaceObject[]>([]);
   readonly loading = signal(true);
@@ -158,7 +160,10 @@ export class ResourcesAdmin {
       accept: () => {
         this.itemFacade
           .withdrawItem$(uuid, this.callerSufijo)
-          .pipe(takeUntilDestroyed(this.destroyRef))
+          .pipe(
+            withLoading(this.loadingService, { message: 'Retirando el item…' }),
+            takeUntilDestroyed(this.destroyRef),
+          )
           .subscribe(() => this.load(this.currentPage()));
       },
     });
@@ -171,7 +176,10 @@ export class ResourcesAdmin {
       accept: () => {
         this.itemFacade
           .restoreItem$(uuid, this.callerSufijo)
-          .pipe(takeUntilDestroyed(this.destroyRef))
+          .pipe(
+            withLoading(this.loadingService, { message: 'Restaurando el item…' }),
+            takeUntilDestroyed(this.destroyRef),
+          )
           .subscribe(() => this.load(this.currentPage()));
       },
     });

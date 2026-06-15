@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Observable, of } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { TableLazyLoadEvent } from 'primeng/table';
 import { FormsModule } from '@angular/forms';
@@ -27,6 +27,7 @@ import { Community } from '../../../core/api/models/community.model';
 import { Collection, CollectionCreateBody } from '../../../core/api/models/collection.model';
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
 import { buildMetadataPatch } from '../../../core/api/metadata-patch.util';
+import { LoadingService, withLoading } from '../../../core/loading';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { CollectionFacade } from '../content/services/collection-facade';
 import { findCallerSub } from '../shared/services/scope-resolver';
@@ -73,6 +74,7 @@ export class Collections {
   private readonly authCaller = inject(AuthCallerService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly toast = inject(MessageService);
+  private readonly loadingService = inject(LoadingService);
 
   readonly subdirecciones = signal<Community[]>([]);
   readonly rootUuid = signal<string | null>(null);
@@ -252,7 +254,10 @@ export class Collections {
       type: 'collection',
       metadata,
     };
-    this.facade.createColeccion$(sub.uuid, body, sufijo, payload.coverFile ?? undefined).subscribe({
+    this.facade
+      .createColeccion$(sub.uuid, body, sufijo, payload.coverFile ?? undefined)
+      .pipe(withLoading(this.loadingService, { message: 'Creando programa…' }))
+      .subscribe({
       next: () => {
         this.closeDialog();
         this.refreshCurrentPage();
@@ -283,37 +288,38 @@ export class Collections {
       },
       target.metadata ?? {},
     );
-    this.facade.updateColeccion$(target.uuid, patch, sufijo).subscribe({
-      next: () => {
-        if (payload.coverFile) {
-          // El patch ya quedó aplicado: si el logo falla, mostramos toast
-          // parcial y dejamos el metadata. Acá no hay rollback razonable.
-          this.facade
-            .replaceLogo$(target.uuid, payload.coverFile, sufijo)
-            .subscribe({
-              next: () => {
-                this.closeDialog();
-                this.refreshCurrentPage();
-                this.toast.add({ severity: 'success', summary: 'Programa actualizado' });
-              },
-              error: (err) => {
-                this.closeDialog();
-                this.refreshCurrentPage();
-                this.toast.add({
-                  severity: 'warn',
-                  summary: 'Programa actualizado, pero el logo falló',
-                  detail: err instanceof Error ? err.message : 'Reintentá la subida.',
-                });
-              },
+    // El patch de metadata ya quedó aplicado aunque el logo falle: el cover se
+    // encadena con switchMap y su error se captura como éxito parcial (toast warn)
+    // en vez de revertir el guardado. Un solo overlay cubre los dos pasos.
+    this.facade
+      .updateColeccion$(target.uuid, patch, sufijo)
+      .pipe(
+        switchMap(() =>
+          payload.coverFile
+            ? this.facade.replaceLogo$(target.uuid, payload.coverFile, sufijo).pipe(
+                map(() => null as unknown),
+                catchError((logoError: unknown) => of(logoError ?? new Error('logo'))),
+              )
+            : of(null as unknown),
+        ),
+        withLoading(this.loadingService, { message: 'Guardando el programa…' }),
+      )
+      .subscribe({
+        next: (logoError) => {
+          this.closeDialog();
+          this.refreshCurrentPage();
+          if (logoError) {
+            this.toast.add({
+              severity: 'warn',
+              summary: 'Programa actualizado, pero el logo falló',
+              detail: logoError instanceof Error ? logoError.message : 'Reintentá la subida.',
             });
-          return;
-        }
-        this.closeDialog();
-        this.refreshCurrentPage();
-        this.toast.add({ severity: 'success', summary: 'Programa actualizado' });
-      },
-      error: (err) => this.toastError(err, 'No se pudo actualizar el programa'),
-    });
+          } else {
+            this.toast.add({ severity: 'success', summary: 'Programa actualizado' });
+          }
+        },
+        error: (err) => this.toastError(err, 'No se pudo actualizar el programa'),
+      });
   }
 
   handleDelete(target: Collection, sufijo: string): void {
@@ -335,7 +341,10 @@ export class Collections {
         styleClass: '!text-white !font-medium',
       },
       accept: () => {
-        this.facade.deleteColeccion$(target.uuid, sufijo).subscribe({
+        this.facade
+          .deleteColeccion$(target.uuid, sufijo)
+          .pipe(withLoading(this.loadingService, { message: 'Eliminando programa…' }))
+          .subscribe({
           next: () => {
             this.refreshAfterDelete();
             this.toast.add({ severity: 'success', summary: 'Programa eliminado' });

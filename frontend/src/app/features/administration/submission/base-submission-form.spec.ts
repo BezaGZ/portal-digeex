@@ -13,6 +13,7 @@ import { MetadataValue } from '../../../core/api/models/metadata.model';
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
 import { SubmissionFacade } from '../content/services/submission-facade';
 import { ItemAdminFacade } from '../content/services/item-admin-facade';
+import { LoadingService } from '../../../core/loading/loading.service';
 
 /**
  * Subclase concreta para ejercitar el flujo de la base sin atarlo a un
@@ -73,7 +74,7 @@ class FakeEditForm extends FakeSubmissionForm {
  * error. Los tests cubren el camino feliz, la propagación del error del
  * facade, el guard contra doble submit y la lectura del sufijo del caller.
  *
- * Ciclo 22 TDD — Sprint 6. Ajustado en Ciclo 34.
+ * Ciclo 22 TDD — Sprint 6. Ajustado en Ciclos 34 y 46.
  */
 describe('BaseSubmissionForm', () => {
   let submitItemFn: ReturnType<typeof vi.fn>;
@@ -210,5 +211,19 @@ describe('BaseSubmissionForm', () => {
       }),
       '',
     );
+  });
+
+  /** Verifica que al enviar se enrole una tarea de carga global mientras está en vuelo. */
+  it('should enrol a loading task while the submission is in flight', () => {
+    submitItemFn.mockReturnValue(NEVER);
+    const loading = TestBed.inject(LoadingService);
+    const fixture = TestBed.createComponent(FakeSubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+
+    expect(loading.active()).toBe(false);
+    fixture.componentInstance.submit();
+    expect(loading.active()).toBe(true);
   });
 });

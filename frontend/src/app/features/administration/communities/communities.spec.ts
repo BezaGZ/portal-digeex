@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
-import { EMPTY, Observable, of } from 'rxjs';
+import { EMPTY, NEVER, Observable, of } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { Communities } from './communities';
@@ -14,6 +14,7 @@ import { CommunityFacade } from '../content/services/community-facade';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { Community } from '../../../core/api/models/community.model';
 import { Caller } from '../content/specifications/scope-context.model';
+import { LoadingService } from '../../../core/loading/loading.service';
 
 /**
  * Tests del contenedor Communities.
@@ -29,7 +30,7 @@ import { Caller } from '../content/specifications/scope-context.model';
  * puro (solo setean signals) y el `fixture.detectChanges()` después de
  * cada mutación hace correr el effect que dispara el fetch.
  *
- * Ciclo 17 TDD — Sprint 6. Ajustado en Ciclos 25 y 38 (Sprint 8).
+ * Ciclo 17 TDD — Sprint 6. Ajustado en Ciclos 25, 38 y 47 (Sprint 8).
  */
 describe('Communities (contenedor)', () => {
   let searchTopFn: ReturnType<typeof vi.fn>;
@@ -350,6 +351,19 @@ describe('Communities (contenedor)', () => {
       expect(messageAddFn).toHaveBeenCalledWith(
         expect.objectContaining({ severity: 'success' }),
       );
+    });
+
+    /** Verifica que crear una subdirección enrole una tarea de carga global mientras está en vuelo. */
+    it('should enrol a loading task while creating a subdirección', () => {
+      createSubdireccionFn.mockReturnValue(NEVER);
+      const loading = TestBed.inject(LoadingService);
+      const fixture = TestBed.createComponent(Communities);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+
+      expect(loading.active()).toBe(false);
+      c.handleCreateSubmit({ nombreCorto: 'A', tituloCompleto: 'Sub A', sufijo: 'ED_A', description: '' });
+      expect(loading.active()).toBe(true);
     });
   });
 

@@ -3,13 +3,14 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, Router } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
 import { vi } from 'vitest';
-import { EMPTY, of } from 'rxjs';
+import { EMPTY, NEVER, of } from 'rxjs';
 
 import { ResourcesAdmin } from './resources-admin';
 import { ResourcesAdminFacade } from '../content/services/resources-admin-facade';
 import { ItemAdminFacade } from '../content/services/item-admin-facade';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { MyDSpaceObject } from '../../../core/api/models/my-dspace.model';
+import { LoadingService } from '../../../core/loading/loading.service';
 
 /**
  * Tests de `ResourcesAdmin`.
@@ -19,7 +20,7 @@ import { MyDSpaceObject } from '../../../core/api/models/my-dspace.model';
  * compartidos de `my-dspace-object.util` y delega scope + filtros al
  * `ResourcesAdminFacade`.
  *
- * Ciclo 33 TDD — Sprint 6.
+ * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclo 50 (Sprint 8).
  */
 describe('ResourcesAdmin', () => {
   let searchFn: ReturnType<typeof vi.fn>;
@@ -88,6 +89,18 @@ describe('ResourcesAdmin', () => {
     expect(searchFn).toHaveBeenCalled();
     const opts = searchFn.mock.calls[0][0];
     expect(opts.withdrawn).toBe(false);
+  });
+
+  /** Verifica que retirar un envío enrole una tarea de carga global mientras está en vuelo. */
+  it('should enrol a loading task while withdrawing a resource', () => {
+    withdrawFn.mockReturnValue(NEVER);
+    const loading = TestBed.inject(LoadingService);
+    const fixture = TestBed.createComponent(ResourcesAdmin);
+    fixture.detectChanges();
+
+    expect(loading.active()).toBe(false);
+    fixture.componentInstance.onDelete('a');
+    expect(loading.active()).toBe(true);
   });
 
   /** Verifica que al cambiar a la tab Eliminados se recargue con withdrawn=true. */

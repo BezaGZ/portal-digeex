@@ -34,6 +34,7 @@ import { UserView } from './models/user-view.model';
 import { Paginated } from '../../../core/api/models/hal.model';
 import { Group } from '../../../core/api/models/group.model';
 import { extractErrorDetail } from '../../../core/error/extract-error-detail';
+import { LoadingService, withLoading } from '../../../core/loading';
 
 /** Scope de búsqueda del listado: alineado al patrón `EPeopleRegistryComponent`. */
 export type UserSearchScope = 'metadata' | 'email';
@@ -80,6 +81,7 @@ export class Users {
   private userService = inject(UserManagementService);
   private messageService = inject(MessageService);
   private destroyRef = inject(DestroyRef);
+  private loadingService = inject(LoadingService);
 
   showCreateDialog = signal(false);
   showChangeRoleDialog = signal(false);
@@ -206,7 +208,10 @@ export class Users {
   onDeactivateRequested(user: UserView) {
     this.userService
       .deactivateUser$(user.uuid)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        withLoading(this.loadingService, { message: 'Desactivando el usuario…' }),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: () => {
           this.refresh$.next();
@@ -224,7 +229,10 @@ export class Users {
   onReactivateRequested(user: UserView) {
     this.userService
       .reactivateUser$(user.uuid)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        withLoading(this.loadingService, { message: 'Reactivando el usuario…' }),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: () => {
           this.refresh$.next();
@@ -242,7 +250,10 @@ export class Users {
   onResetPasswordRequested(user: UserView) {
     this.userService
       .resetPassword$({ uuid: user.uuid, email: user.email })
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        withLoading(this.loadingService, { message: 'Enviando el correo de restablecimiento…' }),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: () => {
           this.messageService.add({
@@ -269,7 +280,10 @@ export class Users {
   onChangeRoleSubmitted(input: ChangeUserRoleInput) {
     this.userService
       .changeUserRole$(input)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        withLoading(this.loadingService, { message: 'Cambiando el rol…' }),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: () => {
           this.refresh$.next();
@@ -289,7 +303,10 @@ export class Users {
   onCreateSubmitted(input: CreateUserInput) {
     this.userService
       .createUser$(input)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        withLoading(this.loadingService, { message: 'Creando usuario…' }),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: () => {
           this.refresh$.next();
@@ -318,7 +335,10 @@ export class Users {
   onEditSubmitted(input: UpdateUserInput) {
     this.userService
       .updateUser$(input)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        withLoading(this.loadingService, { message: 'Guardando el usuario…' }),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: () => {
           this.refresh$.next();

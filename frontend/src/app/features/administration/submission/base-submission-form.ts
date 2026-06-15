@@ -12,6 +12,7 @@ import {
   SubmitItemRequest,
 } from '../content/services/submission-facade';
 import { ItemAdminFacade } from '../content/services/item-admin-facade';
+import { LoadingService, withLoading } from '../../../core/loading';
 
 /**
  * Base abstracta para los formularios de submission. Define el flujo común
@@ -32,6 +33,7 @@ export abstract class BaseSubmissionForm {
   protected readonly itemFacade = inject(ItemAdminFacade);
   protected readonly toast = inject(MessageService);
   protected readonly router = inject(Router);
+  private readonly loading = inject(LoadingService);
 
   readonly collection = input<Collection | null>(null);
   readonly caller = input.required<Caller>();
@@ -125,7 +127,10 @@ export abstract class BaseSubmissionForm {
     };
 
     this.submitting.set(true);
-    this.facade.submitItem$(req).subscribe({
+    this.facade
+      .submitItem$(req)
+      .pipe(withLoading(this.loading, { message: 'Subiendo el recurso…' }))
+      .subscribe({
       next: (item) => {
         this.toast.add({
           severity: 'success',
@@ -185,6 +190,7 @@ export abstract class BaseSubmissionForm {
         },
         this.caller().sufijo ?? '',
       )
+      .pipe(withLoading(this.loading, { message: 'Guardando los cambios…' }))
       .subscribe({
         next: (updated) => {
           this.toast.add({

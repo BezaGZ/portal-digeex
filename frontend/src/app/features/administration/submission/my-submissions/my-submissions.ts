@@ -20,6 +20,7 @@ import { MyDSpaceObject } from '../../../../core/api/models/my-dspace.model';
 import { EmptyStateComponent } from '../../../../shared';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemAdminFacade } from '../../content/services/item-admin-facade';
+import { LoadingService, withLoading } from '../../../../core/loading';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import {
   coverUrlOf as coverUrlOfUtil,
@@ -73,6 +74,7 @@ export class MySubmissions {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly loadingService = inject(LoadingService);
 
   readonly objects = signal<MyDSpaceObject[]>([]);
   readonly totalElements = signal(0);
@@ -177,7 +179,10 @@ export class MySubmissions {
       accept: () => {
         this.facade
           .withdrawItem$(uuid, this.callerSufijo)
-          .pipe(takeUntilDestroyed(this.destroyRef))
+          .pipe(
+            withLoading(this.loadingService, { message: 'Retirando el item…' }),
+            takeUntilDestroyed(this.destroyRef),
+          )
           .subscribe(() => this.load(0));
       },
     });
@@ -191,7 +196,10 @@ export class MySubmissions {
       accept: () => {
         this.facade
           .restoreItem$(uuid, this.callerSufijo)
-          .pipe(takeUntilDestroyed(this.destroyRef))
+          .pipe(
+            withLoading(this.loadingService, { message: 'Restaurando el item…' }),
+            takeUntilDestroyed(this.destroyRef),
+          )
           .subscribe(() => this.load(0));
       },
     });

@@ -2,7 +2,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
-import { EMPTY, Observable, of, throwError } from 'rxjs';
+import { EMPTY, NEVER, Observable, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MessageService } from 'primeng/api';
 
@@ -12,6 +12,7 @@ import { BusinessRuleError } from '../../../core/error/business-rule-error';
 import { UserView } from './models/user-view.model';
 import { Paginated } from '../../../core/api/models/hal.model';
 import { EPerson } from '../../../core/api/models/eperson.model';
+import { LoadingService } from '../../../core/loading/loading.service';
 
 /**
  * Tests del contenedor Users.
@@ -22,7 +23,7 @@ import { EPerson } from '../../../core/api/models/eperson.model';
  * mensaje específico por código, cualquier otro error cae al toast
  * genérico.
  *
- * Ciclo 12 TDD — Sprint 5. Ajustado en Ciclos 16, 17 y Ciclo 36 (Sprint 8).
+ * Ciclo 12 TDD — Sprint 5. Ajustado en Ciclos 16, 17, 36 y 49 (Sprint 8).
  */
 describe('Users (contenedor)', () => {
   let component: Users;
@@ -436,6 +437,26 @@ describe('Users (contenedor)', () => {
           detail: 'Ya existe un usuario con ese correo.',
         }),
       );
+    });
+  });
+
+  describe('loading enrolment', () => {
+    /** Verifica que crear un usuario enrole una tarea de carga global mientras está en vuelo. */
+    it('should enrol a loading task while creating a user', () => {
+      createUserFn.mockReturnValue(NEVER);
+      const loading = TestBed.inject(LoadingService);
+      const fixture = TestBed.createComponent(Users);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+
+      expect(loading.active()).toBe(false);
+      c.onCreateSubmitted({
+        email: 'nuevo@mineduc.gob.gt',
+        firstName: 'Nuevo',
+        lastName: 'Usuario',
+        targetGroup: { uuid: 'g-sub', name: 'SUBMITTERS_ED_BASICA' },
+      });
+      expect(loading.active()).toBe(true);
     });
   });
 });

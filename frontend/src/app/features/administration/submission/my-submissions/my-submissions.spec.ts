@@ -5,13 +5,14 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { NavigationEnd, Router, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
-import { EMPTY, Subject, of } from 'rxjs';
+import { EMPTY, NEVER, Subject, of } from 'rxjs';
 
 import { MySubmissions } from './my-submissions';
 import { MyDSpaceApiService } from '../../../../core/api/my-dspace-api.service';
 import { ItemAdminFacade } from '../../content/services/item-admin-facade';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { ConfirmationService } from 'primeng/api';
+import { LoadingService } from '../../../../core/loading/loading.service';
 
 /**
  * Tests del componente MySubmissions.
@@ -100,6 +101,18 @@ describe('MySubmissions', () => {
     expect(cards.length).toBe(2);
     expect(cards[0].textContent).toContain('Album A');
     expect(cards[1].textContent).toContain('Album B');
+  });
+
+  /** Verifica que retirar un envío enrole una tarea de carga global mientras está en vuelo. */
+  it('should enrol a loading task while withdrawing a submission', () => {
+    withdrawFn.mockReturnValue(NEVER);
+    const loading = TestBed.inject(LoadingService);
+    const fixture = TestBed.createComponent(MySubmissions);
+    fixture.detectChanges();
+
+    expect(loading.active()).toBe(false);
+    fixture.componentInstance.onDelete('a');
+    expect(loading.active()).toBe(true);
   });
 
   /** Verifica que onPageChange propague el page solicitado al servicio para que el listado se actualice al cambiar de página. */

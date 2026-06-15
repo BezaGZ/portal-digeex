@@ -25,6 +25,7 @@ import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { CommunityFacade } from '../content/services/community-facade';
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
 import { buildMetadataPatch } from '../../../core/api/metadata-patch.util';
+import { LoadingService, withLoading } from '../../../core/loading';
 import { CommunityTable } from './components/community-table/community-table';
 import { CommunityDialog } from './components/community-dialog/community-dialog';
 import { SubdireccionView } from './models/subdireccion-view.model';
@@ -63,6 +64,7 @@ export class Communities {
   private readonly facade = inject(CommunityFacade);
   private readonly confirmation = inject(ConfirmationService);
   private readonly toast = inject(MessageService);
+  private readonly loadingService = inject(LoadingService);
 
   readonly rootUuid = signal<string | null>(null);
   readonly loading = signal<boolean>(true);
@@ -217,7 +219,10 @@ export class Communities {
       type: 'community',
       metadata,
     };
-    this.facade.createSubdireccion$(body, payload.sufijo).subscribe({
+    this.facade
+      .createSubdireccion$(body, payload.sufijo)
+      .pipe(withLoading(this.loadingService, { message: 'Creando subdirección…' }))
+      .subscribe({
       next: () => {
         this.closeDialog();
         this.refreshCounter.update((n) => n + 1);
@@ -247,7 +252,10 @@ export class Communities {
       },
       target.metadata ?? {},
     );
-    this.facade.updateSubdireccion$(target.uuid, patch, payload.sufijo).subscribe({
+    this.facade
+      .updateSubdireccion$(target.uuid, patch, payload.sufijo)
+      .pipe(withLoading(this.loadingService, { message: 'Guardando la subdirección…' }))
+      .subscribe({
       next: () => {
         this.closeDialog();
         this.refreshCounter.update((n) => n + 1);
@@ -281,7 +289,10 @@ export class Communities {
         styleClass: '!text-white !font-medium',
       },
       accept: () => {
-        this.facade.deleteSubdireccion$(target.uuid, sufijo).subscribe({
+        this.facade
+          .deleteSubdireccion$(target.uuid, sufijo)
+          .pipe(withLoading(this.loadingService, { message: 'Eliminando subdirección…' }))
+          .subscribe({
           next: () => {
             this.refreshCounter.update((n) => n + 1);
             this.toast.add({ severity: 'success', summary: 'Subdirección eliminada' });

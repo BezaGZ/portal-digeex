@@ -4,7 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
-import { EMPTY, Subject, of } from 'rxjs';
+import { EMPTY, NEVER, Subject, of } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { Collections } from './collections';
@@ -14,6 +14,7 @@ import { CollectionFacade } from '../content/services/collection-facade';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { Community } from '../../../core/api/models/community.model';
 import { Collection } from '../../../core/api/models/collection.model';
+import { LoadingService } from '../../../core/loading/loading.service';
 
 /**
  * Tests del contenedor Collections (pantalla "Programas").
@@ -29,7 +30,7 @@ import { Collection } from '../../../core/api/models/collection.model';
  * bloqueado en su sufijo. Cada acción mutativa delega al
  * `CollectionFacade`.
  *
- * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4 (Sprint 7), Ciclos 12, 13, 24 y 38 (Sprint 8).
+ * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4 (Sprint 7), Ciclos 12, 13, 24, 38 y 48 (Sprint 8).
  */
 describe('Collections (contenedor)', () => {
   let searchTopFn: ReturnType<typeof vi.fn>;
@@ -634,6 +635,29 @@ describe('Collections (contenedor)', () => {
         'ED_BASICA',
         cover,
       );
+    });
+
+    /** Verifica que crear un programa enrole una tarea de carga global mientras está en vuelo. */
+    it('should enrol a loading task while creating a programa', () => {
+      createColeccionFn.mockReturnValue(NEVER);
+      const loading = TestBed.inject(LoadingService);
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      c.selectSubdireccion(buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA'));
+      fixture.detectChanges();
+
+      expect(loading.active()).toBe(false);
+      c.handleCreateSubmit({
+        siglas: 'X',
+        titulo: 'X',
+        description: '',
+        entityType: 'Documento',
+        navLocation: 'menu-principal',
+        orden: '1',
+        coverFile: null,
+      });
+      expect(loading.active()).toBe(true);
     });
 
     /**
