@@ -26,10 +26,10 @@
         <label for="email">Correo electrónico *</label>
       </p-floatLabel>
       @if (hasError('email')) {
-        <small style="color: var(--color-error)">{{ getErrorMessage('email') }}</small>
+        <small class="text-[var(--color-error)]">{{ getErrorMessage('email') }}</small>
       }
       @if (!hasError('email')) {
-        <small style="color: var(--color-text-tertiary)">Debe terminar en {{ allowedDomains.join(', ') }}</small>
+        <small class="text-[var(--color-text-tertiary)]">Debe terminar en {{ allowedDomains.join(', ') }}</small>
       }
     </div>
 
@@ -46,7 +46,7 @@
         <label for="firstName">Nombre *</label>
       </p-floatLabel>
       @if (hasError('firstName')) {
-        <small style="color: var(--color-error)">{{ getErrorMessage('firstName') }}</small>
+        <small class="text-[var(--color-error)]">{{ getErrorMessage('firstName') }}</small>
       }
     </div>
 
@@ -63,7 +63,7 @@
         <label for="lastName">Apellido *</label>
       </p-floatLabel>
       @if (hasError('lastName')) {
-        <small style="color: var(--color-error)">{{ getErrorMessage('lastName') }}</small>
+        <small class="text-[var(--color-error)]">{{ getErrorMessage('lastName') }}</small>
       }
     </div>
 
@@ -83,7 +83,7 @@
         <label for="targetGroupUuid">Rol *</label>
       </p-floatLabel>
       @if (hasError('targetGroupUuid')) {
-        <small style="color: var(--color-error)">
+        <small class="text-[var(--color-error)]">
           {{ getErrorMessage('targetGroupUuid') }}
         </small>
       }
@@ -94,15 +94,12 @@
     <p-button
       label="Cancelar"
       severity="secondary"
-      styleClass="!font-medium"
       (onClick)="onHide()"
-      [text]="true"
       [rounded]="true"
     />
     <p-button
       label="Crear Usuario"
       severity="primary"
-      styleClass="!text-white !font-medium"
       (onClick)="onSubmit()"
       [disabled]="!canSubmit()"
       [rounded]="true"

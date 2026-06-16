@@ -250,6 +250,47 @@ const DigeexPreset = definePreset(Aura, {
       900: '#18181B',
       950: '#09090B'
     }
+  },
+
+  /**
+   * Overrides de componentes.
+   *
+   * button: en modo oscuro Aura pinta danger con fondo {red.400} (rosa) y
+   * texto {red.950} (casi negro). Lo forzamos al rojo institucional {red.500}
+   * con texto blanco, espejo del modo claro (contraste 8.9:1).
+   *
+   * dialog: el content y el footer de Aura traen padding-top 0, lo que pega el
+   * contenido al header y los botones al contenido. Igualamos el padding en los
+   * cuatro lados de ambos.
+   */
+  components: {
+    button: {
+      colorScheme: {
+        dark: {
+          root: {
+            danger: {
+              background: '{red.500}',
+              hoverBackground: '{red.600}',
+              activeBackground: '{red.700}',
+              borderColor: '{red.500}',
+              hoverBorderColor: '{red.600}',
+              activeBorderColor: '{red.700}',
+              color: '#ffffff',
+              hoverColor: '#ffffff',
+              activeColor: '#ffffff'
+            }
+          }
+        }
+      }
+    },
+    dialog: {
+      content: {
+        padding: '{overlay.modal.padding}'
+      },
+      footer: {
+        padding: '{overlay.modal.padding}'
+      }
+    }
   }
 });
 

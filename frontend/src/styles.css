@@ -295,6 +295,10 @@
   --color-border: #2A3340;
   --color-divider: #232930;
 
+  /* Estados: el rojo institucional (#9F0B30) cae a ~2:1 sobre superficie
+     oscura. En dark usamos red.300 del preset para texto de error legible (~6:1). */
+  --color-error: #F08AA0;
+
   /* Sombras más sutiles en modo oscuro */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);

@@ -38,15 +38,12 @@
     <p-button
       label="Cancelar"
       severity="secondary"
-      styleClass="!font-medium"
       (onClick)="onHide()"
-      [text]="true"
       [rounded]="true"
     />
     <p-button
       label="Guardar cambios"
       severity="primary"
-      styleClass="!text-white !font-medium"
       (onClick)="onSubmit()"
       [disabled]="!canSubmit()"
       [rounded]="true"

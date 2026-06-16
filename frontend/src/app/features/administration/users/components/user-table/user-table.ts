@@ -84,9 +84,18 @@ export class UserTable {
     this.confirmationService.confirm({
       header: 'Restablecer Contraseña',
       message: `¿Estás seguro de restablecer la contraseña de ${this.getFullName(user)}? Se enviará un correo con las instrucciones.`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Sí, restablecer',
-      rejectLabel: 'Cancelar',
+      icon: 'pi pi-question-circle',
+      rejectButtonProps: {
+        label: 'Cancelar',
+        severity: 'secondary',
+        rounded: true,
+      },
+      acceptButtonProps: {
+        label: 'Sí, restablecer',
+        severity: 'primary',
+        icon: 'pi pi-key',
+        rounded: true,
+      },
       accept: () => {
         this.resetPasswordRequested.emit(user);
       },
@@ -123,9 +132,17 @@ export class UserTable {
       header: 'Desactivar Usuario',
       message: `¿Estás seguro de desactivar a ${this.getFullName(user)}? El usuario perderá acceso al sistema.`,
       icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Sí, desactivar',
-      rejectLabel: 'Cancelar',
-      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonProps: {
+        label: 'Cancelar',
+        severity: 'secondary',
+        rounded: true,
+      },
+      acceptButtonProps: {
+        label: 'Sí, desactivar',
+        severity: 'danger',
+        icon: 'pi pi-ban',
+        rounded: true,
+      },
       accept: () => {
         this.deactivateRequested.emit(user);
       },
@@ -137,9 +154,17 @@ export class UserTable {
       header: 'Reactivar Usuario',
       message: `¿Estás seguro de reactivar a ${this.getFullName(user)}? El usuario volverá a tener acceso al sistema.`,
       icon: 'pi pi-question-circle',
-      acceptLabel: 'Sí, reactivar',
-      rejectLabel: 'Cancelar',
-      acceptButtonStyleClass: 'p-button-success',
+      rejectButtonProps: {
+        label: 'Cancelar',
+        severity: 'secondary',
+        rounded: true,
+      },
+      acceptButtonProps: {
+        label: 'Sí, reactivar',
+        severity: 'primary',
+        icon: 'pi pi-check',
+        rounded: true,
+      },
       accept: () => {
         this.reactivateRequested.emit(user);
       },
