@@ -330,7 +330,6 @@ export class Collections {
       rejectButtonProps: {
         label: 'Cancelar',
         severity: 'secondary',
-        outlined: true,
         rounded: true,
       },
       acceptButtonProps: {
@@ -338,7 +337,6 @@ export class Collections {
         severity: 'danger',
         icon: 'pi pi-trash',
         rounded: true,
-        styleClass: '!text-white !font-medium',
       },
       accept: () => {
         this.facade
