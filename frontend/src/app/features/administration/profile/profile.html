@@ -1,49 +1,36 @@
-<div class="p-6 bg-white min-h-screen">
-  <div class="text-2xl font-semibold text-gray-800 mb-4">Actualizacion del perfil</div>
+<div class="p-6">
+  <div class="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Actualizacion del perfil</div>
 
-  <div class="border border-gray-200 rounded-md mb-6">
-    <div class="px-4 py-2 border-b border-gray-200 bg-gray-50 font-medium text-gray-700">
-      Identidad
-    </div>
-    <div class="p-4 space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2"
-          >Direccion de correo electronico</label
-        >
+  <p-card styleClass="mb-6">
+    <div class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Identidad</div>
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Direccion de correo electronico</label>
         <input pInputText class="w-full" [(ngModel)]="email" name="email" disabled />
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Nombre *</label>
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Nombre *</label>
         <input pInputText class="w-full" [(ngModel)]="firstName" name="firstName" required />
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Apellidos *</label>
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Apellidos *</label>
         <input pInputText class="w-full" [(ngModel)]="lastName" name="lastName" required />
       </div>
     </div>
-  </div>
+  </p-card>
 
-  <div class="border border-gray-200 rounded-md mb-6">
-    <div class="px-4 py-2 border-b border-gray-200 bg-gray-50 font-medium text-gray-700">
-      Seguridad
-    </div>
-    <div class="p-4 space-y-4">
-      <div
-        class="rounded-md p-3 text-sm"
-        style="
-          background-color: var(--gob-celeste-cielo);
-          border: 1px solid var(--color-border);
-          color: var(--color-text-secondary);
-        "
-      >
-        Opcionalmente, puede introducir una nueva contrasena en el cuadro a continuacion y
-        confirmarla escribiendola nuevamente en el segundo cuadro.
-      </div>
+  <p-card styleClass="mb-6">
+    <div class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Seguridad</div>
+    <div class="flex flex-col gap-4">
+      <p-message
+        severity="info"
+        text="Opcionalmente, puede introducir una nueva contrasena en el cuadro a continuacion y confirmarla escribiendola nuevamente en el segundo cuadro."
+        styleClass="w-full" />
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Contrasena actual *</label>
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Contrasena actual *</label>
         <p-password
           [(ngModel)]="currentPassword"
           (ngModelChange)="onPasswordFieldChange()"
@@ -56,8 +43,8 @@
         />
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Contrasena</label>
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Contrasena</label>
         <p-password
           [(ngModel)]="newPassword"
           (ngModelChange)="onPasswordFieldChange()"
@@ -69,8 +56,8 @@
         />
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Rescriba para confirmar</label>
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Rescriba para confirmar</label>
         <p-password
           [(ngModel)]="confirmPassword"
           (ngModelChange)="onPasswordFieldChange()"
@@ -86,14 +73,13 @@
         <p-message severity="error" [text]="error" styleClass="w-full" />
       }
     </div>
-  </div>
+  </p-card>
 
   <div class="flex justify-end">
     <p-button
       label="Guardar"
       icon="pi pi-save"
       severity="primary"
-      styleClass="!text-white !font-medium"
       (onClick)="onSave()"
       [rounded]="true"
     ></p-button>

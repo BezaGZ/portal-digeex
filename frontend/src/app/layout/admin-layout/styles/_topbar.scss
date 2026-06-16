@@ -208,6 +208,10 @@ $topbar-layer: 1000;
   .layout-topbar {
     padding: 0 2rem;
 
+    app-breadcrumb {
+      display: none;
+    }
+
     .layout-menu-button {
       margin-left: 0;
       margin-right: 0.5rem;

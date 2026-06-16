@@ -10,7 +10,7 @@ import { IdleTimeoutService } from './idle-timeout.service';
  * y emite señales de advertencia (25 min) y expiración (30 min)
  * para gestionar el timeout de sesión según DT-02 y DT-03.
  *
- * Ciclo 3 TDD — Sprint 5
+ * Ciclo 3 TDD — Sprint 5, Ajustado en Ciclo 1 - Sprint 9
  */
 describe('IdleTimeoutService', () => {
   let service: IdleTimeoutService;

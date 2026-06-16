@@ -5,6 +5,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
+import { CardModule } from 'primeng/card';
 import { MessageService } from 'primeng/api';
 
 import { AuthService } from '../../../core/auth/auth.service';
@@ -60,7 +61,7 @@ const NO_CHANGES_DETAIL = 'No se detectaron campos modificados para guardar.';
   selector: 'app-profile',
   changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
-  imports: [FormsModule, InputTextModule, PasswordModule, ButtonModule, MessageModule],
+  imports: [FormsModule, InputTextModule, PasswordModule, ButtonModule, MessageModule, CardModule],
   templateUrl: './profile.html',
 })
 export class Profile implements OnInit {
