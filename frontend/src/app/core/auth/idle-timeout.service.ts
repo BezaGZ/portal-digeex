@@ -18,7 +18,9 @@ const ACTIVITY_EVENTS = ['click', 'keydown', 'mousemove', 'scroll'] as const;
  * - A los 25 min → `warningVisible` se activa (modal)
  * - A los 30 min → `sessionExpired` se activa (logout)
  *
- * Cualquier interacción resetea los timers y oculta el warning.
+ * Cualquier interacción resetea los timers. Con el aviso visible, mover el
+ * mouse no lo cierra (evita descartarlo por accidente); click, tecla y scroll
+ * sí lo cierran.
  *
  * @see DT-02 (sesión 30 min idle con refresh por actividad)
  * @see DT-03 (modal de aviso a los 25 min)
@@ -33,7 +35,7 @@ export class IdleTimeoutService {
 
   private warningTimer: ReturnType<typeof setTimeout> | null = null;
   private timeoutTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly onActivity = () => this.handleActivity();
+  private readonly onActivity = (e: Event) => this.handleActivity(e);
 
   /** Inicia el monitoreo de actividad del usuario. */
   start(): void {
@@ -55,8 +57,9 @@ export class IdleTimeoutService {
   }
 
   /** Registra la actividad, oculta el warning y reinicia los timers. */
-  private handleActivity(): void {
+  private handleActivity(event?: Event): void {
     if (this.sessionExpired()) { return; }
+    if (this.warningVisible() && event?.type === 'mousemove') { return; }
 
     this.lastActivity.set(Date.now());
     this.warningVisible.set(false);

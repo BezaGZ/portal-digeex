@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { SessionWarningModal } from './session-warning-modal';
 import { IdleTimeoutService } from '../../../core/auth/idle-timeout.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -35,6 +36,7 @@ describe('SessionWarningModal', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        provideNoopAnimations(),
         IdleTimeoutService,
         AuthService,
         { provide: HardRedirectService, useValue: hardRedirect },
@@ -90,7 +92,7 @@ describe('SessionWarningModal', () => {
       idleService.warningVisible.set(true);
       fixture.detectChanges();
 
-      const button = fixture.nativeElement.querySelector('[data-testid="btn-continue"]');
+      const button = fixture.nativeElement.querySelector('[data-testid="btn-continue"] button');
       button.click();
 
       expect(authService.refreshToken).toHaveBeenCalled();
@@ -113,7 +115,7 @@ describe('SessionWarningModal', () => {
       idleService.warningVisible.set(true);
       fixture.detectChanges();
 
-      const button = fixture.nativeElement.querySelector('[data-testid="btn-continue"]');
+      const button = fixture.nativeElement.querySelector('[data-testid="btn-continue"] button');
       button.click();
 
       expect(authService.logout).toHaveBeenCalled();
@@ -137,7 +139,7 @@ describe('SessionWarningModal', () => {
       idleService.warningVisible.set(true);
       fixture.detectChanges();
 
-      const button = fixture.nativeElement.querySelector('[data-testid="btn-logout"]');
+      const button = fixture.nativeElement.querySelector('[data-testid="btn-logout"] button');
       button.click();
 
       expect(authService.logout).toHaveBeenCalled();
@@ -152,7 +154,7 @@ describe('SessionWarningModal', () => {
       idleService.warningVisible.set(true);
       fixture.detectChanges();
 
-      const button = fixture.nativeElement.querySelector('[data-testid="btn-logout"]');
+      const button = fixture.nativeElement.querySelector('[data-testid="btn-logout"] button');
       button.click();
 
       expect(hardRedirect.redirect).not.toHaveBeenCalled();
@@ -168,7 +170,7 @@ describe('SessionWarningModal', () => {
       idleService.warningVisible.set(true);
       fixture.detectChanges();
 
-      const button = fixture.nativeElement.querySelector('[data-testid="btn-logout"]');
+      const button = fixture.nativeElement.querySelector('[data-testid="btn-logout"] button');
       button.click();
 
       expect(hardRedirect.redirect).toHaveBeenCalledWith('/iniciar-sesion');

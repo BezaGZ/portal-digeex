@@ -1,4 +1,6 @@
 import { Component, effect, inject } from '@angular/core';
+import { DialogModule } from 'primeng/dialog';
+import { ButtonModule } from 'primeng/button';
 import { IdleTimeoutService } from '../../../core/auth/idle-timeout.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
@@ -21,6 +23,7 @@ import { HardRedirectService } from '../../../core/navigation/hard-redirect.serv
   selector: 'app-session-warning-modal',
   standalone: true,
   templateUrl: './session-warning-modal.html',
+  imports: [DialogModule, ButtonModule],
 })
 export class SessionWarningModal {
   readonly idleService = inject(IdleTimeoutService);

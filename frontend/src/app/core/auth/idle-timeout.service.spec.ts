@@ -138,6 +138,28 @@ describe('IdleTimeoutService', () => {
       expect(service.sessionExpired()).toBe(false);
     }));
 
+    /** Con el aviso visible, mover el mouse no lo cierra. */
+    it('should NOT hide the warning on mousemove once visible', fakeAsync(() => {
+      service.start();
+      service.warningVisible.set(true);
+
+      document.dispatchEvent(new Event('mousemove'));
+      tick(0);
+
+      expect(service.warningVisible()).toBe(true);
+    }));
+
+    /** Con el aviso visible, un click deliberado sí lo cierra. */
+    it('should hide the warning on click once visible', fakeAsync(() => {
+      service.start();
+      service.warningVisible.set(true);
+
+      document.dispatchEvent(new Event('click'));
+      tick(0);
+
+      expect(service.warningVisible()).toBe(false);
+    }));
+
     /** Verifica que después de reset, el ciclo de 25+30 min reinicie. */
     it('should restart the full idle cycle after reset', fakeAsync(() => {
       service.start();
