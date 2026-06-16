@@ -5,16 +5,22 @@
   <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
     <div class="flex flex-col gap-1">
       <label for="title" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Título <span class="text-red-600">*</span>
+        Título <span class="text-[var(--color-error)]">*</span>
       </label>
       <input id="title" pInputText formControlName="title" maxlength="200" class="w-full" />
+      @if (form.controls.title.touched && form.controls.title.invalid) {
+        <small class="text-[var(--color-error)]">El título es obligatorio.</small>
+      }
     </div>
 
     <div class="flex flex-col gap-1">
       <label for="abstract" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Resumen <span class="text-red-600">*</span>
+        Resumen <span class="text-[var(--color-error)]">*</span>
       </label>
       <textarea id="abstract" pTextarea formControlName="abstract" rows="3" maxlength="1000" class="w-full"></textarea>
+      @if (form.controls.abstract.touched && form.controls.abstract.invalid) {
+        <small class="text-[var(--color-error)]">El resumen es obligatorio.</small>
+      }
     </div>
 
     <div class="flex items-center gap-3">
@@ -27,7 +33,7 @@
     @if (!form.controls.isVideo.value) {
       <div class="flex flex-col gap-1">
         <label for="type" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-          Tipo de documento <span class="text-red-600">*</span>
+          Tipo de documento <span class="text-[var(--color-error)]">*</span>
         </label>
         <p-select
           inputId="type"
@@ -38,11 +44,14 @@
           placeholder="Elegí un tipo"
           appendTo="body"
           styleClass="w-full" />
+        @if (form.controls.type.touched && form.controls.type.invalid) {
+          <small class="text-[var(--color-error)]">El tipo de documento es obligatorio.</small>
+        }
       </div>
 
       <div class="flex flex-col gap-1">
         <label for="audience" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-          Nivel educativo <span class="text-red-600">*</span>
+          Nivel educativo <span class="text-[var(--color-error)]">*</span>
         </label>
         <p-select
           inputId="audience"
@@ -53,6 +62,9 @@
           placeholder="Elegí un nivel"
           appendTo="body"
           styleClass="w-full" />
+        @if (form.controls.audience.touched && form.controls.audience.invalid) {
+          <small class="text-[var(--color-error)]">El nivel educativo es obligatorio.</small>
+        }
       </div>
 
       <div class="flex flex-col gap-1">
@@ -64,7 +76,7 @@
     } @else {
       <div class="flex flex-col gap-1">
         <label for="relationUri" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-          URL del video <span class="text-red-600">*</span>
+          URL del video <span class="text-[var(--color-error)]">*</span>
         </label>
         <input
           id="relationUri"
@@ -73,14 +85,14 @@
           placeholder="https://www.youtube.com/watch?v=..."
           class="w-full" />
         @if (form.controls.relationUri.touched && form.controls.relationUri.invalid) {
-          <small class="text-red-600">Ingresá una URL válida que empiece con http:// o https://.</small>
+          <small class="text-[var(--color-error)]">Ingresá una URL válida que empiece con http:// o https://.</small>
         }
       </div>
     }
 
     <div class="flex flex-col gap-1">
       <label for="issued" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Fecha de publicación <span class="text-red-600">*</span>
+        Fecha de publicación <span class="text-[var(--color-error)]">*</span>
       </label>
       <p-datepicker
         inputId="issued"
@@ -90,6 +102,9 @@
         placeholder="Año-Mes-Día"
         appendTo="body"
         styleClass="w-full" />
+      @if (form.controls.issued.touched && form.controls.issued.invalid) {
+        <small class="text-[var(--color-error)]">La fecha es obligatoria.</small>
+      }
     </div>
 
     <div class="flex flex-col gap-1">
@@ -131,7 +146,7 @@
     @if (!isEditMode() && !form.controls.isVideo.value) {
       <div class="flex flex-col gap-2">
         <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-          Archivos <span class="text-red-600">*</span>
+          Archivos <span class="text-[var(--color-error)]">*</span>
           <span class="text-gray-400 font-normal">(PDF, Word, Excel, PowerPoint, OpenDocument; podés subir varios)</span>
         </label>
         <app-file-dropzone
@@ -204,18 +219,14 @@
       <p-button
         type="button"
         label="Regresar"
-        icon="pi pi-arrow-left"
         severity="secondary"
-        [outlined]="true"
         [rounded]="true"
         [disabled]="submitting()"
         (onClick)="cancel()" />
       <p-button
         type="submit"
         [label]="isEditMode() ? 'Guardar cambios' : 'Subir contenido'"
-        [icon]="isEditMode() ? 'pi pi-save' : 'pi pi-upload'"
-        severity="success"
-        styleClass="!text-white !font-medium"
+        severity="primary"
         [rounded]="true"
         [disabled]="!canSubmit() || submitting()"
         [loading]="submitting()" />

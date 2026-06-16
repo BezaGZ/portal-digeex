@@ -5,11 +5,11 @@
   <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
     <div class="flex flex-col gap-1">
       <label for="title" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Título <span class="text-red-600">*</span>
+        Título <span class="text-[var(--color-error)]">*</span>
       </label>
       <input id="title" pInputText formControlName="title" maxlength="200" class="w-full" />
       @if (form.controls.title.touched && form.controls.title.invalid) {
-        <small class="text-red-600">El título es obligatorio.</small>
+        <small class="text-[var(--color-error)]">El título es obligatorio.</small>
       }
     </div>
 
@@ -29,7 +29,7 @@
 
     <div class="flex flex-col gap-1">
       <label for="issued" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Fecha de corte <span class="text-red-600">*</span>
+        Fecha de corte <span class="text-[var(--color-error)]">*</span>
       </label>
       <p-datepicker
         inputId="issued"
@@ -40,13 +40,13 @@
         appendTo="body"
         styleClass="w-full" />
       @if (form.controls.issued.touched && form.controls.issued.invalid) {
-        <small class="text-red-600">La fecha es obligatoria.</small>
+        <small class="text-[var(--color-error)]">La fecha es obligatoria.</small>
       }
     </div>
 
     <div class="flex flex-col gap-1">
       <label for="dataset" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Dataset <span class="text-red-600">*</span>
+        Dataset <span class="text-[var(--color-error)]">*</span>
       </label>
       <p-select
         inputId="dataset"
@@ -58,14 +58,14 @@
         appendTo="body"
         styleClass="w-full" />
       @if (form.controls.dataset.touched && form.controls.dataset.invalid) {
-        <small class="text-red-600">El dataset es obligatorio.</small>
+        <small class="text-[var(--color-error)]">El dataset es obligatorio.</small>
       }
     </div>
 
     @if (!isEditMode()) {
       <div class="flex flex-col gap-2">
         <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-          Archivo Excel <span class="text-red-600">*</span>
+          Archivo Excel <span class="text-[var(--color-error)]">*</span>
           <span class="text-gray-400 font-normal">(un único .xlsx)</span>
         </label>
         <app-file-dropzone
@@ -110,7 +110,7 @@
         <label for="visibility" class="text-sm text-gray-700 dark:text-gray-300">
           {{ visibility() === 'public'
               ? 'Pública: aparece en búsqueda y listados.'
-              : 'Oculta: no aparece en búsqueda; solo accesible por URL directa.' }}
+              : 'Privada: oculta de búsqueda; solo accesible por URL directa.' }}
         </label>
       </div>
     </div>
@@ -119,18 +119,14 @@
       <p-button
         type="button"
         label="Regresar"
-        icon="pi pi-arrow-left"
         severity="secondary"
-        [outlined]="true"
         [rounded]="true"
         [disabled]="submitting()"
         (onClick)="cancel()" />
       <p-button
         type="submit"
         [label]="isEditMode() ? 'Guardar cambios' : 'Subir Estadística'"
-        [icon]="isEditMode() ? 'pi pi-save' : 'pi pi-upload'"
-        severity="success"
-        styleClass="!text-white !font-medium"
+        severity="primary"
         [rounded]="true"
         [disabled]="!canSubmit() || submitting()"
         [loading]="submitting()" />
