@@ -278,7 +278,6 @@ export class Communities {
       rejectButtonProps: {
         label: 'Cancelar',
         severity: 'secondary',
-        outlined: true,
         rounded: true,
       },
       acceptButtonProps: {
@@ -286,7 +285,6 @@ export class Communities {
         severity: 'danger',
         icon: 'pi pi-trash',
         rounded: true,
-        styleClass: '!text-white !font-medium',
       },
       accept: () => {
         this.facade
