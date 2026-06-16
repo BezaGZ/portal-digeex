@@ -1,4 +1,3 @@
-import { Location } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -72,7 +71,6 @@ export class MySubmissions {
   private readonly authCaller = inject(AuthCallerService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly router = inject(Router);
-  private readonly location = inject(Location);
   private readonly destroyRef = inject(DestroyRef);
   private readonly loadingService = inject(LoadingService);
 
@@ -161,11 +159,6 @@ export class MySubmissions {
     this.router.navigate(['/administrador/envios', uuid, 'editar']);
   }
 
-  /** Vuelve a la pantalla previa usando el stack de navegación del browser. */
-  goBack(): void {
-    this.location.back();
-  }
-
   /**
    * Pide confirmación al usuario y ejecuta el soft delete del item. El facade
    * valida scope antes de pegar al backend; aquí pasamos el sufijo del caller
@@ -176,6 +169,18 @@ export class MySubmissions {
     this.confirmation.confirm({
       message: 'Esto retira el envío del sitio público. Podés restaurarlo después.',
       header: '¿Eliminar este envío?',
+      icon: 'pi pi-exclamation-triangle',
+      rejectButtonProps: {
+        label: 'Cancelar',
+        severity: 'secondary',
+        rounded: true,
+      },
+      acceptButtonProps: {
+        label: 'Sí, eliminar',
+        severity: 'danger',
+        icon: 'pi pi-trash',
+        rounded: true,
+      },
       accept: () => {
         this.facade
           .withdrawItem$(uuid, this.callerSufijo)
@@ -193,6 +198,18 @@ export class MySubmissions {
     this.confirmation.confirm({
       message: 'El envío volverá al sitio público y aparecerá en la búsqueda.',
       header: '¿Restaurar este envío?',
+      icon: 'pi pi-question-circle',
+      rejectButtonProps: {
+        label: 'Cancelar',
+        severity: 'secondary',
+        rounded: true,
+      },
+      acceptButtonProps: {
+        label: 'Sí, restaurar',
+        severity: 'primary',
+        icon: 'pi pi-replay',
+        rounded: true,
+      },
       accept: () => {
         this.facade
           .restoreItem$(uuid, this.callerSufijo)

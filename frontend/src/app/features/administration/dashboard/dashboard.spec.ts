@@ -180,18 +180,6 @@ describe('Dashboard', () => {
     expect(routerNavigateFn).toHaveBeenCalledWith(['/administrador/historial/programas', 'coll-peac']);
   });
 
-  /** Verifica que goBack navegue a la raíz. */
-  it('should navigate to / when goBack is invoked', () => {
-    caller$.next({ role: 'superadmin', sufijo: null });
-
-    const fixture = TestBed.createComponent(Dashboard);
-    fixture.detectChanges();
-
-    fixture.componentInstance.goBack();
-
-    expect(routerNavigateFn).toHaveBeenCalledWith(['/']);
-  });
-
   /** Verifica que el signal `selectedYearWindow` arranque en 5 (default del filtro temporal). */
   it('should default selectedYearWindow to 5 years', () => {
     caller$.next({ role: 'superadmin', sufijo: null });

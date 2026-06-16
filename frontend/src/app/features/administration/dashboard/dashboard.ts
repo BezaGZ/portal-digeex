@@ -92,10 +92,6 @@ export class Dashboard {
    */
   readonly yearRanges = computed(() => buildLastNYearRanges(this.selectedYearWindow()));
 
-  goBack(): void {
-    this.router.navigate(['/']);
-  }
-
   /**
    * Navega al historial del programa de la entrada seleccionada.
    */

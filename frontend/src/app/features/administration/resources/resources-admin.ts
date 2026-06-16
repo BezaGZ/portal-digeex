@@ -157,6 +157,18 @@ export class ResourcesAdmin {
     this.confirmation.confirm({
       message: 'Esto retira el envío del sitio público. Podés restaurarlo después.',
       header: '¿Eliminar este envío?',
+      icon: 'pi pi-exclamation-triangle',
+      rejectButtonProps: {
+        label: 'Cancelar',
+        severity: 'secondary',
+        rounded: true,
+      },
+      acceptButtonProps: {
+        label: 'Sí, eliminar',
+        severity: 'danger',
+        icon: 'pi pi-trash',
+        rounded: true,
+      },
       accept: () => {
         this.itemFacade
           .withdrawItem$(uuid, this.callerSufijo)
@@ -173,6 +185,18 @@ export class ResourcesAdmin {
     this.confirmation.confirm({
       message: 'El envío volverá al sitio público y aparecerá en la búsqueda.',
       header: '¿Restaurar este envío?',
+      icon: 'pi pi-question-circle',
+      rejectButtonProps: {
+        label: 'Cancelar',
+        severity: 'secondary',
+        rounded: true,
+      },
+      acceptButtonProps: {
+        label: 'Sí, restaurar',
+        severity: 'primary',
+        icon: 'pi pi-replay',
+        rounded: true,
+      },
       accept: () => {
         this.itemFacade
           .restoreItem$(uuid, this.callerSufijo)

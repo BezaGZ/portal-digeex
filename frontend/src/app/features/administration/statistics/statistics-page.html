@@ -1,14 +1,15 @@
 <div class="p-6">
-  <div class="mb-4">
-    <p-button
-      label=" Regresar"
-      icon="pi pi-arrow-left"
-      severity="primary"
-      [rounded]="true"
-      styleClass="!text-white !font-medium !px-4 !py-2 transition-all duration-200"
-      data-testid="statistics-back"
-      (onClick)="goBack()" />
-  </div>
+  @if (dsoType() !== 'site') {
+    <div class="mb-4">
+      <p-button
+        label="Regresar"
+        icon="pi pi-arrow-left"
+        severity="primary"
+        [rounded]="true"
+        data-testid="statistics-back"
+        (onClick)="goBack()" />
+    </div>
+  }
 
   <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2" data-testid="statistics-title">
     {{ title() }}
