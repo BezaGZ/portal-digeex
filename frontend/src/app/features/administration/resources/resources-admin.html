@@ -150,10 +150,16 @@
                 class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                 [class.bg-emerald-100]="stateOf(o) === 'Pública'"
                 [class.text-emerald-700]="stateOf(o) === 'Pública'"
+                [class.dark:bg-emerald-900]="stateOf(o) === 'Pública'"
+                [class.dark:text-emerald-200]="stateOf(o) === 'Pública'"
                 [class.bg-amber-100]="stateOf(o) === 'Privada'"
                 [class.text-amber-700]="stateOf(o) === 'Privada'"
+                [class.dark:bg-amber-900]="stateOf(o) === 'Privada'"
+                [class.dark:text-amber-200]="stateOf(o) === 'Privada'"
                 [class.bg-red-100]="stateOf(o) === 'Eliminada'"
-                [class.text-red-700]="stateOf(o) === 'Eliminada'">
+                [class.text-red-700]="stateOf(o) === 'Eliminada'"
+                [class.dark:bg-red-900]="stateOf(o) === 'Eliminada'"
+                [class.dark:text-red-200]="stateOf(o) === 'Eliminada'">
                 {{ stateOf(o) }}
               </span>
             </td>
