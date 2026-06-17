@@ -16,12 +16,18 @@
         }
       </label>
       <input pInputText id="siglas" formControlName="siglas" class="w-full" />
+      @if (form.controls.siglas.touched && form.controls.siglas.errors?.['required']) {
+        <small class="text-[var(--color-error)]">Las siglas son obligatorias.</small>
+      }
     </div>
     <div class="flex flex-col gap-1">
       <label for="titulo" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
         Título completo
       </label>
       <input pInputText id="titulo" formControlName="titulo" class="w-full" />
+      @if (form.controls.titulo.touched && form.controls.titulo.errors?.['required']) {
+        <small class="text-[var(--color-error)]">El título completo es obligatorio.</small>
+      }
     </div>
     <div class="flex flex-col gap-1">
       <label for="entityType" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -39,6 +45,9 @@
         placeholder="Selecciona un tipo"
         appendTo="body"
         [style]="{ width: '100%' }" />
+      @if (form.controls.entityType.touched && form.controls.entityType.errors?.['required']) {
+        <small class="text-[var(--color-error)]">El tipo de programa es obligatorio.</small>
+      }
     </div>
     <div class="flex flex-col gap-1">
       <label for="navLocation" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -53,12 +62,18 @@
         placeholder="Selecciona una ubicación"
         appendTo="body"
         [style]="{ width: '100%' }" />
+      @if (form.controls.navLocation.touched && form.controls.navLocation.errors?.['required']) {
+        <small class="text-[var(--color-error)]">La ubicación en el menú es obligatoria.</small>
+      }
     </div>
     <div class="flex flex-col gap-1">
       <label for="orden" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
         Orden en el menú <span class="text-gray-400 font-normal">(número entero, ej: 1, 2, 3)</span>
       </label>
       <input pInputText id="orden" type="number" min="1" formControlName="orden" class="w-full" />
+      @if (form.controls.orden.touched && form.controls.orden.errors?.['required']) {
+        <small class="text-[var(--color-error)]">El orden es obligatorio.</small>
+      }
       @if (form.controls.orden.errors?.['pattern'] && form.controls.orden.touched) {
         <small class="text-[var(--color-error)]">Solo números enteros positivos.</small>
       }

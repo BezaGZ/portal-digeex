@@ -16,12 +16,18 @@
         }
       </label>
       <input pInputText id="nombreCorto" formControlName="nombreCorto" class="w-full" />
+      @if (form.controls.nombreCorto.touched && form.controls.nombreCorto.errors?.['required']) {
+        <small class="text-[var(--color-error)]">El nombre corto es obligatorio.</small>
+      }
     </div>
     <div class="flex flex-col gap-1">
       <label for="tituloCompleto" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
         Título completo <span class="text-gray-400 font-normal">(ej: Subdirección de Educación Básica)</span>
       </label>
       <input pInputText id="tituloCompleto" formControlName="tituloCompleto" class="w-full" />
+      @if (form.controls.tituloCompleto.touched && form.controls.tituloCompleto.errors?.['required']) {
+        <small class="text-[var(--color-error)]">El título completo es obligatorio.</small>
+      }
     </div>
     <div class="flex flex-col gap-1">
       <label for="sufijo" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -31,6 +37,9 @@
         }
       </label>
       <input pInputText id="sufijo" formControlName="sufijo" class="w-full" />
+      @if (form.controls.sufijo.touched && form.controls.sufijo.errors?.['required']) {
+        <small class="text-[var(--color-error)]">El sufijo es obligatorio.</small>
+      }
       @if (form.controls.sufijo.errors?.['pattern'] && form.controls.sufijo.touched) {
         <small class="text-[var(--color-error)]">El sufijo debe ir en mayúsculas con guiones bajos (ej: ED_BASICA).</small>
       }
