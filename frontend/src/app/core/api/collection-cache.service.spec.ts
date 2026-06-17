@@ -14,7 +14,7 @@ import { NAV_LOCATION, ENTITY_TYPE } from '../config/digeex-values.config';
  * el filtrado por digeex.navLocation, la búsqueda por dspace.entity.type y la
  * invalidación del caché.
  *
- * Ciclo 7 TDD - Sprint 4 TDD. Ajustado en Ciclo 5.
+ * Ciclo 7 TDD - Sprint 4 TDD. Ajustado en Ciclo 5 y Ciclo 8 (Sprint 9).
  */
 describe('CollectionCacheService', () => {
   let service: CollectionCacheService;
@@ -71,7 +71,7 @@ describe('CollectionCacheService', () => {
       ],
     },
     _links: {},
-    page: { size: 100, totalElements: 5, totalPages: 1, number: 0 },
+    page: { size: 20, totalElements: 5, totalPages: 1, number: 0 },
   };
 
   beforeEach(() => {
@@ -105,7 +105,7 @@ describe('CollectionCacheService', () => {
     const promise = new Promise((resolve, reject) => {
       service.getAll().subscribe({ next: resolve, error: reject });
     });
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req.flush(mockCollectionsResponse);
     await promise;
 
@@ -121,7 +121,7 @@ describe('CollectionCacheService', () => {
     const promise = new Promise((resolve) => {
       service.getAll().subscribe({ next: resolve, error: resolve });
     });
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req.flush('boom', { status: 500, statusText: 'Server Error' });
     await promise;
 
@@ -143,7 +143,7 @@ describe('CollectionCacheService', () => {
       });
     });
 
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
     expect(req.request.method).toBe('GET');
     req.flush(mockCollectionsResponse);
 
@@ -156,7 +156,7 @@ describe('CollectionCacheService', () => {
       service.getAll().subscribe({ next: resolve, error: reject });
     });
 
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req.flush(mockCollectionsResponse);
     await firstCall;
 
@@ -183,7 +183,7 @@ describe('CollectionCacheService', () => {
       service.getAll().subscribe({ next: resolve, error: reject });
     });
 
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req.flush(mockCollectionsResponse);
 
     const [first, second] = await Promise.all([firstCaller, secondCaller]);
@@ -207,7 +207,7 @@ describe('CollectionCacheService', () => {
       });
     });
 
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req.flush(mockCollectionsResponse);
 
     await promise;
@@ -225,7 +225,7 @@ describe('CollectionCacheService', () => {
       });
     });
 
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req.flush(mockCollectionsResponse);
 
     await promise;
@@ -245,7 +245,7 @@ describe('CollectionCacheService', () => {
       });
     });
 
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req.flush(mockCollectionsResponse);
 
     await promise;
@@ -263,7 +263,7 @@ describe('CollectionCacheService', () => {
       });
     });
 
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req.flush(mockCollectionsResponse);
 
     await promise;
@@ -277,7 +277,7 @@ describe('CollectionCacheService', () => {
       service.getAll().subscribe({ next: resolve, error: reject });
     });
 
-    const req1 = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req1 = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req1.flush(mockCollectionsResponse);
     await firstCall;
 
@@ -293,7 +293,7 @@ describe('CollectionCacheService', () => {
       });
     });
 
-    const req2 = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req2 = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req2.flush(mockCollectionsResponse);
 
     await secondCall;

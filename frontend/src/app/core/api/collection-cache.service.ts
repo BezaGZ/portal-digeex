@@ -5,9 +5,9 @@ import { Collection } from './models/collection.model';
 
 /**
  * Caché centralizado de colecciones del repositorio.
- * Hace UNA sola petición HTTP y guarda el resultado en un signal.
- * Tres consumidores (Home, PublicHeader, GalleryService) leen de aquí
- * en vez de hacer peticiones independientes a getAllCollections.
+ * Carga todas las colecciones agotando páginas con `paginateAll$` (vía
+ * `listAll`) y guarda el resultado en un signal. Sus consumidores (Home, header
+ * y layout públicos, galería y estadísticas) leen de aquí, no por su cuenta.
  */
 @Injectable({ providedIn: 'root' })
 export class CollectionCacheService {
@@ -38,8 +38,7 @@ export class CollectionCacheService {
     }
 
     if (!this.cache$) {
-      this.cache$ = this.collectionApi.list(0, 100, { embed: 'logo' }).pipe(
-        map((response) => response._embedded?.['collections'] || []),
+      this.cache$ = this.collectionApi.listAll({ embed: 'logo' }).pipe(
         tap({
           next: (cols) => {
             this.collections.set(cols);

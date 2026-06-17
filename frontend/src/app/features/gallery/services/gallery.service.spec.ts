@@ -138,7 +138,7 @@ describe('GalleryService', () => {
     });
 
     /** 1) Caché de colecciones. */
-    const collectionsReq = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const collectionsReq = httpMock.expectOne('/server/api/core/collections?embed=logo');
     collectionsReq.flush(mockCollectionsResponse);
 
     /** 2) Discovery con scope = col-galeria. */
@@ -200,7 +200,7 @@ describe('GalleryService', () => {
       });
     });
 
-    httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo').flush(mockCollectionsResponse);
+    httpMock.expectOne('/server/api/core/collections?embed=logo').flush(mockCollectionsResponse);
     httpMock
       .expectOne((req) => req.url.includes('/server/api/discover/search/objects'))
       .flush(emptyDiscoveryResponse);
@@ -225,7 +225,7 @@ describe('GalleryService', () => {
         .subscribe({ next: resolve, error: reject });
     });
 
-    httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo').flush(mockCollectionsResponse);
+    httpMock.expectOne('/server/api/core/collections?embed=logo').flush(mockCollectionsResponse);
 
     const discoveryReq = httpMock.expectOne((req) =>
       req.url.includes('/server/api/discover/search/objects')
@@ -262,7 +262,7 @@ describe('GalleryService', () => {
       });
     });
 
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req.flush('Server error', { status: 500, statusText: 'Internal Server Error' });
 
     await promise;
@@ -398,7 +398,7 @@ describe('GalleryService', () => {
       });
     });
 
-    httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo').flush(mockCollectionsResponse);
+    httpMock.expectOne('/server/api/core/collections?embed=logo').flush(mockCollectionsResponse);
 
     httpMock
       .expectOne((req) =>
@@ -433,7 +433,7 @@ describe('GalleryService', () => {
       });
     });
 
-    const req = httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo');
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
     req.flush('Error', { status: 500, statusText: 'Server Error' });
 
     await promise;
@@ -450,7 +450,7 @@ describe('GalleryService', () => {
       });
     });
 
-    httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo').flush(mockCollectionsResponse);
+    httpMock.expectOne('/server/api/core/collections?embed=logo').flush(mockCollectionsResponse);
 
     const uuid = await promise;
     expect(uuid).toBe('col-galeria');
