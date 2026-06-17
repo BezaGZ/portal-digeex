@@ -545,18 +545,23 @@ h6 {
     --surface-border: #374151;
     --surface-hover: #374151;
 
-    --p-surface-0: #1e2329;
-    --p-surface-50: #252b33;
-    --p-surface-100: #2d3440;
-    --p-surface-200: #374151;
-    --p-surface-300: #4b5563;
-    --p-surface-400: #6b7280;
-    --p-surface-500: #9ca3af;
-    --p-surface-600: #d1d5db;
-    --p-surface-700: #e5e7eb;
-    --p-surface-800: #f3f4f6;
-    --p-surface-900: #f9fafb;
-    --p-surface-950: #ffffff;
+    /* Escala surface para modo oscuro. Debe ir clara (0) -> oscura (950),
+       igual que Aura: en noche los componentes usan los tonos altos (900/950)
+       como fondo de superficies y campos, así que esos deben ser los oscuros.
+       Antes estaba invertida (950 = #ffffff), lo que dejaba textarea, select,
+       datepicker-panel y fileupload en blanco. */
+    --p-surface-0: #ffffff;
+    --p-surface-50: #f9fafb;
+    --p-surface-100: #f3f4f6;
+    --p-surface-200: #e5e7eb;
+    --p-surface-300: #d1d5db;
+    --p-surface-400: #9ca3af;
+    --p-surface-500: #6b7280;
+    --p-surface-600: #4b5563;
+    --p-surface-700: #374151;
+    --p-surface-800: #2d3440;
+    --p-surface-900: #252b33;
+    --p-surface-950: #1e2329;
 
     --text-color: #e5e7eb;
     --text-color-secondary: var(--color-text-muted);

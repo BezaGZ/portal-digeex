@@ -268,6 +268,21 @@ const DigeexPreset = definePreset(Aura, {
       colorScheme: {
         dark: {
           root: {
+            /**
+             * Con la escala surface oscura correcta, Aura saca el texto de
+             * contraste de primary/success de surface.900 (oscuro), dejando
+             * letras negras sobre el azul/verde institucional. Se fuerza blanco.
+             */
+            primary: {
+              color: '#ffffff',
+              hoverColor: '#ffffff',
+              activeColor: '#ffffff'
+            },
+            success: {
+              color: '#ffffff',
+              hoverColor: '#ffffff',
+              activeColor: '#ffffff'
+            },
             danger: {
               background: '{red.500}',
               hoverBackground: '{red.600}',
