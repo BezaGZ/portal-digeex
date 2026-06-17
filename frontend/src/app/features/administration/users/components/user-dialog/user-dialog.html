@@ -20,8 +20,6 @@
           formControlName="email"
           type="email"
           class="w-full"
-          [class.ng-invalid]="hasError('email')"
-          [class.ng-dirty]="hasError('email')"
         />
         <label for="email">Correo electrónico *</label>
       </p-floatLabel>
@@ -40,8 +38,6 @@
           id="firstName"
           formControlName="firstName"
           class="w-full"
-          [class.ng-invalid]="hasError('firstName')"
-          [class.ng-dirty]="hasError('firstName')"
         />
         <label for="firstName">Nombre *</label>
       </p-floatLabel>
@@ -57,8 +53,6 @@
           id="lastName"
           formControlName="lastName"
           class="w-full"
-          [class.ng-invalid]="hasError('lastName')"
-          [class.ng-dirty]="hasError('lastName')"
         />
         <label for="lastName">Apellido *</label>
       </p-floatLabel>
@@ -77,8 +71,6 @@
           optionValue="value.uuid"
           appendTo="body"
           class="w-full"
-          [class.ng-invalid]="hasError('targetGroupUuid')"
-          [class.ng-dirty]="hasError('targetGroupUuid')"
         />
         <label for="targetGroupUuid">Rol *</label>
       </p-floatLabel>

@@ -20,8 +20,6 @@
           formControlName="email"
           type="email"
           class="w-full"
-          [class.ng-invalid]="hasError('email')"
-          [class.ng-dirty]="hasError('email')"
         />
         <label for="edit-email">Correo electrónico *</label>
       </p-floatLabel>
@@ -40,8 +38,6 @@
           id="edit-firstName"
           formControlName="firstName"
           class="w-full"
-          [class.ng-invalid]="hasError('firstName')"
-          [class.ng-dirty]="hasError('firstName')"
         />
         <label for="edit-firstName">Nombre *</label>
       </p-floatLabel>
@@ -57,8 +53,6 @@
           id="edit-lastName"
           formControlName="lastName"
           class="w-full"
-          [class.ng-invalid]="hasError('lastName')"
-          [class.ng-dirty]="hasError('lastName')"
         />
         <label for="edit-lastName">Apellido *</label>
       </p-floatLabel>
