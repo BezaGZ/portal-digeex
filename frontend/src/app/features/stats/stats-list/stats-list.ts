@@ -117,4 +117,8 @@ export class StatsList implements OnInit {
     }
     this.router.navigate(['/estadistica', collectionUuid, 'item', uuid]);
   }
+
+  goBack(): void {
+    this.router.navigate(['/']);
+  }
 }
