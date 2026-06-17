@@ -65,124 +65,119 @@
     </p-card>
   } @else {
     <p-card class="shadow-sm">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-gray-200 dark:border-gray-700 text-left uppercase tracking-wide text-xs text-gray-600 dark:text-gray-300">
-              <th class="px-3 py-3 w-14"></th>
-              <th class="px-3 py-3">Título</th>
-              <th class="px-3 py-3">Recurso</th>
-              <th class="px-3 py-3">Tipo</th>
-              <th class="px-3 py-3">Fecha</th>
-              <th class="px-3 py-3">Estado</th>
-              <th class="px-3 py-3 text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (o of objects(); track o.indexableObject.uuid) {
-              <tr
-                data-testid="my-submission-card"
-                class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                <td class="px-3 py-2">
-                  @if (coverUrlOf(o); as url) {
-                    @if (!hasImageError(o)) {
-                      <img
-                        [src]="url"
-                        [alt]="titleOf(o)"
-                        loading="lazy"
-                        decoding="async"
-                        (error)="onImageError(o.indexableObject.uuid)"
-                        class="w-10 h-10 object-cover rounded border border-gray-200 dark:border-gray-700" />
-                    } @else {
-                      <div class="w-10 h-10 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
-                        <i class="pi pi-image text-gray-400 dark:text-gray-500 text-sm"></i>
-                      </div>
-                    }
-                  } @else {
-                    <div class="w-10 h-10 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
-                      <i class="pi pi-image text-gray-400 dark:text-gray-500 text-sm"></i>
-                    </div>
-                  }
-                </td>
-                <td class="px-3 py-3 font-medium text-gray-800 dark:text-gray-100">
-                  {{ titleOf(o) }}
-                </td>
-                <td class="px-3 py-3 text-gray-700 dark:text-gray-200">{{ resourceTypeOf(o) }}</td>
-                <td class="px-3 py-3 text-gray-700 dark:text-gray-200">{{ entityTypeOf(o) }}</td>
-                <td class="px-3 py-3 text-gray-700 dark:text-gray-200">{{ issuedOf(o) }}</td>
-                <td class="px-3 py-3">
-                  <span
-                    data-testid="my-submission-state-badge"
-                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                    [class.bg-emerald-100]="stateOf(o) === 'Pública'"
-                    [class.text-emerald-700]="stateOf(o) === 'Pública'"
-                    [class.dark:bg-emerald-900]="stateOf(o) === 'Pública'"
-                    [class.dark:text-emerald-200]="stateOf(o) === 'Pública'"
-                    [class.bg-amber-100]="stateOf(o) === 'Privada'"
-                    [class.text-amber-700]="stateOf(o) === 'Privada'"
-                    [class.dark:bg-amber-900]="stateOf(o) === 'Privada'"
-                    [class.dark:text-amber-200]="stateOf(o) === 'Privada'"
-                    [class.bg-red-100]="stateOf(o) === 'Eliminada'"
-                    [class.text-red-700]="stateOf(o) === 'Eliminada'"
-                    [class.dark:bg-red-900]="stateOf(o) === 'Eliminada'"
-                    [class.dark:text-red-200]="stateOf(o) === 'Eliminada'">
-                    {{ stateOf(o) }}
-                  </span>
-                </td>
-                <td class="px-3 py-3 text-right whitespace-nowrap">
-                  <div class="flex gap-2 justify-end">
-                    <span data-testid="action-edit">
-                      <p-button
-                        icon="pi pi-pencil"
-                        severity="secondary"
-                        [text]="true"
-                        [rounded]="true"
-                        [disabled]="isWithdrawn(o)"
-                        (onClick)="onEdit(o.indexableObject.uuid)"
-                        pTooltip="Editar"
-                        tooltipPosition="top" />
-                    </span>
-                    @if (isWithdrawn(o)) {
-                      <span data-testid="action-restore">
-                        <p-button
-                          icon="pi pi-replay"
-                          severity="primary"
-                          [text]="true"
-                          [rounded]="true"
-                          (onClick)="onRestore(o.indexableObject.uuid)"
-                          pTooltip="Restaurar"
-                          tooltipPosition="top" />
-                      </span>
-                    }
-                    <span data-testid="action-delete">
-                      <p-button
-                        icon="pi pi-trash"
-                        severity="danger"
-                        [text]="true"
-                        [rounded]="true"
-                        [disabled]="isWithdrawn(o)"
-                        (onClick)="onDelete(o.indexableObject.uuid)"
-                        pTooltip="Eliminar"
-                        tooltipPosition="top" />
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+      <p-table
+        [value]="objects()"
+        [lazy]="true"
+        [totalRecords]="totalElements()"
+        [rows]="pageSize()"
+        [first]="currentPage() * pageSize()"
+        [paginator]="true"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} envíos"
+        (onLazyLoad)="onLazyLoad($event)"
+        styleClass="p-datatable-sm">
+        <ng-template #header>
+          <tr>
+            <th class="w-14"></th>
+            <th>Título</th>
+            <th>Recurso</th>
+            <th>Tipo</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th><div class="flex justify-end">Acciones</div></th>
+          </tr>
+        </ng-template>
 
-      @if (totalElements() > 0) {
-        <p-paginator
-          [rows]="pageSize()"
-          [totalRecords]="totalElements()"
-          [first]="currentPage() * pageSize()"
-          [rowsPerPageOptions]="[10, 20, 50]"
-          [showCurrentPageReport]="true"
-          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} envíos"
-          (onPageChange)="onPageChange($event)" />
-      }
+        <ng-template #body let-o>
+          <tr data-testid="my-submission-card">
+            <td>
+              @if (coverUrlOf(o); as url) {
+                @if (!hasImageError(o)) {
+                  <img
+                    [src]="url"
+                    [alt]="titleOf(o)"
+                    loading="lazy"
+                    decoding="async"
+                    (error)="onImageError(o.indexableObject.uuid)"
+                    class="w-10 h-10 object-cover rounded border border-gray-200 dark:border-gray-700" />
+                } @else {
+                  <div class="w-10 h-10 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                    <i class="pi pi-image text-gray-400 dark:text-gray-500 text-sm"></i>
+                  </div>
+                }
+              } @else {
+                <div class="w-10 h-10 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                  <i class="pi pi-image text-gray-400 dark:text-gray-500 text-sm"></i>
+                </div>
+              }
+            </td>
+            <td>
+              <div class="max-w-[24rem] truncate font-medium" [pTooltip]="titleOf(o)" tooltipPosition="top">{{ titleOf(o) }}</div>
+            </td>
+            <td>{{ resourceTypeOf(o) }}</td>
+            <td>{{ entityTypeOf(o) }}</td>
+            <td>{{ issuedOf(o) }}</td>
+            <td>
+              <span
+                data-testid="my-submission-state-badge"
+                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                [class.bg-emerald-100]="stateOf(o) === 'Pública'"
+                [class.text-emerald-700]="stateOf(o) === 'Pública'"
+                [class.dark:bg-emerald-900]="stateOf(o) === 'Pública'"
+                [class.dark:text-emerald-200]="stateOf(o) === 'Pública'"
+                [class.bg-amber-100]="stateOf(o) === 'Privada'"
+                [class.text-amber-700]="stateOf(o) === 'Privada'"
+                [class.dark:bg-amber-900]="stateOf(o) === 'Privada'"
+                [class.dark:text-amber-200]="stateOf(o) === 'Privada'"
+                [class.bg-red-100]="stateOf(o) === 'Eliminada'"
+                [class.text-red-700]="stateOf(o) === 'Eliminada'"
+                [class.dark:bg-red-900]="stateOf(o) === 'Eliminada'"
+                [class.dark:text-red-200]="stateOf(o) === 'Eliminada'">
+                {{ stateOf(o) }}
+              </span>
+            </td>
+            <td class="text-right whitespace-nowrap">
+              <div class="flex gap-2 justify-end">
+                <span data-testid="action-edit">
+                  <p-button
+                    icon="pi pi-pencil"
+                    severity="secondary"
+                    [text]="true"
+                    [rounded]="true"
+                    [disabled]="isWithdrawn(o)"
+                    (onClick)="onEdit(o.indexableObject.uuid)"
+                    pTooltip="Editar"
+                    tooltipPosition="top" />
+                </span>
+                @if (isWithdrawn(o)) {
+                  <span data-testid="action-restore">
+                    <p-button
+                      icon="pi pi-replay"
+                      severity="primary"
+                      [text]="true"
+                      [rounded]="true"
+                      (onClick)="onRestore(o.indexableObject.uuid)"
+                      pTooltip="Restaurar"
+                      tooltipPosition="top" />
+                  </span>
+                }
+                <span data-testid="action-delete">
+                  <p-button
+                    icon="pi pi-trash"
+                    severity="danger"
+                    [text]="true"
+                    [rounded]="true"
+                    [disabled]="isWithdrawn(o)"
+                    (onClick)="onDelete(o.indexableObject.uuid)"
+                    pTooltip="Eliminar"
+                    tooltipPosition="top" />
+                </span>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
     </p-card>
   }
 </div>

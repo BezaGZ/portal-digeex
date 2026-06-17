@@ -8,7 +8,7 @@ import { CardModule } from 'primeng/card';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
-import { PaginatorModule } from 'primeng/paginator';
+import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
 import { TooltipModule } from 'primeng/tooltip';
 import { Subject } from 'rxjs';
@@ -53,7 +53,7 @@ const SORT_OPTIONS: { label: string; value: string }[] = [
   templateUrl: './my-submissions.html',
   imports: [
     FormsModule,
-    PaginatorModule,
+    TableModule,
     ButtonModule,
     CardModule,
     ConfirmDialogModule,
@@ -142,6 +142,19 @@ export class MySubmissions {
     }
     if (event.page === undefined) return;
     this.load(event.page);
+  }
+
+  /**
+   * Bind del p-table en modo lazy. PrimeNG emite `first` (offset) y `rows`;
+   * los traducimos a page y delegamos en onPageChange. El primer evento al
+   * montar la tabla coincide con la página y size actuales, así que se ignora
+   * para no duplicar la carga inicial del flujo de arranque.
+   */
+  onLazyLoad(event: TableLazyLoadEvent): void {
+    const rows = event.rows ?? this.pageSize();
+    const page = rows > 0 ? Math.floor((event.first ?? 0) / rows) : 0;
+    if (page === this.currentPage() && rows === this.pageSize()) return;
+    this.onPageChange({ page, rows });
   }
 
   /** Recibe cada keystroke del input de búsqueda y lo enruta al bus con debounce. */

@@ -8,7 +8,7 @@ import { CardModule } from 'primeng/card';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
-import { PaginatorModule, PaginatorState } from 'primeng/paginator';
+import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
 import { TooltipModule } from 'primeng/tooltip';
 import { Subject } from 'rxjs';
@@ -71,7 +71,7 @@ type ResourcesTab = 'activos' | 'eliminados';
     ConfirmDialogModule,
     InputNumberModule,
     InputTextModule,
-    PaginatorModule,
+    TableModule,
     RouterLink,
     SelectModule,
     TooltipModule,
@@ -144,9 +144,12 @@ export class ResourcesAdmin {
     this.load(0);
   }
 
-  onPageChange(ev: PaginatorState): void {
-    this.pageSize.set(ev.rows ?? this.pageSize());
-    this.load(ev.page ?? 0);
+  onLazyLoad(event: TableLazyLoadEvent): void {
+    const rows = event.rows ?? this.pageSize();
+    const page = rows > 0 ? Math.floor((event.first ?? 0) / rows) : 0;
+    if (page === this.currentPage() && rows === this.pageSize()) return;
+    this.pageSize.set(rows);
+    this.load(page);
   }
 
   onEdit(uuid: string): void {
