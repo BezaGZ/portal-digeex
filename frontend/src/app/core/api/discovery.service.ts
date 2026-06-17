@@ -3,9 +3,19 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { SearchResponse } from './models/search.model';
-import { SearchParams, SearchResult, Facet } from './models/discovery.model';
+import { SearchParams, SearchResult, Facet, FacetValue } from './models/discovery.model';
 import { Item } from './models/item.model';
 import { Bitstream } from './models/bitstream.model';
+import { paginateAllByNext$ } from './dspace-rest.util';
+
+/** Respuesta del endpoint dedicado de una faceta (`/discover/facets/<name>`). */
+interface FacetValuesResponse {
+  page?: { number?: number; size?: number };
+  _links?: { next?: { href?: string }; self?: { href?: string } };
+  _embedded?: {
+    values?: Array<{ label: string; count: number; authorityKey?: string | null }>;
+  };
+}
 
 /**
  * Servicio que encapsula la Discovery API de DSpace (Apache Solr).
@@ -31,6 +41,45 @@ export class DiscoveryService {
       { params: this.buildSearchParams(params) }
     ).pipe(
       map((response) => this.mapResponse(response))
+    );
+  }
+
+  /**
+   * Todos los valores de una faceta, no solo los `facetLimit` que embebe el
+   * search. El endpoint dedicado pagina por `_links.next` (no expone
+   * `totalPages`), por eso se agota con `paginateAllByNext$`.
+   * @param name - Nombre de la faceta (classification, itemtype, etc.)
+   * @param scope - UUID del contenedor al que se acota la faceta
+   * @param size - Valores por página del request (el loop sigue el next igual)
+   * @returns Observable con todos los valores de la faceta
+   */
+  getFacetValues(name: string, scope: string, size = 100): Observable<FacetValue[]> {
+    return paginateAllByNext$(
+      (page) => this.fetchFacetPage(name, scope, page, size),
+      (response) =>
+        (response._embedded?.values ?? []).map((value) => ({
+          label: value.label,
+          count: value.count,
+          authorityKey: value.authorityKey ?? undefined,
+        })),
+    );
+  }
+
+  /** GET de una página del endpoint dedicado de facetas. */
+  private fetchFacetPage(
+    name: string,
+    scope: string,
+    page: number,
+    size: number,
+  ): Observable<FacetValuesResponse> {
+    const params = new HttpParams()
+      .set('scope', scope)
+      .set('size', size)
+      .set('page', page);
+
+    return this.http.get<FacetValuesResponse>(
+      `${this.apiUrl}/discover/facets/${name}`,
+      { params }
     );
   }
 

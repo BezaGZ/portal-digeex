@@ -15,7 +15,7 @@ import { ENTITY_TYPE } from '../../../core/config/digeex-values.config';
  * álbumes con facetas, la carga de un álbum individual con sus fotos,
  * la obtención de opciones de filtro y el mapeo de metadata Dublin Core + digeex.
  *
- * Ciclo 8 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8).
+ * Ciclo 8 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8) y Ciclos 2, 5, 7 (Sprint 9).
  */
 describe('GalleryService', () => {
   let service: GalleryService;
@@ -95,42 +95,6 @@ describe('GalleryService', () => {
     },
   };
 
-  const mockThumbnailBitstreams = {
-    _embedded: {
-      bitstreams: [
-        {
-          uuid: 'thumb-1',
-          name: 'cover.jpg',
-          _links: { content: { href: '/api/core/bitstreams/thumb-1/content' } },
-        },
-      ],
-    },
-    page: { totalElements: 1 },
-  };
-
-  const mockOriginalBitstreams = {
-    _embedded: {
-      bitstreams: [
-        {
-          uuid: 'photo-1',
-          name: 'foto-01.jpg',
-          _links: { content: { href: '/api/core/bitstreams/photo-1/content' } },
-        },
-        {
-          uuid: 'photo-2',
-          name: 'foto-02.png',
-          _links: { content: { href: '/api/core/bitstreams/photo-2/content' } },
-        },
-        {
-          uuid: 'not-image',
-          name: 'readme.txt',
-          _links: { content: { href: '/api/core/bitstreams/not-image/content' } },
-        },
-      ],
-    },
-    page: { totalElements: 3 },
-  };
-
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
@@ -184,17 +148,30 @@ describe('GalleryService', () => {
     );
     discoveryReq.flush(mockDiscoveryResponse);
 
-    /** 3) Bundles del álbum. */
-    const bundlesReq = httpMock.expectOne('/server/api/core/items/album-1/bundles?page=0&size=20');
-    bundlesReq.flush(mockBundlesResponse);
-
-    /** 4) Thumbnail bitstream. */
-    const thumbReq = httpMock.expectOne('/server/api/core/bundles/bundle-thumbnail/bitstreams?page=0&size=20');
-    thumbReq.flush(mockThumbnailBitstreams);
-
-    /** 5) Conteo de originales (size=1 para solo traer totalElements). */
-    const countReq = httpMock.expectOne('/server/api/core/bundles/bundle-original/bitstreams?page=0&size=1');
-    countReq.flush({ _embedded: { bitstreams: [] }, page: { totalElements: 3 } });
+    /**
+     * 3) Bundles del álbum con bitstreams embebidos. El conteo de fotos sale
+     * de ORIGINAL._embedded.bitstreams.page.totalElements en esta misma
+     * respuesta (embed.size=bitstreams=1 cappa el payload sin afectar el total),
+     * así desaparece la petición separada de conteo.
+     */
+    const bundlesReq = httpMock.expectOne((req) =>
+      req.url === '/server/api/core/items/album-1/bundles' &&
+      req.params.get('embed') === 'bitstreams' &&
+      req.params.get('embed.size') === 'bitstreams=1'
+    );
+    bundlesReq.flush({
+      _embedded: {
+        bundles: [
+          { uuid: 'bundle-thumbnail', name: 'THUMBNAIL', _links: { self: { href: '/api/core/bundles/bundle-thumbnail' } } },
+          {
+            uuid: 'bundle-original',
+            name: 'ORIGINAL',
+            _links: { self: { href: '/api/core/bundles/bundle-original' } },
+            _embedded: { bitstreams: { page: { totalElements: 3 } } },
+          },
+        ],
+      },
+    });
 
     await promise;
   });
@@ -293,42 +270,86 @@ describe('GalleryService', () => {
 
   /** getAlbumById — álbum individual con sus fotos */
 
-  /** Verifica que getAlbumById() cargue un álbum con sus fotos filtradas por extensión. */
-  it('should load an album by id with its photos', async () => {
-    const mockItem = {
-      uuid: 'album-1',
-      name: 'Graduación PEAC 2024',
-      type: 'item',
-      metadata: {
-        'dc.title': [{ value: 'Graduación PEAC 2024' }],
-        'dc.description': [{ value: 'Descripción del álbum' }],
-        'dc.date.issued': [{ value: '2024-11-15' }],
-      },
-    };
+  const mockAlbumItem = {
+    uuid: 'album-1',
+    name: 'Graduación PEAC 2024',
+    type: 'item',
+    metadata: {
+      'dc.title': [{ value: 'Graduación PEAC 2024' }],
+      'dc.description': [{ value: 'Descripción del álbum' }],
+      'dc.date.issued': [{ value: '2024-11-15' }],
+    },
+  };
 
-    const promise = new Promise((resolve, reject) => {
+  /**
+   * Verifica que getAlbumById() filtre las fotos por extensión y no pida el
+   * bundle THUMBNAIL: el visor no muestra portada, así que esa petición sobra.
+   */
+  it('should load an album by id with its photos and without fetching the cover', async () => {
+    let album: { title: string; photos: { id: string }[] } | undefined;
+    const promise = new Promise<void>((resolve, reject) => {
       service.getAlbumById('album-1').subscribe({
-        next: (album) => {
-          expect(album).toBeTruthy();
-          expect(album?.title).toBe('Graduación PEAC 2024');
-          expect(album?.photos.length).toBe(2);
-          expect(album?.photos[0].id).toBe('photo-1');
-          resolve(album);
+        next: (a) => {
+          album = a as typeof album;
+          resolve();
         },
         error: reject,
       });
     });
 
-    httpMock.expectOne('/server/api/core/items/album-1').flush(mockItem);
+    httpMock.expectOne('/server/api/core/items/album-1').flush(mockAlbumItem);
     httpMock.expectOne('/server/api/core/items/album-1/bundles?page=0&size=20').flush(mockBundlesResponse);
-    httpMock
-      .expectOne('/server/api/core/bundles/bundle-thumbnail/bitstreams?page=0&size=20')
-      .flush(mockThumbnailBitstreams);
-    httpMock
-      .expectOne('/server/api/core/bundles/bundle-original/bitstreams?page=0&size=200')
-      .flush(mockOriginalBitstreams);
+    httpMock.expectOne('/server/api/core/bundles/bundle-original/bitstreams?page=0&size=100').flush({
+      _embedded: {
+        bitstreams: [
+          { uuid: 'photo-1', name: 'foto-01.jpg', _links: { content: { href: '' } } },
+          { uuid: 'photo-2', name: 'foto-02.png', _links: { content: { href: '' } } },
+          { uuid: 'not-image', name: 'readme.txt', _links: { content: { href: '' } } },
+        ],
+      },
+      page: { number: 0, size: 100, totalPages: 1, totalElements: 3 },
+    });
+    httpMock.expectNone('/server/api/core/bundles/bundle-thumbnail/bitstreams?page=0&size=20');
 
     await promise;
+    expect(album?.title).toBe('Graduación PEAC 2024');
+    expect(album?.photos.length).toBe(2);
+    expect(album?.photos[0].id).toBe('photo-1');
+  });
+
+  /** Verifica que getAlbumById() agote las páginas del bundle ORIGINAL para traer todas las fotos. */
+  it('should fetch all photos across pages of the ORIGINAL bundle', async () => {
+    let album: { photos: { id: string }[] } | undefined;
+    const promise = new Promise<void>((resolve, reject) => {
+      service.getAlbumById('album-1').subscribe({
+        next: (a) => {
+          album = a as typeof album;
+          resolve();
+        },
+        error: reject,
+      });
+    });
+
+    httpMock.expectOne('/server/api/core/items/album-1').flush(mockAlbumItem);
+    httpMock.expectOne('/server/api/core/items/album-1/bundles?page=0&size=20').flush(mockBundlesResponse);
+    httpMock.expectOne('/server/api/core/bundles/bundle-original/bitstreams?page=0&size=100').flush({
+      _embedded: {
+        bitstreams: [
+          { uuid: 'p1', name: 'a.jpg', _links: { content: { href: '' } } },
+          { uuid: 'p2', name: 'b.jpg', _links: { content: { href: '' } } },
+        ],
+      },
+      page: { number: 0, size: 100, totalPages: 2, totalElements: 3 },
+    });
+    httpMock.expectOne('/server/api/core/bundles/bundle-original/bitstreams?page=1&size=100').flush({
+      _embedded: {
+        bitstreams: [{ uuid: 'p3', name: 'c.jpg', _links: { content: { href: '' } } }],
+      },
+      page: { number: 1, size: 100, totalPages: 2, totalElements: 3 },
+    });
+
+    await promise;
+    expect(album?.photos.map((p) => p.id)).toEqual(['p1', 'p2', 'p3']);
   });
 
   /** Verifica que getAlbumById() devuelva undefined cuando falla el fetch. */
@@ -351,49 +372,16 @@ describe('GalleryService', () => {
 
   /** getFilterOptions — opciones de faceta para la galería */
 
-  /** Verifica que getFilterOptions() obtenga las facetas disponibles mapeadas a FilterOptions. */
-  it('should fetch filter options from discovery facets', async () => {
-    const mockFacetsResponse = {
-      _embedded: {
-        searchResult: {
-          _embedded: { objects: [] },
-          _links: {},
-          page: { totalElements: 0, totalPages: 0 },
-        },
-        facets: [
-          {
-            name: 'classification',
-            _embedded: {
-              values: [
-                { label: 'PEAC', count: 12 },
-                { label: 'PRONEA', count: 5 },
-              ],
-            },
-          },
-          {
-            name: 'itemtype',
-            _embedded: {
-              values: [
-                { label: 'graduacion', count: 8 },
-                { label: 'capacitacion', count: 4 },
-              ],
-            },
-          },
-          {
-            name: 'populationType',
-            _embedded: {
-              values: [{ label: 'jovenes', count: 10 }],
-            },
-          },
-          {
-            name: 'imageFocus',
-            _embedded: {
-              values: [{ label: 'interior', count: 7 }],
-            },
-          },
-        ],
-      },
-    };
+  /**
+   * Verifica que getFilterOptions() pueble cada filtro con el universo completo
+   * de su faceta vía el endpoint dedicado, no con los facets capados del search.
+   */
+  it('should fetch filter options from the dedicated facets endpoint', async () => {
+    const facetPage = (values: { label: string; count: number }[]) => ({
+      page: { number: 0, size: 100 },
+      _links: { self: { href: '' } },
+      _embedded: { values },
+    });
 
     const promise = new Promise((resolve, reject) => {
       service.getFilterOptions().subscribe({
@@ -411,9 +399,21 @@ describe('GalleryService', () => {
     });
 
     httpMock.expectOne('/server/api/core/collections?page=0&size=100&embed=logo').flush(mockCollectionsResponse);
+
     httpMock
-      .expectOne((req) => req.url.includes('/server/api/discover/search/objects'))
-      .flush(mockFacetsResponse);
+      .expectOne((req) =>
+        req.url === '/server/api/discover/facets/classification' && req.params.get('scope') === 'col-galeria'
+      )
+      .flush(facetPage([{ label: 'PEAC', count: 12 }, { label: 'PRONEA', count: 5 }]));
+    httpMock
+      .expectOne((req) => req.url === '/server/api/discover/facets/itemtype')
+      .flush(facetPage([{ label: 'graduacion', count: 8 }, { label: 'capacitacion', count: 4 }]));
+    httpMock
+      .expectOne((req) => req.url === '/server/api/discover/facets/populationType')
+      .flush(facetPage([{ label: 'jovenes', count: 10 }]));
+    httpMock
+      .expectOne((req) => req.url === '/server/api/discover/facets/imageFocus')
+      .flush(facetPage([{ label: 'interior', count: 7 }]));
 
     await promise;
   });

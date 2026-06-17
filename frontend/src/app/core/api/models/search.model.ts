@@ -62,6 +62,13 @@ export interface Bundle {
   handle: string;
   type: string;
   _links: HalLinks;
+  // Presente solo con embed=bitstreams. El conteo del bundle se lee de
+  // page.totalElements (embed.size cappa los objetos sin afectar el total).
+  _embedded?: {
+    bitstreams?: {
+      page?: HalPage;
+    };
+  };
 }
 
 /**

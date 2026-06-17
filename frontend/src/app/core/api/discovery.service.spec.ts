@@ -10,7 +10,7 @@ import { DiscoveryService } from './discovery.service';
  * (`/api/discover/search/objects`). Soporta query de texto
  * y filtros por facetas.
  *
- * Ciclos 1, 37 TDD — Sprints 4, 6. Ajustado en Ciclos 11, 12 y 14 (Sprint 8).
+ * Ciclos 1, 37 TDD — Sprints 4, 6. Ajustado en Ciclos 11, 12 y 14 (Sprint 8) y Ciclo 4 (Sprint 9).
  */
 describe('DiscoveryService', () => {
   let service: DiscoveryService;
@@ -304,5 +304,88 @@ describe('DiscoveryService', () => {
     const req = httpMock.expectOne((r) => r.url === '/server/api/discover/search/objects');
     expect(req.request.params.has('dsoType')).toBe(false);
     req.flush(mockSearchResponse);
+  });
+
+  /** getFacetValues — universo completo de una faceta */
+
+  /**
+   * Verifica que getFacetValues() pegue a /discover/facets/<name> con scope/size/page
+   * y mapee label/count/authorityKey.
+   */
+  it('should fetch facet values from /discover/facets/<name> mapping label, count and authorityKey', async () => {
+    let result: { label: string; count: number; authorityKey?: string }[] = [];
+    const promise = new Promise<void>((resolve, reject) => {
+      service.getFacetValues('classification', 'scope-1', 100).subscribe({
+        next: (values) => {
+          result = values;
+          resolve();
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne((r) =>
+      r.url === '/server/api/discover/facets/classification' &&
+      r.params.get('scope') === 'scope-1' &&
+      r.params.get('size') === '100' &&
+      r.params.get('page') === '0'
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      name: 'classification',
+      page: { number: 0, size: 100 },
+      _links: { self: { href: '' } },
+      _embedded: {
+        values: [
+          { label: 'PEAC', count: 4, authorityKey: null },
+          { label: 'CEMUCAF', count: 4, authorityKey: null },
+        ],
+      },
+    });
+
+    await promise;
+
+    expect(result.map((v) => v.label)).toEqual(['PEAC', 'CEMUCAF']);
+    expect(result[0].count).toBe(4);
+    expect(result[0].authorityKey).toBeUndefined();
+  });
+
+  /**
+   * Verifica que getFacetValues() siga los `_links.next` para juntar todos los
+   * valores cuando la faceta excede el tamaño de página (sin depender de totalPages).
+   */
+  it('should follow next links to gather all facet values across pages', async () => {
+    let result: { label: string; count: number }[] = [];
+    const promise = new Promise<void>((resolve, reject) => {
+      service.getFacetValues('itemtype', 'scope-1', 2).subscribe({
+        next: (values) => {
+          result = values;
+          resolve();
+        },
+        error: reject,
+      });
+    });
+
+    const req0 = httpMock.expectOne((r) =>
+      r.url === '/server/api/discover/facets/itemtype' && r.params.get('page') === '0'
+    );
+    req0.flush({
+      page: { number: 0, size: 2 },
+      _links: { self: { href: '' }, next: { href: '/server/api/discover/facets/itemtype?page=1&size=2' } },
+      _embedded: { values: [{ label: 'graduacion', count: 3 }, { label: 'capacitacion', count: 2 }] },
+    });
+
+    const req1 = httpMock.expectOne((r) =>
+      r.url === '/server/api/discover/facets/itemtype' && r.params.get('page') === '1'
+    );
+    req1.flush({
+      page: { number: 1, size: 2 },
+      _links: { self: { href: '' } },
+      _embedded: { values: [{ label: 'taller', count: 1 }] },
+    });
+
+    await promise;
+
+    expect(result.map((v) => v.label)).toEqual(['graduacion', 'capacitacion', 'taller']);
   });
 });

@@ -107,6 +107,30 @@ export function paginateAll$<R extends PagedHalResponse, T>(
   );
 }
 
+/** Respuesta HAL que pagina por next-link en vez de exponer `totalPages`. */
+interface NextPagedHalResponse {
+  page?: { number?: number };
+  _links?: { next?: { href?: string } };
+}
+
+/**
+ * Como `paginateAll$` pero para endpoints que no exponen `totalPages` y
+ * señalizan el avance con `_links.next` (las facetas de Discovery). Agota las
+ * páginas siguiendo el next-link hasta que deja de venir.
+ */
+export function paginateAllByNext$<R extends NextPagedHalResponse, T>(
+  fetchPage: (page: number) => Observable<R>,
+  extractItems: (response: R) => T[],
+): Observable<T[]> {
+  return fetchPage(0).pipe(
+    expand((response) => {
+      const next = (response.page?.number ?? 0) + 1;
+      return response._links?.next?.href ? fetchPage(next) : EMPTY;
+    }),
+    reduce((acc, response) => [...acc, ...extractItems(response)], [] as T[]),
+  );
+}
+
 /**
  * Construye una URL absoluta al API de DSpace para usar como cuerpo en
  * POST con Content-Type text/uri-list. DSpace espera `http(s)://host/

@@ -102,15 +102,27 @@ export class DSpaceApiService {
 
   /**
    * Obtiene los bundles de un ítem (ORIGINAL, THUMBNAIL, LICENSE, etc.).
+   * `embed` trae sub-recursos en la misma respuesta (ej. 'bitstreams' para el
+   * conteo); `embedSize` (ej. 'bitstreams=1') cappa el embebido sin tocar `totalElements`.
    * @param itemUuid - UUID del ítem
    * @param page - Número de página (default: 0)
    * @param size - Cantidad por página (default: 20)
+   * @param embed - Sub-recurso a embeber (opcional)
+   * @param embedSize - Tope de página del sub-recurso embebido (opcional)
    * @returns Observable con respuesta de bundles
    */
-  getBundles(itemUuid: string, page = 0, size = 20): Observable<BundlesResponse> {
-    const params = new HttpParams()
+  getBundles(itemUuid: string, page = 0, size = 20, embed?: string, embedSize?: string): Observable<BundlesResponse> {
+    let params = new HttpParams()
       .set('page', page)
       .set('size', size);
+
+    if (embed) {
+      params = params.set('embed', embed);
+    }
+
+    if (embedSize) {
+      params = params.set('embed.size', embedSize);
+    }
 
     return this.http.get<BundlesResponse>(
       `${this.apiUrl}/core/items/${itemUuid}/bundles`,

@@ -14,6 +14,8 @@ import { SkeletonModule } from 'primeng/skeleton';
       <img
         [src]="src"
         [alt]="alt"
+        loading="lazy"
+        decoding="async"
         [class.photo-loaded]="loaded()"
         [class.photo-loading]="!loaded()"
         (load)="loaded.set(true)"
