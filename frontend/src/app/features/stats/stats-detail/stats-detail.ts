@@ -145,8 +145,7 @@ export class StatsDetail implements OnInit {
       return throwError(() => new UnsupportedDatasetError());
     }
     this.renderer = this.injector.get(RendererClass);
-
-    return this.bundleApi.listForItem(item.uuid).pipe(
+    return this.bundleApi.listForItem(item.uuid, 'bitstreams').pipe(
       switchMap((response) => {
         const original = (response._embedded?.bundles ?? []).find(
           (b) => b.name === 'ORIGINAL',
@@ -154,10 +153,7 @@ export class StatsDetail implements OnInit {
         if (!original) {
           return throwError(() => new Error('ORIGINAL bundle no encontrado'));
         }
-        return this.bundleApi.listBitstreams(original.uuid, 0, 1);
-      }),
-      switchMap((page) => {
-        const bitstream = page.items[0];
+        const bitstream = original._embedded?.bitstreams?._embedded?.bitstreams?.[0];
         if (!bitstream) {
           return throwError(() => new Error('El bundle ORIGINAL no tiene bitstreams'));
         }

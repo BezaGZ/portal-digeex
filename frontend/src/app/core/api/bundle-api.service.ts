@@ -20,10 +20,19 @@ import { DSPACE_API_BASE, BUNDLES_PATH, BITSTREAMS_PATH, ITEMS_PATH } from './ds
 export class BundleApiService {
   private readonly http = inject(HttpClient);
 
-  /** Lista los bundles del item (ORIGINAL, THUMBNAIL, LICENSE, etc.). */
-  listForItem(itemUuid: string): Observable<BundlesResponse> {
+  /**
+   * Lista los bundles del item (ORIGINAL, THUMBNAIL, LICENSE, etc.). Con
+   * `embed=bitstreams` el backend trae los bitstreams de cada bundle en la
+   * misma respuesta, evitando una petición aparte por bundle.
+   */
+  listForItem(itemUuid: string, embed?: string): Observable<BundlesResponse> {
+    let params = new HttpParams();
+    if (embed) {
+      params = params.set('embed', embed);
+    }
     return this.http.get<BundlesResponse>(
       `${DSPACE_API_BASE}${ITEMS_PATH}/${itemUuid}/bundles`,
+      { params },
     );
   }
 

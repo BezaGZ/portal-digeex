@@ -30,7 +30,7 @@ import { Item } from '../../../core/api/models/item.model';
  * filtros. El breadcrumb y el `goBack` apuntan al listado de la colección
  * padre cuando el UUID está presente.
  *
- * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclos 16, 23, 26.
+ * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclos 16, 23, 26 y Ciclo 16 (Sprint 9).
  */
 
 const DASHBOARD: StatsDashboard = {
@@ -111,6 +111,31 @@ const PARSED_EXCEL: ParsedExcel = {
   sheets: { Hoja1: { headers: ['Col'], rows: [{ Col: 'A' }] } },
 };
 
+/**
+ * Respuesta de `listForItem` con el bundle ORIGINAL y su Excel embebido
+ * (`embed=bitstreams`), tal como la consume el detalle: el bitstream sale de
+ * la misma respuesta, sin una petición `listBitstreams` aparte.
+ */
+function bundleWithExcel(bitstreamUuid: string, name?: string) {
+  const bitstream = name ? { uuid: bitstreamUuid, name } : { uuid: bitstreamUuid };
+  return of({
+    _embedded: {
+      bundles: [
+        {
+          uuid: 'bundle-1',
+          name: 'ORIGINAL',
+          _embedded: {
+            bitstreams: {
+              _embedded: { bitstreams: [bitstream] },
+              page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+            },
+          },
+        },
+      ],
+    },
+  });
+}
+
 describe('StatsDetail', () => {
   let getItemFn: ReturnType<typeof vi.fn>;
   let listForItemFn: ReturnType<typeof vi.fn>;
@@ -152,12 +177,7 @@ describe('StatsDetail', () => {
 
   function mockHappyPath(): void {
     getItemFn.mockReturnValue(of(buildItem('item-1', 'docentes')));
-    listForItemFn.mockReturnValue(
-      of({ _embedded: { bundles: [{ uuid: 'bundle-1', name: 'ORIGINAL' }] } }),
-    );
-    listBitstreamsFn.mockReturnValue(
-      of({ items: [{ uuid: 'bs-1', name: 'datos.xlsx' }], totalElements: 1, totalPages: 1, page: 0, size: 1 }),
-    );
+    listForItemFn.mockReturnValue(bundleWithExcel('bs-1', 'datos.xlsx'));
     getParsedExcelFn.mockReturnValue(of(PARSED_EXCEL));
   }
 
@@ -169,8 +189,8 @@ describe('StatsDetail', () => {
     const c = fixture.componentInstance;
 
     expect(getItemFn).toHaveBeenCalledWith('item-1');
-    expect(listForItemFn).toHaveBeenCalledWith('item-1');
-    expect(listBitstreamsFn).toHaveBeenCalledWith('bundle-1', 0, 1);
+    expect(listForItemFn).toHaveBeenCalledWith('item-1', 'bitstreams');
+    expect(listBitstreamsFn).not.toHaveBeenCalled();
     expect(getParsedExcelFn).toHaveBeenCalledWith('item-1', 'bs-1');
     expect(c.dashboard()).toBe(DASHBOARD);
     expect(c.filters().length).toBe(1);
@@ -206,12 +226,7 @@ describe('StatsDetail', () => {
    */
   it('should publish an empty dashboard without errorState when parse returns no sections', () => {
     getItemFn.mockReturnValue(of(buildItem('item-1', 'empty-dataset')));
-    listForItemFn.mockReturnValue(
-      of({ _embedded: { bundles: [{ uuid: 'bundle-1', name: 'ORIGINAL' }] } }),
-    );
-    listBitstreamsFn.mockReturnValue(
-      of({ items: [{ uuid: 'bs-1' }], totalElements: 1, totalPages: 1, page: 0, size: 1 }),
-    );
+    listForItemFn.mockReturnValue(bundleWithExcel('bs-1'));
     getParsedExcelFn.mockReturnValue(of(PARSED_EXCEL));
 
     const fixture = TestBed.createComponent(StatsDetail);
@@ -263,12 +278,7 @@ describe('StatsDetail', () => {
   /** Verifica que setTrail publique [{label:'Estadística', routerLink}, {label: dc.title}] tras resolver getItem. */
   it('should publish the breadcrumb trail with the item dc.title after getItem resolves', () => {
     getItemFn.mockReturnValue(of(buildItem('item-1', 'docentes', 'Estudiantes 2024')));
-    listForItemFn.mockReturnValue(
-      of({ _embedded: { bundles: [{ uuid: 'bundle-1', name: 'ORIGINAL' }] } }),
-    );
-    listBitstreamsFn.mockReturnValue(
-      of({ items: [{ uuid: 'bs-1' }], totalElements: 1, totalPages: 1, page: 0, size: 1 }),
-    );
+    listForItemFn.mockReturnValue(bundleWithExcel('bs-1'));
     getParsedExcelFn.mockReturnValue(of(PARSED_EXCEL));
 
     const fixture = TestBed.createComponent(StatsDetail);
@@ -283,12 +293,7 @@ describe('StatsDetail', () => {
   /** Verifica que el trail caiga al fallback 'Detalle' cuando el item no expone dc.title. */
   it('should fall back to "Detalle" in the trail when the item has no dc.title', () => {
     getItemFn.mockReturnValue(of(buildItem('item-1', 'docentes')));
-    listForItemFn.mockReturnValue(
-      of({ _embedded: { bundles: [{ uuid: 'bundle-1', name: 'ORIGINAL' }] } }),
-    );
-    listBitstreamsFn.mockReturnValue(
-      of({ items: [{ uuid: 'bs-1' }], totalElements: 1, totalPages: 1, page: 0, size: 1 }),
-    );
+    listForItemFn.mockReturnValue(bundleWithExcel('bs-1'));
     getParsedExcelFn.mockReturnValue(of(PARSED_EXCEL));
 
     const fixture = TestBed.createComponent(StatsDetail);
@@ -309,12 +314,7 @@ describe('StatsDetail', () => {
     expect(c.errorState()).toBe('network');
 
     getItemFn.mockReturnValue(of(buildItem('item-1', 'docentes')));
-    listForItemFn.mockReturnValue(
-      of({ _embedded: { bundles: [{ uuid: 'bundle-1', name: 'ORIGINAL' }] } }),
-    );
-    listBitstreamsFn.mockReturnValue(
-      of({ items: [{ uuid: 'bs-1' }], totalElements: 1, totalPages: 1, page: 0, size: 1 }),
-    );
+    listForItemFn.mockReturnValue(bundleWithExcel('bs-1'));
     getParsedExcelFn.mockReturnValue(of(PARSED_EXCEL));
 
     c.retry();
