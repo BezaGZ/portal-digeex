@@ -9,6 +9,7 @@ import { ProgramViewComponent } from './program-view.component';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
+import { BitstreamDownloadService } from '../../../core/api/bitstream-download.service';
 
 /**
  * Tests de ProgramViewComponent.
@@ -19,7 +20,7 @@ import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
  * y el bundle ORIGINAL solo se consulta cuando el usuario da click en
  * "Descargar" desde el card.
  *
- * Ciclo 20 TDD — Sprint 6.
+ * Ciclo 20 TDD — Sprint 6. Ajustado en Ciclo 15 (Sprint 9).
  */
 describe('ProgramViewComponent', () => {
   let dspaceApi: DSpaceApiService;
@@ -171,5 +172,44 @@ describe('ProgramViewComponent', () => {
     const items = fixture.componentInstance.items();
     expect(items[0].bitstreams).toEqual([]);
     expect(items[1].bitstreams).toEqual([]);
+  });
+
+  /**
+   * Verifica que la descarga del card agote todas las páginas del bundle
+   * ORIGINAL: un documento con más de una página de archivos (totalElements
+   * mayor que el tamaño de página) debe entregar todos sus archivos al
+   * downloader, no solo los primeros 20.
+   */
+  it('should exhaust every page of the ORIGINAL bundle on download', async () => {
+    const downloader = TestBed.inject(BitstreamDownloadService);
+    const downloadAuto = vi
+      .spyOn(downloader, 'downloadAuto')
+      .mockResolvedValue(undefined);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(
+      of({
+        _embedded: { bundles: [{ uuid: 'orig-1', name: 'ORIGINAL', _links: {} }] },
+        _links: {},
+        page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any),
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const page0 = { _embedded: { bitstreams: Array.from({ length: 20 }, (_, i) => ({ uuid: `bs-${i}`, name: `a-${i}.pdf`, sizeBytes: 1 })) }, _links: {}, page: { size: 20, totalElements: 25, totalPages: 2, number: 0 } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const page1 = { _embedded: { bitstreams: Array.from({ length: 5 }, (_, i) => ({ uuid: `bs-2${i}`, name: `b-${i}.pdf`, sizeBytes: 1 })) }, _links: {}, page: { size: 20, totalElements: 25, totalPages: 2, number: 1 } };
+    vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (_uuid: string, page = 0) => of((page === 0 ? page0 : page1) as any),
+    );
+
+    const fixture = TestBed.createComponent(ProgramViewComponent);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fixture.componentInstance.onDownloadItem({ id: 'item-1', name: 'Documento 1', bitstreams: [] } as any);
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(downloadAuto).toHaveBeenCalledTimes(1);
+    expect(downloadAuto.mock.calls[0][0].length).toBe(25);
   });
 });
