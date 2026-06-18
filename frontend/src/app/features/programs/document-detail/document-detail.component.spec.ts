@@ -17,7 +17,7 @@ import { VocabularyDisplayService } from '../../../core/api/vocabulary-display.s
  * DSpace por UUID, muestra thumbnail, bitstreams descargables,
  * y soporta documentos PDF y videos (MovingImage).
  *
- * Ciclo 4 TDD — Sprint 4. Ajustado en Ciclo 36 (Sprint 6) y Ciclo 12 (Sprint 9).
+ * Ciclo 4 TDD — Sprint 4. Ajustado en Ciclo 36 (Sprint 6), Ciclo 12, Ciclo 13 y Ciclo 14 (Sprint 9).
  */
 
 describe('DocumentDetailComponent', () => {
@@ -29,6 +29,8 @@ describe('DocumentDetailComponent', () => {
 
   /** Fixtures */
 
+  // La portada curada viaja como item.thumbnail (embed=thumbnail), igual que
+  // en los listados de Discovery; el detalle ya no la lee del bundle THUMBNAIL.
   const MOCK_ITEM_DOC = {
     uuid: 'item-doc-001',
     name: 'Guía Curricular PEAC',
@@ -44,6 +46,7 @@ describe('DocumentDetailComponent', () => {
       'dc.language.iso': [{ value: 'es' }],
       'dc.publisher': [{ value: 'MINEDUC' }],
     },
+    thumbnail: { uuid: 'thumb-bs-001', name: 'guia-peac.jpg', sizeBytes: 5000, _links: {} },
     inArchive: true,
     discoverable: true,
     withdrawn: false,
@@ -71,31 +74,87 @@ describe('DocumentDetailComponent', () => {
     type: 'item',
   };
 
+  // Bundles con los bitstreams del ORIGINAL embebidos (embed=bitstreams): el
+  // detalle los lee de _embedded.bitstreams._embedded.bitstreams sin una
+  // petición por bundle. El bundle THUMBNAIL ya no se consulta.
   const MOCK_BUNDLES = {
     _embedded: {
       bundles: [
         { uuid: 'thumb-bundle-001', name: 'THUMBNAIL', handle: '', type: 'bundle', _links: {} },
-        { uuid: 'orig-bundle-001', name: 'ORIGINAL', handle: '', type: 'bundle', _links: {} },
+        {
+          uuid: 'orig-bundle-001',
+          name: 'ORIGINAL',
+          handle: '',
+          type: 'bundle',
+          _links: {},
+          _embedded: {
+            bitstreams: {
+              _embedded: {
+                bitstreams: [
+                  { uuid: 'orig-bs-001', name: 'guia-peac.pdf', sizeBytes: 245000, _links: {} },
+                ],
+              },
+              page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+            },
+          },
+        },
       ],
     },
     _links: {},
     page: { size: 20, totalElements: 2, totalPages: 1, number: 0 },
   };
 
-  const MOCK_THUMBNAIL_BITSTREAMS = {
+  // Variante con dos archivos en el ORIGINAL (PDF + Word) para los casos de
+  // listado múltiple y descarga en ZIP.
+  const MOCK_BUNDLES_MULTI = {
     _embedded: {
-      bitstreams: [
-        { uuid: 'thumb-bs-001', name: 'guia-peac.jpg.jpg', sizeBytes: 5000, _links: {} },
+      bundles: [
+        { uuid: 'thumb-bundle-001', name: 'THUMBNAIL', handle: '', type: 'bundle', _links: {} },
+        {
+          uuid: 'orig-bundle-001',
+          name: 'ORIGINAL',
+          handle: '',
+          type: 'bundle',
+          _links: {},
+          _embedded: {
+            bitstreams: {
+              _embedded: {
+                bitstreams: [
+                  { uuid: 'orig-bs-001', name: 'guia-peac.pdf', sizeBytes: 245000, _links: {} },
+                  { uuid: 'orig-bs-002', name: 'anexo.docx', sizeBytes: 50000, _links: {} },
+                ],
+              },
+              page: { size: 20, totalElements: 2, totalPages: 1, number: 0 },
+            },
+          },
+        },
       ],
     },
     _links: {},
-    page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+    page: { size: 20, totalElements: 2, totalPages: 1, number: 0 },
   };
 
-  const MOCK_ORIGINAL_BITSTREAMS = {
+  // Sin portada curada: el ORIGINAL trae una imagen, para verificar el fallback.
+  const MOCK_BUNDLES_IMAGE = {
     _embedded: {
-      bitstreams: [
-        { uuid: 'orig-bs-001', name: 'guia-peac.pdf', sizeBytes: 245000, _links: {} },
+      bundles: [
+        {
+          uuid: 'orig-bundle-001',
+          name: 'ORIGINAL',
+          handle: '',
+          type: 'bundle',
+          _links: {},
+          _embedded: {
+            bitstreams: {
+              _embedded: {
+                bitstreams: [
+                  { uuid: 'orig-img-001', name: 'portada.jpg', sizeBytes: 8000, _links: {} },
+                ],
+              },
+              page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+            },
+          },
+        },
       ],
     },
     _links: {},
@@ -127,11 +186,11 @@ describe('DocumentDetailComponent', () => {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     vi.spyOn(dspaceApi, 'getItem').mockReturnValue(of(MOCK_ITEM_DOC as any));
     vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(MOCK_BUNDLES as any));
-    vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
-      if (bundleUuid === 'thumb-bundle-001') return of(MOCK_THUMBNAIL_BITSTREAMS as any);
-      if (bundleUuid === 'orig-bundle-001') return of(MOCK_ORIGINAL_BITSTREAMS as any);
-      return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any);
-    });
+    // El detalle ya no pide bitstreams por bundle; se espía vacío para poder
+    // afirmar que no se invoca y para que un descuido no pegue a la red.
+    vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockReturnValue(
+      of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any),
+    );
     vi.spyOn(collectionApi, 'getOne').mockReturnValue(of({ name: 'fallback', metadata: { 'dc.title.alternative': [{ value: 'PEAC' }], 'dc.subject': [{ value: 'tag-irrelevante' }] } } as any));
     vi.spyOn(breadcrumbService, 'setTrail');
     // Mock del servicio de vocabularios: traduce los pares conocidos y cae al
@@ -154,13 +213,13 @@ describe('DocumentDetailComponent', () => {
   /** Carga de item y metadata */
 
   describe('item loading', () => {
-    /** Verifica que extraiga docId de la ruta y llame a getItem. */
-    it('should extract docId from route params and call getItem', () => {
+    /** Verifica que extraiga docId de la ruta y pida el item con embed=thumbnail. */
+    it('should extract docId from route params and request the item with embed=thumbnail', () => {
       component.ngOnInit();
 
       expect(component.documentId).toBe('item-doc-001');
       expect(component.programId).toBe('program-001');
-      expect(dspaceApi.getItem).toHaveBeenCalledWith('item-doc-001');
+      expect(dspaceApi.getItem).toHaveBeenCalledWith('item-doc-001', 'thumbnail');
     });
 
     /** Verifica que los campos de metadata se mapeen correctamente al UI. */
@@ -192,17 +251,44 @@ describe('DocumentDetailComponent', () => {
     });
   });
 
-  /** Bundles y bitstreams */
+  /** Portada, bundles y bitstreams */
 
-  describe('bundles and bitstreams', () => {
-    /** Verifica la carga de bundles THUMBNAIL y ORIGINAL mediante forkJoin. */
-    it('should load THUMBNAIL and ORIGINAL bundles via forkJoin', () => {
+  describe('cover, bundles and bitstreams', () => {
+    /** Verifica las proyecciones embed: thumbnail en el item, bitstreams en los bundles. */
+    it('should request the item with embed=thumbnail and the bundles with embed=bitstreams', () => {
       component.ngOnInit();
 
-      expect(dspaceApi.getBundles).toHaveBeenCalledWith('item-doc-001');
-      expect(dspaceApi.getBitstreamsFromBundle).toHaveBeenCalledWith('thumb-bundle-001');
-      expect(dspaceApi.getBitstreamsFromBundle).toHaveBeenCalledWith('orig-bundle-001');
+      expect(dspaceApi.getItem).toHaveBeenCalledWith('item-doc-001', 'thumbnail');
+      expect(dspaceApi.getBundles).toHaveBeenCalledWith('item-doc-001', 0, 20, 'bitstreams');
+    });
+
+    /**
+     * Verifica que la portada salga de item.thumbnail (la portada curada) y que
+     * no haya petición de bitstreams por bundle: el ahorro del ciclo.
+     */
+    it('should set the cover from item.thumbnail without requesting bitstreams per bundle', () => {
+      component.ngOnInit();
+
       expect(component.documentCoverImage()).toBe('/server/api/core/bitstreams/thumb-bs-001/content');
+      expect(dspaceApi.getBitstreamsFromBundle).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Verifica el fallback: sin portada curada (item sin thumbnail), la portada
+     * cae a la primera imagen del ORIGINAL.
+     */
+    it('should fall back to an ORIGINAL image when the item has no thumbnail', () => {
+      const itemNoCover = { ...MOCK_ITEM_DOC };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (itemNoCover as any).thumbnail;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(dspaceApi, 'getItem').mockReturnValue(of(itemNoCover as any));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(MOCK_BUNDLES_IMAGE as any));
+
+      component.ngOnInit();
+
+      expect(component.documentCoverImage()).toBe('/server/api/core/bitstreams/orig-img-001/content');
     });
 
     /**
@@ -219,7 +305,7 @@ describe('DocumentDetailComponent', () => {
       );
     });
 
-    /** Verifica que se construyan URLs de descarga y se mapeen a BitstreamView. */
+    /** Verifica que se construyan URLs de descarga y se mapeen a BitstreamView desde el ORIGINAL embebido. */
     it('should build download URL and map bitstreams to BitstreamView', () => {
       component.ngOnInit();
 
@@ -248,25 +334,10 @@ describe('DocumentDetailComponent', () => {
 
   /** Múltiples bitstreams visibles en el detalle con su label de formato. */
   describe('multi-bitstream listing', () => {
-    // Mock con PDF + Word para cubrir caso real de varios archivos por item.
-    const MOCK_MULTI_ORIGINAL = {
-      _embedded: {
-        bitstreams: [
-          { uuid: 'orig-bs-001', name: 'guia-peac.pdf', sizeBytes: 245000, _links: {} },
-          { uuid: 'orig-bs-002', name: 'anexo.docx', sizeBytes: 50000, _links: {} },
-        ],
-      },
-      _links: {},
-      page: { size: 20, totalElements: 2, totalPages: 1, number: 0 },
-    };
-
     /** Verifica que todos los bitstreams del bundle ORIGINAL queden expuestos con formatLabel poblado. */
     it('should expose every bitstream from the ORIGINAL bundle with its formatLabel populated', () => {
-      vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
-        if (bundleUuid === 'thumb-bundle-001') return of(MOCK_THUMBNAIL_BITSTREAMS as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-        if (bundleUuid === 'orig-bundle-001') return of(MOCK_MULTI_ORIGINAL as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-        return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(MOCK_BUNDLES_MULTI as any));
 
       component.ngOnInit();
 
@@ -283,11 +354,8 @@ describe('DocumentDetailComponent', () => {
 
     /** Verifica que el template renderice una fila por bitstream con su nombre y formatLabel visibles. */
     it('should render every bitstream in the template with name and formatLabel, regardless of mime', () => {
-      vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
-        if (bundleUuid === 'thumb-bundle-001') return of(MOCK_THUMBNAIL_BITSTREAMS as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-        if (bundleUuid === 'orig-bundle-001') return of(MOCK_MULTI_ORIGINAL as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-        return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(MOCK_BUNDLES_MULTI as any));
 
       const fixture = TestBed.createComponent(DocumentDetailComponent);
       fixture.componentInstance.ngOnInit();
@@ -307,7 +375,7 @@ describe('DocumentDetailComponent', () => {
 
     /** Verifica que el botón "Descargar todo" se oculte cuando hay un único bitstream. */
     it('should hide the "Descargar todo" button when there is only one bitstream', () => {
-      // El default mock (MOCK_ORIGINAL_BITSTREAMS) tiene exactamente un bitstream.
+      // El default mock (MOCK_BUNDLES) tiene exactamente un bitstream en el ORIGINAL.
       const fixture = TestBed.createComponent(DocumentDetailComponent);
       fixture.componentInstance.ngOnInit();
       fixture.detectChanges();
@@ -320,11 +388,8 @@ describe('DocumentDetailComponent', () => {
 
     /** Verifica que downloadAllAsZip baje todos los bitstreams, los empaque en ZIP y dispare una sola descarga. */
     it('should fetch every bitstream, bundle them into a ZIP and trigger a single download', async () => {
-      vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
-        if (bundleUuid === 'thumb-bundle-001') return of(MOCK_THUMBNAIL_BITSTREAMS as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-        if (bundleUuid === 'orig-bundle-001') return of(MOCK_MULTI_ORIGINAL as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-        return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(MOCK_BUNDLES_MULTI as any));
 
       // Mock fetch para no pegar a la red; cada bitstream devuelve un blob fake.
       const fetchMock = vi.fn().mockImplementation(() =>
@@ -363,11 +428,8 @@ describe('DocumentDetailComponent', () => {
 
     /** Verifica que el botón "Descargar todo" aparezca cuando hay dos o más bitstreams. */
     it('should show the "Descargar todo" button when there are two or more bitstreams', () => {
-      vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
-        if (bundleUuid === 'thumb-bundle-001') return of(MOCK_THUMBNAIL_BITSTREAMS as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-        if (bundleUuid === 'orig-bundle-001') return of(MOCK_MULTI_ORIGINAL as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-        return of({ _embedded: { bitstreams: [] }, _links: {}, page: { size: 0, totalElements: 0, totalPages: 0, number: 0 } } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(MOCK_BUNDLES_MULTI as any));
 
       const fixture = TestBed.createComponent(DocumentDetailComponent);
       fixture.componentInstance.ngOnInit();
@@ -377,6 +439,58 @@ describe('DocumentDetailComponent', () => {
         '[data-testid="download-all-zip"]',
       );
       expect(zipBtn).not.toBeNull();
+    });
+  });
+
+  /** Documentos con más archivos de los que entran en una página embebida. */
+  describe('large file listing', () => {
+    /**
+     * Verifica que con más de una página de archivos (totalElements > embebido)
+     * el detalle agote el bundle ORIGINAL con paginateAll$ y los muestre todos,
+     * no solo los primeros 20 que trae el embed.
+     */
+    it('should load every file when the ORIGINAL bundle spans more than one page', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const firstPage = Array.from({ length: 20 }, (_, i) => ({ uuid: `orig-${i}`, name: `archivo-${i}.pdf`, sizeBytes: 1000, _links: {} })) as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const secondPage = Array.from({ length: 5 }, (_, i) => ({ uuid: `orig-2${i}`, name: `extra-${i}.pdf`, sizeBytes: 1000, _links: {} })) as any;
+
+      // El embed trae la primera página (20) y el total real (25).
+      const bundlesMany = {
+        _embedded: {
+          bundles: [
+            {
+              uuid: 'orig-bundle-001',
+              name: 'ORIGINAL',
+              handle: '',
+              type: 'bundle',
+              _links: {},
+              _embedded: {
+                bitstreams: {
+                  _embedded: { bitstreams: firstPage },
+                  page: { size: 20, totalElements: 25, totalPages: 2, number: 0 },
+                },
+              },
+            },
+          ],
+        },
+        _links: {},
+        page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(bundlesMany as any));
+
+      // paginateAll$ agota el bundle: página 0 (20) + página 1 (5) = 25.
+      const page0 = { _embedded: { bitstreams: firstPage }, _links: {}, page: { size: 20, totalElements: 25, totalPages: 2, number: 0 } };
+      const page1 = { _embedded: { bitstreams: secondPage }, _links: {}, page: { size: 20, totalElements: 25, totalPages: 2, number: 1 } };
+      vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (_uuid: string, page = 0) => of((page === 0 ? page0 : page1) as any),
+      );
+
+      component.ngOnInit();
+
+      expect(component.documentBitstreams().length).toBe(25);
     });
   });
 

@@ -78,13 +78,26 @@ export class DSpaceApiService {
   }
 
   /**
-   * Obtiene un ítem por su UUID.
+   * Obtiene un ítem por su UUID. Con `embed=thumbnail` el backend trae la
+   * portada designada del item embebida; se sube a `item.thumbnail` para que
+   * el consumidor no navegue el HAL, igual que hace Discovery en sus listados.
    * @param uuid - UUID del ítem
+   * @param embed - Sub-recursos a embeber (opcional, ej. 'thumbnail')
    * @returns Observable con los datos del ítem incluyendo toda su metadata
    */
-  getItem(uuid: string): Observable<Item> {
-    return this.http.get<Item>(
-      `${this.apiUrl}/core/items/${uuid}`
+  getItem(uuid: string, embed?: string): Observable<Item> {
+    let params = new HttpParams();
+    if (embed) {
+      params = params.set('embed', embed);
+    }
+    return this.http.get<Item & { _embedded?: { thumbnail?: Bitstream } }>(
+      `${this.apiUrl}/core/items/${uuid}`,
+      { params }
+    ).pipe(
+      map((item) => {
+        const thumbnail = item._embedded?.thumbnail;
+        return thumbnail ? { ...item, thumbnail } : item;
+      })
     );
   }
 

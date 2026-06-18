@@ -1,5 +1,6 @@
 import { Item } from './item.model';
 import { HalLinks, HalPage } from './hal.model';
+import { Bitstream } from './bitstream.model';
 
 /**
  * Objeto de búsqueda de DSpace que envuelve un objeto indexable.
@@ -63,10 +64,14 @@ export interface Bundle {
   type: string;
   _links: HalLinks;
   // Presente solo con embed=bitstreams. El conteo del bundle se lee de
-  // page.totalElements (embed.size cappa los objetos sin afectar el total).
+  // page.totalElements; el array embebido (`_embedded.bitstreams`) trae los
+  // bitstreams cuando no se cappa con embed.size.
   _embedded?: {
     bitstreams?: {
       page?: HalPage;
+      _embedded?: {
+        bitstreams?: Bitstream[];
+      };
     };
   };
 }

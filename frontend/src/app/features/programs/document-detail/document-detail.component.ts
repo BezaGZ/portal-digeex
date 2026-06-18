@@ -18,6 +18,7 @@ import { VocabularyDisplayService } from '../../../core/api/vocabulary-display.s
 import { BitstreamDownloadService } from '../../../core/api/bitstream-download.service';
 import { inferBitstreamFormat } from '../../../core/api/bitstream-format.util';
 import { parseIsoDateLocal } from '../../../core/i18n/iso-date.util';
+import { paginateAll$ } from '../../../core/api/dspace-rest.util';
 import { BitstreamView, MetadataFieldView, Item, MetadataMap, Bitstream } from '../../../core/api/models';
 import { Observable, forkJoin, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
@@ -74,7 +75,7 @@ export class DocumentDetailComponent implements OnInit {
   private loadDocument(itemUuid: string) {
     this.isLoading.set(true);
 
-    this.dspaceApi.getItem(itemUuid).pipe(
+    this.dspaceApi.getItem(itemUuid, 'thumbnail').pipe(
       switchMap((item: Item) => {
         this.documentTitle.set(item.metadata?.['dc.title']?.[0]?.value || 'Sin título');
         this.documentDescription.set(item.metadata?.['dc.description.abstract']?.[0]?.value || '');
@@ -87,26 +88,27 @@ export class DocumentDetailComponent implements OnInit {
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe();
 
-        const bundlesAndBitstreams$ = this.dspaceApi.getBundles(itemUuid).pipe(
+        const originalBitstreams$ = this.dspaceApi.getBundles(itemUuid, 0, 20, 'bitstreams').pipe(
           switchMap((bundlesResponse) => {
             const bundles = bundlesResponse._embedded?.['bundles'] || [];
-
-            const thumbnailBundle = bundles.find((b) => b.name === 'THUMBNAIL');
-            const originalBundle = bundles.find((b) => b.name === 'ORIGINAL');
-
-            const thumbnail$ = thumbnailBundle
-              ? this.dspaceApi.getBitstreamsFromBundle(thumbnailBundle.uuid)
-              : of(null);
-            const original$ = originalBundle
-              ? this.dspaceApi.getBitstreamsFromBundle(originalBundle.uuid)
-              : of(null);
-
-            return forkJoin({ thumbnail: thumbnail$, original: original$ });
+            const original = bundles.find((b) => b.name === 'ORIGINAL');
+            if (!original) {
+              return of([] as Bitstream[]);
+            }
+            const embedded = original._embedded?.bitstreams?._embedded?.bitstreams ?? [];
+            const total = original._embedded?.bitstreams?.page?.totalElements ?? embedded.length;
+            if (total <= embedded.length) {
+              return of(embedded);
+            }
+            return paginateAll$(
+              (page) => this.dspaceApi.getBitstreamsFromBundle(original.uuid, page, 100),
+              (res) => res._embedded?.['bitstreams'] ?? [],
+            );
           })
         );
 
         return forkJoin({
-          bundles: bundlesAndBitstreams$,
+          originalBitstreams: originalBitstreams$,
           vocabLabels: this.resolveVocabLabels$(item.metadata),
         }).pipe(map((res) => ({ item, ...res })));
       }),
@@ -114,29 +116,25 @@ export class DocumentDetailComponent implements OnInit {
     ).subscribe({
       next: (response) => {
         this.buildMetadataFields(response.item.metadata, null, response.vocabLabels);
-        if (response.bundles.original) {
-          const originalBitstreams = response.bundles.original._embedded?.['bitstreams'] || [];
-          this.documentBitstreams.set(originalBitstreams
-            .filter((b: Bitstream) => b.name !== '_video_link.txt')
-            .map((bitstream: Bitstream) => {
-              const fmt = inferBitstreamFormat(bitstream.name || '');
-              return {
-                name: bitstream.name || '',
-                url: `/server/api/core/bitstreams/${bitstream.uuid}/content`,
-                size: bitstream.sizeBytes || 0,
-                format: fmt.mime,
-                formatLabel: fmt.label,
-                uuid: bitstream.uuid,
-              } as BitstreamView;
-            }));
-        }
 
-        if (response.bundles.thumbnail) {
-          const thumbnailBitstreams = response.bundles.thumbnail._embedded?.['bitstreams'] || [];
-          if (thumbnailBitstreams.length > 0) {
-            const thumbnail = thumbnailBitstreams[0];
-            this.documentCoverImage.set(`/server/api/core/bitstreams/${thumbnail.uuid}/content`);
-          }
+        this.documentBitstreams.set(response.originalBitstreams
+          .filter((b: Bitstream) => b.name !== '_video_link.txt')
+          .map((bitstream: Bitstream) => {
+            const fmt = inferBitstreamFormat(bitstream.name || '');
+            return {
+              name: bitstream.name || '',
+              url: `/server/api/core/bitstreams/${bitstream.uuid}/content`,
+              size: bitstream.sizeBytes || 0,
+              format: fmt.mime,
+              formatLabel: fmt.label,
+              uuid: bitstream.uuid,
+            } as BitstreamView;
+          }));
+
+        // Portada: el thumbnail designado del item (la portada manual). Si el
+        // item no tiene portada, cae a una imagen del ORIGINAL.
+        if (response.item.thumbnail?.uuid) {
+          this.documentCoverImage.set(`/server/api/core/bitstreams/${response.item.thumbnail.uuid}/content`);
         } else {
           const imageBitstream = this.documentBitstreams().find((b) =>
             b.format.startsWith('image/'),
