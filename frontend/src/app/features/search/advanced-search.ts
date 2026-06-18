@@ -20,6 +20,7 @@ import { SearchFiltersComponent } from './components/search-filters/search-filte
 import { SearchFilters, ScopeOption } from './models/search-filters.model';
 import { ENTITY_TYPE } from '../../core/config/digeex-values.config';
 import { SearchStateService } from './services/search-state.service';
+import { paginateAll$ } from '../../core/api/dspace-rest.util';
 
 @Component({
   selector: 'app-advanced-search',
@@ -147,9 +148,13 @@ export class AdvancedSearch implements OnInit {
           const bundles = bundlesResponse._embedded?.['bundles'] || [];
           const original = bundles.find((b) => b.name === 'ORIGINAL');
           if (!original) return of([] as BitstreamView[]);
-          return this.dspaceApi.getBitstreamsFromBundle(original.uuid).pipe(
-            map((res) => {
-              const list = res?._embedded?.['bitstreams'] || [];
+          // Se agota el bundle ORIGINAL para no truncar la descarga en la
+          // primera página cuando el documento tiene más de 20 archivos.
+          return paginateAll$(
+            (page) => this.dspaceApi.getBitstreamsFromBundle(original.uuid, page, 100),
+            (res) => res._embedded?.['bitstreams'] ?? [],
+          ).pipe(
+            map((list) => {
               return list.map((b: Bitstream) => {
                 const fmt = inferBitstreamFormat(b.name || '');
                 return {
@@ -209,26 +214,29 @@ export class AdvancedSearch implements OnInit {
             value: digeex.uuid,
             scopeType: 'community',
           };
-          // Variantes listAll (expand+reduce hasta la última página): el
-          // dropdown debe mostrar todas las subdirecciones y programas, no
-          // la primera página de cada uno.
-          return this.communityApi.listAllSubcommunities(digeex.uuid).pipe(
-            switchMap((subCommunities) => {
-              if (subCommunities.length === 0) return of([base]);
-              const perSub$ = subCommunities.map((sub) =>
-                this.collectionApi.listAllByCommunity(sub.uuid).pipe(
-                  // Una subdirección caída no debe colgar el dropdown completo:
-                  // sus programas se omiten y el resto se publica igual.
-                  catchError(() => of([] as Collection[])),
-                  map((collections) => this.buildSubdireccionOptions(sub, collections)),
-                ),
+          return forkJoin({
+            subCommunities: this.communityApi.listAllSubcommunities(digeex.uuid),
+            collections: this.collectionApi
+              .listAll({ embed: 'parentCommunity' })
+              .pipe(catchError(() => of([] as Collection[]))),
+          }).pipe(
+            map(({ subCommunities, collections }) => {
+              if (subCommunities.length === 0) return [base];
+              const byParent = new Map<string, Collection[]>();
+              for (const col of collections) {
+                const parentUuid = col._embedded?.parentCommunity?.uuid;
+                if (!parentUuid) continue;
+                const group = byParent.get(parentUuid) ?? [];
+                group.push(col);
+                byParent.set(parentUuid, group);
+              }
+              const groups = subCommunities.map((sub) =>
+                this.buildSubdireccionOptions(sub, byParent.get(sub.uuid) ?? []),
               );
-              return forkJoin(perSub$).pipe(map((groups) => [base, ...groups.flat()]));
+              return [base, ...groups.flat()];
             }),
           );
         }),
-        // Fallo de los niveles superiores: no hay nada que publicar, pero el
-        // error no debe escaparse sin manejador.
         catchError(() => EMPTY),
       )
       .subscribe((options) => this.searchState.scopeOptions.set(options));

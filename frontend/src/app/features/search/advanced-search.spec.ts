@@ -9,6 +9,7 @@ import { DiscoveryService } from '../../core/api/discovery.service';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { CommunityApiService } from '../../core/api/community-api.service';
 import { CollectionApiService } from '../../core/api/collection-api.service';
+import { BitstreamDownloadService } from '../../core/api/bitstream-download.service';
 import { SearchFilters } from './models/search-filters.model';
 import { ENTITY_TYPE } from '../../core/config/digeex-values.config';
 import { SearchStateService } from './services/search-state.service';
@@ -23,7 +24,7 @@ import { SearchResult } from '../../core/api/models/discovery.model';
  * f.contentType=documento para excluir galería/estadísticas cuando el scope
  * es community o sub-community.
  *
- * Ciclos del Sprint 4. Ajustado en Sprint 6 (Ciclo 37), en Ciclo 37 (Sprint 8) y en Ciclo 9 (Sprint 9).
+ * Ciclos del Sprint 4. Ajustado en Sprint 6 (Ciclo 37), en Ciclo 37 (Sprint 8) y en Ciclos 9, 17 y 18 (Sprint 9).
  */
 describe('AdvancedSearch', () => {
   let component: AdvancedSearch;
@@ -369,6 +370,45 @@ describe('AdvancedSearch', () => {
     expect(searchSpy).toHaveBeenCalledTimes(1);
   });
 
+  /** Descarga del card */
+
+  /**
+   * Verifica que la descarga del card agote todas las páginas del bundle
+   * ORIGINAL: un documento con más de una página de archivos debe entregar
+   * todos sus archivos al downloader, no solo los primeros 20.
+   */
+  it('should exhaust every page of the ORIGINAL bundle on download', async () => {
+    const downloader = TestBed.inject(BitstreamDownloadService);
+    const downloadAuto = vi
+      .spyOn(downloader, 'downloadAuto')
+      .mockResolvedValue(undefined);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(
+      of({
+        _embedded: { bundles: [{ uuid: 'orig-bundle-001', name: 'ORIGINAL', _links: {} }] },
+        _links: {},
+        page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any),
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const page0 = { _embedded: { bitstreams: Array.from({ length: 20 }, (_, i) => ({ uuid: `bs-${i}`, name: `a-${i}.pdf`, sizeBytes: 1 })) }, _links: {}, page: { size: 20, totalElements: 25, totalPages: 2, number: 0 } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const page1 = { _embedded: { bitstreams: Array.from({ length: 5 }, (_, i) => ({ uuid: `bs-2${i}`, name: `b-${i}.pdf`, sizeBytes: 1 })) }, _links: {}, page: { size: 20, totalElements: 25, totalPages: 2, number: 1 } };
+    vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (_uuid: string, page = 0) => of((page === 0 ? page0 : page1) as any),
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    component.downloadItem({ id: 'item-1', name: 'Documento', bitstreams: [] } as any);
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(downloadAuto).toHaveBeenCalledTimes(1);
+    expect(downloadAuto.mock.calls[0][0].length).toBe(25);
+  });
+
   /** Carga del dropdown de ámbito */
 
   /* eslint-disable @typescript-eslint/no-explicit-any -- mocks de respuestas HAL */
@@ -385,7 +425,7 @@ describe('AdvancedSearch', () => {
       { uuid: 'sub-b', name: 'B', metadata: { 'dc.title': [{ value: 'Trabajo y Cultura' }] }, type: 'community' },
     ];
 
-    function buildCol(uuid: string, title: string, entityType: string) {
+    function buildCol(uuid: string, title: string, entityType: string, parentUuid: string) {
       return {
         uuid,
         name: title,
@@ -394,38 +434,35 @@ describe('AdvancedSearch', () => {
           'dspace.entity.type': [{ value: entityType }],
         },
         type: 'collection',
+        _embedded: { parentCommunity: { uuid: parentUuid } },
       };
     }
 
     /**
-     * Verifica que el dropdown se publique aunque falle la carga de colecciones de una subdirección.
-     * Sin tolerancia al fallo, el contador manual nunca llegaba a cero y el dropdown quedaba vacío.
+     * Verifica que el dropdown se publique aunque falle la carga de colecciones:
+     * el esqueleto de subdirecciones igual sale (cada una con su "(todos)").
      */
-    it('should publish the scope options even when one collections request fails', () => {
+    it('should publish the scope options even when the collections request fails', () => {
       vi.spyOn(communityApi, 'list').mockReturnValue(of(digeexResponse as any));
       vi.spyOn(communityApi, 'listAllSubcommunities').mockReturnValue(of(subs as any));
-      vi.spyOn(collectionApi, 'listAllByCommunity').mockImplementation(((uuid: string) =>
-        uuid === 'sub-a'
-          ? of([buildCol('col-peac', 'PEAC', ENTITY_TYPE.DOCUMENTO)] as any)
-          : throwError(() => new Error('500'))) as any);
+      vi.spyOn(collectionApi, 'listAll').mockReturnValue(throwError(() => new Error('500')) as any);
 
       (component as any).loadScopeOptions();
 
       expect(component.scopeOptions().map((o) => o.label)).toEqual([
         'Todos los programas (DIGEEX)',
         'Educación Básica (todos)',
-        'PEAC',
         'Trabajo y Cultura (todos)',
       ]);
     });
 
-    it('should list every collection of a subcommunity without a page-size cap', () => {
+    it('should list every collection without a page-size cap (single listAll)', () => {
       const manyCols = Array.from({ length: 25 }, (_, i) =>
-        buildCol(`col-${i}`, `Programa ${String(i).padStart(2, '0')}`, ENTITY_TYPE.DOCUMENTO),
+        buildCol(`col-${i}`, `Programa ${String(i).padStart(2, '0')}`, ENTITY_TYPE.DOCUMENTO, 'sub-a'),
       );
       vi.spyOn(communityApi, 'list').mockReturnValue(of(digeexResponse as any));
       vi.spyOn(communityApi, 'listAllSubcommunities').mockReturnValue(of(subs.slice(0, 1) as any));
-      vi.spyOn(collectionApi, 'listAllByCommunity').mockReturnValue(of(manyCols as any));
+      vi.spyOn(collectionApi, 'listAll').mockReturnValue(of(manyCols as any));
 
       (component as any).loadScopeOptions();
 
@@ -437,13 +474,13 @@ describe('AdvancedSearch', () => {
     it('should group only Documento collections under each subcommunity in declaration order', () => {
       vi.spyOn(communityApi, 'list').mockReturnValue(of(digeexResponse as any));
       vi.spyOn(communityApi, 'listAllSubcommunities').mockReturnValue(of(subs as any));
-      vi.spyOn(collectionApi, 'listAllByCommunity').mockImplementation(((uuid: string) =>
-        uuid === 'sub-a'
-          ? of([
-              buildCol('col-peac', 'PEAC', ENTITY_TYPE.DOCUMENTO),
-              buildCol('col-galeria', 'Galería Institucional', 'Galeria'),
-            ] as any)
-          : of([buildCol('col-cemucaf', 'CEMUCAF', ENTITY_TYPE.DOCUMENTO)] as any)) as any);
+      vi.spyOn(collectionApi, 'listAll').mockReturnValue(
+        of([
+          buildCol('col-peac', 'PEAC', ENTITY_TYPE.DOCUMENTO, 'sub-a'),
+          buildCol('col-galeria', 'Galería Institucional', 'Galeria', 'sub-a'),
+          buildCol('col-cemucaf', 'CEMUCAF', ENTITY_TYPE.DOCUMENTO, 'sub-b'),
+        ] as any),
+      );
 
       (component as any).loadScopeOptions();
 

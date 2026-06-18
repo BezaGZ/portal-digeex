@@ -1,15 +1,18 @@
 import { MetadataMap } from './metadata.model';
 import { Group } from './group.model';
 import { Bitstream } from './bitstream.model';
+import { Community } from './community.model';
 
 /**
  * Subrecursos que DSpace puede anidar en una Collection con ?embed=.
- * Modela submittersGroup (delegado on-create) y logo (portada del programa
- * embebida en listados para evitar una llamada extra por collection).
+ * Modela submittersGroup (delegado on-create), logo (portada del programa
+ * embebida en listados) y parentCommunity (la subdirección dueña, para
+ * agrupar colecciones sin una petición por subdirección).
  */
 export interface CollectionEmbedded {
   submittersGroup?: Group | null;
   logo?: Bitstream | null;
+  parentCommunity?: Community | null;
 }
 
 export interface Collection {
