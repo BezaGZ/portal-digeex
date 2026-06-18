@@ -6,6 +6,7 @@ import { SearchResponse } from './models/search.model';
 import { SearchParams, SearchResult, Facet, FacetValue } from './models/discovery.model';
 import { Item } from './models/item.model';
 import { Bitstream } from './models/bitstream.model';
+import { Collection } from './models/collection.model';
 import { paginateAllByNext$ } from './dspace-rest.util';
 
 /** Respuesta del endpoint dedicado de una faceta (`/discover/facets/<name>`). */
@@ -93,7 +94,7 @@ export class DiscoveryService {
     let httpParams = new HttpParams()
       .set('page', params.page ?? 0)
       .set('size', params.size ?? 20)
-      .set('embed', 'thumbnail');
+      .set('embed', (params.embeds ?? ['thumbnail']).join(','));
 
     if (params.query) {
       httpParams = httpParams.set('query', params.query);
@@ -137,10 +138,15 @@ export class DiscoveryService {
       .filter((obj) => obj._embedded?.indexableObject?.type === 'item')
       .map((obj) => {
         const ix = obj._embedded.indexableObject as Item & {
-          _embedded?: { thumbnail?: Bitstream };
+          _embedded?: { thumbnail?: Bitstream; owningCollection?: Collection };
         };
         const thumbnail = ix._embedded?.thumbnail;
-        return thumbnail ? { ...ix, thumbnail } : ix;
+        const owningCollection = ix._embedded?.owningCollection;
+        return {
+          ...ix,
+          ...(thumbnail ? { thumbnail } : {}),
+          ...(owningCollection ? { owningCollection } : {}),
+        };
       });
 
     const page = response._embedded?.searchResult?.page;

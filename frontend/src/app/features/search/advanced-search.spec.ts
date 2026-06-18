@@ -23,7 +23,7 @@ import { SearchResult } from '../../core/api/models/discovery.model';
  * f.contentType=documento para excluir galería/estadísticas cuando el scope
  * es community o sub-community.
  *
- * Ciclos del Sprint 4. Ajustado en Sprint 6 (Ciclo 37) y en Ciclo 37 (Sprint 8).
+ * Ciclos del Sprint 4. Ajustado en Sprint 6 (Ciclo 37), en Ciclo 37 (Sprint 8) y en Ciclo 9 (Sprint 9).
  */
 describe('AdvancedSearch', () => {
   let component: AdvancedSearch;
@@ -147,7 +147,6 @@ describe('AdvancedSearch', () => {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     vi.spyOn(communityApi, 'list').mockReturnValue(of(mockCommunitiesResponse as any));
     vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(mockBundlesResponse as any));
-    vi.spyOn(collectionApi, 'getOwningCollectionOfItem').mockReturnValue(of({ uuid: 'col-001', name: 'Mock', handle: '', metadata: {}, archivedItemsCount: 0, type: 'collection' } as any));
     vi.spyOn(dspaceApi, 'getBitstreamsFromBundle').mockImplementation((bundleUuid: string) => {
       if (bundleUuid === 'thumb-bundle-001') return of(mockThumbnailBitstreams as any);
       if (bundleUuid === 'orig-bundle-001') return of(mockOriginalBitstreams as any);
@@ -315,6 +314,41 @@ describe('AdvancedSearch', () => {
 
     const results = component.results();
     expect(results[0].coverImage).toBe('/server/api/core/bitstreams/thumb-bs-9/content');
+  });
+
+  /** owningCollection embebido */
+
+  /** Verifica que la búsqueda pida los embeds thumbnail y owningCollection. */
+  it('should request thumbnail and owningCollection embeds on search', () => {
+    const searchSpy = vi.spyOn(discoveryService, 'search').mockReturnValue(of(mockSearchResult));
+
+    component.onSearch({ ...defaultFilters, query: 'x' });
+
+    expect(searchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ embeds: ['thumbnail', 'owningCollection'] }),
+    );
+  });
+
+  /**
+   * Verifica que owningCollectionUuid salga del owningCollection embebido en el
+   * resultado, sin una petición de owningCollection por item.
+   */
+  it('should read owningCollectionUuid from the embedded owningCollection without a per-item request', () => {
+    const itemWithOwning = {
+      ...mockSearchResult.items[0],
+      uuid: 'item-own',
+      owningCollection: { uuid: 'col-embebida', name: 'Programa', type: 'collection' },
+    };
+    const result = { ...mockSearchResult, items: [itemWithOwning] };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(discoveryService, 'search').mockReturnValue(of(result as any));
+    const owningSpy = vi.spyOn(collectionApi, 'getOwningCollectionOfItem');
+
+    component.onSearch({ ...defaultFilters, query: 'x' });
+
+    const results = component.results();
+    expect(results[0].owningCollectionUuid).toBe('col-embebida');
+    expect(owningSpy).not.toHaveBeenCalled();
   });
 
   /** onClear */

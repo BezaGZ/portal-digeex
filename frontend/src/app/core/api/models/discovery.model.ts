@@ -36,6 +36,12 @@ export interface SearchParams {
    * cuenta colecciones, comunidades y workspace items junto con items archivados.
    */
   dsoType?: 'item' | 'collection' | 'community';
+  /**
+   * Sub-recursos a embeber en cada item del resultado. Default `['thumbnail']`.
+   * Búsqueda avanzada agrega `owningCollection` para armar la URL del detalle
+   * sin una petición por item.
+   */
+  embeds?: string[];
 }
 
 export interface SearchResult {

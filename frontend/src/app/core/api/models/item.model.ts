@@ -1,5 +1,6 @@
 import { MetadataMap } from './metadata.model';
 import { Bitstream } from './bitstream.model';
+import { Collection } from './collection.model';
 
 export interface Item {
   uuid: string;
@@ -19,4 +20,10 @@ export interface Item {
    * manual no está asociada al primary bitstream del ORIGINAL).
    */
   thumbnail?: Bitstream;
+  /**
+   * Colección dueña del item, presente solo cuando el search se pide con
+   * `embed=owningCollection`. La búsqueda avanzada la usa para armar la URL
+   * canónica del detalle sin una petición por item.
+   */
+  owningCollection?: Collection;
 }

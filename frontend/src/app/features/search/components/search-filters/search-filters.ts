@@ -1,5 +1,6 @@
 import { Component, ChangeDetectionStrategy, inject, input, output, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { forkJoin, of } from 'rxjs';
+import { take, catchError } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -49,22 +50,14 @@ export class SearchFiltersComponent {
     language: this.idiomaOptions,
   };
 
-  /** Maps cacheados de stored value → display label por vocabulario. */
-  private readonly tipoDocumentoMap = toSignal(this.vocabDisplay.displayMap$('tipos-documento'), {
-    initialValue: new Map<string, string>(),
-  });
-  private readonly nivelEducativoMap = toSignal(
-    this.vocabDisplay.displayMap$('niveles-educativos'),
-    { initialValue: new Map<string, string>() },
-  );
-  private readonly idiomaMap = toSignal(this.vocabDisplay.displayMap$('idiomas-digeex'), {
-    initialValue: new Map<string, string>(),
-  });
-
-  private readonly facetVocabMap: Record<string, () => Map<string, string>> = {
-    itemtype: () => this.tipoDocumentoMap(),
-    audience: () => this.nivelEducativoMap(),
-    language: () => this.idiomaMap(),
+  /**
+   * Faceta de DSpace → vocabulario que la traduce. Solo `language` lo necesita:
+   * guarda el código ISO (`es`) y hay que mostrar el display (`Español`).
+   * `itemtype` y `audience` ya llegan legibles desde la faceta, así que no
+   * piden vocabulario.
+   */
+  private readonly vocabByFacet: Record<string, string> = {
+    language: 'idiomas-digeex',
   };
 
   /** Indica si las facetas fueron cargadas (habilita los filtros) */
@@ -107,18 +100,48 @@ export class SearchFiltersComponent {
    * Usa el facetSignalMap para asignar cada faceta de DSpace a su dropdown correspondiente.
    */
   updateFacetOptions(facets: Facet[]) {
-    for (const facet of facets) {
-      const targetSignal = this.facetSignalMap[facet.name];
-      if (!targetSignal) continue;
-      const lookup = this.facetVocabMap[facet.name]?.() ?? new Map<string, string>();
-      targetSignal.set(
-        facet.values.map((v) => ({
-          label: `${lookup.get(v.label) ?? v.label} (${v.count})`,
-          value: v.label,
-        })),
-      );
+    const handled = facets.filter((f) => this.facetSignalMap[f.name]);
+
+    // Facetas ya legibles (itemtype, audience): se arman directo, sin vocabulario.
+    for (const facet of handled) {
+      if (!this.vocabByFacet[facet.name]) {
+        this.facetSignalMap[facet.name].set(this.toOptions(facet));
+      }
     }
-    this.facetsLoaded.set(true);
+
+    // Facetas con código (idioma): traducción on-demand con el vocabulario
+    // cacheado, esperando el map antes de armar la etiqueta para no mostrar el
+    // código crudo.
+    const translated = handled.filter((f) => this.vocabByFacet[f.name]);
+    if (translated.length === 0) {
+      this.facetsLoaded.set(true);
+      return;
+    }
+
+    const maps$ = Object.fromEntries(
+      translated.map((f) => [f.name, this.vocabDisplay.displayMap$(this.vocabByFacet[f.name]).pipe(take(1))]),
+    );
+
+    forkJoin(maps$)
+      .pipe(
+        // Si falla la carga del vocabulario, igual se habilitan los filtros con
+        // la etiqueta cruda en vez de dejar la búsqueda bloqueada.
+        catchError(() => of({} as Record<string, Map<string, string>>)),
+      )
+      .subscribe((maps) => {
+        for (const facet of translated) {
+          this.facetSignalMap[facet.name].set(this.toOptions(facet, maps[facet.name]));
+        }
+        this.facetsLoaded.set(true);
+      });
+  }
+
+  /** Mapea los valores de una faceta a opciones; traduce el label si hay vocabulario. */
+  private toOptions(facet: Facet, lookup?: Map<string, string>): SelectOption[] {
+    return facet.values.map((v) => ({
+      label: `${lookup?.get(v.label) ?? v.label} (${v.count})`,
+      value: v.label,
+    }));
   }
 
   onSearch() {

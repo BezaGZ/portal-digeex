@@ -305,6 +305,9 @@ export class AdvancedSearch implements OnInit {
       filters: facetFilters.length > 0 ? facetFilters : undefined,
       page: this.searchState.currentPage(),
       size: this.itemsPerPage,
+      // owningCollection embebido: arma la URL canónica del detalle sin una
+      // petición por item (antes era 1+N).
+      embeds: ['thumbnail', 'owningCollection'],
     }).pipe(
       catchError((error) => {
         console.error('Error en búsqueda:', error);
@@ -374,64 +377,28 @@ export class AdvancedSearch implements OnInit {
   }
 
   /**
-   * Lazy: el listado de búsqueda no pre-carga bundles ni bitstreams. El
-   * thumbnail se obtiene del endpoint nativo /api/core/items/{uuid}/thumbnail
-   * directo en el <img>, y los bitstreams del ORIGINAL se consultan solo al
-   * darle "Descargar" (downloadItem). Sigue resolviendo owningCollection en
-   * paralelo porque el card lo necesita para la URL canónica del detalle.
+   * Mapea los resultados a la vista de cards. Es sincrónico: el listado no
+   * pre-carga bundles ni bitstreams (esos se consultan solo al "Descargar"), y
+   * tanto el thumbnail como la colección dueña vienen embebidos en la respuesta
+   * del search (`embed=thumbnail,owningCollection`), sin una petición por item.
    */
   private loadItemDetails(items: Item[]) {
-    if (items.length === 0) {
-      this.searchState.results.set([]);
-      this.searchState.isSearching.set(false);
-      return;
-    }
-
-    const owningPerItem$ = items.map((item) =>
-      this.collectionApi.getOwningCollectionOfItem(item.uuid).pipe(
-        catchError(() => of(null)),
-        map((owning) => ({ item, owningUuid: owning?.uuid })),
-      ),
+    this.searchState.results.set(
+      items.map((item) => ({
+        id: item.uuid,
+        name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
+        description: item.metadata?.['dc.description.abstract']?.[0]?.value || '',
+        dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
+        handle: item.handle,
+        coverImage: item.thumbnail?.uuid
+          ? `/server/api/core/bitstreams/${item.thumbnail.uuid}/content`
+          : this.dspaceApi.getThumbnailUrl(item.uuid),
+        bitstreams: [],
+        type: item.metadata?.['dc.type']?.[0]?.value || '',
+        relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
+        owningCollectionUuid: item.owningCollection?.uuid,
+      })),
     );
-
-    forkJoin(owningPerItem$).subscribe({
-      next: (resolved) => {
-        this.searchState.results.set(
-          resolved.map(({ item, owningUuid }) => ({
-            id: item.uuid,
-            name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
-            description: item.metadata?.['dc.description.abstract']?.[0]?.value || '',
-            dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-            handle: item.handle,
-            coverImage: item.thumbnail?.uuid
-              ? `/server/api/core/bitstreams/${item.thumbnail.uuid}/content`
-              : this.dspaceApi.getThumbnailUrl(item.uuid),
-            bitstreams: [],
-            type: item.metadata?.['dc.type']?.[0]?.value || '',
-            relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
-            owningCollectionUuid: owningUuid,
-          })),
-        );
-        this.searchState.isSearching.set(false);
-      },
-      error: () => {
-        this.searchState.results.set(
-          items.map((item) => ({
-            id: item.uuid,
-            name: item.metadata?.['dc.title']?.[0]?.value || 'Sin título',
-            description: item.metadata?.['dc.description.abstract']?.[0]?.value || '',
-            dateIssued: item.metadata?.['dc.date.issued']?.[0]?.value || '',
-            handle: item.handle,
-            coverImage: item.thumbnail?.uuid
-              ? `/server/api/core/bitstreams/${item.thumbnail.uuid}/content`
-              : this.dspaceApi.getThumbnailUrl(item.uuid),
-            bitstreams: [],
-            type: item.metadata?.['dc.type']?.[0]?.value || '',
-            relationUri: item.metadata?.['dc.relation.uri']?.[0]?.value || '',
-          })),
-        );
-        this.searchState.isSearching.set(false);
-      },
-    });
+    this.searchState.isSearching.set(false);
   }
 }

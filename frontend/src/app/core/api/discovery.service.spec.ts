@@ -10,7 +10,7 @@ import { DiscoveryService } from './discovery.service';
  * (`/api/discover/search/objects`). Soporta query de texto
  * y filtros por facetas.
  *
- * Ciclos 1, 37 TDD — Sprints 4, 6. Ajustado en Ciclos 11, 12 y 14 (Sprint 8) y Ciclo 4 (Sprint 9).
+ * Ciclos 1, 37 TDD — Sprints 4, 6. Ajustado en Ciclos 11, 12 y 14 (Sprint 8) y Ciclos 4, 9 (Sprint 9).
  */
 describe('DiscoveryService', () => {
   let service: DiscoveryService;
@@ -304,6 +304,71 @@ describe('DiscoveryService', () => {
     const req = httpMock.expectOne((r) => r.url === '/server/api/discover/search/objects');
     expect(req.request.params.has('dsoType')).toBe(false);
     req.flush(mockSearchResponse);
+  });
+
+  /** embeds — sub-recursos embebidos por llamada */
+
+  /** Verifica que search() arme el embed con los `embeds` dados, separados por coma. */
+  it('should build the embed param from the embeds option', async () => {
+    service.search({ embeds: ['thumbnail', 'owningCollection'] }).subscribe();
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/server/api/discover/search/objects' &&
+        r.params.get('embed') === 'thumbnail,owningCollection',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(mockSearchResponse);
+  });
+
+  /**
+   * Verifica que el owningCollection embebido se suba al campo top-level del item.
+   * Búsqueda avanzada lo usa para la URL del detalle sin pedirlo por item.
+   */
+  it('should lift _embedded.owningCollection of each indexableObject to item.owningCollection', async () => {
+    let result: { items: { owningCollection?: { uuid: string } }[] } | null = null;
+    const promise = new Promise<void>((resolve, reject) => {
+      service.search({}).subscribe({
+        next: (r) => {
+          result = r as typeof result;
+          resolve();
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne((r) => r.url === '/server/api/discover/search/objects');
+    req.flush({
+      _embedded: {
+        searchResult: {
+          _embedded: {
+            objects: [
+              {
+                _embedded: {
+                  indexableObject: {
+                    uuid: 'item-oc',
+                    name: 'Documento',
+                    type: 'item',
+                    metadata: {},
+                    _embedded: {
+                      owningCollection: { uuid: 'col-oc', name: 'Programa', type: 'collection' },
+                    },
+                  },
+                },
+                _links: { self: { href: '' } },
+                hitHighlights: {},
+              },
+            ],
+          },
+          page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+        },
+        facets: [],
+      },
+      _links: { self: { href: '' } },
+    });
+
+    await promise;
+    expect(result!.items[0].owningCollection?.uuid).toBe('col-oc');
   });
 
   /** getFacetValues — universo completo de una faceta */
