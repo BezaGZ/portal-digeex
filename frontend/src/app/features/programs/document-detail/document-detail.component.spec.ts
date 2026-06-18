@@ -17,7 +17,7 @@ import { VocabularyDisplayService } from '../../../core/api/vocabulary-display.s
  * DSpace por UUID, muestra thumbnail, bitstreams descargables,
  * y soporta documentos PDF y videos (MovingImage).
  *
- * Ciclo 4 TDD — Sprint 4. Ajustado en Ciclo 36 — Sprint 6.
+ * Ciclo 4 TDD — Sprint 4. Ajustado en Ciclo 36 (Sprint 6) y Ciclo 12 (Sprint 9).
  */
 
 describe('DocumentDetailComponent', () => {
@@ -402,20 +402,26 @@ describe('DocumentDetailComponent', () => {
       expect(idiomaField?.value).toBe('Achi');
     });
 
-    /** Verifica que el label de nivel educativo se resuelva via VocabularyDisplayService. */
-    it('should resolve audience label via VocabularyDisplayService', () => {
+    /**
+     * Verifica que el nivel educativo NO pida vocabulario: ya llega legible
+     * desde DSpace, así que se usa el valor crudo sin un fetch no-op.
+     */
+    it('should not translate audience via vocabulary (already readable)', () => {
       component.ngOnInit();
 
-      expect(vocabDisplay.display$).toHaveBeenCalledWith('niveles-educativos', 'Primaria');
+      expect(vocabDisplay.display$).not.toHaveBeenCalledWith('niveles-educativos', expect.anything());
       const audienceField = component.metadataFields().find((f) => f.label === 'Nivel educativo');
       expect(audienceField?.value).toBe('Primaria');
     });
 
-    /** Verifica que el label del tipo de documento se resuelva via VocabularyDisplayService (vocabulario tipos-documento). */
-    it('should resolve type label via VocabularyDisplayService', () => {
+    /**
+     * Verifica que el tipo de documento NO pida vocabulario: ya llega legible
+     * desde DSpace, así que se usa el valor crudo sin un fetch no-op.
+     */
+    it('should not translate type via vocabulary (already readable)', () => {
       component.ngOnInit();
 
-      expect(vocabDisplay.display$).toHaveBeenCalledWith('tipos-documento', 'Guía');
+      expect(vocabDisplay.display$).not.toHaveBeenCalledWith('tipos-documento', expect.anything());
       const typeField = component.metadataFields().find((f) => f.label === 'Tipo de documento');
       expect(typeField?.value).toBe('Guía');
     });

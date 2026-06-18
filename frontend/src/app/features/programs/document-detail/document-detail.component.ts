@@ -184,10 +184,9 @@ export class DocumentDetailComponent implements OnInit {
   }
 
   /**
-   * Resuelve los display labels de los vocabularios DSpace que aplica el item:
-   * idiomas-digeex para dc.language.iso, niveles-educativos para dc.audience y
-   * tipos-documento para dc.type. Devuelve null en cada uno si el item no trae
-   * ese campo, asi forkJoin no bloquea por una rama vacia.
+   * Resuelve el display label del idioma (`dc.language.iso`), único campo que
+   * guarda un código (ISO `es` → `Español`). `dc.audience` y `dc.type` ya llegan
+   * legibles desde DSpace, así que no se traducen.
    */
   private resolveVocabLabels$(metadata: MetadataMap): Observable<{
     language: string | null;
@@ -195,17 +194,13 @@ export class DocumentDetailComponent implements OnInit {
     type: string | null;
   }> {
     const langValue = metadata?.['dc.language.iso']?.[0]?.value;
-    const audienceValue = metadata?.['dc.audience']?.[0]?.value;
-    const typeValue = metadata?.['dc.type']?.[0]?.value;
 
     return forkJoin({
       language: langValue
         ? this.vocabDisplay.display$('idiomas-digeex', langValue)
         : of(null),
-      audience: audienceValue
-        ? this.vocabDisplay.display$('niveles-educativos', audienceValue)
-        : of(null),
-      type: typeValue ? this.vocabDisplay.display$('tipos-documento', typeValue) : of(null),
+      audience: of(null),
+      type: of(null),
     });
   }
 
