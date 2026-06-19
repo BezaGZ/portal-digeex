@@ -12,11 +12,9 @@ export interface SubdireccionView extends Community {
   programasCount?: number;
   /**
    * Conteo de items archivados en la subdirección (recursivo, incluye
-   * los de todas sus colecciones). Se computa pegando a Discovery con
-   * scope filtrado, no se lee del campo `archivedItemsCount` del
-   * recurso porque DSpace 9.x lo devuelve -1 incluso después de
-   * reindexar (el cálculo en el path de Communities no se hace en la
-   * respuesta REST).
+   * los de todas sus colecciones). Se lee del campo nativo
+   * `archivedItemsCount` del recurso Community, que devuelve el conteo real
+   * con `webui.strengths.show = true` (habilitado en Sprint 8).
    */
   recursosCount?: number;
 }

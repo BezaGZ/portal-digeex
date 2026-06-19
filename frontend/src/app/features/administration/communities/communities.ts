@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Observable, forkJoin, of } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { TableLazyLoadEvent } from 'primeng/table';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
@@ -19,8 +19,8 @@ import { CardModule } from 'primeng/card';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
-import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { Community, CommunityCreateBody } from '../../../core/api/models/community.model';
+import { Collection } from '../../../core/api/models/collection.model';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { CommunityFacade } from '../content/services/community-facade';
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
@@ -59,7 +59,6 @@ const EMPTY_PAGE: PaginatedSubsView = { items: [], totalElements: 0 };
 export class Communities {
   private readonly communityApi = inject(CommunityApiService);
   private readonly collectionApi = inject(CollectionApiService);
-  private readonly dspaceApi = inject(DSpaceApiService);
   private readonly authCaller = inject(AuthCallerService);
   private readonly facade = inject(CommunityFacade);
   private readonly confirmation = inject(ConfirmationService);
@@ -319,8 +318,10 @@ export class Communities {
 
   /**
    * Pipeline que arma la página: `searchTop` → `listSubcommunities` con la
-   * ventana pedida → `forkJoin` que enriquece cada subdirección con su
-   * conteo de programas y de items archivados (vía Discovery scope-filtered).
+   * ventana pedida. El conteo de recursos sale del campo nativo
+   * `archivedItemsCount` de cada subdirección (`webui.strengths.show`), y el de
+   * programas de un único `listAll` de colecciones agrupado por comunidad
+   * padre, sin una petición por subdirección.
    */
   private fetchPaginated$(page: number, size: number): Observable<PaginatedSubsView> {
     return this.communityApi.searchTop(0, 1).pipe(
@@ -330,35 +331,36 @@ export class Communities {
         if (!root) {
           return of(EMPTY_PAGE);
         }
-        return this.communityApi.listSubcommunities(root.uuid, page, size).pipe(
-          switchMap((listResp) => {
-            const embedded = listResp._embedded ?? {};
+        return forkJoin({
+          subsResp: this.communityApi.listSubcommunities(root.uuid, page, size),
+          collections: this.collectionApi
+            .listAll({ embed: 'parentCommunity' })
+            .pipe(catchError(() => of([] as Collection[]))),
+        }).pipe(
+          map(({ subsResp, collections }) => {
+            const embedded = subsResp._embedded ?? {};
             const subs = (embedded as Record<string, Community[]>)['subcommunities']
               ?? (embedded as Record<string, Community[]>)['communities']
               ?? [];
-            const totalElements = listResp.page?.totalElements ?? subs.length;
+            const totalElements = subsResp.page?.totalElements ?? subs.length;
             if (subs.length === 0) {
-              return of({ items: [], totalElements });
+              return { items: [], totalElements };
             }
-            return forkJoin(subs.map((sub) => this.enrichSubdireccion$(sub))).pipe(
-              map((items) => ({ items, totalElements })),
-            );
+            const programsByParent = new Map<string, number>();
+            for (const col of collections) {
+              const parentUuid = col._embedded?.parentCommunity?.uuid;
+              if (!parentUuid) continue;
+              programsByParent.set(parentUuid, (programsByParent.get(parentUuid) ?? 0) + 1);
+            }
+            const items: SubdireccionView[] = subs.map((sub) => ({
+              ...sub,
+              programasCount: programsByParent.get(sub.uuid) ?? 0,
+              recursosCount: sub.archivedItemsCount >= 0 ? sub.archivedItemsCount : 0,
+            }));
+            return { items, totalElements };
           }),
         );
       }),
-    );
-  }
-
-  private enrichSubdireccion$(sub: Community): Observable<SubdireccionView> {
-    return forkJoin({
-      programas: this.collectionApi.listByCommunity(sub.uuid, 0, 1),
-      items: this.dspaceApi.getItems(sub.uuid, 0, 1),
-    }).pipe(
-      map(({ programas, items }) => ({
-        ...sub,
-        programasCount: programas.page?.totalElements ?? 0,
-        recursosCount: items.page?.totalElements ?? 0,
-      })),
     );
   }
 

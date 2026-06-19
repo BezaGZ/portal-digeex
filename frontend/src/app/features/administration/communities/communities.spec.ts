@@ -30,13 +30,14 @@ import { LoadingService } from '../../../core/loading/loading.service';
  * puro (solo setean signals) y el `fixture.detectChanges()` después de
  * cada mutación hace correr el effect que dispara el fetch.
  *
- * Ciclo 17 TDD — Sprint 6. Ajustado en Ciclos 25, 38 y 47 (Sprint 8).
+ * Ciclo 17 TDD — Sprint 6. Ajustado en Ciclos 25, 38 y 47 (Sprint 8) Ciclo 20 (Sprint 9).
  */
 describe('Communities (contenedor)', () => {
   let searchTopFn: ReturnType<typeof vi.fn>;
   let listSubcommunitiesFn: ReturnType<typeof vi.fn>;
   let listByCommunityFn: ReturnType<typeof vi.fn>;
   let getItemsFn: ReturnType<typeof vi.fn>;
+  let listAllFn: ReturnType<typeof vi.fn>;
   let currentCallerObservable: Observable<Caller | null>;
   let createSubdireccionFn: ReturnType<typeof vi.fn>;
   let updateSubdireccionFn: ReturnType<typeof vi.fn>;
@@ -44,14 +45,27 @@ describe('Communities (contenedor)', () => {
   let confirmFn: ReturnType<typeof vi.fn>;
   let messageAddFn: ReturnType<typeof vi.fn>;
 
-  function buildCommunity(name: string, uuid: string): Community {
+  function buildCommunity(name: string, uuid: string, archived = 0): Community {
     return {
       uuid,
       name,
       handle: `123456789/${uuid}`,
       metadata: {},
-      archivedItemsCount: 0,
+      archivedItemsCount: archived,
       type: 'community',
+    };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function buildColl(uuid: string, parentUuid: string): any {
+    return {
+      uuid,
+      name: uuid,
+      handle: `123456789/${uuid}`,
+      metadata: {},
+      archivedItemsCount: 0,
+      type: 'collection',
+      _embedded: { parentCommunity: { uuid: parentUuid } },
     };
   }
 
@@ -67,29 +81,30 @@ describe('Communities (contenedor)', () => {
       of({
         _embedded: {
           subcommunities: [
-            buildCommunity('Educación Básica', 'sub-1'),
-            buildCommunity('Trabajo y Cultura', 'sub-2'),
-            buildCommunity('Investigación', 'sub-3'),
+            buildCommunity('Educación Básica', 'sub-1', 9),
+            buildCommunity('Trabajo y Cultura', 'sub-2', 0),
+            buildCommunity('Investigación', 'sub-3', 46),
           ],
         },
         _links: { self: { href: '/server/api/core/communities/digeex-root-uuid/subcommunities' } },
         page: { size: 20, totalElements: 3, totalPages: 1, number: 0 },
       }),
     );
-    listByCommunityFn = vi.fn().mockImplementation((uuid: string) =>
-      of({
-        _embedded: { collections: [] },
-        _links: { self: { href: `/server/api/core/communities/${uuid}/collections` } },
-        page: { size: 1, totalElements: 4, totalPages: 4, number: 0 },
-      }),
+    // Una sola carga de colecciones con su comunidad padre: el conteo de
+    // programas se agrupa de aquí, sin una petición por subdirección.
+    listAllFn = vi.fn().mockReturnValue(
+      of([
+        buildColl('c1', 'sub-1'),
+        buildColl('c2', 'sub-1'),
+        buildColl('c3', 'sub-2'),
+        buildColl('c4', 'sub-3'),
+        buildColl('c5', 'sub-3'),
+        buildColl('c6', 'sub-3'),
+      ]),
     );
-    getItemsFn = vi.fn().mockImplementation((uuid: string) =>
-      of({
-        _embedded: { items: [] },
-        _links: { self: { href: `/server/api/discover/search/objects?scope=${uuid}` } },
-        page: { size: 1, totalElements: 4, totalPages: 4, number: 0 },
-      }),
-    );
+    // Quedan como espías para verificar que ya no se invocan por subdirección.
+    listByCommunityFn = vi.fn();
+    getItemsFn = vi.fn();
     currentCallerObservable = of({ role: 'superadmin', sufijo: null });
     createSubdireccionFn = vi.fn().mockReturnValue(of(buildCommunity('Nueva', 'sub-new')));
     updateSubdireccionFn = vi.fn().mockReturnValue(of(buildCommunity('Renombrada', 'sub-1')));
@@ -110,7 +125,7 @@ describe('Communities (contenedor)', () => {
         },
         {
           provide: CollectionApiService,
-          useValue: { listByCommunity: listByCommunityFn },
+          useValue: { listAll: listAllFn, listByCommunity: listByCommunityFn },
         },
         {
           provide: DSpaceApiService,
@@ -146,6 +161,28 @@ describe('Communities (contenedor)', () => {
     ]);
   });
 
+  /**
+   * Verifica que recursosCount salga del campo nativo archivedItemsCount y que
+   * programasCount salga de un único listAll agrupado por comunidad padre, sin
+   * una petición por subdirección (ni listByCommunity ni getItems).
+   */
+  it('should read recursosCount from archivedItemsCount and programasCount from a single listAll, without per-sub requests', () => {
+    const fixture = TestBed.createComponent(Communities);
+    fixture.detectChanges();
+
+    const subs = fixture.componentInstance.subdirecciones();
+    const eb = subs.find((s) => s.uuid === 'sub-1');
+    const inv = subs.find((s) => s.uuid === 'sub-3');
+    expect(eb?.recursosCount).toBe(9);
+    expect(eb?.programasCount).toBe(2);
+    expect(inv?.recursosCount).toBe(46);
+    expect(inv?.programasCount).toBe(3);
+
+    expect(listAllFn).toHaveBeenCalledTimes(1);
+    expect(listByCommunityFn).not.toHaveBeenCalled();
+    expect(getItemsFn).not.toHaveBeenCalled();
+  });
+
   describe('canCreateTopLevel signal', () => {
     it('should be true when caller is superadmin', () => {
       const fixture = TestBed.createComponent(Communities);
@@ -166,7 +203,7 @@ describe('Communities (contenedor)', () => {
           },
           {
             provide: CollectionApiService,
-            useValue: { listByCommunity: listByCommunityFn },
+            useValue: { listAll: listAllFn, listByCommunity: listByCommunityFn },
           },
           {
             provide: DSpaceApiService,
