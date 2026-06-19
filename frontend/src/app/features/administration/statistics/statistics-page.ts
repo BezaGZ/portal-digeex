@@ -12,14 +12,15 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 
 import { StatisticsApiService } from '../../../core/api/statistics-api.service';
+import { SiteApiService } from '../../../core/api/site-api.service';
+import { ItemApiService } from '../../../core/api/item-api.service';
+import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
-import { DSPACE_API_BASE } from '../../../core/api/dspace-rest.util';
 import {
   LoadedReport,
   REPORTS_BY_DSO_TYPE,
@@ -68,7 +69,9 @@ export class StatisticsPage {
   private readonly location = inject(Location);
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(StatisticsApiService);
-  private readonly http = inject(HttpClient);
+  private readonly siteApi = inject(SiteApiService);
+  private readonly itemApi = inject(ItemApiService);
+  private readonly collectionApi = inject(CollectionApiService);
   private readonly breadcrumb = inject(BreadcrumbService);
 
   /** dsoType viene de `route.data['dsoType']` declarado en `app.routes.ts`. */
@@ -186,9 +189,9 @@ export class StatisticsPage {
       const uuid = this.resolvedUuid();
       if (!type || !uuid || type === 'site') return;
 
-      const segment = type === 'item' ? 'items' : 'collections';
-      this.http
-        .get<{ name?: string; handle?: string }>(`${DSPACE_API_BASE}/core/${segment}/${uuid}`)
+      const dso$: Observable<{ name: string; handle: string }> =
+        type === 'item' ? this.itemApi.getOne(uuid) : this.collectionApi.getOne(uuid);
+      dso$
         .pipe(
           takeUntilDestroyed(this.destroyRef),
           catchError(() => {
@@ -227,18 +230,11 @@ export class StatisticsPage {
    * de autoreferencia (`self.href`) del sitio raíz (Site root).
    */
   private discoverSite$(): Observable<{ uuid: string; href: string }> {
-    return this.http
-      .get<{
-        _embedded?: { sites?: Array<{ uuid: string; _links?: { self?: { href: string } } }> };
-      }>(`${DSPACE_API_BASE}/core/sites`)
-      .pipe(
-        map((r) => {
-          const site = r._embedded?.sites?.[0];
-          return {
-            uuid: site?.uuid ?? '',
-            href: site?._links?.self?.href ?? '',
-          };
-        }),
-      );
+    return this.siteApi.getSiteRoot$().pipe(
+      map((site) => ({
+        uuid: site?.uuid ?? '',
+        href: site?._links?.self?.href ?? '',
+      })),
+    );
   }
 }

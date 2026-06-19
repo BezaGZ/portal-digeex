@@ -1,6 +1,5 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, ActivatedRoute } from '@angular/router';
 import { vi } from 'vitest';
@@ -8,6 +7,9 @@ import { of, throwError } from 'rxjs';
 
 import { StatisticsPage } from './statistics-page';
 import { StatisticsApiService } from '../../../core/api/statistics-api.service';
+import { SiteApiService } from '../../../core/api/site-api.service';
+import { ItemApiService } from '../../../core/api/item-api.service';
+import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { UsageReport, UsageReportType } from '../../../core/api/models/usage-report.model';
 
@@ -17,20 +19,29 @@ import { UsageReport, UsageReportType } from '../../../core/api/models/usage-rep
  * Container reusable montado en tres rutas (`/administrador/uso`,
  * `/administrador/uso/items/:uuid`, `/administrador/uso/programas/:uuid`).
  * Cubre los tres escenarios de scope (site, item, collection), el
- * descubrimiento del Site UUID + href vía HTTP cuando `dsoType === 'site'`,
- * y la resiliencia ante fallo de un report individual (los demás siguen
+ * descubrimiento del Site UUID + href cuando `dsoType === 'site'`, y la
+ * resiliencia ante fallo de un report individual (los demás siguen
  * renderizando porque el `catchError` lo degrada a `null`).
  *
  * Ciclo 23 TDD — Sprint 8. Ajustado en Ciclos 28, 29 y 34 (Sprint 8).
+ * Ajustado en Ciclo 25 (Sprint 9): el scope del site y el nombre/handle del
+ * DSO se resuelven por los wrappers de core/api, no por HttpClient directo.
  */
 describe('StatisticsPage', () => {
   let getReportFn: ReturnType<typeof vi.fn>;
   let getReportsForSiteFn: ReturnType<typeof vi.fn>;
+  let getSiteRootFn: ReturnType<typeof vi.fn>;
+  let getItemFn: ReturnType<typeof vi.fn>;
+  let getCollectionFn: ReturnType<typeof vi.fn>;
   let setTrailFn: ReturnType<typeof vi.fn>;
-  let httpMock: HttpTestingController;
 
   function buildReport(rt: UsageReportType, points: UsageReport['points']): UsageReport {
     return { id: `uuid_${rt}`, reportType: rt, points };
+  }
+
+  /** Site HAL mínimo con uuid y self href, como lo devuelve el wrapper. */
+  function buildSite(uuid: string, href: string) {
+    return { uuid, _links: { self: { href } } };
   }
 
   function setup(
@@ -41,13 +52,15 @@ describe('StatisticsPage', () => {
       imports: [StatisticsPage],
       providers: [
         provideHttpClient(),
-        provideHttpClientTesting(),
         provideNoopAnimations(),
         provideRouter([]),
         {
           provide: StatisticsApiService,
           useValue: { getReport$: getReportFn, getReportsForSite$: getReportsForSiteFn },
         },
+        { provide: SiteApiService, useValue: { getSiteRoot$: getSiteRootFn } },
+        { provide: ItemApiService, useValue: { getOne: getItemFn } },
+        { provide: CollectionApiService, useValue: { getOne: getCollectionFn } },
         {
           provide: BreadcrumbService,
           useValue: { setTrail: setTrailFn, clear: vi.fn() },
@@ -61,7 +74,6 @@ describe('StatisticsPage', () => {
         },
       ],
     });
-    httpMock = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(StatisticsPage);
     return { fixture };
   }
@@ -69,43 +81,23 @@ describe('StatisticsPage', () => {
   beforeEach(() => {
     getReportFn = vi.fn();
     getReportsForSiteFn = vi.fn();
+    getSiteRootFn = vi.fn().mockReturnValue(of(null));
+    getItemFn = vi.fn().mockReturnValue(of({ name: 'DSO de prueba', handle: '123456789/1' }));
+    getCollectionFn = vi.fn().mockReturnValue(of({ name: 'DSO de prueba', handle: '123456789/1' }));
     setTrailFn = vi.fn();
   });
 
   /**
-   * Drena la consulta del nombre del DSO que la página dispara para el PDF
-   * de exportación, en los tests que no la asertan.
-   */
-  function flushDsoNameRequest(): void {
-    httpMock
-      .match((req) => /\/core\/(items|collections)\//.test(req.url))
-      .forEach((req) => req.flush({ name: 'DSO de prueba', handle: '123456789/1' }));
-  }
-
-  afterEach(() => {
-    httpMock?.verify();
-  });
-
-  /**
-   * Verifica que scope=site descubra el siteHref vía /api/core/sites y llame al endpoint search/object.
-   * No usa getReport$ porque el single sobre el Site devuelve el contador propio del Site (siempre cero).
+   * Verifica que scope=site descubra el siteHref vía el wrapper de sites y
+   * llame al endpoint search/object. No usa getReport$ porque el single sobre
+   * el Site devuelve el contador propio del Site (siempre cero).
    */
   it('should call getReportsForSite$ with the discovered Site href for site scope', async () => {
     getReportsForSiteFn.mockReturnValue(of([buildReport('TotalVisits', [])]));
+    getSiteRootFn.mockReturnValue(
+      of(buildSite('site-root-uuid', 'http://test/server/api/core/sites/site-root-uuid')),
+    );
     const { fixture } = setup('site', null);
-    fixture.detectChanges();
-
-    const req = httpMock.expectOne('/server/api/core/sites');
-    req.flush({
-      _embedded: {
-        sites: [
-          {
-            uuid: 'site-root-uuid',
-            _links: { self: { href: 'http://test/server/api/core/sites/site-root-uuid' } },
-          },
-        ],
-      },
-    });
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -120,7 +112,6 @@ describe('StatisticsPage', () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
     const { fixture } = setup('item', 'item-uuid-1');
     fixture.detectChanges();
-    flushDsoNameRequest();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -134,7 +125,6 @@ describe('StatisticsPage', () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
     const { fixture } = setup('collection', 'col-uuid-1');
     fixture.detectChanges();
-    flushDsoNameRequest();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -145,11 +135,9 @@ describe('StatisticsPage', () => {
   /** Verifica que publique el trail [Estadísticas de uso, <nombre real>] al resolver el DSO. */
   it('should publish the breadcrumb trail with the resolved dso name for collection scope', async () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
+    getCollectionFn.mockReturnValue(of({ name: 'Alfabetización Bilingüe', handle: '123456789/9' }));
     const { fixture } = setup('collection', 'col-uuid-9');
     fixture.detectChanges();
-    httpMock
-      .match((req) => /\/core\/collections\//.test(req.url))
-      .forEach((req) => req.flush({ name: 'Alfabetización Bilingüe', handle: '123456789/9' }));
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -165,9 +153,9 @@ describe('StatisticsPage', () => {
    */
   it('should not publish a breadcrumb trail for site scope', async () => {
     getReportsForSiteFn.mockReturnValue(of([buildReport('TotalVisits', [])]));
+    getSiteRootFn.mockReturnValue(of(null));
     const { fixture } = setup('site', null);
     fixture.detectChanges();
-    httpMock.expectOne('/server/api/core/sites').flush({ _embedded: { sites: [] } });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -186,7 +174,6 @@ describe('StatisticsPage', () => {
     );
     const { fixture } = setup('item', 'item-uuid-2');
     fixture.detectChanges();
-    flushDsoNameRequest();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -202,7 +189,6 @@ describe('StatisticsPage', () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
     const { fixture } = setup('item', 'item-uuid-3');
     fixture.detectChanges();
-    flushDsoNameRequest();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -215,7 +201,6 @@ describe('StatisticsPage', () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
     const { fixture } = setup('item', 'item-uuid-x');
     fixture.detectChanges();
-    flushDsoNameRequest();
 
     expect(fixture.componentInstance.monthsBack()).toBe(12);
   });
@@ -225,7 +210,6 @@ describe('StatisticsPage', () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
     const { fixture } = setup('item', 'item-uuid-y');
     fixture.detectChanges();
-    flushDsoNameRequest();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -240,15 +224,10 @@ describe('StatisticsPage', () => {
    */
   it('should hide the months-back dropdown when dsoType is site', async () => {
     getReportsForSiteFn.mockReturnValue(of([buildReport('TotalVisits', [])]));
+    getSiteRootFn.mockReturnValue(
+      of(buildSite('site-z', 'http://localhost:8080/server/api/core/sites/site-z')),
+    );
     const { fixture } = setup('site', null);
-    fixture.detectChanges();
-    httpMock.expectOne((req) => req.url.endsWith('/core/sites')).flush({
-      _embedded: {
-        sites: [
-          { uuid: 'site-z', _links: { self: { href: 'http://localhost:8080/server/api/core/sites/site-z' } } },
-        ],
-      },
-    });
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -265,14 +244,12 @@ describe('StatisticsPage', () => {
    */
   it('should fetch the item name and handle to expose dsoTitle for the export', async () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
+    getItemFn.mockReturnValue(of({ name: 'Guía PEAC', handle: '123456789/77' }));
     const { fixture } = setup('item', 'item-uuid-9');
-    fixture.detectChanges();
-
-    const req = httpMock.expectOne('/server/api/core/items/item-uuid-9');
-    req.flush({ name: 'Guía PEAC', handle: '123456789/77' });
     fixture.detectChanges();
     await fixture.whenStable();
 
+    expect(getItemFn).toHaveBeenCalledWith('item-uuid-9');
     expect(fixture.componentInstance.dsoTitle()).toBe('Guía PEAC');
     expect(fixture.componentInstance.dsoHandle()).toBe('123456789/77');
   });
@@ -284,7 +261,6 @@ describe('StatisticsPage', () => {
     );
     const { fixture } = setup('item', 'item-uuid-z');
     fixture.detectChanges();
-    flushDsoNameRequest();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -296,12 +272,9 @@ describe('StatisticsPage', () => {
   /** Verifica que un 404 del recurso muestre el estado de error, no el vacío de "sin datos". */
   it('should show the error state when the resource does not exist (404)', async () => {
     getReportFn.mockReturnValue(of(buildReport('TotalVisits', [])));
+    getCollectionFn.mockReturnValue(throwError(() => new Error('404')));
     const { fixture } = setup('collection', 'uuid-inexistente');
     fixture.detectChanges();
-
-    httpMock
-      .match((req) => /\/core\/(items|collections)\//.test(req.url))
-      .forEach((req) => req.flush('Not Found', { status: 404, statusText: 'Not Found' }));
     await fixture.whenStable();
     fixture.detectChanges();
 

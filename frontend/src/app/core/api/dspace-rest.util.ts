@@ -26,6 +26,7 @@ export const GROUPS_COLLECTION_PATH = '/eperson/groups';
 export const REGISTRATIONS_COLLECTION_PATH = '/eperson/registrations';
 export const SUBMISSIONFORMS_PATH = '/config/submissionforms/';
 export const VOCABULARIES_PATH = '/submission/vocabularies/';
+export const SITES_PATH = '/core/sites';
 export const COMMUNITIES_PATH = '/core/communities';
 export const COLLECTIONS_PATH = '/core/collections';
 export const ITEMS_PATH = '/core/items';
