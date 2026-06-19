@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, Input, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, LOCALE_ID, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
 import { ChartConfig } from '../../../models/stats-dashboard.model';
 import { readChartColors } from '../chart-colors.util';
+import { formatStatNumber } from '../../../../../core/i18n/number.util';
 
 /**
  * Wrapper de `<p-chart type="pie">`. Transforma el `ChartConfig` agnóstico
@@ -21,6 +22,7 @@ import { readChartColors } from '../chart-colors.util';
 export class PieChartComponent {
   private readonly _config = signal<ChartConfig | null>(null);
   private readonly colors = readChartColors();
+  private readonly locale = inject(LOCALE_ID);
 
   @Input({ required: true })
   set config(value: ChartConfig) {
@@ -74,7 +76,7 @@ export class PieChartComponent {
               const value = values[i] ?? 0;
               const pct = total ? ((value / total) * 100).toFixed(1) : '0.0';
               return {
-                text: `${label}  ${value.toLocaleString('es-GT')} (${pct}%)`,
+                text: `${label}  ${formatStatNumber(value, this.locale)} (${pct}%)`,
                 fillStyle: colors[i] ?? this.colors.primary,
                 strokeStyle: colors[i] ?? this.colors.primary,
                 hidden: false,

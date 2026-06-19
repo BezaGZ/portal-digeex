@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, Input, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, LOCALE_ID, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
 import { ChartConfig } from '../../../models/stats-dashboard.model';
 import { readChartColors } from '../chart-colors.util';
+import { formatStatNumber } from '../../../../../core/i18n/number.util';
 
 /**
  * Wrapper de `<p-chart type="bar">` con `indexAxis: 'y'` para mostrar
@@ -21,6 +22,7 @@ import { readChartColors } from '../chart-colors.util';
 export class HorizontalBarChartComponent {
   private readonly _config = signal<ChartConfig | null>(null);
   private readonly colors = readChartColors();
+  private readonly locale = inject(LOCALE_ID);
 
   @Input({ required: true })
   set config(value: ChartConfig) {
@@ -64,7 +66,7 @@ export class HorizontalBarChartComponent {
         align: 'right' as const,
         color: this.colors.primary,
         font: { weight: 'bold' as const, size: 11 },
-        formatter: (value: number) => value.toLocaleString('es-GT'),
+        formatter: (value: number) => formatStatNumber(value, this.locale),
       },
     },
     scales: {

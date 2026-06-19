@@ -117,7 +117,7 @@
             </td>
             <td>{{ resourceTypeOf(o) }}</td>
             <td>{{ entityTypeOf(o) }}</td>
-            <td>{{ issuedOf(o) }}</td>
+            <td>{{ issuedOf(o) | isoDateLocal }}</td>
             <td>
               <span
                 data-testid="my-submission-state-badge"

@@ -77,14 +77,14 @@ describe('my-dspace-object.util', () => {
     expect(coverUrlOf(build())).toBeNull();
   });
 
-  /** Verifica que issuedOf formatee la fecha local en es-GT. */
-  it('issuedOf formats the ISO date in es-GT locale', () => {
+  /** Verifica que issuedOf devuelva el valor crudo; el formato lo da el pipe. */
+  it('issuedOf returns the raw dc.date.issued value', () => {
     const o = build({
       metadata: {
         'dc.date.issued': [{ value: '2026-05-04', language: null, authority: null, confidence: -1, place: 0 }],
       },
     });
-    expect(issuedOf(o)).toBe('4/5/2026');
+    expect(issuedOf(o)).toBe('2026-05-04');
   });
 
   /** Verifica que issuedOf devuelva string vacío cuando no hay dc.date.issued. */

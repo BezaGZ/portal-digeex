@@ -1,5 +1,4 @@
 import { MyDSpaceObject } from '../../../../core/api/models/my-dspace.model';
-import { parseIsoDateLocal } from '../../../../core/i18n/iso-date.util';
 
 /**
  * Helpers puros sobre `MyDSpaceObject` para las pantallas de admin que
@@ -19,12 +18,11 @@ export function coverUrlOf(o: MyDSpaceObject): string | null {
   return uuid ? `/server/api/core/bitstreams/${uuid}/content` : null;
 }
 
-/** `dc.date.issued` formateado en es-GT; string vacío si no viene poblado. */
+/** Valor crudo de `dc.date.issued`; string vacío si no viene poblado. El
+ *  formato de display lo aplica el pipe `isoDateLocal` en el template (fuente
+ *  única del formato de fecha del proyecto). */
 export function issuedOf(o: MyDSpaceObject): string {
-  const raw = o.indexableObject.metadata?.['dc.date.issued']?.[0]?.value ?? '';
-  if (!raw) return '';
-  const d = parseIsoDateLocal(raw);
-  return d ? d.toLocaleDateString('es-GT') : raw;
+  return o.indexableObject.metadata?.['dc.date.issued']?.[0]?.value ?? '';
 }
 
 /** Entity-type del item (Documento, Galeria, Estadistica) o `—` si no lo trae. */

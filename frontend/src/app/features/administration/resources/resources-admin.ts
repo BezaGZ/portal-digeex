@@ -15,6 +15,7 @@ import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { MyDSpaceObject } from '../../../core/api/models/my-dspace.model';
+import { IsoDateLocalPipe } from '../../../core/i18n/iso-date-local.pipe';
 import { EmptyStateComponent } from '../../../shared';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { ItemAdminFacade } from '../content/services/item-admin-facade';
@@ -77,6 +78,7 @@ type ResourcesTab = 'activos' | 'eliminados';
     TooltipModule,
     LoadingSpinnerComponent,
     EmptyStateComponent,
+    IsoDateLocalPipe,
   ],
 })
 export class ResourcesAdmin {

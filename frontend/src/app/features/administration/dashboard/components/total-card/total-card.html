@@ -12,7 +12,7 @@
         @if (failed()) {
           —
         } @else {
-          {{ value() | number }}
+          {{ value() | number: '1.0-0' }}
         }
       </span>
     }

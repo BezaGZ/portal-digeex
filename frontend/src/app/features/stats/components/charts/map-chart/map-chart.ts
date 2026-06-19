@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, HostListener, Input, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, Input, LOCALE_ID, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 import { topojson } from 'chartjs-chart-geo';
 
 import { ChartConfig } from '../../../models/stats-dashboard.model';
 import { readChartColors } from '../chart-colors.util';
+import { formatStatNumber } from '../../../../../core/i18n/number.util';
 import { normalizeDepartamento } from '../../../utils/normalize-departamento.util';
 import rawGtmTopology from '../../../../../../assets/geo/guatemala-departamentos.topo.json';
 
@@ -32,6 +33,7 @@ interface DeptFeature {
 export class MapChartComponent {
   private readonly _config = signal<ChartConfig | null>(null);
   private readonly colors = readChartColors();
+  private readonly locale = inject(LOCALE_ID);
 
   @Input({ required: true })
   set config(value: ChartConfig) {
@@ -144,7 +146,7 @@ export class MapChartComponent {
           title: (items: { raw?: { feature?: { properties?: { Departamento?: string } } } }[]) =>
             items[0]?.raw?.feature?.properties?.Departamento ?? '',
           label: (ctx: { raw?: { value?: number } }) =>
-            (ctx.raw?.value ?? 0).toLocaleString('es-GT'),
+            formatStatNumber(ctx.raw?.value ?? 0, this.locale),
         },
       },
     },

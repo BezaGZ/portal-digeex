@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, Input, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, LOCALE_ID, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
 import { ChartConfig } from '../../../models/stats-dashboard.model';
 import { readChartColors } from '../chart-colors.util';
+import { formatStatNumber } from '../../../../../core/i18n/number.util';
 
 /**
  * Wrapper de `<p-chart type="treemap">` usando `chartjs-chart-treemap`.
@@ -27,6 +28,7 @@ import { readChartColors } from '../chart-colors.util';
 export class TreemapChartComponent {
   private readonly _config = signal<ChartConfig | null>(null);
   private readonly colors = readChartColors();
+  private readonly locale = inject(LOCALE_ID);
 
   @Input({ required: true })
   set config(value: ChartConfig) {
@@ -69,7 +71,7 @@ export class TreemapChartComponent {
             formatter: (ctx: { raw?: { _data?: { label?: string; value?: number } } }) => {
               const data = ctx.raw?._data;
               if (!data) return '';
-              return `${data.label ?? ''}\n${(data.value ?? 0).toLocaleString('es-GT')}`;
+              return `${data.label ?? ''}\n${formatStatNumber(data.value ?? 0, this.locale)}`;
             },
             overflow: 'fit' as const,
           },
@@ -95,7 +97,7 @@ export class TreemapChartComponent {
           label: (ctx: { raw?: { _data?: { label?: string; value?: number } } }) => {
             const data = ctx.raw?._data;
             if (!data) return '';
-            return `${data.label ?? ''}: ${(data.value ?? 0).toLocaleString('es-GT')}`;
+            return `${data.label ?? ''}: ${formatStatNumber(data.value ?? 0, this.locale)}`;
           },
         },
       },

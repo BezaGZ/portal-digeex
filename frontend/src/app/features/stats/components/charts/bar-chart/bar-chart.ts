@@ -5,6 +5,7 @@ import {
   Component,
   DestroyRef,
   Input,
+  LOCALE_ID,
   OnInit,
   PLATFORM_ID,
   computed,
@@ -15,6 +16,7 @@ import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
 import { INSTITUTIONAL_COLORS, THEME_NEUTRALS } from '../../../../../core/theme/institutional-colors';
+import { formatStatNumber } from '../../../../../core/i18n/number.util';
 import { ChartConfig } from '../../../models/stats-dashboard.model';
 
 /**
@@ -37,6 +39,7 @@ export class BarChartComponent implements OnInit {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly cd = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly locale = inject(LOCALE_ID);
   private themeObserver: MutationObserver | null = null;
 
   /**
@@ -133,7 +136,7 @@ export class BarChartComponent implements OnInit {
           align: 'top' as const,
           color: datalabelColor,
           font: { weight: 'bold' as const, size: 11 },
-          formatter: (value: number) => value.toLocaleString('es-GT'),
+          formatter: (value: number) => formatStatNumber(value, this.locale),
         },
       },
       scales: {
