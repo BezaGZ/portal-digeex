@@ -22,7 +22,7 @@ import { Collection } from '../../../../core/api/models/collection.model';
  * Cada fila navega a la ruta de submission con el UUID del programa
  * elegido, donde el host monta el formulario por entity-type.
  *
- * Ciclo 26 TDD — Sprint 6
+ * Ciclo 26 TDD — Sprint 6. Ajustado en Ciclo 19 (Sprint 9).
  */
 describe('UploadContent', () => {
   function buildSub(uuid: string, name: string, sufijo: string): Community {
@@ -40,7 +40,7 @@ describe('UploadContent', () => {
     };
   }
 
-  function buildCollection(uuid: string, name: string): Collection {
+  function buildCollection(uuid: string, name: string, parentUuid: string): Collection {
     return {
       uuid,
       name,
@@ -48,6 +48,7 @@ describe('UploadContent', () => {
       archivedItemsCount: 0,
       type: 'collection',
       metadata: {},
+      _embedded: { parentCommunity: { uuid: parentUuid } as any },
     };
   }
 
@@ -57,11 +58,13 @@ describe('UploadContent', () => {
     buildSub('sub-3', 'Investigación', 'ED_INVESTIGACION'),
   ];
 
-  function colsFor(subUuid: string): Collection[] {
-    if (subUuid === 'sub-1') return [buildCollection('peac', 'PEAC'), buildCollection('eva', 'EVA')];
-    if (subUuid === 'sub-2') return [buildCollection('cemucaf', 'CEMUCAF')];
-    return [buildCollection('invest', 'INVEST'), buildCollection('datos', 'DATOS')];
-  }
+  const allCollections: Collection[] = [
+    buildCollection('peac', 'PEAC', 'sub-1'),
+    buildCollection('eva', 'EVA', 'sub-1'),
+    buildCollection('cemucaf', 'CEMUCAF', 'sub-2'),
+    buildCollection('invest', 'INVEST', 'sub-3'),
+    buildCollection('datos', 'DATOS', 'sub-3'),
+  ];
 
   function configureModule(callerRole: 'superadmin' | 'admin_subdireccion' | 'personal_delegado', sufijo: string | null) {
     const searchTopFn = vi.fn().mockReturnValue(
@@ -71,20 +74,10 @@ describe('UploadContent', () => {
         page: { size: 1, totalElements: 1, totalPages: 1, number: 0 },
       }),
     );
-    const listSubcommunitiesFn = vi.fn().mockReturnValue(
-      of({
-        _embedded: { subcommunities: subs },
-        _links: { self: { href: '/x' } },
-        page: { size: 100, totalElements: 3, totalPages: 1, number: 0 },
-      }),
-    );
-    const listByCommunityFn = vi.fn().mockImplementation((uuid: string) =>
-      of({
-        _embedded: { collections: colsFor(uuid) },
-        _links: { self: { href: '/x' } },
-        page: { size: 100, totalElements: colsFor(uuid).length, totalPages: 1, number: 0 },
-      }),
-    );
+    const listAllSubcommunitiesFn = vi.fn().mockReturnValue(of(subs));
+    const listAllFn = vi.fn().mockReturnValue(of(allCollections));
+    // No debe llamarse: el N+1 por subdirección se reemplazó por un solo listAll.
+    const listByCommunityFn = vi.fn();
 
     TestBed.configureTestingModule({
       imports: [UploadContent],
@@ -92,9 +85,9 @@ describe('UploadContent', () => {
         provideNoopAnimations(),
         {
           provide: CommunityApiService,
-          useValue: { searchTop: searchTopFn, listSubcommunities: listSubcommunitiesFn },
+          useValue: { searchTop: searchTopFn, listAllSubcommunities: listAllSubcommunitiesFn },
         },
-        { provide: CollectionApiService, useValue: { listByCommunity: listByCommunityFn } },
+        { provide: CollectionApiService, useValue: { listAll: listAllFn, listByCommunity: listByCommunityFn } },
         {
           provide: AuthCallerService,
           useValue: { currentCaller$: of({ role: callerRole, sufijo }) },
@@ -102,6 +95,8 @@ describe('UploadContent', () => {
         { provide: Router, useValue: { navigate: vi.fn() } },
       ],
     });
+
+    return { listAllFn, listByCommunityFn };
   }
 
   it('should expose all 3 subdirecciones with their programs when caller is superadmin', () => {
@@ -117,6 +112,16 @@ describe('UploadContent', () => {
       'Investigación',
     ]);
     expect(groups[0].programs.map((p) => p.name)).toEqual(['PEAC', 'EVA']);
+  });
+
+  it('should load all programs with a single listAll and no per-sub request', () => {
+    const { listAllFn, listByCommunityFn } = configureModule('superadmin', null);
+    const fixture = TestBed.createComponent(UploadContent);
+    fixture.detectChanges();
+
+    // Un solo listAll para todas las colecciones; sin petición por subdirección.
+    expect(listAllFn).toHaveBeenCalledTimes(1);
+    expect(listByCommunityFn).not.toHaveBeenCalled();
   });
 
   it('should expose only the matching sub when caller is admin_subdireccion with sufijo', () => {

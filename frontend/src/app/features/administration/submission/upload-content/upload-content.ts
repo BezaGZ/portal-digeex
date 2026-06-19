@@ -79,29 +79,32 @@ export class UploadContent {
     this.router.navigate(['/administrador/programas', program.uuid, 'cargar']);
   }
 
-  /** searchTop → listSubcommunities → forkJoin que enriquece cada sub con sus programas. */
+  /**
+   * searchTop → esqueleto de subdirecciones (todas) + una sola carga de
+   * colecciones con su comunidad padre embebida, agrupadas por sub en el
+   * cliente. Sin petición por subdirección y sin tope de página, que truncaba
+   * las subdirecciones o los programas pasados los 100. No se filtra por
+   * entity-type: se sube a programas Documento, Galería y Estadística.
+   */
   private loadAllGroups$(): Observable<SubdireccionWithPrograms[]> {
     return this.communityApi.searchTop(0, 1).pipe(
       switchMap((rootResp) => {
         const root = rootResp._embedded?.['communities']?.[0];
         if (!root) return of([] as SubdireccionWithPrograms[]);
-        return this.communityApi.listSubcommunities(root.uuid, 0, 100).pipe(
-          switchMap((subsResp) => {
-            const embedded = subsResp._embedded ?? {};
-            const subs = (embedded as Record<string, Community[]>)['subcommunities']
-              ?? (embedded as Record<string, Community[]>)['communities']
-              ?? [];
-            if (subs.length === 0) return of([] as SubdireccionWithPrograms[]);
-            return forkJoin(
-              subs.map((sub) =>
-                this.collectionApi.listByCommunity(sub.uuid, 0, 100).pipe(
-                  map((colsResp) => ({
-                    sub,
-                    programs: (colsResp._embedded?.['collections'] ?? []) as Collection[],
-                  })),
-                ),
-              ),
-            );
+        return forkJoin({
+          subs: this.communityApi.listAllSubcommunities(root.uuid),
+          collections: this.collectionApi.listAll({ embed: 'parentCommunity' }),
+        }).pipe(
+          map(({ subs, collections }) => {
+            const byParent = new Map<string, Collection[]>();
+            for (const col of collections) {
+              const parentUuid = col._embedded?.parentCommunity?.uuid;
+              if (!parentUuid) continue;
+              const group = byParent.get(parentUuid) ?? [];
+              group.push(col);
+              byParent.set(parentUuid, group);
+            }
+            return subs.map((sub) => ({ sub, programs: byParent.get(sub.uuid) ?? [] }));
           }),
         );
       }),
