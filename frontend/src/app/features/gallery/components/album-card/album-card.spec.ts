@@ -52,9 +52,7 @@ describe('AlbumCardComponent', () => {
     fixture.detectChanges();
 
     const text = (fixture.nativeElement.textContent ?? '') as string;
-    expect(text).toContain('4');
-    expect(text).toContain('mayo');
-    expect(text).toContain('2026');
-    expect(text).not.toContain('3 de mayo');
+    expect(text).toContain('04/05/2026');
+    expect(text).not.toContain('03/05/2026');
   });
 });

@@ -58,7 +58,7 @@
         >
           <span class="flex items-center gap-2">
             <i class="pi pi-calendar"></i>
-            {{ formatDate(album()!.date) }}
+            {{ album()!.date | isoDateLocal }}
           </span>
           <span class="flex items-center gap-2">
             <i class="pi pi-images"></i>

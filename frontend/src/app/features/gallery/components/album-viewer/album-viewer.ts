@@ -9,13 +9,13 @@ import { StatisticsTrackingService } from '../../../../core/api/statistics-track
 import { Album } from '../../models';
 import { PhotoGridItemComponent } from '../photo-grid-item/photo-grid-item';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { parseIsoDateLocal } from '../../../../core/i18n/iso-date.util';
+import { IsoDateLocalPipe } from '../../../../core/i18n/iso-date-local.pipe';
 
 @Component({
   selector: 'app-album-viewer',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, GalleriaModule, ButtonModule, SkeletonModule, PhotoGridItemComponent],
+  imports: [CommonModule, GalleriaModule, ButtonModule, SkeletonModule, PhotoGridItemComponent, IsoDateLocalPipe],
   templateUrl: './album-viewer.html',
   styleUrls: ['./album-viewer.scss'],
 })
@@ -100,13 +100,4 @@ export class AlbumViewer implements OnInit {
     this.displayGalleria.set(true);
   }
 
-  formatDate(dateString: string): string {
-    const date = parseIsoDateLocal(dateString);
-    if (!date) return dateString;
-    return date.toLocaleDateString('es-GT', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  }
 }

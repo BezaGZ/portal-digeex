@@ -21,6 +21,7 @@ import { ChartSectionComponent } from '../components/charts/chart-section/chart-
 import { StatsFiltersComponent } from '../components/stats-filters/stats-filters';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { EmptyStateComponent } from '../../../shared';
+import { IsoDateLocalPipe } from '../../../core/i18n/iso-date-local.pipe';
 
 /** Estados terminales no exitosos del detalle; cada uno tiene su mensaje en la UI. */
 export type StatsDetailError = 'not-found' | 'unsupported' | 'network';
@@ -46,6 +47,7 @@ export type StatsDetailError = 'not-found' | 'unsupported' | 'network';
     StatsFiltersComponent,
     LoadingSpinnerComponent,
     EmptyStateComponent,
+    IsoDateLocalPipe,
   ],
   templateUrl: './stats-detail.html',
 })

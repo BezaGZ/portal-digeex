@@ -49,7 +49,7 @@
             class="text-xs"
             style="color: var(--color-text-tertiary); font-family: var(--font-body)"
           >
-            {{ item().dateIssued | isoDateLocal: 'shortDate' }}
+            {{ item().dateIssued | isoDateLocal }}
           </span>
         }
         @if (isVideo) {

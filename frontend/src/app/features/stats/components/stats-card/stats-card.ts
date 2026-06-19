@@ -5,6 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 
 import { StatsItem } from '../../models/stats-item.model';
+import { IsoDateLocalPipe } from '../../../../core/i18n/iso-date-local.pipe';
 
 /**
  * Card del listado público de Estadística. Layout: icono grande arriba,
@@ -18,7 +19,7 @@ import { StatsItem } from '../../models/stats-item.model';
   selector: 'app-stats-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CardModule, ButtonModule, DialogModule],
+  imports: [CommonModule, CardModule, ButtonModule, DialogModule, IsoDateLocalPipe],
   templateUrl: './stats-card.html',
 })
 export class StatsCardComponent {

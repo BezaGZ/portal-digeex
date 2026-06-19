@@ -110,9 +110,7 @@ describe('DocumentCardComponent', () => {
     fixture.detectChanges();
 
     const text = (fixture.nativeElement.textContent ?? '') as string;
-    expect(text).toContain('4');
-    expect(text).toContain('5');
-    expect(text).toContain('26');
-    expect(text).not.toMatch(/\b3\/5\/26\b/);
+    expect(text).toContain('04/05/2026');
+    expect(text).not.toContain('03/05/2026');
   });
 });

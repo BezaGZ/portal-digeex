@@ -127,14 +127,6 @@ describe('AlbumViewer', () => {
       expect(component.displayGalleria()).toBe(true);
     });
 
-    /** Verifica que formatDate() incluya el año en formato español. */
-    it('should format date in Spanish locale', () => {
-      const fixture = TestBed.createComponent(AlbumViewer);
-      const formatted = fixture.componentInstance.formatDate('2025-03-15');
-
-      expect(formatted).toContain('2025');
-    });
-
     /** Verifica que goBack() navegue al listado de la colección padre. */
     it('should navigate to /galeria/:collectionUuid on goBack', () => {
       const fixture = TestBed.createComponent(AlbumViewer);
