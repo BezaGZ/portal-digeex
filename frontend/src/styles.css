@@ -276,6 +276,11 @@
   border: 0 !important;
 }
 
+/* Tag con peso de fuente más delgado (Altivo Medium) para los chips de tipo. */
+.tag-thin .p-tag-label {
+  font-weight: 500;
+}
+
 .dark {
   /* Modo oscuro - Mantiene colores institucionales pero ajusta fondos */
 

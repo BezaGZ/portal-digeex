@@ -17,6 +17,8 @@ import { CollectionApiService } from '../../../../core/api/collection-api.servic
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { findCallerSub } from '../../shared/services/scope-resolver';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
+import { TagModule } from 'primeng/tag';
+import { ENTITY_TYPE } from '../../../../core/config/digeex-values.config';
 
 /** Subdirección + sus programas; lo que la pantalla agrupa por bloque para listar. */
 export interface SubdireccionWithPrograms {
@@ -34,7 +36,7 @@ export interface SubdireccionWithPrograms {
   selector: 'app-upload-content',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './upload-content.html',
-  imports: [LoadingSpinnerComponent],
+  imports: [LoadingSpinnerComponent, TagModule],
 })
 export class UploadContent {
   private readonly communityApi = inject(CommunityApiService);
@@ -77,6 +79,24 @@ export class UploadContent {
   /** Navega al host de submission con la colección elegida; el host monta el form por entity-type. */
   openSubmission(program: Collection): void {
     this.router.navigate(['/administrador/programas', program.uuid, 'cargar']);
+  }
+
+  /** Presentación por entity-type: icono PrimeIcons, etiqueta y severity del p-tag. */
+  private readonly typeMeta: Record<string, { label: string; icon: string; severity: 'info' | 'success' | 'warn' | 'secondary' }> = {
+    [ENTITY_TYPE.DOCUMENTO]: { label: 'Documento', icon: 'pi pi-file', severity: 'info' },
+    [ENTITY_TYPE.GALERIA]: { label: 'Galería', icon: 'pi pi-images', severity: 'warn' },
+    [ENTITY_TYPE.ESTADISTICA]: { label: 'Estadística', icon: 'pi pi-chart-bar', severity: 'success' },
+  };
+
+  /** Icono, etiqueta y severity del programa según su entity-type; genérico si no matchea. */
+  programMeta(program: Collection): { label: string; icon: string; severity: 'info' | 'success' | 'warn' | 'secondary' } {
+    const type = program.metadata?.['dspace.entity.type']?.[0]?.value ?? '';
+    return this.typeMeta[type] ?? { label: 'Programa', icon: 'pi pi-folder', severity: 'secondary' };
+  }
+
+  /** Sigla del programa (`dc.title.alternative`) o el nombre completo si no tiene. */
+  acronym(program: Collection): string {
+    return program.metadata?.['dc.title.alternative']?.[0]?.value || program.name;
   }
 
   /**
