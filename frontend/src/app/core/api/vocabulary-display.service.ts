@@ -40,7 +40,13 @@ export class VocabularyDisplayService {
     );
   }
 
-  private entries$(vocabularyName: string): Observable<VocabularyEntry[]> {
+  /**
+   * Lista completa de entradas del vocabulario, cacheada por nombre con
+   * `shareReplay(1)`. Pública para que los forms de submission pueblen sus
+   * dropdowns reusando la misma caché que `display$`/`displayMap$`, en vez de
+   * pegar a `VocabularyApiService.getEntries` por su cuenta en cada apertura.
+   */
+  entries$(vocabularyName: string): Observable<VocabularyEntry[]> {
     let cached = this.cache.get(vocabularyName);
     if (!cached) {
       cached = this.vocabApi.getEntries(vocabularyName).pipe(shareReplay(1));

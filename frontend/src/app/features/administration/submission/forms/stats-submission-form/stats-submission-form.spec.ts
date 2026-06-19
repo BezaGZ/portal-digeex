@@ -12,7 +12,7 @@ import { Collection } from '../../../../../core/api/models/collection.model';
 import { Item } from '../../../../../core/api/models/item.model';
 import { SubmissionFacade } from '../../../content/services/submission-facade';
 import { ItemAdminFacade } from '../../../content/services/item-admin-facade';
-import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
+import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-display.service';
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
 import { getSubmissionFormComponent } from '../../submission-form-registry';
 
@@ -27,7 +27,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * `tipos-dataset-estadistica` y determina qué `StatsRenderer` monta la vista
  * pública. Patrón Template Method.
  *
- * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclo 5 (Sprint 7).
+ * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclo 5 (Sprint 7) y Ciclo 21 (Sprint 9).
  */
 describe('StatsSubmissionForm', () => {
   const DATASET_VOCAB: VocabularyEntry[] = [
@@ -35,7 +35,7 @@ describe('StatsSubmissionForm', () => {
     { display: 'Estudiantes', value: 'estudiantes' },
   ];
 
-  let vocabApi: { getEntries: ReturnType<typeof vi.fn> };
+  let vocabDisplay: { entries$: ReturnType<typeof vi.fn> };
   let listOriginalFn: ReturnType<typeof vi.fn>;
   let toastAddFn: ReturnType<typeof vi.fn>;
 
@@ -75,8 +75,8 @@ describe('StatsSubmissionForm', () => {
   }
 
   beforeEach(() => {
-    vocabApi = {
-      getEntries: vi.fn().mockReturnValue(of(DATASET_VOCAB)),
+    vocabDisplay = {
+      entries$: vi.fn().mockReturnValue(of(DATASET_VOCAB)),
     };
     listOriginalFn = vi.fn().mockReturnValue(
       of({ items: [], totalElements: 0, totalPages: 0, size: 20, page: 0 }),
@@ -99,7 +99,7 @@ describe('StatsSubmissionForm', () => {
         },
         { provide: MessageService, useValue: { add: toastAddFn } },
         { provide: Router, useValue: { navigate: vi.fn() } },
-        { provide: VocabularyApiService, useValue: vocabApi },
+        { provide: VocabularyDisplayService, useValue: vocabDisplay },
       ],
     });
   });
@@ -150,7 +150,7 @@ describe('StatsSubmissionForm', () => {
    */
   it('should load tipos-dataset-estadistica on init and populate datasetOptions', () => {
     const c = mountForCreate();
-    expect(vocabApi.getEntries).toHaveBeenCalledWith('tipos-dataset-estadistica');
+    expect(vocabDisplay.entries$).toHaveBeenCalledWith('tipos-dataset-estadistica');
     expect(c.datasetOptions()).toEqual(DATASET_VOCAB);
     expect(c.vocabulariesLoading()).toBe(false);
   });

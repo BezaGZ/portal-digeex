@@ -11,7 +11,7 @@ import { Collection } from '../../../../../core/api/models/collection.model';
 import { Item } from '../../../../../core/api/models/item.model';
 import { SubmissionFacade } from '../../../content/services/submission-facade';
 import { ItemAdminFacade } from '../../../content/services/item-admin-facade';
-import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
+import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-display.service';
 import { getSubmissionFormComponent } from '../../submission-form-registry';
 
 /**
@@ -23,7 +23,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * subir las fotos del álbum. Usa los vocabularios programas-digeex,
  * tipo-poblacion, enfoque-imagen y tipos-evento.
  *
- * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclos 29, 30 y 34.
+ * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclos 29, 30 y 34, y Ciclo 21 (Sprint 9).
  */
 describe('GallerySubmissionForm', () => {
   function buildCollection(uuid: string): Collection {
@@ -37,12 +37,12 @@ describe('GallerySubmissionForm', () => {
     };
   }
 
-  let getEntriesFn: ReturnType<typeof vi.fn>;
+  let entriesFn: ReturnType<typeof vi.fn>;
   let editItemFn: ReturnType<typeof vi.fn>;
   let listOriginalFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    getEntriesFn = vi.fn().mockReturnValue(of([]));
+    entriesFn = vi.fn().mockReturnValue(of([]));
     editItemFn = vi.fn().mockReturnValue(of({ uuid: 'item-1' }));
     listOriginalFn = vi
       .fn()
@@ -64,7 +64,7 @@ describe('GallerySubmissionForm', () => {
         },
         { provide: MessageService, useValue: { add: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
-        { provide: VocabularyApiService, useValue: { getEntries: getEntriesFn } },
+        { provide: VocabularyDisplayService, useValue: { entries$: entriesFn } },
       ],
     });
   });
@@ -301,7 +301,7 @@ describe('GallerySubmissionForm', () => {
     const programas$ = new Subject<{ display: string; value: string }[]>();
     const poblacion$ = new Subject<{ display: string; value: string }[]>();
     const enfoque$ = new Subject<{ display: string; value: string }[]>();
-    getEntriesFn.mockImplementation((name: string) => {
+    entriesFn.mockImplementation((name: string) => {
       if (name === 'tipos-evento') return tipos$;
       if (name === 'programas-digeex') return programas$;
       if (name === 'tipo-poblacion') return poblacion$;
@@ -336,10 +336,10 @@ describe('GallerySubmissionForm', () => {
     fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
     fixture.detectChanges();
 
-    expect(getEntriesFn).toHaveBeenCalledWith('tipos-evento');
-    expect(getEntriesFn).toHaveBeenCalledWith('programas-digeex');
-    expect(getEntriesFn).toHaveBeenCalledWith('tipo-poblacion');
-    expect(getEntriesFn).toHaveBeenCalledWith('enfoque-imagen');
+    expect(entriesFn).toHaveBeenCalledWith('tipos-evento');
+    expect(entriesFn).toHaveBeenCalledWith('programas-digeex');
+    expect(entriesFn).toHaveBeenCalledWith('tipo-poblacion');
+    expect(entriesFn).toHaveBeenCalledWith('enfoque-imagen');
   });
 
   /** Verifica que con el input `item` el form se pre-llene desde item.metadata. */

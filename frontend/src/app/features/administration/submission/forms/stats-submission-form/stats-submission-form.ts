@@ -23,7 +23,7 @@ import { MetadataValue } from '../../../../../core/api/models/metadata.model';
 import { Item } from '../../../../../core/api/models/item.model';
 import { Bitstream } from '../../../../../core/api/models/bitstream.model';
 import { JsonPatchEntry } from '../../../../../core/api/json-patch.util';
-import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
+import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-display.service';
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
 
 /**
@@ -58,7 +58,7 @@ import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry
 })
 export class StatsSubmissionForm extends BaseSubmissionForm {
   private readonly fb = inject(FormBuilder);
-  private readonly vocabApi = inject(VocabularyApiService);
+  private readonly vocabDisplay = inject(VocabularyDisplayService);
   private readonly destroyRef = inject(DestroyRef);
 
   /** Toggle Pública/Privada que controla `discoverable` post-archive. */
@@ -128,7 +128,7 @@ export class StatsSubmissionForm extends BaseSubmissionForm {
 
   constructor() {
     super();
-    this.vocabApi.getEntries('tipos-dataset-estadistica').subscribe((entries) => {
+    this.vocabDisplay.entries$('tipos-dataset-estadistica').subscribe((entries) => {
       this.datasetOptions.set(entries);
       this.vocabulariesLoading.set(false);
     });

@@ -11,7 +11,7 @@ import { Collection } from '../../../../../core/api/models/collection.model';
 import { Item } from '../../../../../core/api/models/item.model';
 import { SubmissionFacade } from '../../../content/services/submission-facade';
 import { ItemAdminFacade } from '../../../content/services/item-admin-facade';
-import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
+import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-display.service';
 import { getSubmissionFormComponent } from '../../submission-form-registry';
 
 /**
@@ -24,7 +24,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * (Video externo) según la decisión de Sprint 6 de no duplicar maquinaria
  * de submission para algo que tiene el mismo entity-type.
  *
- * Ciclo 23 TDD — Sprint 6. Ajustado en Ciclo 35.
+ * Ciclo 23 TDD — Sprint 6. Ajustado en Ciclo 35 y Ciclo 21 (Sprint 9).
  */
 describe('DocumentSubmissionForm', () => {
   function buildCollection(uuid: string): Collection {
@@ -38,12 +38,12 @@ describe('DocumentSubmissionForm', () => {
     };
   }
 
-  let getEntriesFn: ReturnType<typeof vi.fn>;
+  let entriesFn: ReturnType<typeof vi.fn>;
   let editItemFn: ReturnType<typeof vi.fn>;
   let listOriginalFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    getEntriesFn = vi.fn().mockReturnValue(of([]));
+    entriesFn = vi.fn().mockReturnValue(of([]));
     editItemFn = vi.fn().mockReturnValue(of({ uuid: 'item-1' }));
     listOriginalFn = vi
       .fn()
@@ -65,7 +65,7 @@ describe('DocumentSubmissionForm', () => {
         },
         { provide: MessageService, useValue: { add: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
-        { provide: VocabularyApiService, useValue: { getEntries: getEntriesFn } },
+        { provide: VocabularyDisplayService, useValue: { entries$: entriesFn } },
       ],
     });
   });
@@ -199,7 +199,7 @@ describe('DocumentSubmissionForm', () => {
     const tipos$ = new Subject<{ display: string; value: string }[]>();
     const niveles$ = new Subject<{ display: string; value: string }[]>();
     const idiomas$ = new Subject<{ display: string; value: string }[]>();
-    getEntriesFn.mockImplementation((name: string) => {
+    entriesFn.mockImplementation((name: string) => {
       if (name === 'tipos-documento') return tipos$;
       if (name === 'niveles-educativos') return niveles$;
       if (name === 'idiomas-digeex') return idiomas$;
@@ -229,9 +229,9 @@ describe('DocumentSubmissionForm', () => {
     fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
     fixture.detectChanges();
 
-    expect(getEntriesFn).toHaveBeenCalledWith('tipos-documento');
-    expect(getEntriesFn).toHaveBeenCalledWith('niveles-educativos');
-    expect(getEntriesFn).toHaveBeenCalledWith('idiomas-digeex');
+    expect(entriesFn).toHaveBeenCalledWith('tipos-documento');
+    expect(entriesFn).toHaveBeenCalledWith('niveles-educativos');
+    expect(entriesFn).toHaveBeenCalledWith('idiomas-digeex');
   });
 
   /** Verifica que las entries del vocabulario se expongan a través de las signals tipoDocumentoOptions y audienceOptions. */
@@ -244,7 +244,7 @@ describe('DocumentSubmissionForm', () => {
       { display: 'Primaria', value: 'Primaria' },
       { display: 'Básico', value: 'Básico' },
     ];
-    getEntriesFn.mockImplementation((name: string) => {
+    entriesFn.mockImplementation((name: string) => {
       if (name === 'tipos-documento') return of(tipos);
       if (name === 'niveles-educativos') return of(niveles);
       return of([]);

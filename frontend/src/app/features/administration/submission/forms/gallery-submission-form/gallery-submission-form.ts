@@ -20,7 +20,7 @@ import { MetadataValue } from '../../../../../core/api/models/metadata.model';
 import { Bitstream } from '../../../../../core/api/models/bitstream.model';
 import { Item } from '../../../../../core/api/models/item.model';
 import { JsonPatchEntry } from '../../../../../core/api/json-patch.util';
-import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
+import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-display.service';
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
 import { FileDropzoneComponent } from '../../../../../shared';
 import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
@@ -52,7 +52,7 @@ import { BitstreamBundleManagerComponent } from '../../../../../shared/component
 })
 export class GallerySubmissionForm extends BaseSubmissionForm {
   private readonly fb = inject(FormBuilder);
-  private readonly vocabApi = inject(VocabularyApiService);
+  private readonly vocabDisplay = inject(VocabularyDisplayService);
 
   readonly visibility = signal<'public' | 'private'>('public');
 
@@ -145,10 +145,10 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
      * armado y podemos bajar el flag del spinner.
      */
     forkJoin({
-      tipos: this.vocabApi.getEntries('tipos-evento'),
-      programas: this.vocabApi.getEntries('programas-digeex'),
-      poblacion: this.vocabApi.getEntries('tipo-poblacion'),
-      enfoque: this.vocabApi.getEntries('enfoque-imagen'),
+      tipos: this.vocabDisplay.entries$('tipos-evento'),
+      programas: this.vocabDisplay.entries$('programas-digeex'),
+      poblacion: this.vocabDisplay.entries$('tipo-poblacion'),
+      enfoque: this.vocabDisplay.entries$('enfoque-imagen'),
     }).subscribe(({ tipos, programas, poblacion, enfoque }) => {
       this.tiposEventoOptions.set(tipos);
       this.programasOptions.set(programas);

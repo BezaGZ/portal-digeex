@@ -24,7 +24,7 @@ import { MetadataValue } from '../../../../../core/api/models/metadata.model';
 import { Bitstream } from '../../../../../core/api/models/bitstream.model';
 import { Item } from '../../../../../core/api/models/item.model';
 import { JsonPatchEntry } from '../../../../../core/api/json-patch.util';
-import { VocabularyApiService } from '../../../../../core/api/vocabulary-api.service';
+import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-display.service';
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
 
 /**
@@ -56,7 +56,7 @@ import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry
 })
 export class DocumentSubmissionForm extends BaseSubmissionForm {
   private readonly fb = inject(FormBuilder);
-  private readonly vocabApi = inject(VocabularyApiService);
+  private readonly vocabDisplay = inject(VocabularyDisplayService);
 
   /** Lo bindeará un toggle del template; default público para el caso común. */
   readonly visibility = signal<'public' | 'private'>('public');
@@ -163,9 +163,9 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
      * armado y podemos bajar el flag del spinner.
      */
     forkJoin({
-      tipos: this.vocabApi.getEntries('tipos-documento'),
-      niveles: this.vocabApi.getEntries('niveles-educativos'),
-      idiomas: this.vocabApi.getEntries('idiomas-digeex'),
+      tipos: this.vocabDisplay.entries$('tipos-documento'),
+      niveles: this.vocabDisplay.entries$('niveles-educativos'),
+      idiomas: this.vocabDisplay.entries$('idiomas-digeex'),
     }).subscribe(({ tipos, niveles, idiomas }) => {
       this.tipoDocumentoOptions.set(tipos);
       this.audienceOptions.set(niveles);
