@@ -20,9 +20,12 @@ import { UsageReport, UsageReportType } from './models/usage-report.model';
  *
  * @see https://github.com/DSpace/RestContract/blob/main/endpoints.md
  */
-/** Shape mínimo del wrapper HAL que devuelve el endpoint search/object. */
+/**
+ * Shape mínimo del wrapper HAL que devuelve el endpoint search/object. DSpace
+ * serializa el tipo del reporte como `report-type` (con guion), no `reportType`.
+ */
 interface SiteUsageReportsResponse {
-  _embedded?: { usagereports?: UsageReport[] };
+  _embedded?: { usagereports?: Array<UsageReport & { 'report-type'?: string }> };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -52,8 +55,15 @@ export class StatisticsApiService {
    */
   getReportsForSite$(siteHref: string): Observable<UsageReport[]> {
     const url = `${DSPACE_API_BASE}/statistics/usagereports/search/object?uri=${encodeURIComponent(siteHref)}`;
-    return this.http
-      .get<SiteUsageReportsResponse>(url)
-      .pipe(map((r) => r._embedded?.usagereports ?? []));
+    return this.http.get<SiteUsageReportsResponse>(url).pipe(
+      map((r) =>
+        (r._embedded?.usagereports ?? []).map((u) => ({
+          ...u,
+          // Normaliza `report-type` (con guion, como lo serializa DSpace) a
+          // `reportType` para que el container resuelva título y renderer.
+          reportType: (u['report-type'] ?? u.reportType) as UsageReportType,
+        })),
+      ),
+    );
   }
 }

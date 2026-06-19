@@ -14,7 +14,7 @@ import { StatisticsApiService } from './statistics-api.service';
  * de items, sino como contador del propio Site). La respuesta llega tal
  * cual viene del backend y el modelo `UsageReport` la consume sin pegado.
  *
- * Ciclo 23 TDD — Sprint 8.
+ * Ciclo 23 TDD — Sprint 8. Ajustado en Ciclo 22 (Sprint 9).
  */
 describe('StatisticsApiService', () => {
   let service: StatisticsApiService;
@@ -118,7 +118,8 @@ describe('StatisticsApiService', () => {
         usagereports: [
           {
             id: 'site-uuid_TotalVisits',
-            reportType: 'TotalVisits',
+            // DSpace serializa el tipo como `report-type` (con guion), no `reportType`.
+            'report-type': 'TotalVisits',
             points: [{ id: 'i1', label: 'Item A', values: { views: 7 } }],
           },
         ],
@@ -127,6 +128,8 @@ describe('StatisticsApiService', () => {
 
     expect(Array.isArray(received)).toBe(true);
     expect((received as unknown[]).length).toBe(1);
+    // El service normaliza `report-type` a `reportType` para el container.
+    expect((received as { reportType: string }[])[0].reportType).toBe('TotalVisits');
   });
 
   /** Verifica que falta el _embedded.usagereports en la respuesta degrade a array vacío sin romper el caller. */
