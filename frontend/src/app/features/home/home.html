@@ -49,7 +49,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           @for (child of children(); track child.id) {
             <div
-              class="group bg-white rounded-2xl cursor-pointer border border-gray-200 shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ease-in-out flex flex-col"
+              class="group bg-[var(--color-surface)] rounded-2xl cursor-pointer border shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ease-in-out flex flex-col"
               style="border-color: var(--color-border)"
               (click)="navigateToChild(child)"
             >
@@ -73,7 +73,7 @@
                 <h4
                   class="mb-2 transition-colors text-center"
                   style="
-                    color: var(--gob-azul-gobierno);
+                    color: var(--color-text-primary);
                     font-family: var(--font-heading);
                     font-weight: 600;
                     line-height: 1.3;
@@ -82,12 +82,7 @@
                   {{ child.name }}
                 </h4>
                 <p
-                  class="text-sm text-center"
-                  style="
-                    color: var(--color-text-secondary);
-                    font-family: var(--font-body);
-                    line-height: 1.4;
-                  "
+                  class="card-subtitle text-center"
                 >
                   {{ child.description }}
                 </p>
@@ -97,7 +92,7 @@
 
           @for (item of items(); track item.id) {
             <div
-              class="group bg-white rounded-2xl cursor-pointer border border-gray-200 shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ease-in-out flex flex-col"
+              class="group bg-[var(--color-surface)] rounded-2xl cursor-pointer border shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ease-in-out flex flex-col"
               style="border-color: var(--color-border)"
               (click)="navigateToDocument(item)"
             >
@@ -112,7 +107,7 @@
                 <h4
                   class="mb-2 transition-colors text-center"
                   style="
-                    color: var(--gob-azul-gobierno);
+                    color: var(--color-text-primary);
                     font-family: var(--font-heading);
                     font-weight: 600;
                     line-height: 1.3;
@@ -121,12 +116,7 @@
                   {{ item.name }}
                 </h4>
                 <p
-                  class="text-sm text-center"
-                  style="
-                    color: var(--color-text-secondary);
-                    font-family: var(--font-body);
-                    line-height: 1.4;
-                  "
+                  class="card-subtitle text-center"
                 >
                   {{ item.description }}
                 </p>

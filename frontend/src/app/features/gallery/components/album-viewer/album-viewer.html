@@ -32,7 +32,7 @@
       </div>
 
       <div class="mb-8">
-        <h1 class="text-4xl font-bold mb-3 text-gob-primary dark:text-white" style="font-family: var(--font-heading)">
+        <h1 class="page-title mb-3">
           {{ album()!.title }}
         </h1>
 
@@ -67,35 +67,34 @@
         </div>
 
         <p
-          class="text-lg leading-relaxed max-w-3xl mb-4 text-justify"
-          style="color: var(--color-text-primary); font-family: var(--font-body); font-weight: 400"
+          class="page-subtitle max-w-3xl text-justify mb-6"
         >
-          {{ album()!.description }}
+          {{ album()!.description | slice: 0 : 1000 }}
         </p>
 
         <!-- Metadata detallada -->
         <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm mb-4 max-w-3xl" style="font-family: var(--font-body)">
           @if (album()!.author) {
             <span class="flex items-center gap-1" style="color: var(--color-text-secondary)">
-              <i class="pi pi-user text-xs text-gob-primary dark:text-white"></i>
+              <i class="pi pi-user text-xs text-[var(--color-text-primary)]"></i>
               {{ album()!.author }}
             </span>
           }
           @if (album()!.publisher) {
             <span class="flex items-center gap-1" style="color: var(--color-text-secondary)">
-              <i class="pi pi-building text-xs text-gob-primary dark:text-white"></i>
+              <i class="pi pi-building text-xs text-[var(--color-text-primary)]"></i>
               {{ album()!.publisher }}
             </span>
           }
           @if (album()!.populationType) {
             <span class="flex items-center gap-1" style="color: var(--color-text-secondary)">
-              <i class="pi pi-users text-xs text-gob-primary dark:text-white"></i>
+              <i class="pi pi-users text-xs text-[var(--color-text-primary)]"></i>
               {{ album()!.populationType }}
             </span>
           }
           @if (album()!.imageContext) {
             <span class="flex items-center gap-1" style="color: var(--color-text-secondary)">
-              <i class="pi pi-eye text-xs text-gob-primary dark:text-white"></i>
+              <i class="pi pi-eye text-xs text-[var(--color-text-primary)]"></i>
               {{ album()!.imageContext }}
             </span>
           }
@@ -105,7 +104,7 @@
         @if (album()!.subjects.length > 0) {
           <div class="flex flex-wrap items-center gap-2 mb-6 max-w-3xl">
             @for (subject of album()!.subjects; track subject) {
-              <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-gob-primary dark:bg-gob-primary dark:text-white">
+              <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-[var(--color-surface-alt)] text-[var(--color-text-primary)]">
                 {{ subject }}
               </span>
             }

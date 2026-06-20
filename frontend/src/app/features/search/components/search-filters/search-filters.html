@@ -4,10 +4,10 @@
     <div>
       <label
         class="block text-sm font-medium mb-2"
-        style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+        style="color: var(--color-text-primary); font-family: var(--font-heading)"
       >
         <i class="pi pi-sitemap mr-2"></i>Selecciona un programa o subdirección
-        <span class="text-red-500">*</span>
+        <span class="text-[var(--color-error)]">*</span>
       </label>
       <p-select
         [(ngModel)]="filters.scope"
@@ -27,7 +27,7 @@
       <label
         for="search-query"
         class="block text-sm font-medium mb-2"
-        style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+        style="color: var(--color-text-primary); font-family: var(--font-heading)"
       >
         <i class="pi pi-search mr-2"></i>Buscar documentos
       </label>
@@ -45,20 +45,20 @@
 
     @if (facetsLoaded()) {
       <div class="flex items-center gap-3 my-6">
-        <div class="flex-grow border-t border-gray-200"></div>
+        <div class="flex-grow border-t border-[var(--color-border)]"></div>
         <span
           class="text-sm font-semibold uppercase tracking-wide"
           style="color: var(--color-text-secondary)"
           >Filtros Avanzados</span
         >
-        <div class="flex-grow border-t border-gray-200"></div>
+        <div class="flex-grow border-t border-[var(--color-border)]"></div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div>
           <label
             class="block text-sm font-medium mb-2"
-            style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+            style="color: var(--color-text-primary); font-family: var(--font-heading)"
           >
             <i class="pi pi-file mr-2"></i>Tipo de Documento
           </label>
@@ -77,7 +77,7 @@
         <div>
           <label
             class="block text-sm font-medium mb-2"
-            style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+            style="color: var(--color-text-primary); font-family: var(--font-heading)"
           >
             <i class="pi pi-book mr-2"></i>Nivel Educativo
           </label>
@@ -96,7 +96,7 @@
         <div>
           <label
             class="block text-sm font-medium mb-2"
-            style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+            style="color: var(--color-text-primary); font-family: var(--font-heading)"
           >
             <i class="pi pi-globe mr-2"></i>Idioma
           </label>
@@ -115,7 +115,7 @@
         <div>
           <label
             class="block text-sm font-medium mb-2"
-            style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+            style="color: var(--color-text-primary); font-family: var(--font-heading)"
           >
             <i class="pi pi-user mr-2"></i>Autor/Área
           </label>
@@ -131,7 +131,7 @@
         <div>
           <label
             class="block text-sm font-medium mb-2"
-            style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+            style="color: var(--color-text-primary); font-family: var(--font-heading)"
           >
             <i class="pi pi-sort-alt mr-2"></i>Ordenar por
           </label>
@@ -147,7 +147,7 @@
         <div>
           <label
             class="block text-sm font-medium mb-2"
-            style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+            style="color: var(--color-text-primary); font-family: var(--font-heading)"
           >
             <i class="pi pi-calendar mr-2"></i>Año desde
           </label>
@@ -164,7 +164,7 @@
         <div>
           <label
             class="block text-sm font-medium mb-2"
-            style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)"
+            style="color: var(--color-text-primary); font-family: var(--font-heading)"
           >
             <i class="pi pi-calendar mr-2"></i>Año hasta
           </label>
@@ -187,14 +187,14 @@
       </div>
     } @else {
       <div class="text-center py-4">
-        <i class="pi pi-spin pi-spinner text-xl" style="color: var(--gob-azul-gobierno)"></i>
+        <i class="pi pi-spin pi-spinner text-xl" style="color: var(--color-text-primary)"></i>
         <p class="text-sm mt-2" style="color: var(--color-text-secondary)">
           Cargando filtros disponibles...
         </p>
       </div>
     }
 
-    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+    <div class="flex justify-between items-center pt-4 border-t border-[var(--color-border)]">
       <div>
         @if (hasActiveFilters()) {
           <span class="text-sm" style="color: var(--color-text-secondary)">

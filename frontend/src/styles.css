@@ -356,16 +356,45 @@ h1 {
   line-height: 1.2;
 }
 
-/* Variante de h1 para títulos de páginas internas (Repositorio, Galería,
-   Buscar, Restablecer contraseña). Mantiene la familia display pero con
-   peso Regular y tamaño menor que el Hero, según Estrategia Visual 2026. */
+/* Título de páginas internas (Repositorio, Galería, Buscar, Estadísticas,
+   Auth, etc.). Altivo Bold 36px. Única fuente del título de pantalla: las
+   plantillas aplican solo la clase, sin overrides Tailwind ni estilos inline. */
 .page-title {
   margin: 0;
-  font-family: var(--font-display);  /* JT Remillo */
-  font-weight: 400;                   /* Regular — más ligero que Hero */
-  font-size: 1.875rem;                /* 30px */
+  font-family: var(--font-heading);  /* Altivo */
+  font-weight: 700;                   /* Bold */
+  font-size: 2.25rem;                 /* 36px */
   color: var(--color-text-primary);
   line-height: 1.2;
+}
+
+/* Subtítulo / descripción bajo el título de pantalla. Altivo Regular 18px. */
+.page-subtitle {
+  font-family: var(--font-body);     /* Altivo */
+  font-weight: 400;
+  font-size: 1.125rem;                /* 18px */
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+/* Título de card (documento, álbum, estadística). Altivo Medium 18px. */
+.card-title {
+  margin: 0;
+  font-family: var(--font-heading);  /* Altivo */
+  font-weight: 500;                   /* Medium */
+  font-size: 1.125rem;                /* 18px */
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+/* Descripción / abstract dentro de una card. Altivo Regular 14px. */
+.card-subtitle {
+  margin: 0;
+  font-family: var(--font-body);     /* Altivo */
+  font-weight: 500;
+  font-size: 0.875rem;                /* 14px */
+  color: var(--color-text-secondary);
+  line-height: 1.4;
 }
 
 h2 {

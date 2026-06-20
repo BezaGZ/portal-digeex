@@ -4,12 +4,12 @@
 >
   <p-card
     [style]="{ overflow: 'hidden' }"
-    styleClass="!rounded-2xl !border !border-gray-200 !shadow-sm hover:!shadow-lg transition-all flex flex-col h-full"
+    styleClass="!rounded-2xl !border !border-[var(--color-border)] !shadow-sm hover:!shadow-lg transition-all flex flex-col h-full"
   >
     <ng-template pTemplate="header">
       @if (item().coverImage && !imageError()) {
         <div
-          class="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center overflow-hidden"
+          class="w-full aspect-[3/4] bg-[var(--color-surface)] flex items-center justify-center overflow-hidden"
         >
           <img
             [src]="item().coverImage"
@@ -20,7 +20,7 @@
           />
         </div>
       } @else {
-        <div class="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center">
+        <div class="w-full aspect-[3/4] bg-[var(--color-surface)] flex items-center justify-center">
           <i
             [class]="isVideo ? 'pi pi-play-circle text-4xl' : 'pi pi-file-pdf text-4xl'"
             style="color: var(--gob-competitividad)"
@@ -30,14 +30,7 @@
     </ng-template>
     <ng-template pTemplate="title">
       <div
-        class="line-clamp-2 min-h-[3rem]"
-        style="
-          color: var(--gob-azul-gobierno);
-          font-family: var(--font-heading);
-          font-weight: 500;
-          font-size: 1.125rem;
-          line-height: 1.3;
-        "
+        class="card-title line-clamp-2 min-h-[3rem]"
       >
         {{ item().name }}
       </div>

@@ -16,25 +16,14 @@
         </div>
 
         <h1
-        class="text-4xl mb-6"
-        style="
-          color: var(--gob-azul-gobierno);
-          font-family: var(--font-heading);
-          font-weight: 700;
-          line-height: 1.3;
-        "
+        class="page-title mb-6"
       >
         {{ documentTitle() }}
       </h1>
 
       @if (documentDescription()) {
         <p
-          class="text-lg mb-8 leading-relaxed"
-          style="
-            color: var(--color-text-secondary);
-            font-family: var(--font-body);
-            line-height: 1.8;
-          "
+          class="page-subtitle mb-8"
         >
           {{ documentDescription() }}
         </p>
@@ -53,7 +42,7 @@
             </div>
           } @else {
             <div
-              class="w-48 md:w-64 aspect-[3/4] bg-gray-100 border border-gray-200 shadow-sm rounded-lg flex items-center justify-center"
+              class="w-48 md:w-64 aspect-[3/4] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm rounded-lg flex items-center justify-center"
             >
               <i
                 [class]="isVideo() ? 'pi pi-play-circle' : 'pi pi-file-pdf'"
@@ -83,7 +72,7 @@
                 rel="noopener"
                 class="inline-flex items-center gap-2 text-base underline"
                 style="
-                  color: var(--gob-azul-gobierno);
+                  color: var(--color-text-primary);
                   font-family: var(--font-body);
                   font-weight: 400;
                 "
@@ -155,7 +144,7 @@
                       style="
                         font-family: var(--font-body);
                         font-weight: 400;
-                        color: var(--gob-azul-gobierno);
+                        color: var(--color-text-primary);
                       "
                       >{{ bitstream.name }}</span
                     >
@@ -227,7 +216,7 @@
                   <p
                     class="text-base"
                     style="
-                      color: var(--gob-azul-gobierno);
+                      color: var(--color-text-primary);
                       font-family: var(--font-body);
                       font-weight: 400;
                     "

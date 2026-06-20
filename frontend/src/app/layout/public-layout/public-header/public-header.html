@@ -25,7 +25,7 @@
                 No se pudieron cargar los recursos.
               </p>
               <button
-                class="text-sm font-medium text-gob-primary hover:underline cursor-pointer"
+                class="text-sm font-medium text-[var(--color-text-primary)] hover:underline cursor-pointer"
                 (click)="retryMenu()"
               >
                 Reintentar
@@ -38,7 +38,7 @@
               } @else {
                 <a
                   [routerLink]="item.routerLink"
-                  class="block px-3 py-2 rounded text-sm text-gob-primary hover:bg-background transition-colors"
+                  class="block px-3 py-2 rounded text-sm text-[var(--color-text-primary)] hover:bg-background transition-colors"
                   (click)="resourcesPanel.hide()"
                   >{{ item.label }}</a
                 >

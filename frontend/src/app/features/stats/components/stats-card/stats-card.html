@@ -6,7 +6,7 @@
       <button
         type="button"
         class="absolute top-0 right-0 p-1.5 rounded-full transition-colors"
-        style="color: var(--gob-azul-gobierno)"
+        style="color: var(--color-text-primary)"
         aria-label="Ver descripción completa"
         (click)="openInfo($event)">
         <i class="pi pi-info-circle text-base"></i>
@@ -18,14 +18,12 @@
       <i class="pi pi-chart-line text-2xl"></i>
     </div>
 
-    <h3 class="text-base sm:text-lg font-semibold leading-tight line-clamp-2"
-        style="color: var(--color-text-primary); font-family: var(--font-heading)">
+    <h3 class="card-title leading-tight line-clamp-2">
       {{ item.title }}
     </h3>
 
     @if (item.abstract) {
-      <p class="text-xs sm:text-sm leading-snug line-clamp-3"
-         style="color: var(--color-text-secondary); font-family: var(--font-body)">
+      <p class="card-subtitle line-clamp-3">
         {{ item.abstract }}
       </p>
     }

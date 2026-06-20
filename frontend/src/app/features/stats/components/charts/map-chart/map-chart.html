@@ -4,7 +4,7 @@
              [width]="mapWidth().toString()" [height]="mapHeight().toString()" />
   </div>
 
-  <ul class="shrink-0 w-full lg:w-48 lg:max-h-[420px] overflow-y-auto rounded border border-gray-100 divide-y divide-gray-100">
+  <ul class="shrink-0 w-full lg:w-48 lg:max-h-[420px] overflow-y-auto rounded border border-[var(--color-border)] divide-y divide-[var(--color-divider)]">
     @for (row of sortedRows(); track row.label) {
       <li class="flex items-baseline justify-between px-2 py-1 text-xs">
         <span class="truncate pr-2"
@@ -12,7 +12,7 @@
           {{ row.label }}
         </span>
         <span class="tabular-nums font-semibold whitespace-nowrap"
-              style="color: var(--gob-azul-gobierno); font-family: var(--font-heading)">
+              style="color: var(--color-text-primary); font-family: var(--font-heading)">
           {{ row.value | number:'1.0-0' }}
         </span>
       </li>

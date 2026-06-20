@@ -11,10 +11,10 @@
   </div>
 
   <header class="flex flex-col gap-2">
-    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">
+    <h1 class="page-title">
       Estadística
     </h1>
-    <p class="text-sm text-gray-600 dark:text-gray-400">
+    <p class="page-subtitle">
       Dashboards interactivos con los datos abiertos publicados por DIGEEX.
       Hacé clic en una card para abrir su tablero.
     </p>
@@ -29,7 +29,7 @@
       message="Cuando DIGEEX publique nuevos dashboards van a aparecer en esta lista." />
   } @else {
     <div class="flex items-center justify-between">
-      <span class="text-sm text-gray-500 dark:text-gray-400">
+      <span class="text-sm text-[var(--color-text-tertiary)]">
         {{ totalRecords() }} dataset(s) publicado(s)
       </span>
     </div>
