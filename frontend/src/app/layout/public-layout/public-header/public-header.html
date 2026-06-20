@@ -1,6 +1,5 @@
 <header
-  class="text-white shadow-lg sticky top-0 z-50"
-  style="background-color: var(--gob-azul-gobierno)"
+  class="public-topbar text-white shadow-lg sticky top-0 z-50"
 >
   <div class="container mx-auto px-6 py-4 flex justify-between items-center">
     <a routerLink="/" class="flex items-center hover:opacity-90 transition-opacity">
@@ -69,7 +68,7 @@
           severity="primary"
           [outlined]="true"
           [rounded]="true"
-          styleClass="!bg-white !border-white hover:!bg-gray-100
+          styleClass="header-cta !bg-white !border-white hover:!bg-gray-100
                       !font-medium !px-6 !py-2 !shadow-md
                       hover:!scale-105 transition-all duration-200"
           (onClick)="goToLogin()"

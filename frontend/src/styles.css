@@ -397,6 +397,26 @@ h1 {
   line-height: 1.4;
 }
 
+/* CTA blanco del header (Acceso Administrativo) sobre la banda navy fija: en
+   oscuro, el preset y el override global de `.pi` vuelven texto e icono claros
+   y quedan invisibles sobre el boton blanco. Se fuerza navy en ambos modos;
+   los selectores con `:root.dark` ganan especificidad sobre `:root.dark .pi`. */
+.header-cta .p-button-label,
+.header-cta .p-button-icon,
+:root.dark .header-cta .p-button-label,
+:root.dark .header-cta .p-button-icon {
+  color: var(--gob-azul-gobierno) !important;
+}
+
+/* Banda del header público: navy en claro, superficie oscura en modo noche
+   (para que no se quede azul brillante). El texto blanco se lee en ambos. */
+.public-topbar {
+  background-color: var(--gob-azul-gobierno);
+}
+:root.dark .public-topbar {
+  background-color: var(--color-surface);
+}
+
 h2 {
   margin: 0;
   font-family: var(--font-heading);  /* Altivo */
