@@ -1,6 +1,6 @@
 <div class="min-h-screen" style="background-color: var(--color-background)">
   @if (isLoading()) {
-    <div class="container mx-auto max-w-7xl px-6 py-12">
+    <div class="container mx-auto max-w-7xl px-4 py-8">
       <p-skeleton width="140px" height="2.25rem" borderRadius="9999px" styleClass="mb-4" />
       <p-skeleton width="55%" height="2.5rem" styleClass="mb-3" />
       <div class="flex gap-2 mb-3">
@@ -19,7 +19,7 @@
       </div>
     </div>
   } @else if (album()) {
-    <div class="container mx-auto max-w-7xl px-6 py-12">
+    <div class="container mx-auto max-w-7xl px-4 py-8">
       <div class="mb-4">
         <p-button
           label=" Regresar"
