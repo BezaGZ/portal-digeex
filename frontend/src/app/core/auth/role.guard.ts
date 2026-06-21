@@ -3,9 +3,9 @@ import { CanActivateFn, Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { filter, map, take } from 'rxjs/operators';
 
-import { AuthCallerService } from '../../features/administration/shared/services/auth-caller.service';
-import { Caller } from '../../features/administration/content/specifications/scope-context.model';
-import { UserRole } from '../../features/administration/users/models/user-view.model';
+import { CallerProvider } from './caller-provider';
+import { Caller } from './caller.model';
+import { UserRole } from './user-role.model';
 
 /**
  * Factory de `CanActivateFn` parametrizado por roles permitidos. Se encadena
@@ -17,7 +17,7 @@ import { UserRole } from '../../features/administration/users/models/user-view.m
  */
 export function roleGuard(allowedRoles: UserRole[]): CanActivateFn {
   return () => {
-    const authCaller = inject(AuthCallerService);
+    const authCaller = inject(CallerProvider);
     const router = inject(Router);
     const message = inject(MessageService);
 

@@ -43,6 +43,8 @@ import { jwtInterceptor } from './core/auth/auth.interceptor';
 import { errorInterceptor } from './core/error/error.interceptor';
 import { AuthService } from './core/auth/auth.service';
 import { XsrfService } from './core/xsrf/xsrf.service';
+import { CallerProvider } from './core/auth/caller-provider';
+import { AuthCallerService } from './features/administration/shared/services/auth-caller.service';
 
 
 
@@ -333,6 +335,9 @@ export const appConfig: ApplicationConfig = {
     { provide: LOCALE_ID, useValue: 'es-GT' },
     MessageService,
     ConfirmationService,
+    // Cablea el contrato de identidad del core (CallerProvider) a su
+    // implementación de feature, sin que el core importe de features.
+    { provide: CallerProvider, useExisting: AuthCallerService },
     providePrimeNG({
       theme: {
         preset: DigeexPreset,

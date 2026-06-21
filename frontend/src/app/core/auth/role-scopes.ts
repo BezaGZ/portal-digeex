@@ -1,4 +1,4 @@
-import { UserRole } from '../../features/administration/users/models/user-view.model';
+import { UserRole } from './user-role.model';
 
 /**
  * Scopes de rol nominados que consumen `roleGuard` (en `app.routes.ts`) y la

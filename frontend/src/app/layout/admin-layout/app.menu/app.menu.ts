@@ -5,8 +5,8 @@ import { RouterModule } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 
 import { AppMenuitem } from '../app.menuitem/app.menuitem';
-import { AuthCallerService } from '../../../features/administration/shared/services/auth-caller.service';
-import { UserRole } from '../../../features/administration/users/models/user-view.model';
+import { CallerProvider } from '../../../core/auth/caller-provider';
+import { UserRole } from '../../../core/auth/user-role.model';
 import { SCOPE_ANY_AUTHENTICATED } from '../../../core/auth/role-scopes';
 import {
   ADMIN_MENU,
@@ -21,7 +21,7 @@ import {
   templateUrl: './app.menu.html',
 })
 export class AppMenu {
-  private authCaller = inject(AuthCallerService);
+  private authCaller = inject(CallerProvider);
 
   /**
    * Rol del caller resuelto. `null` mientras `AuthCallerService` aún no emite

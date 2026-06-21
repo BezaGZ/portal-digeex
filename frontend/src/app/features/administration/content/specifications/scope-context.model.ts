@@ -1,4 +1,6 @@
-import { UserRole } from '../../users/models/user-view.model';
+import { Caller, Actor } from '../../../../core/auth/caller.model';
+
+export type { Caller, Actor };
 
 /**
  * Tipo de DSO sobre el que se valida un scope. La distinción entre la
@@ -10,16 +12,6 @@ export type DsoType =
   | 'community-sub'
   | 'collection'
   | 'item';
-
-/**
- * Identidad mínima del usuario que pide ejecutar la operación. `role` es el
- * rol del portal y `sufijo` es el identificador de la subdirección a la que
- * pertenece (ej. ED_BASICA); null para SuperAdmin, que opera sin scope acotado.
- */
-export interface Caller {
-  role: UserRole;
-  sufijo: string | null;
-}
 
 /**
  * Datos que describen una operación pendiente de validar: qué tipo de recurso
@@ -41,15 +33,4 @@ export interface ScopeContext {
 export interface ScopeSpecification {
   isSatisfiedBy(context: ScopeContext): boolean;
   rejectionMessage(context: ScopeContext): string;
-}
-
-/**
- * Identidad del usuario para la auditoría: nombre, apellido y correo. Se
- * mantiene separado de `Caller` porque `Caller` describe scope (qué puede
- * hacer) mientras que `Actor` describe identidad (quién lo hizo).
- */
-export interface Actor {
-  firstName: string;
-  lastName: string;
-  email: string;
 }

@@ -4,9 +4,9 @@ import { MenuItem } from 'primeng/api';
 import { provideRouter } from '@angular/router';
 
 import { AppMenu } from './app.menu';
-import { AuthCallerService } from '../../../features/administration/shared/services/auth-caller.service';
-import { Caller } from '../../../features/administration/content/specifications/scope-context.model';
-import { UserRole } from '../../../features/administration/users/models/user-view.model';
+import { CallerProvider } from '../../../core/auth/caller-provider';
+import { Caller } from '../../../core/auth/caller.model';
+import { UserRole } from '../../../core/auth/user-role.model';
 
 /**
  * Tests de `AppMenu`. El componente proyecta `ADMIN_MENU` filtrado por el rol
@@ -28,7 +28,7 @@ describe('AppMenu', () => {
       providers: [
         provideRouter([]),
         {
-          provide: AuthCallerService,
+          provide: CallerProvider,
           useValue: { currentCaller$: subject.asObservable() },
         },
       ],

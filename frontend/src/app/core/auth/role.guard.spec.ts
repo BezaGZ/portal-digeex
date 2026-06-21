@@ -5,8 +5,8 @@ import { firstValueFrom, of, BehaviorSubject, Observable } from 'rxjs';
 import { Mock, vi } from 'vitest';
 
 import { roleGuard } from './role.guard';
-import { AuthCallerService } from '../../features/administration/shared/services/auth-caller.service';
-import { Caller } from '../../features/administration/content/specifications/scope-context.model';
+import { CallerProvider } from './caller-provider';
+import { Caller } from './caller.model';
 
 /**
  * Tests del `roleGuard` factory.
@@ -21,20 +21,20 @@ import { Caller } from '../../features/administration/content/specifications/sco
  * Ciclo 41 TDD — Sprint 6.
  */
 describe('roleGuard', () => {
-  let mockAuthCaller: { currentCaller$: Observable<Caller | null> };
+  let mockCallerProvider: { currentCaller$: Observable<Caller | null> };
   let mockRouter: { createUrlTree: Mock };
   let mockMessage: { add: Mock };
   const routeSnapshot = {} as ActivatedRouteSnapshot;
   const stateSnapshot = { url: '/administrador/subdirecciones' } as RouterStateSnapshot;
 
   function configureTestBed(caller: Caller | null) {
-    mockAuthCaller = { currentCaller$: of(caller) };
+    mockCallerProvider = { currentCaller$: of(caller) };
     mockRouter = { createUrlTree: vi.fn(() => ({ kind: 'urltree' } as unknown as UrlTree)) };
     mockMessage = { add: vi.fn() };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
-        { provide: AuthCallerService, useValue: mockAuthCaller },
+        { provide: CallerProvider, useValue: mockCallerProvider },
         { provide: Router, useValue: mockRouter },
         { provide: MessageService, useValue: mockMessage },
       ],
@@ -71,13 +71,13 @@ describe('roleGuard', () => {
 
   it('waits for the first non-null caller emission before evaluating the role', async () => {
     const callerSubject = new BehaviorSubject<Caller | null>(null);
-    mockAuthCaller = { currentCaller$: callerSubject.asObservable() };
+    mockCallerProvider = { currentCaller$: callerSubject.asObservable() };
     mockRouter = { createUrlTree: vi.fn(() => ({ kind: 'urltree' } as unknown as UrlTree)) };
     mockMessage = { add: vi.fn() };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
-        { provide: AuthCallerService, useValue: mockAuthCaller },
+        { provide: CallerProvider, useValue: mockCallerProvider },
         { provide: Router, useValue: mockRouter },
         { provide: MessageService, useValue: mockMessage },
       ],

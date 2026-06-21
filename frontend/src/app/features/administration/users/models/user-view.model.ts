@@ -1,7 +1,7 @@
-export type UserRole =
-  | 'superadmin'
-  | 'admin_subdireccion'
-  | 'personal_delegado';
+import { UserRole } from '../../../../core/auth/user-role.model';
+
+export type { UserRole };
+
 export type UserStatus = 'active' | 'inactive';
 
 export interface UserView {
