@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { roleGuard } from './core/auth/role.guard';
 import { ROLE_SCOPES } from './core/auth/role-scopes';
+import { featureGuard } from './core/auth/feature.guard';
+import { ITEMS_PATH, COLLECTIONS_PATH, COMMUNITIES_PATH } from './core/api/dspace-rest.util';
 export const routes: Routes = [
 
   {
@@ -101,9 +103,6 @@ export const routes: Routes = [
       ),
   },
 
-  // El backend de DSpace arma el link del correo de reset con el path
-  // hardcoded `/forgot/{token}` (ver `AccountServiceImpl.fillAndSendEmail`).
-  // Redirigimos al destino en español preservando el token del paramMap.
   {
     path: 'forgot/:token',
     redirectTo: 'restablecer-contrasena/:token',
@@ -135,7 +134,7 @@ export const routes: Routes = [
       },
       {
         path: 'historial/subdirecciones/:uuid',
-        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN), featureGuard('administratorOf', COMMUNITIES_PATH)],
         loadComponent: () =>
           import('./features/administration/history/subdirecciones-detail/subdirecciones-detail').then(
             (m) => m.SubdireccionesDetail,
@@ -149,7 +148,7 @@ export const routes: Routes = [
       },
       {
         path: 'historial/programas/:uuid',
-        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN), featureGuard('administratorOf', COLLECTIONS_PATH)],
         loadComponent: () =>
           import('./features/administration/history/programas-detail/programas-detail').then(
             (m) => m.ProgramasDetail,
@@ -157,7 +156,7 @@ export const routes: Routes = [
       },
       {
         path: 'historial/items/:uuid',
-        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN), featureGuard('administratorOf', ITEMS_PATH)],
         loadComponent: () =>
           import('./features/administration/history/items-detail/items-detail').then(
             (m) => m.ItemsDetail,
@@ -174,7 +173,7 @@ export const routes: Routes = [
       },
       {
         path: 'uso/items/:uuid',
-        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN), featureGuard('administratorOf', ITEMS_PATH)],
         loadComponent: () =>
           import('./features/administration/statistics/statistics-page').then(
             (m) => m.StatisticsPage,
@@ -183,7 +182,7 @@ export const routes: Routes = [
       },
       {
         path: 'uso/programas/:uuid',
-        canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
+        canActivate: [roleGuard(ROLE_SCOPES.ADMIN), featureGuard('administratorOf', COLLECTIONS_PATH)],
         loadComponent: () =>
           import('./features/administration/statistics/statistics-page').then(
             (m) => m.StatisticsPage,
@@ -192,7 +191,7 @@ export const routes: Routes = [
       },
       {
         path: 'programas/:uuid/cargar',
-        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
+        canActivate: [roleGuard(ROLE_SCOPES.STAFF), featureGuard('canSubmit', COLLECTIONS_PATH)],
         /**
          * Importar primero el bootstrap garantiza que registerSubmissionForm()
          * de cada formulario corrió antes de que el host intente montar el
@@ -219,7 +218,7 @@ export const routes: Routes = [
       },
       {
         path: 'envios/:uuid/editar',
-        canActivate: [roleGuard(ROLE_SCOPES.STAFF)],
+        canActivate: [roleGuard(ROLE_SCOPES.STAFF), featureGuard('canEditItem', ITEMS_PATH)],
         loadComponent: () =>
           import('./features/administration/submission/submission-forms-bootstrap')
             .then(() => import('./features/administration/submission/edit-item/edit-item'))
