@@ -2,6 +2,7 @@ import { HttpParams } from '@angular/common/http';
 import { EMPTY, Observable } from 'rxjs';
 import { expand, reduce } from 'rxjs/operators';
 import { HalListResponse, Paginated } from './models/hal.model';
+import { environment } from '../../../environments/environment';
 
 /**
  * Constantes y utilidades compartidas del contrato REST de DSpace 9.2.
@@ -140,6 +141,18 @@ export function paginateAllByNext$<R extends NextPagedHalResponse, T>(
  */
 export function buildAbsoluteApiUrl(relativePath: string): string {
   return `${window.location.origin}${DSPACE_API_BASE}${relativePath}`;
+}
+
+/**
+ * URL absoluta al REST usando el host del backend configurado
+ * (`environment.apiUrl`), no el origen del navegador. DSpace identifica un
+ * objeto por su self-link canónico (`dspace.server.url`), así que los endpoints
+ * que reciben una `uri` de objeto —como `/authz/authorizations/search/object`—
+ * exigen ese host (8080 en dev), no el del frontend proxeado (4200), que daría
+ * 400 al no resolver el objeto.
+ */
+export function buildBackendApiUrl(relativePath: string): string {
+  return `${environment.apiUrl}/api${relativePath}`;
 }
 
 /**

@@ -12,7 +12,7 @@ import { Mock, vi } from 'vitest';
 
 import { featureGuard } from './feature.guard';
 import { AuthorizationApiService } from '../api/authorization-api.service';
-import { ITEMS_PATH, buildAbsoluteApiUrl } from '../api/dspace-rest.util';
+import { ITEMS_PATH, buildBackendApiUrl } from '../api/dspace-rest.util';
 
 /**
  * Tests del `featureGuard` factory.
@@ -65,7 +65,7 @@ describe('featureGuard', () => {
     expect(result).toBe(true);
     expect(mockAuthz.isAuthorized).toHaveBeenCalledWith(
       'canEditItem',
-      buildAbsoluteApiUrl(`${ITEMS_PATH}/item-uuid`),
+      buildBackendApiUrl(`${ITEMS_PATH}/item-uuid`),
     );
     expect(mockRouter.createUrlTree).not.toHaveBeenCalled();
   });

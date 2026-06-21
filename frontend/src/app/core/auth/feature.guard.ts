@@ -4,7 +4,7 @@ import { MessageService } from 'primeng/api';
 import { map } from 'rxjs/operators';
 
 import { AuthorizationApiService } from '../api/authorization-api.service';
-import { buildAbsoluteApiUrl } from '../api/dspace-rest.util';
+import { buildBackendApiUrl } from '../api/dspace-rest.util';
 import { FeatureId } from '../api/models/feature-id';
 
 /**
@@ -27,7 +27,7 @@ export function featureGuard(
     const message = inject(MessageService);
 
     const uuid = route.paramMap.get(paramName);
-    const objectUrl = buildAbsoluteApiUrl(`${objectBasePath}/${uuid}`);
+    const objectUrl = buildBackendApiUrl(`${objectBasePath}/${uuid}`);
 
     return authz.isAuthorized(feature, objectUrl).pipe(
       map((allowed) => {
