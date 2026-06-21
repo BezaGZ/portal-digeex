@@ -72,15 +72,15 @@ describe('AppMenu', () => {
     expect(labels).not.toContain('Reportes');
   });
 
-  it('shows only Estadísticas and Cargar contenido for personal_delegado', async () => {
+  it('shows only Cargar contenido for personal_delegado', async () => {
     const fixture = await configureMenuFor(callerFor('personal_delegado'));
-    const labels = flatLabels(fixture.componentInstance.model()).sort();
-    expect(labels).toEqual(['Cargar contenido', 'Estadísticas']);
+    const labels = flatLabels(fixture.componentInstance.model());
+    expect(labels).toEqual(['Cargar contenido']);
   });
 
-  it('renders no role-scoped items when the caller has not resolved yet', async () => {
+  it('renders no items when the caller has not resolved yet', async () => {
     const fixture = await configureMenuFor(null);
     const labels = flatLabels(fixture.componentInstance.model());
-    expect(labels).toEqual(['Estadísticas']);
+    expect(labels).toEqual([]);
   });
 });

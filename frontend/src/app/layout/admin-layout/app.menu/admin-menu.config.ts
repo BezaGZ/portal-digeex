@@ -1,4 +1,4 @@
-import { MenuScope, ROLE_SCOPES, SCOPE_ANY_AUTHENTICATED } from '../../../core/auth/role-scopes';
+import { MenuScope, ROLE_SCOPES } from '../../../core/auth/role-scopes';
 
 /**
  * Definición declarativa de un item del sidebar admin. La sección agrupa los
@@ -25,7 +25,8 @@ export const ADMIN_MENU: readonly AdminMenuItem[] = [
     label: 'Estadísticas',
     icon: 'pi pi-fw pi-home',
     routerLink: '/administrador/estadisticas',
-    scope: SCOPE_ANY_AUTHENTICATED,
+    // El delegado no ve métricas: el dashboard queda para admin de sub y superadmin.
+    scope: ROLE_SCOPES.ADMIN,
   },
   {
     section: 'Repositorio',
