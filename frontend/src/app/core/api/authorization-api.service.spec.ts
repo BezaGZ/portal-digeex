@@ -16,7 +16,7 @@ import { AuthorizationApiService } from './authorization-api.service';
  * que el backend filtre, así basta decidir por lista de authorizations no vacía;
  * el 401/error resuelve a `false`, no a excepción.
  *
- * Ciclo 1 TDD — Sprint 9
+ * Ciclo 1 TDD — Mejora 9
  */
 describe('AuthorizationApiService', () => {
   const AUTHZ_URL = '/server/api/authz/authorizations/search/object';
