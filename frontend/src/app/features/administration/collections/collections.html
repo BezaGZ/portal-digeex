@@ -73,5 +73,16 @@
     (submitForm)="dialogMode() === 'create' ? handleCreateSubmit($event) : handleEditSubmit($event)"
     (cancelForm)="closeDialog()" />
 
-  <p-confirmDialog />
+  <app-dangerous-delete-dialog
+    [visible]="deleteVisible()"
+    entityKind="programa"
+    [entityLabel]="deleteEntityLabel()"
+    [itemsCount]="deleteItemsCount()"
+    [affectedTitles]="deleteTitles()"
+    affectedTitlesLabel="Recursos que se eliminarán"
+    [loadingContent]="deleteLoading()"
+    [loadError]="deleteLoadError()"
+    [deleting]="deleting()"
+    (confirmed)="onDeleteConfirmed()"
+    (cancelled)="onDeleteCancelled()" />
 </div>

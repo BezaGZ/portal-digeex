@@ -1,15 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
-import { EMPTY, NEVER, Subject, of } from 'rxjs';
+import { EMPTY, NEVER, Subject, of, throwError } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { Collections } from './collections';
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
+import { DiscoveryService } from '../../../core/api/discovery.service';
 import { CollectionFacade } from '../content/services/collection-facade';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { Community } from '../../../core/api/models/community.model';
@@ -40,7 +40,7 @@ describe('Collections (contenedor)', () => {
   let updateColeccionFn: ReturnType<typeof vi.fn>;
   let deleteColeccionFn: ReturnType<typeof vi.fn>;
   let replaceLogoFn: ReturnType<typeof vi.fn>;
-  let confirmFn: ReturnType<typeof vi.fn>;
+  let searchFn: ReturnType<typeof vi.fn>;
   let messageAddFn: ReturnType<typeof vi.fn>;
 
   function buildCollection(name: string, uuid: string, archivedItemsCount = 0): Collection {
@@ -104,6 +104,16 @@ describe('Collections (contenedor)', () => {
     updateColeccionFn = vi.fn().mockReturnValue(of(buildCollection('Renombrada', 'coll-peac')));
     deleteColeccionFn = vi.fn().mockReturnValue(of(undefined));
     replaceLogoFn = vi.fn().mockReturnValue(of({ uuid: 'logo-bs' }));
+    searchFn = vi.fn().mockReturnValue(
+      of({
+        items: [{ name: 'Recurso A' }, { name: 'Recurso B' }],
+        facets: [],
+        totalElements: 2,
+        totalPages: 1,
+        page: 0,
+        size: 20,
+      }),
+    );
     messageAddFn = vi.fn();
 
     TestBed.configureTestingModule({
@@ -119,6 +129,10 @@ describe('Collections (contenedor)', () => {
         {
           provide: CollectionApiService,
           useValue: { listByCommunity: listByCommunityFn },
+        },
+        {
+          provide: DiscoveryService,
+          useValue: { search: searchFn },
         },
         {
           provide: CollectionFacade,
@@ -137,8 +151,6 @@ describe('Collections (contenedor)', () => {
         ConfirmationService,
       ],
     });
-
-    confirmFn = vi.spyOn(TestBed.inject(ConfirmationService), 'confirm') as any;
   });
 
   /** Verifica que en init se llene el dropdown con listAllSubcommunities (paginación recursiva). */
@@ -692,7 +704,8 @@ describe('Collections (contenedor)', () => {
       expect(updateOrder).toBeLessThan(replaceOrder);
     });
 
-    it('should ask for confirmation, then call deleteColeccion$, refresh y toast on accept', () => {
+    /** El click de borrar ya no usa el confirm simple: abre el diálogo peligroso y trae conteo + títulos. */
+    it('should open the dangerous delete dialog and fetch item count and titles on delete request', () => {
       const fixture = TestBed.createComponent(Collections);
       fixture.detectChanges();
       const c = fixture.componentInstance;
@@ -700,16 +713,57 @@ describe('Collections (contenedor)', () => {
       c.selectSubdireccion(sub);
       fixture.detectChanges();
       const target = buildCollection('PEAC', 'coll-peac');
-
-      confirmFn.mockImplementation((options: { accept: () => void }) => options.accept());
-      listByCommunityFn.mockClear();
+      target.metadata = {
+        'dc.title': [{ value: 'Programa de Educación de Adultos', language: null, authority: null, confidence: -1, place: 0 }],
+      };
 
       c.onDeleteClick(target);
 
-      expect(confirmFn).toHaveBeenCalled();
+      expect(c.deleteVisible()).toBe(true);
+      expect(c.deleteEntityLabel()).toBe('Programa de Educación de Adultos');
+      expect(searchFn).toHaveBeenCalledWith({ scope: 'coll-peac', dsoType: 'item', size: 20 });
+      expect(c.deleteItemsCount()).toBe(2);
+      expect(c.deleteTitles()).toEqual(['Recurso A', 'Recurso B']);
+    });
+
+    it('should not fetch delete details before a delete is requested', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      expect(searchFn).not.toHaveBeenCalled();
+    });
+
+    it('should call deleteColeccion$, refresh and toast when the dialog confirms', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      c.selectSubdireccion(sub);
+      fixture.detectChanges();
+      c.onDeleteClick(buildCollection('PEAC', 'coll-peac'));
+      listByCommunityFn.mockClear();
+
+      c.onDeleteConfirmed();
+
       expect(deleteColeccionFn).toHaveBeenCalledWith('coll-peac', 'ED_BASICA');
       expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 10, { embed: 'logo' });
       expect(messageAddFn).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
+      expect(c.deleteVisible()).toBe(false);
+    });
+
+    /** Si el detalle falla, se marca el error pero el diálogo sigue abierto y usable. */
+    it('should flag a load error but keep the dialog open when discovery fails', () => {
+      searchFn.mockReturnValueOnce(throwError(() => new Error('discovery down')));
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const sub = buildCommunity('Educación Básica', 'sub-1', 'ED_BASICA');
+      c.selectSubdireccion(sub);
+      fixture.detectChanges();
+
+      c.onDeleteClick(buildCollection('PEAC', 'coll-peac'));
+
+      expect(c.deleteLoadError()).toBe(true);
+      expect(c.deleteVisible()).toBe(true);
     });
 
     /**
@@ -738,9 +792,9 @@ describe('Collections (contenedor)', () => {
         buildPage([buildCollection('PEAC', 'coll-peac', 34)], 10),
       ); // página 0 con datos
       listByCommunityFn.mockClear();
-      confirmFn.mockImplementation((options: { accept: () => void }) => options.accept());
 
       c.onDeleteClick(buildCollection('LAST', 'coll-last'));
+      c.onDeleteConfirmed();
 
       expect(c.currentPage()).toBe(0);
     });

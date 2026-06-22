@@ -11,14 +11,15 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { TableLazyLoadEvent } from 'primeng/table';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageModule } from 'primeng/message';
 import { CardModule } from 'primeng/card';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { DangerousDeleteDialog } from '../../../shared/components/dangerous-delete-dialog/dangerous-delete-dialog';
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
+import { DiscoveryService } from '../../../core/api/discovery.service';
 import { Community, CommunityCreateBody } from '../../../core/api/models/community.model';
 import { Collection } from '../../../core/api/models/collection.model';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
@@ -54,14 +55,14 @@ const EMPTY_PAGE: PaginatedSubsView = { items: [], totalElements: 0 };
   selector: 'app-communities',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './communities.html',
-  imports: [ButtonModule, CardModule, ConfirmDialogModule, MessageModule, LoadingSpinnerComponent, CommunityTable, CommunityDialog],
+  imports: [ButtonModule, CardModule, MessageModule, LoadingSpinnerComponent, DangerousDeleteDialog, CommunityTable, CommunityDialog],
 })
 export class Communities {
   private readonly communityApi = inject(CommunityApiService);
   private readonly collectionApi = inject(CollectionApiService);
   private readonly authCaller = inject(AuthCallerService);
   private readonly facade = inject(CommunityFacade);
-  private readonly confirmation = inject(ConfirmationService);
+  private readonly discovery = inject(DiscoveryService);
   private readonly toast = inject(MessageService);
   private readonly loadingService = inject(LoadingService);
 
@@ -75,6 +76,28 @@ export class Communities {
   /** Estado del dialog de crear/editar. La UI lo lee para mostrar/ocultar. */
   readonly dialogMode = signal<'closed' | 'create' | 'edit'>('closed');
   readonly editTarget = signal<Community | null>(null);
+
+  /**
+   * Estado del diálogo de borrado peligroso. `deleteTarget` no-null = abierto.
+   * Borrar una subdirección es recursivo: arrastra sus programas y los recursos
+   * de todo el subárbol. El conteo de programas + sus títulos salen de
+   * `listByCommunity`; el conteo recursivo de recursos, de Discovery acotado.
+   */
+  readonly deleteTarget = signal<Community | null>(null);
+  readonly deleteProgramsCount = signal<number | null>(null);
+  readonly deleteItemsCount = signal<number | null>(null);
+  readonly deleteTitles = signal<string[]>([]);
+  readonly deleteLoading = signal<boolean>(false);
+  readonly deleteLoadError = signal<boolean>(false);
+  readonly deleting = signal<boolean>(false);
+  private deleteSufijo = '';
+
+  readonly deleteVisible = computed(() => this.deleteTarget() !== null);
+  /** Nombre completo (dc.title) que el usuario debe teclear para confirmar. */
+  readonly deleteEntityLabel = computed(() => {
+    const t = this.deleteTarget();
+    return t ? (t.metadata?.['dc.title']?.[0]?.value ?? t.name ?? '') : '';
+  });
 
   /** Sufijo del target en edición, derivado de digeex.sufijo del metadata. */
   readonly editTargetSufijo = computed(() => {
@@ -264,40 +287,81 @@ export class Communities {
     });
   }
 
+  /**
+   * Abre el diálogo de borrado peligroso y, solo entonces, pide el detalle de
+   * lo que se arrastra: los programas directos (conteo + títulos, vía
+   * `listByCommunity`) y el conteo recursivo de recursos del subárbol (Discovery
+   * acotado a la comunidad). Si cualquiera de las dos falla se marca el error y
+   * no se muestran conteos fabricados; la confirmación por escritura es la
+   * salvaguarda real, así que el borrado sigue disponible.
+   */
   handleDelete(target: Community, sufijo: string): void {
-    // Para el mensaje uso el nombre corto (dc.title.alternative) si está,
-    // fallback a name. En subdirecciones backfileadas con setup-dspace.sh
-    // el corto es siempre más legible que el dc.title largo (Subdirección
-    // de ...).
-    const labelCorto = target.metadata?.['dc.title.alternative']?.[0]?.value ?? target.name;
-    this.confirmation.confirm({
-      message: `¿Eliminar la subdirección "${labelCorto}"? Esta acción borra también sus colecciones, items y grupos asociados.`,
-      header: 'Confirmar eliminación',
-      icon: 'pi pi-exclamation-triangle',
-      rejectButtonProps: {
-        label: 'Cancelar',
-        severity: 'secondary',
-        rounded: true,
-      },
-      acceptButtonProps: {
-        label: 'Sí, eliminar',
-        severity: 'danger',
-        icon: 'pi pi-trash',
-        rounded: true,
-      },
-      accept: () => {
-        this.facade
-          .deleteSubdireccion$(target.uuid, sufijo)
-          .pipe(withLoading(this.loadingService, { message: 'Eliminando subdirección…' }))
-          .subscribe({
-          next: () => {
-            this.refreshCounter.update((n) => n + 1);
-            this.toast.add({ severity: 'success', summary: 'Subdirección eliminada' });
-          },
-          error: (err) => this.toastError(err, 'No se pudo eliminar la subdirección'),
-        });
-      },
+    this.deleteTarget.set(target);
+    this.deleteSufijo = sufijo;
+    this.deleteProgramsCount.set(null);
+    this.deleteItemsCount.set(null);
+    this.deleteTitles.set([]);
+    this.deleteLoadError.set(false);
+    this.deleting.set(false);
+    this.deleteLoading.set(true);
+    forkJoin({
+      programs: this.collectionApi
+        .listByCommunity(target.uuid, 0, 20, {})
+        .pipe(catchError(() => of(null))),
+      items: this.discovery
+        .search({ scope: target.uuid, dsoType: 'item', size: 0 })
+        .pipe(catchError(() => of(null))),
+    }).subscribe(({ programs, items }) => {
+      if (programs) {
+        const colls: Collection[] = programs._embedded?.['collections'] ?? [];
+        this.deleteProgramsCount.set(programs.page?.totalElements ?? colls.length);
+        this.deleteTitles.set(
+          colls.map((c) => c.metadata?.['dc.title']?.[0]?.value ?? c.name ?? '').filter((t) => t.length > 0),
+        );
+      }
+      if (items) {
+        this.deleteItemsCount.set(items.totalElements);
+      }
+      if (!programs || !items) {
+        this.deleteLoadError.set(true);
+      }
+      this.deleteLoading.set(false);
     });
+  }
+
+  /** Confirmación del diálogo: borra la subdirección y refresca; conserva el flujo previo. */
+  onDeleteConfirmed(): void {
+    const target = this.deleteTarget();
+    if (!target) return;
+    this.deleting.set(true);
+    this.facade
+      .deleteSubdireccion$(target.uuid, this.deleteSufijo)
+      .pipe(withLoading(this.loadingService, { message: 'Eliminando subdirección…' }))
+      .subscribe({
+        next: () => {
+          this.closeDeleteDialog();
+          this.refreshCounter.update((n) => n + 1);
+          this.toast.add({ severity: 'success', summary: 'Subdirección eliminada' });
+        },
+        error: (err) => {
+          this.deleting.set(false);
+          this.toastError(err, 'No se pudo eliminar la subdirección');
+        },
+      });
+  }
+
+  onDeleteCancelled(): void {
+    this.closeDeleteDialog();
+  }
+
+  private closeDeleteDialog(): void {
+    this.deleteTarget.set(null);
+    this.deleteSufijo = '';
+    this.deleteProgramsCount.set(null);
+    this.deleteItemsCount.set(null);
+    this.deleteTitles.set([]);
+    this.deleteLoadError.set(false);
+    this.deleting.set(false);
   }
 
   /**

@@ -10,19 +10,20 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Observable, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { MessageService } from 'primeng/api';
 import { TableLazyLoadEvent } from 'primeng/table';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { Select } from 'primeng/select';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageModule } from 'primeng/message';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { DangerousDeleteDialog } from '../../../shared/components/dangerous-delete-dialog/dangerous-delete-dialog';
 import { CollectionTable } from './components/collection-table/collection-table';
 import { CollectionDialog } from './components/collection-dialog/collection-dialog';
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
+import { DiscoveryService } from '../../../core/api/discovery.service';
 import { Community } from '../../../core/api/models/community.model';
 import { Collection, CollectionCreateBody } from '../../../core/api/models/collection.model';
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
@@ -60,9 +61,9 @@ interface ProgramaFormPayload {
     ButtonModule,
     CardModule,
     Select,
-    ConfirmDialogModule,
     MessageModule,
     LoadingSpinnerComponent,
+    DangerousDeleteDialog,
     CollectionTable,
     CollectionDialog,
   ],
@@ -72,7 +73,7 @@ export class Collections {
   private readonly collectionApi = inject(CollectionApiService);
   private readonly facade = inject(CollectionFacade);
   private readonly authCaller = inject(AuthCallerService);
-  private readonly confirmation = inject(ConfirmationService);
+  private readonly discovery = inject(DiscoveryService);
   private readonly toast = inject(MessageService);
   private readonly loadingService = inject(LoadingService);
 
@@ -87,6 +88,26 @@ export class Collections {
 
   /** Subdirección seleccionada en el dropdown; sus colecciones llenan la tabla. */
   readonly selectedSubdireccion = signal<Community | null>(null);
+
+  /**
+   * Estado del diálogo de borrado peligroso. `deleteTarget` no-null = abierto;
+   * el conteo y los títulos se llenan al abrir con un Discovery acotado al
+   * programa (solo entonces, por performance).
+   */
+  readonly deleteTarget = signal<Collection | null>(null);
+  readonly deleteItemsCount = signal<number | null>(null);
+  readonly deleteTitles = signal<string[]>([]);
+  readonly deleteLoading = signal<boolean>(false);
+  readonly deleteLoadError = signal<boolean>(false);
+  readonly deleting = signal<boolean>(false);
+  private deleteSufijo = '';
+
+  readonly deleteVisible = computed(() => this.deleteTarget() !== null);
+  /** Nombre completo (dc.title) que el usuario debe teclear para confirmar. */
+  readonly deleteEntityLabel = computed(() => {
+    const t = this.deleteTarget();
+    return t ? (t.metadata?.['dc.title']?.[0]?.value ?? t.name ?? '') : '';
+  });
 
   /** Página actual de colecciones (0-based) para la subdirección activa. */
   readonly currentPage = signal<number>(0);
@@ -322,35 +343,67 @@ export class Collections {
       });
   }
 
+  /**
+   * Abre el diálogo de borrado peligroso y, solo entonces, pide a Discovery los
+   * recursos del programa (conteo + una muestra de títulos) para que el usuario
+   * vea qué se borra. El error del detalle no bloquea el borrado: la
+   * confirmación por escritura es la salvaguarda real.
+   */
   handleDelete(target: Collection, sufijo: string): void {
-    this.confirmation.confirm({
-      message: `¿Eliminar el programa "${target.name}"? Esta acción borra también sus items y bitstreams asociados.`,
-      header: 'Confirmar eliminación',
-      icon: 'pi pi-exclamation-triangle',
-      rejectButtonProps: {
-        label: 'Cancelar',
-        severity: 'secondary',
-        rounded: true,
+    this.deleteTarget.set(target);
+    this.deleteSufijo = sufijo;
+    this.deleteItemsCount.set(null);
+    this.deleteTitles.set([]);
+    this.deleteLoadError.set(false);
+    this.deleting.set(false);
+    this.deleteLoading.set(true);
+    this.discovery.search({ scope: target.uuid, dsoType: 'item', size: 20 }).subscribe({
+      next: (res) => {
+        this.deleteItemsCount.set(res.totalElements);
+        this.deleteTitles.set(
+          res.items.map((i) => i.name ?? i.metadata?.['dc.title']?.[0]?.value ?? '').filter((t) => t.length > 0),
+        );
+        this.deleteLoading.set(false);
       },
-      acceptButtonProps: {
-        label: 'Sí, eliminar',
-        severity: 'danger',
-        icon: 'pi pi-trash',
-        rounded: true,
-      },
-      accept: () => {
-        this.facade
-          .deleteColeccion$(target.uuid, sufijo)
-          .pipe(withLoading(this.loadingService, { message: 'Eliminando programa…' }))
-          .subscribe({
-          next: () => {
-            this.refreshAfterDelete();
-            this.toast.add({ severity: 'success', summary: 'Programa eliminado' });
-          },
-          error: (err) => this.toastError(err, 'No se pudo aliminar el programa'),
-        });
+      error: () => {
+        this.deleteLoadError.set(true);
+        this.deleteLoading.set(false);
       },
     });
+  }
+
+  /** Confirmación del diálogo: borra el programa y refresca; conserva el flujo previo. */
+  onDeleteConfirmed(): void {
+    const target = this.deleteTarget();
+    if (!target) return;
+    this.deleting.set(true);
+    this.facade
+      .deleteColeccion$(target.uuid, this.deleteSufijo)
+      .pipe(withLoading(this.loadingService, { message: 'Eliminando programa…' }))
+      .subscribe({
+        next: () => {
+          this.closeDeleteDialog();
+          this.refreshAfterDelete();
+          this.toast.add({ severity: 'success', summary: 'Programa eliminado' });
+        },
+        error: (err) => {
+          this.deleting.set(false);
+          this.toastError(err, 'No se pudo eliminar el programa');
+        },
+      });
+  }
+
+  onDeleteCancelled(): void {
+    this.closeDeleteDialog();
+  }
+
+  private closeDeleteDialog(): void {
+    this.deleteTarget.set(null);
+    this.deleteSufijo = '';
+    this.deleteItemsCount.set(null);
+    this.deleteTitles.set([]);
+    this.deleteLoadError.set(false);
+    this.deleting.set(false);
   }
 
   /**

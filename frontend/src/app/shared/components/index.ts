@@ -6,3 +6,4 @@ export * from './document-card/document-card';
 export * from './session-warning-modal/session-warning-modal';
 export * from './file-dropzone/file-dropzone';
 export * from './export-history-button/export-history-button.component';
+export * from './dangerous-delete-dialog/dangerous-delete-dialog';

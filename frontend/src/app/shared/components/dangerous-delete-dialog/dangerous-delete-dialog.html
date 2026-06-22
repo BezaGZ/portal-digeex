@@ -1,0 +1,85 @@
+<p-dialog
+  [visible]="visible()"
+  [modal]="true"
+  [closable]="false"
+  [dismissableMask]="false"
+  [draggable]="false"
+  [resizable]="false"
+  [header]="headerText()"
+  [style]="{ width: '520px' }">
+  <div data-testid="dangerous-delete-dialog" class="flex flex-col gap-4 pt-2">
+    <div class="flex items-start gap-3">
+      <i class="pi pi-exclamation-triangle text-3xl" style="color: var(--color-error)"></i>
+      <p class="text-sm" style="color: var(--color-text-secondary)">
+        Esta acción es permanente y no se puede deshacer.
+      </p>
+    </div>
+
+    <div class="rounded-lg border p-3 flex flex-col gap-2" style="background: var(--color-surface); border-color: var(--color-border)">
+      @if (loadingContent()) {
+        <app-loading-spinner minHeight="96px" data-testid="affected-loading" />
+      } @else if (loadError()) {
+        <p class="text-sm" style="color: var(--color-error)" data-testid="affected-error">
+          No se pudo cargar el detalle. El recurso y sus contenidos asociados se eliminarán de todas formas.
+        </p>
+      } @else {
+        <p class="text-sm font-semibold" style="color: var(--color-text-primary)" data-testid="affected-summary">
+          {{ summaryText() }}
+        </p>
+        @if (affectedTitles().length) {
+          <div class="flex flex-col gap-1">
+            @if (affectedTitlesLabel()) {
+              <p class="text-xs uppercase tracking-wide" style="color: var(--color-text-tertiary)">{{ affectedTitlesLabel() }}</p>
+            }
+            <ul class="list-disc pl-5 text-sm flex flex-col gap-0.5 max-h-40 overflow-y-auto" style="color: var(--color-text-secondary)" data-testid="affected-titles">
+              @for (title of affectedTitles(); track title) {
+                <li class="break-words">{{ title }}</li>
+              }
+            </ul>
+            @if (extraCount() > 0) {
+              <p class="text-xs italic" style="color: var(--color-text-tertiary)" data-testid="affected-more">y {{ extraCount() }} más…</p>
+            }
+          </div>
+        }
+      }
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <label for="ddd-confirm" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Para confirmar, escribe el nombre completo:
+      </label>
+      <span class="text-sm break-words" style="color: var(--color-text-tertiary)">{{ entityLabel() }}</span>
+      <input
+        pInputText
+        id="ddd-confirm"
+        class="w-full"
+        [ngModel]="typed()"
+        (ngModelChange)="typed.set($event)"
+        (keyup.enter)="onConfirm()"
+        autocomplete="off"
+        data-testid="confirm-input" />
+    </div>
+  </div>
+
+  <ng-template #footer>
+    <div class="flex justify-end gap-2 w-full">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        [rounded]="true"
+        [disabled]="deleting()"
+        data-testid="btn-cancel"
+        (onClick)="onCancel()" />
+      <p-button
+        label="Eliminar"
+        severity="danger"
+        icon="pi pi-trash"
+        [rounded]="true"
+        [disabled]="!canConfirm()"
+        [loading]="deleting()"
+        data-testid="btn-delete"
+        (onClick)="onConfirm()" />
+    </div>
+  </ng-template>
+</p-dialog>

@@ -3,12 +3,13 @@ import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
-import { EMPTY, NEVER, Observable, of } from 'rxjs';
+import { EMPTY, NEVER, Observable, of, throwError } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { Communities } from './communities';
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
+import { DiscoveryService } from '../../../core/api/discovery.service';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CommunityFacade } from '../content/services/community-facade';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
@@ -42,7 +43,7 @@ describe('Communities (contenedor)', () => {
   let createSubdireccionFn: ReturnType<typeof vi.fn>;
   let updateSubdireccionFn: ReturnType<typeof vi.fn>;
   let deleteSubdireccionFn: ReturnType<typeof vi.fn>;
-  let confirmFn: ReturnType<typeof vi.fn>;
+  let searchFn: ReturnType<typeof vi.fn>;
   let messageAddFn: ReturnType<typeof vi.fn>;
 
   function buildCommunity(name: string, uuid: string, archived = 0): Community {
@@ -56,7 +57,6 @@ describe('Communities (contenedor)', () => {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function buildColl(uuid: string, parentUuid: string): any {
     return {
       uuid,
@@ -102,9 +102,20 @@ describe('Communities (contenedor)', () => {
         buildColl('c6', 'sub-3'),
       ]),
     );
-    // Quedan como espías para verificar que ya no se invocan por subdirección.
-    listByCommunityFn = vi.fn();
+    // listByCommunity llena la lista de programas del diálogo de borrado (no el listado).
+    // getItems queda como espía para verificar que ya no se invoca por subdirección.
+    listByCommunityFn = vi.fn().mockReturnValue(
+      of({
+        _embedded: { collections: [buildColl('c1', 'sub-1'), buildColl('c2', 'sub-1')] },
+        _links: { self: { href: '/' } },
+        page: { size: 20, totalElements: 2, totalPages: 1, number: 0 },
+      }),
+    );
     getItemsFn = vi.fn();
+    // Discovery acotado a la comunidad: conteo recursivo de recursos del subárbol.
+    searchFn = vi.fn().mockReturnValue(
+      of({ items: [], facets: [], totalElements: 57, totalPages: 3, page: 0, size: 0 }),
+    );
     currentCallerObservable = of({ role: 'superadmin', sufijo: null });
     createSubdireccionFn = vi.fn().mockReturnValue(of(buildCommunity('Nueva', 'sub-new')));
     updateSubdireccionFn = vi.fn().mockReturnValue(of(buildCommunity('Renombrada', 'sub-1')));
@@ -132,6 +143,10 @@ describe('Communities (contenedor)', () => {
           useValue: { getItems: getItemsFn },
         },
         {
+          provide: DiscoveryService,
+          useValue: { search: searchFn },
+        },
+        {
           provide: CommunityFacade,
           useValue: {
             createSubdireccion$: createSubdireccionFn,
@@ -144,8 +159,6 @@ describe('Communities (contenedor)', () => {
         ConfirmationService,
       ],
     });
-
-    confirmFn = vi.spyOn(TestBed.inject(ConfirmationService), 'confirm') as any;
   });
 
   it('should fetch the DIGEEX root and its subcommunities on init, exposing them in the component state', () => {
@@ -208,6 +221,10 @@ describe('Communities (contenedor)', () => {
           {
             provide: DSpaceApiService,
             useValue: { getItems: getItemsFn },
+          },
+          {
+            provide: DiscoveryService,
+            useValue: { search: searchFn },
           },
           { provide: CommunityFacade, useValue: {} },
           {
@@ -369,25 +386,72 @@ describe('Communities (contenedor)', () => {
       );
     });
 
-    it('should ask for confirmation, then call deleteSubdireccion$, refresh the list and toast on accept', () => {
+    /** El borrado abre el diálogo peligroso y trae programas (conteo+títulos) + conteo recursivo de recursos. */
+    it('should open the dangerous delete dialog with programs and recursive resource counts', () => {
       const fixture = TestBed.createComponent(Communities);
       fixture.detectChanges();
       const c = fixture.componentInstance;
       const target = buildCommunity('Educación Básica', 'sub-1');
+      target.metadata = {
+        'dc.title': [{ value: 'Subdirección de Educación Básica', language: null, authority: null, confidence: -1, place: 0 }],
+      };
 
-      // Simular que el ConfirmationService invoca el accept callback inmediatamente.
-      confirmFn.mockImplementation((options: { accept: () => void }) => options.accept());
+      c.onDeleteClick(target);
+
+      expect(c.deleteVisible()).toBe(true);
+      expect(c.deleteEntityLabel()).toBe('Subdirección de Educación Básica');
+      expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 20, {});
+      expect(searchFn).toHaveBeenCalledWith({ scope: 'sub-1', dsoType: 'item', size: 0 });
+      expect(c.deleteProgramsCount()).toBe(2);
+      expect(c.deleteItemsCount()).toBe(57);
+      expect(c.deleteTitles().length).toBe(2);
+    });
+
+    /** El texto a teclear para confirmar es el título completo (dc.title), no el nombre corto. */
+    it('should use the full title (dc.title) as the confirmation label', () => {
+      const fixture = TestBed.createComponent(Communities);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      const target = buildCommunity('Educación Básica', 'sub-1');
+      target.metadata = {
+        'dc.title': [{ value: 'Subdirección de Educación Básica', language: null, authority: null, confidence: -1, place: 0 }],
+        'dc.title.alternative': [{ value: 'Básica', language: null, authority: null, confidence: -1, place: 0 }],
+      };
+
+      c.onDeleteClick(target);
+
+      expect(c.deleteEntityLabel()).toBe('Subdirección de Educación Básica');
+    });
+
+    it('should call deleteSubdireccion$, refresh the list and toast when the dialog confirms', () => {
+      const fixture = TestBed.createComponent(Communities);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+      c.onDeleteClick(buildCommunity('Educación Básica', 'sub-1'));
       listSubcommunitiesFn.mockClear();
 
-      c.handleDelete(target, 'ED_BASICA');
+      c.onDeleteConfirmed();
       fixture.detectChanges();
 
-      expect(confirmFn).toHaveBeenCalled();
-      expect(deleteSubdireccionFn).toHaveBeenCalledWith('sub-1', 'ED_BASICA');
+      expect(deleteSubdireccionFn).toHaveBeenCalledWith('sub-1', '');
       expect(listSubcommunitiesFn).toHaveBeenCalled();
       expect(messageAddFn).toHaveBeenCalledWith(
         expect.objectContaining({ severity: 'success' }),
       );
+      expect(c.deleteVisible()).toBe(false);
+    });
+
+    /** Si el detalle falla, se marca el error sin bloquear el borrado. */
+    it('should flag a load error but keep the dialog open when the detail fetch fails', () => {
+      listByCommunityFn.mockReturnValueOnce(throwError(() => new Error('down')));
+      const fixture = TestBed.createComponent(Communities);
+      fixture.detectChanges();
+      const c = fixture.componentInstance;
+
+      c.onDeleteClick(buildCommunity('Educación Básica', 'sub-1'));
+
+      expect(c.deleteLoadError()).toBe(true);
+      expect(c.deleteVisible()).toBe(true);
     });
 
     /** Verifica que crear una subdirección enrole una tarea de carga global mientras está en vuelo. */
