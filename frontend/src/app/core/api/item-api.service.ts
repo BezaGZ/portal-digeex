@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { Item } from './models/item.model';
 import { JsonPatchEntry } from './json-patch.util';
 import { DSPACE_API_BASE, ITEMS_PATH } from './dspace-rest.util';
@@ -57,5 +58,21 @@ export class ItemApiService {
     return this.updateMetadata(uuid, [
       { op: 'replace', path: '/withdrawn', value: false },
     ]);
+  }
+
+  /**
+   * Devuelve el uuid del submitter (eperson que subió el item) o `null` si
+   * no lo expone o falla. Lo usa el `ownSubmissionGuard` para confinar la
+   * edición del delegado a lo que él subió. Sub-recurso `submitter` del
+   * contrato 9.x. Falla cerrado: ante error resuelve `null` (el guard lo trata
+   * como "no es tuyo"), no lanza.
+   */
+  getSubmitter(uuid: string): Observable<string | null> {
+    return this.http
+      .get<{ uuid?: string }>(`${DSPACE_API_BASE}${ITEMS_PATH}/${uuid}/submitter`)
+      .pipe(
+        map((eperson) => eperson?.uuid ?? null),
+        catchError(() => of(null)),
+      );
   }
 }

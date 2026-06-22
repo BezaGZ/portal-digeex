@@ -3,6 +3,7 @@ import { authGuard } from './core/auth/auth.guard';
 import { roleGuard } from './core/auth/role.guard';
 import { ROLE_SCOPES } from './core/auth/role-scopes';
 import { featureGuard } from './core/auth/feature.guard';
+import { ownSubmissionGuard } from './core/auth/own-submission.guard';
 import { ITEMS_PATH, COLLECTIONS_PATH, COMMUNITIES_PATH } from './core/api/dspace-rest.util';
 export const routes: Routes = [
 
@@ -219,7 +220,7 @@ export const routes: Routes = [
       },
       {
         path: 'envios/:uuid/editar',
-        canActivate: [roleGuard(ROLE_SCOPES.STAFF), featureGuard('canEditItem', ITEMS_PATH)],
+        canActivate: [roleGuard(ROLE_SCOPES.STAFF), featureGuard('canEditItem', ITEMS_PATH), ownSubmissionGuard()],
         loadComponent: () =>
           import('./features/administration/submission/submission-forms-bootstrap')
             .then(() => import('./features/administration/submission/edit-item/edit-item'))

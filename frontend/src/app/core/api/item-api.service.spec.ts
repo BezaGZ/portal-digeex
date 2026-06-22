@@ -109,4 +109,34 @@ describe('ItemApiService', () => {
       expect(received?.withdrawn).toBe(false);
     });
   });
+
+  describe('getSubmitter()', () => {
+    it('should GET /api/core/items/{uuid}/submitter and return the submitter uuid', () => {
+      let received: string | null | undefined;
+
+      service.getSubmitter('item-uuid').subscribe((uuid) => (received = uuid));
+
+      const req = httpMock.expectOne('/server/api/core/items/item-uuid/submitter');
+      expect(req.request.method).toBe('GET');
+      req.flush({ uuid: 'submitter-uuid', type: 'eperson' });
+
+      expect(received).toBe('submitter-uuid');
+    });
+
+    it('should resolve null without throwing when the submitter request errors', () => {
+      let received: string | null | undefined;
+      let errored = false;
+      service.getSubmitter('item-uuid').subscribe({
+        next: (uuid) => (received = uuid),
+        error: () => (errored = true),
+      });
+
+      httpMock
+        .expectOne('/server/api/core/items/item-uuid/submitter')
+        .flush(null, { status: 404, statusText: 'Not Found' });
+
+      expect(errored).toBe(false);
+      expect(received).toBeNull();
+    });
+  });
 });
