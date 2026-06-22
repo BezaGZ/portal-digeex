@@ -4,8 +4,10 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { of } from 'rxjs';
 
 import { AuthorizationApiService } from './authorization-api.service';
+import { SiteApiService } from './site-api.service';
 
 /**
  * Tests de AuthorizationApiService.
@@ -14,13 +16,16 @@ import { AuthorizationApiService } from './authorization-api.service';
  * DSpace 9.x. `isAuthorized` pregunta al backend si el usuario del token puede
  * ejercer una feature sobre el self absoluto de un objeto. Pasar `feature` deja
  * que el backend filtre, así basta decidir por lista de authorizations no vacía;
- * el 401/error resuelve a `false`, no a excepción.
+ * el 401/error resuelve a `false`, no a excepción. Sin `objectUrl` resuelve el
+ * self del Site y lo manda como `uri` (espejo de `AuthorizationDataService.searchByObject`
+ * de dspace-angular); el `uri` es obligatorio en el backend (`findByObject`, required=true).
  *
- * Ciclo 1 TDD — Mejora 9
+ * Ciclo 1 TDD — Mejora 9. Ajustado en Ciclo 8 (default al self del Site para features site-scoped).
  */
 describe('AuthorizationApiService', () => {
   const AUTHZ_URL = '/server/api/authz/authorizations/search/object';
   const ITEM_URL = 'http://localhost:3000/server/api/core/items/item-uuid';
+  const SITE_SELF = 'http://localhost:8080/server/api/core/sites/site-uuid';
 
   let service: AuthorizationApiService;
   let httpMock: HttpTestingController;
@@ -31,6 +36,10 @@ describe('AuthorizationApiService', () => {
         AuthorizationApiService,
         provideHttpClient(),
         provideHttpClientTesting(),
+        {
+          provide: SiteApiService,
+          useValue: { getSiteRoot$: () => of({ uuid: 'site-uuid', _links: { self: { href: SITE_SELF } } }) },
+        },
       ],
     });
     service = TestBed.inject(AuthorizationApiService);
@@ -94,5 +103,19 @@ describe('AuthorizationApiService', () => {
     const req = httpMock.expectOne((r) => r.url === AUTHZ_URL);
     expect(req.request.params.get('eperson')).toBe('eperson-uuid');
     req.flush({ _embedded: { authorizations: [] } });
+  });
+
+  /**
+   * Sin objectUrl, espeja a dspace-angular: resuelve el self del Site y lo manda
+   * como `uri` (el backend lo exige, no lo asume). Es el caso de las features
+   * site-scoped del rolePresenceGuard (administratorOf, canSubmit, etc.).
+   */
+  it('defaults the uri to the Site self when no objectUrl is provided', () => {
+    service.isAuthorized('administratorOf').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === AUTHZ_URL);
+    expect(req.request.params.get('uri')).toBe(SITE_SELF);
+    expect(req.request.params.get('feature')).toBe('administratorOf');
+    req.flush({ _embedded: { authorizations: [{ id: 'x' }] } });
   });
 });
