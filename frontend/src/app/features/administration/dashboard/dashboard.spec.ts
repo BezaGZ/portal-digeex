@@ -22,7 +22,8 @@ import { CollectionApiService } from '../../../core/api/collection-api.service';
  * top-list-card que navega a la pantalla de Programas. Los servicios de
  * los widgets se mockean para no disparar HTTP real.
  *
- * Ciclo 12 TDD — Sprint 8. Ajustado en Ciclos 13 y 28 (Sprint 8).
+ * Ciclo 12 TDD — Sprint 8. Ajustado en Ciclos 13 y 28 (Sprint 8) y 2026-06-21
+ * (fail-closed: sin sub válida no se renderizan widgets globales).
  */
 describe('Dashboard', () => {
   let caller$: BehaviorSubject<Caller | null>;
@@ -135,18 +136,19 @@ describe('Dashboard', () => {
   });
 
   /**
-   * Verifica el defensive path: si el caller tiene un sufijo que no matchea
-   * ninguna sub, el scope queda null y el dashboard sigue renderizando sus
-   * widgets (no rompe).
+   * Fail-closed: si el caller tiene un sufijo que no matchea ninguna sub, el
+   * dashboard NO renderiza sus widgets (que pedirían stats globales con scope
+   * null); muestra el empty state. Cierra el fail-open de un admin_sub sin sub
+   * válida que veía métricas de todas las subdirecciones.
    */
-  it('should resolve scope to null when the caller sufijo does not match any sub', () => {
+  it('should render the empty state instead of global widgets when the caller sufijo does not match any sub', () => {
     caller$.next({ role: 'admin_subdireccion', sufijo: 'NO_EXISTE' });
 
     const fixture = TestBed.createComponent(Dashboard);
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.scope()).toBeNull();
-    expect(fixture.componentInstance.widgets().length).toBe(4);
+    expect(fixture.nativeElement.querySelector('[data-testid="dashboard-widget-grid"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="dashboard-empty"]')).not.toBeNull();
   });
 
   /**

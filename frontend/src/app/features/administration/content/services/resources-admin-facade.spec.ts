@@ -54,7 +54,7 @@ describe('ResourcesAdminFacade', () => {
     type: 'community',
   };
 
-  function setupWith(caller: { role: string; sufijo: string | null }) {
+  function setupWith(caller: { role: string; sufijo: string | null } | null) {
     mockDiscovery = {
       search: vi.fn(() =>
         of({ items: [], facets: [], totalElements: 0, totalPages: 0, page: 0, size: 20 }),
@@ -166,13 +166,35 @@ describe('ResourcesAdminFacade', () => {
     expect(params.sort).toBe('dc.title,asc');
   });
 
-  /** Verifica que un admin_subdireccion con sufijo que no matchea quede sin scope (devuelve vacío). */
-  it('should leave scope undefined when admin_subdireccion sufijo does not match any sub', async () => {
+  /** Fail-closed: un admin_subdireccion cuyo sufijo no matchea no ve nada (no "todo"). */
+  it('should return empty without calling Discovery when admin_subdireccion sufijo does not match any sub', async () => {
     setupWith({ role: 'admin_subdireccion', sufijo: 'NO_EXISTE' });
 
-    await firstValueFrom(facade.search$({ withdrawn: false }));
+    const page = await firstValueFrom(facade.search$({ withdrawn: false }));
 
-    const params = mockDiscovery.search.mock.calls[0][0];
-    expect(params.scope).toBeUndefined();
+    expect(mockDiscovery.search).not.toHaveBeenCalled();
+    expect(page.items).toEqual([]);
+    expect(page.totalElements).toBe(0);
+  });
+
+  /** Fail-closed: sin caller (sesión cerrada) no se descarga nada de otras subs. */
+  it('should return empty without calling Discovery when there is no caller', async () => {
+    setupWith(null);
+
+    const page = await firstValueFrom(facade.search$({ withdrawn: false }));
+
+    expect(mockDiscovery.search).not.toHaveBeenCalled();
+    expect(page.items).toEqual([]);
+    expect(page.totalElements).toBe(0);
+  });
+
+  /** Fail-closed: un admin_subdireccion sin sufijo tampoco cae en "ver todo". */
+  it('should return empty without calling Discovery when a non-superadmin caller has no sufijo', async () => {
+    setupWith({ role: 'admin_subdireccion', sufijo: null });
+
+    const page = await firstValueFrom(facade.search$({ withdrawn: false }));
+
+    expect(mockDiscovery.search).not.toHaveBeenCalled();
+    expect(page.items).toEqual([]);
   });
 });

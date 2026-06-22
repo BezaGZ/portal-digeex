@@ -23,6 +23,12 @@ export interface ResourcesAdminSearchOpts {
 }
 
 /**
+ * Resolución de scope per-rol. `none` es el caso fail-closed: sin sesión o sin
+ * sub válida no se consulta Discovery, para no descargar items de otras subs.
+ */
+type Scope = { mode: 'all' } | { mode: 'scoped'; uuid: string } | { mode: 'none' };
+
+/**
  * Facade del listado admin de recursos (`/administrador/recursos`).
  * Resuelve scope per-rol (SuperAdmin global; admin_subdireccion acotado a
  * su sub-community via `digeex.sufijo`) y delega a Discovery con
@@ -36,11 +42,14 @@ export class ResourcesAdminFacade {
 
   search$(opts: ResourcesAdminSearchOpts): Observable<Paginated<MyDSpaceObject>> {
     return this.resolveScope$().pipe(
-      switchMap((scope) =>
-        this.discovery
+      switchMap((scope) => {
+        if (scope.mode === 'none') {
+          return of(this.emptyPage(opts));
+        }
+        return this.discovery
           .search({
             configuration: 'administrativeView',
-            scope: scope ?? undefined,
+            scope: scope.mode === 'scoped' ? scope.uuid : undefined,
             page: opts.page,
             size: opts.size,
             sort: opts.sort,
@@ -60,32 +69,40 @@ export class ResourcesAdminFacade {
               page: result.page,
               size: result.size,
             })),
-          ),
-      ),
+          );
+      }),
     );
   }
 
+  /** Página vacía para el caso fail-closed, sin consultar Discovery. */
+  private emptyPage(opts: ResourcesAdminSearchOpts): Paginated<MyDSpaceObject> {
+    return { items: [], totalElements: 0, totalPages: 0, page: opts.page ?? 0, size: opts.size ?? 0 };
+  }
+
   /**
-   * Devuelve `null` para SuperAdmin (sin scope) y la community uuid para
-   * admin_subdireccion. Reusa el patrón `searchTop → listSubcommunities →
-   * findCallerSub` del `upload-content` component.
+   * Resuelve el scope del caller. SuperAdmin → `all` (global). admin_subdireccion
+   * con sufijo que matchea → `scoped` a su sub-community. Cualquier otro caso
+   * —sin caller (logout), sin sufijo, o sufijo que no matchea— → `none`, que el
+   * `search$` traduce a lista vacía sin consultar Discovery (fail-closed). Reusa
+   * el patrón `searchTop → listSubcommunities → findCallerSub`.
    */
-  private resolveScope$(): Observable<string | null> {
+  private resolveScope$(): Observable<Scope> {
     return this.authCaller.currentCaller$.pipe(
       take(1),
       switchMap((caller) => {
-        if (!caller || caller.role === 'superadmin' || !caller.sufijo) {
-          return of(null);
-        }
+        if (!caller) return of<Scope>({ mode: 'none' });
+        if (caller.role === 'superadmin') return of<Scope>({ mode: 'all' });
+        if (!caller.sufijo) return of<Scope>({ mode: 'none' });
         return this.communityApi.searchTop(0, 1).pipe(
           switchMap((rootResp) => {
             const root = rootResp._embedded?.['communities']?.[0];
-            if (!root) return of(null as string | null);
+            if (!root) return of<Scope>({ mode: 'none' });
             return this.communityApi.listSubcommunities(root.uuid, 0, 100).pipe(
               map((subsResp) => {
                 const embedded = (subsResp._embedded ?? {}) as Record<string, Community[]>;
                 const subs = embedded['subcommunities'] ?? embedded['communities'] ?? [];
-                return findCallerSub(subs, caller)?.uuid ?? null;
+                const uuid = findCallerSub(subs, caller)?.uuid;
+                return uuid ? ({ mode: 'scoped', uuid } as Scope) : ({ mode: 'none' } as Scope);
               }),
             );
           }),

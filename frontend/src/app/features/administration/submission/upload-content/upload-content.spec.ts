@@ -20,9 +20,11 @@ import { Collection } from '../../../../core/api/models/collection.model';
  * subdirecciones de DIGEEX con todos sus programas; admin_subdireccion
  * y personal_delegado ven sólo la sub cuyo sufijo coincide con el suyo.
  * Cada fila navega a la ruta de submission con el UUID del programa
- * elegido, donde el host monta el formulario por entity-type.
+ * elegido, donde el host monta el formulario por entity-type. Sin caller
+ * resuelto (carga inicial o logout) no expone ninguna sub: el caso `!caller`
+ * falla cerrado y no cae en "ver todo".
  *
- * Ciclo 26 TDD — Sprint 6. Ajustado en Ciclo 19 (Sprint 9).
+ * Ciclo 26 TDD — Sprint 6. Ajustado en Ciclo 19 (Sprint 9) y 2026-06-21 (fail-closed).
  */
 describe('UploadContent', () => {
   function buildSub(uuid: string, name: string, sufijo: string): Community {
@@ -66,7 +68,10 @@ describe('UploadContent', () => {
     buildCollection('datos', 'DATOS', 'sub-3'),
   ];
 
-  function configureModule(callerRole: 'superadmin' | 'admin_subdireccion' | 'personal_delegado', sufijo: string | null) {
+  function configureModule(
+    callerRole: 'superadmin' | 'admin_subdireccion' | 'personal_delegado' | null,
+    sufijo: string | null,
+  ) {
     const searchTopFn = vi.fn().mockReturnValue(
       of({
         _embedded: { communities: [buildSub('digeex-root', 'DIGEEX', '')] },
@@ -90,7 +95,7 @@ describe('UploadContent', () => {
         { provide: CollectionApiService, useValue: { listAll: listAllFn, listByCommunity: listByCommunityFn } },
         {
           provide: AuthCallerService,
-          useValue: { currentCaller$: of({ role: callerRole, sufijo }) },
+          useValue: { currentCaller$: of(callerRole === null ? null : { role: callerRole, sufijo }) },
         },
         { provide: Router, useValue: { navigate: vi.fn() } },
       ],
@@ -144,6 +149,14 @@ describe('UploadContent', () => {
     expect(groups.length).toBe(1);
     expect(groups[0].sub.name).toBe('Investigación');
     expect(groups[0].programs.map((p) => p.name)).toEqual(['INVEST', 'DATOS']);
+  });
+
+  it('should expose nothing when the caller has not resolved yet (fail-closed, not all)', () => {
+    configureModule(null, null);
+    const fixture = TestBed.createComponent(UploadContent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.groups()).toEqual([]);
   });
 
   it('should navigate to the submission route with the collection uuid when openSubmission is called', () => {

@@ -55,7 +55,10 @@ export class UploadContent {
   readonly groups = computed(() => {
     const all = this.allGroups();
     const c = this.caller();
-    if (!c || c.role === 'superadmin') return all;
+    // Fail-closed: sin caller resuelto (carga inicial o logout) no se muestra
+    // ninguna sub; el `!caller` no debe caer en "ver todo" como el superadmin.
+    if (!c) return [];
+    if (c.role === 'superadmin') return all;
     const matchSub = findCallerSub(all.map((g) => g.sub), c);
     if (!matchSub) return [];
     return all.filter((g) => g.sub.uuid === matchSub.uuid);

@@ -12,7 +12,7 @@
     <div class="text-sm text-gray-500" data-testid="dashboard-loading">
       Cargando indicadores…
     </div>
-  } @else if (widgets().length === 0) {
+  } @else if (widgets().length === 0 || !hasUsableScope()) {
     <app-empty-state
       testId="dashboard-empty"
       icon="pi pi-chart-bar"

@@ -77,6 +77,20 @@ export class Dashboard {
   /** Indica si la carga inicial del usuario y el scope ha finalizado. */
   readonly ready = computed(() => this.caller() !== null && this.scope() !== undefined);
 
+  /**
+   * Fail-closed: ¿el scope resuelto sirve para renderizar widgets sin caer en
+   * "global" por error? SuperAdmin → sí (global es su scope legítimo). Un
+   * no-superadmin necesita un uuid de sub real; si su sufijo no resolvió (rol
+   * huérfano), no se muestran widgets para no pedir métricas de todas las subs.
+   */
+  readonly hasUsableScope = computed(() => {
+    const c = this.caller();
+    const s = this.scope();
+    if (!c || s === undefined) return false;
+    if (c.role === 'superadmin') return true;
+    return typeof s === 'string';
+  });
+
   /** Ventana temporal del dashboard expresada en años (por defecto 5). */
   readonly selectedYearWindow = signal<number>(5);
 
