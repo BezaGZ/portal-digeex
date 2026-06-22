@@ -12,17 +12,18 @@ import {
 } from './login';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
-import { UserManagementService } from '../../administration/users/services/user-management.service';
-import { UserView } from '../../administration/users/models/user-view.model';
+import { CallerProvider } from '../../../core/auth/caller-provider';
+import { Caller } from '../../../core/auth/caller.model';
 
 /**
  * Tests de `LoginComponent`. Conecta el formulario con `AuthService` y, tras un login exitoso,
- * consulta `UserManagementService.currentUserView$` para resolver el rol del eperson autenticado.
- * Si el rol es válido navega a `/administrador`; si la resolución falla cierra la
+ * consulta `CallerProvider.currentCaller$` (contrato de core) para resolver el rol del eperson
+ * autenticado. Si el rol es válido navega a `/administrador`; si la resolución falla cierra la
  * sesión y hace una recarga dura al login con `?error=sin-rol` (la recarga resincroniza
  * el CSRF; el query param restaura el mensaje, como dspace con `?expired=true`).
  *
- * Ciclo 4 TDD — Sprint 5. Ajustado en Ciclo 13. Recarga dura en Ciclo 43 — Sprint 8.
+ * Ciclo 4 TDD — Sprint 5. Ajustado en Ciclo 13, Ciclo 43 (Sprint 8) y 2026-06-21
+ * (mejora 5: depende de CallerProvider de core, no de UserManagementService).
  */
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -30,18 +31,19 @@ describe('LoginComponent', () => {
   let authService: AuthService;
   let router: Router;
   let httpMock: HttpTestingController;
-  let currentUserView$: BehaviorSubject<UserView | null>;
+  let currentCaller$: BehaviorSubject<Caller | null>;
   let redirectFn: ReturnType<typeof vi.fn>;
 
   /** Setup */
 
   beforeEach(async () => {
-    currentUserView$ = new BehaviorSubject<UserView | null>(null);
+    currentCaller$ = new BehaviorSubject<Caller | null>(null);
     redirectFn = vi.fn();
 
-    const userManagementStub: Partial<UserManagementService> = {
-      currentUserView$: currentUserView$.asObservable(),
-    } as unknown as Partial<UserManagementService>;
+    const callerProviderStub = {
+      currentCaller$: currentCaller$.asObservable(),
+      currentActor$: of(null),
+    };
 
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
@@ -53,7 +55,7 @@ describe('LoginComponent', () => {
           { path: 'iniciar-sesion', component: LoginComponent },
         ]),
         AuthService,
-        { provide: UserManagementService, useValue: userManagementStub },
+        { provide: CallerProvider, useValue: callerProviderStub },
         { provide: HardRedirectService, useValue: { redirect: redirectFn } },
       ],
     }).compileComponents();
@@ -125,16 +127,7 @@ describe('LoginComponent', () => {
   describe('login exitoso', () => {
     /** Con rol resuelto válido (`superadmin`), el componente navega a `/administrador`. */
     it('should navigate to /administrador when the resolved role is superadmin', async () => {
-      currentUserView$.next({
-        uuid: 'eperson-001',
-        email: 'juan@mineduc.gob.gt',
-        firstName: 'Juan',
-        lastName: 'Pérez',
-        role: 'superadmin',
-        subdivision: null,
-        status: 'active',
-        lastActive: '2026-04-18',
-      });
+      currentCaller$.next({ role: 'superadmin', sufijo: null });
 
       component.email.set('juan@mineduc.gob.gt');
       component.password.set('Password1');
@@ -208,8 +201,8 @@ describe('LoginComponent', () => {
      * Si la autenticación pasa pero `currentUserView$` propaga error, el componente cierra
      * sesión y hace recarga dura al login con `?error=sin-rol`. No navega al panel.
      */
-    it('should logout and hard-redirect to login with ?error=sin-rol when currentUserView$ throws', async () => {
-      currentUserView$.error(new Error('boom: currentUserView$ falló'));
+    it('should logout and hard-redirect to login with ?error=sin-rol when currentCaller$ throws', async () => {
+      currentCaller$.error(new Error('boom: currentCaller$ falló'));
 
       const logoutSpy = vi.spyOn(authService, 'logout').mockReturnValue(of(null));
 
@@ -242,7 +235,7 @@ describe('LoginComponent mensaje por query param', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         AuthService,
-        { provide: UserManagementService, useValue: { currentUserView$: of(null) } },
+        { provide: CallerProvider, useValue: { currentCaller$: of(null), currentActor$: of(null) } },
         { provide: HardRedirectService, useValue: { redirect: vi.fn() } },
         {
           provide: ActivatedRoute,

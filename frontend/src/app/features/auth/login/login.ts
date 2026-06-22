@@ -8,7 +8,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { ButtonModule } from 'primeng/button';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
-import { UserManagementService } from '../../administration/users/services/user-management.service';
+import { CallerProvider } from '../../../core/auth/caller-provider';
 import { AuthCardShell } from '../../../shared/components/auth-card-shell/auth-card-shell';
 
 /** Valor del query param `error` con que el caso "sin rol" recarga el login para restaurar el mensaje. */
@@ -43,7 +43,7 @@ export class LoginComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private authService = inject(AuthService);
   private hardRedirect = inject(HardRedirectService);
-  private userManagement = inject(UserManagementService);
+  private callerProvider = inject(CallerProvider);
 
   email = signal('');
   password = signal('');
@@ -64,10 +64,11 @@ export class LoginComponent implements OnInit {
 
   /**
    * Tras un login exitoso contra DSpace espera el primer valor de
-   * `currentUserView$` para conocer el rol del eperson autenticado.
-   * Si resuelve, navega al panel administrativo. Si rechaza (no hay
-   * grupo de rol del portal o la consulta de grupos falló), cierra
-   * la sesión y muestra el mensaje correspondiente.
+   * `CallerProvider.currentCaller$` para conocer el rol del eperson
+   * autenticado. Si resuelve, navega al panel administrativo. Si rechaza (no
+   * hay grupo de rol del portal o la consulta de grupos falló), cierra la
+   * sesión y muestra el mensaje correspondiente. Depende del contrato de core,
+   * no de la feature de administración.
    */
   onLogin() {
     this.errorMessage.set('');
@@ -75,7 +76,7 @@ export class LoginComponent implements OnInit {
 
     this.authService.login(this.email(), this.password()).subscribe({
       next: () => {
-        firstValueFrom(this.userManagement.currentUserView$).then(
+        firstValueFrom(this.callerProvider.currentCaller$).then(
           () => {
             this.isLoading.set(false);
             this.router.navigate(['/administrador']);

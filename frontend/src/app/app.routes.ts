@@ -4,6 +4,7 @@ import { roleGuard } from './core/auth/role.guard';
 import { ROLE_SCOPES } from './core/auth/role-scopes';
 import { featureGuard } from './core/auth/feature.guard';
 import { ownSubmissionGuard } from './core/auth/own-submission.guard';
+import { rolePresenceGuard } from './core/auth/role-presence.guard';
 import { ITEMS_PATH, COLLECTIONS_PATH, COMMUNITIES_PATH } from './core/api/dspace-rest.util';
 export const routes: Routes = [
 
@@ -111,7 +112,7 @@ export const routes: Routes = [
 
   {
     path: 'administrador',
-    canActivate: [authGuard],
+    canActivate: [authGuard, rolePresenceGuard()],
     canActivateChild: [authGuard],
     loadComponent: () => import('./layout/admin-layout/app.layout/app.layout').then(m => m.AppLayout),
     data: { breadcrumb: 'Administrador' },
