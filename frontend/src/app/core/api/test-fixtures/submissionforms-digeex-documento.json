@@ -83,7 +83,7 @@
           "hints": "Audiencia destinataria del recurso.",
           "selectableMetadata": [
             {
-              "metadata": "dc.audience",
+              "metadata": "dcterms.educationLevel",
               "label": null,
               "controlledVocabulary": "niveles-educativos",
               "closed": true

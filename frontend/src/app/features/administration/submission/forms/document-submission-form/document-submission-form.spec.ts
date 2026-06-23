@@ -136,7 +136,7 @@ describe('DocumentSubmissionForm', () => {
     expect(metadata['dc.title']?.[0]?.value).toBe('Manual PEAC');
     expect(metadata['dc.description.abstract']?.[0]?.value).toBe('Resumen del manual');
     expect(metadata['dc.type']?.[0]?.value).toBe('Manual');
-    expect(metadata['dc.audience']?.[0]?.value).toBe('Primaria');
+    expect(metadata['dcterms.educationLevel']?.[0]?.value).toBe('Primaria');
     expect(metadata['dc.date.issued']?.[0]?.value).toBe('2026-04-15');
     expect(metadata['dc.contributor.author']?.[0]?.value).toBe('Equipo PEAC');
     expect(metadata['dc.subject']?.map((mv) => mv.value)).toEqual(['educación', 'adultos']);
@@ -560,7 +560,7 @@ describe('DocumentSubmissionForm', () => {
         'dc.title': [{ value: 'Manual original', language: null, authority: null, confidence: -1, place: 0 }],
         'dc.description.abstract': [{ value: 'Resumen original', language: null, authority: null, confidence: -1, place: 0 }],
         'dc.type': [{ value: 'Manual', language: null, authority: null, confidence: -1, place: 0 }],
-        'dc.audience': [{ value: 'Primaria', language: null, authority: null, confidence: -1, place: 0 }],
+        'dcterms.educationLevel': [{ value: 'Primaria', language: null, authority: null, confidence: -1, place: 0 }],
         'dc.date.issued': [{ value: '2025-01-01', language: null, authority: null, confidence: -1, place: 0 }],
         'dc.contributor.author': [{ value: 'PEAC', language: null, authority: null, confidence: -1, place: 0 }],
         'dc.subject': [
@@ -630,7 +630,7 @@ describe('DocumentSubmissionForm', () => {
         'dc.title': [{ value: 'Título viejo', language: null, authority: null, confidence: -1, place: 0 }],
         'dc.description.abstract': [{ value: 'Resumen', language: null, authority: null, confidence: -1, place: 0 }],
         'dc.type': [{ value: 'Manual', language: null, authority: null, confidence: -1, place: 0 }],
-        'dc.audience': [{ value: 'Primaria', language: null, authority: null, confidence: -1, place: 0 }],
+        'dcterms.educationLevel': [{ value: 'Primaria', language: null, authority: null, confidence: -1, place: 0 }],
         'dc.date.issued': [{ value: '2025-01-01', language: null, authority: null, confidence: -1, place: 0 }],
       },
     };
@@ -786,7 +786,7 @@ describe('DocumentSubmissionForm', () => {
         'dc.description.abstract': [
           { value: 'Resumen', language: null, authority: null, confidence: -1, place: 0 },
         ],
-        'dc.audience': [
+        'dcterms.educationLevel': [
           { value: 'Primaria', language: null, authority: null, confidence: -1, place: 0 },
         ],
         'dc.date.issued': [

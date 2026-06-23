@@ -41,7 +41,7 @@ describe('DocumentDetailComponent', () => {
       'dc.contributor.author': [{ value: 'DIGEEX' }],
       'dc.date.issued': [{ value: '2025' }],
       'dc.type': [{ value: 'Guía' }],
-      'dc.audience': [{ value: 'Primaria' }],
+      'dcterms.educationLevel': [{ value: 'Primaria' }],
       'dc.subject': [{ value: 'Educación' }, { value: 'PEAC' }],
       'dc.language.iso': [{ value: 'es' }],
       'dc.publisher': [{ value: 'MINEDUC' }],
@@ -570,7 +570,7 @@ describe('DocumentDetailComponent', () => {
         ...MOCK_ITEM_VIDEO,
         metadata: {
           ...MOCK_ITEM_VIDEO.metadata,
-          'dc.audience': [{ value: 'Primaria' }],
+          'dcterms.educationLevel': [{ value: 'Primaria' }],
         },
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

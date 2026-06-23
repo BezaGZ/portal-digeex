@@ -160,8 +160,8 @@
     </row>
     <row>
         <field>
-            <dc-schema>dc</dc-schema>
-            <dc-element>audience</dc-element>
+            <dc-schema>dcterms</dc-schema>
+            <dc-element>educationLevel</dc-element>
             <repeatable>false</repeatable>
             <label>Nivel educativo</label>
             <input-type value-pairs-name="niveles-educativos">dropdown</input-type>
@@ -354,7 +354,7 @@
     <pair><displayed-value>Video</displayed-value><stored-value>Video</stored-value></pair>
 </value-pairs>
 
-<value-pairs value-pairs-name="niveles-educativos" dc-term="audience">
+<value-pairs value-pairs-name="niveles-educativos" dc-term="educationLevel">
     <pair><displayed-value>Primaria</displayed-value><stored-value>Primaria</stored-value></pair>
     <pair><displayed-value>Básico</displayed-value><stored-value>Básico</stored-value></pair>
     <pair><displayed-value>Diversificado</displayed-value><stored-value>Diversificado</stored-value></pair>

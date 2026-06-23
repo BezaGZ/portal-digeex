@@ -38,7 +38,7 @@
         <property name="indexFieldName" value="audience"/>
         <property name="metadataFields">
             <list>
-                <value>dc.audience</value>
+                <value>dcterms.educationLevel</value>
             </list>
         </property>
         <property name="facetLimit" value="5"/>

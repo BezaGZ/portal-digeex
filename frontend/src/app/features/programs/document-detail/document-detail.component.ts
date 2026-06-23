@@ -183,7 +183,7 @@ export class DocumentDetailComponent implements OnInit {
 
   /**
    * Resuelve el display label del idioma (`dc.language.iso`), único campo que
-   * guarda un código (ISO `es` → `Español`). `dc.audience` y `dc.type` ya llegan
+   * guarda un código (ISO `es` → `Español`). `dcterms.educationLevel` y `dc.type` ya llegan
    * legibles desde DSpace, así que no se traducen.
    */
   private resolveVocabLabels$(metadata: MetadataMap): Observable<{
@@ -213,7 +213,7 @@ export class DocumentDetailComponent implements OnInit {
       'dc.contributor.author': 'Autor / Área responsable',
       'dc.date.issued': 'Fecha de publicación',
       'dc.type': 'Tipo de documento',
-      'dc.audience': 'Nivel educativo',
+      'dcterms.educationLevel': 'Nivel educativo',
       'dc.subject': 'Palabras clave',
       'dc.language.iso': 'Idioma',
       'dc.publisher': 'Publicado por',
@@ -228,7 +228,7 @@ export class DocumentDetailComponent implements OnInit {
     }
 
     for (const [fieldKey, fieldLabel] of Object.entries(fieldLabels)) {
-      if (this.isVideo() && fieldKey === 'dc.audience') continue;
+      if (this.isVideo() && fieldKey === 'dcterms.educationLevel') continue;
 
       const fieldValues = metadata?.[fieldKey];
 
@@ -246,7 +246,7 @@ export class DocumentDetailComponent implements OnInit {
             value: vocabLabels.language ?? fieldValues[0].value,
             type: 'text',
           });
-        } else if (fieldKey === 'dc.audience') {
+        } else if (fieldKey === 'dcterms.educationLevel') {
           fields.push({
             label: fieldLabel,
             value: vocabLabels.audience ?? fieldValues[0].value,
