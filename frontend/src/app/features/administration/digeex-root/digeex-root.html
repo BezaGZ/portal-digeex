@@ -1,0 +1,69 @@
+<div class="p-6">
+  @if (loading()) {
+    <app-loading-spinner minHeight="240px" />
+  } @else if (!rootExists()) {
+    <div data-testid="state-create">
+      <h1 class="text-3xl font-bold mb-2" style="color: var(--color-text-primary)">Inicializar repositorio</h1>
+      <p class="mb-4" style="color: var(--color-text-secondary)">
+        Creá la comunidad raíz del portal. Es un paso único; las subdirecciones y programas se crean después desde sus pantallas.
+      </p>
+
+      <p-message
+        severity="warn"
+        text="Aún no existe la comunidad raíz DIGEEX."
+        [closable]="false"
+        styleClass="mb-4" />
+
+      <p-card styleClass="max-w-xl shadow-sm">
+        <div class="font-semibold mb-3" style="color: var(--color-text-primary)">Se creará la comunidad raíz con estos datos</div>
+        <div class="flex justify-between py-2 border-b" style="border-color: var(--color-divider)">
+          <span style="color: var(--color-text-tertiary)">Nombre</span>
+          <span class="font-medium" style="color: var(--color-text-primary)">{{ rootName }}</span>
+        </div>
+        <div class="flex justify-between gap-4 py-2">
+          <span style="color: var(--color-text-tertiary)">Título</span>
+          <span class="text-right" style="color: var(--color-text-primary)">{{ rootTitle }}</span>
+        </div>
+        <div class="flex justify-end gap-2 mt-4">
+          <p-button
+            label="Cancelar"
+            severity="secondary"
+            [text]="true"
+            [rounded]="true"
+            [disabled]="creating()"
+            (onClick)="cancel()" />
+          <p-button
+            label="Crear comunidad raíz"
+            icon="pi pi-plus"
+            [rounded]="true"
+            [loading]="creating()"
+            (onClick)="onCreate()"
+            data-testid="btn-create" />
+        </div>
+      </p-card>
+    </div>
+  } @else {
+    <div data-testid="root-exists">
+      <h1 class="text-3xl font-bold mb-2" style="color: var(--color-text-primary)">DIGEEX</h1>
+      <p-card styleClass="max-w-xl shadow-sm">
+        <div class="flex items-start gap-3">
+          <i class="pi pi-check-circle text-2xl" style="color: var(--color-success)"></i>
+          <div>
+            <div class="font-semibold" style="color: var(--color-text-primary)">El repositorio ya está inicializado</div>
+            <p class="text-sm mt-1" style="color: var(--color-text-secondary)">
+              La comunidad raíz DIGEEX ya existe. No se puede crear otra ni editar desde acá.
+            </p>
+          </div>
+        </div>
+        <div class="flex justify-end mt-4 pt-3 border-t" style="border-color: var(--color-divider)">
+          <p-button
+            label="Ir a Subdirecciones"
+            icon="pi pi-arrow-right"
+            iconPos="right"
+            [rounded]="true"
+            (onClick)="goToSubdirecciones()" />
+        </div>
+      </p-card>
+    </div>
+  }
+</div>

@@ -30,6 +30,13 @@ export const ADMIN_MENU: readonly AdminMenuItem[] = [
   },
   {
     section: 'Repositorio',
+    label: 'DIGEEX',
+    icon: 'pi pi-fw pi-building',
+    routerLink: '/administrador/digeex',
+    scope: ROLE_SCOPES.SUPERADMIN_ONLY,
+  },
+  {
+    section: 'Repositorio',
     label: 'Subdirecciones',
     icon: 'pi pi-fw pi-sitemap',
     routerLink: '/administrador/subdirecciones',

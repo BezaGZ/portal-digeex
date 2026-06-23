@@ -130,6 +130,12 @@ export const routes: Routes = [
         data: { breadcrumb: 'Estadísticas' }
       },
       {
+        path: 'digeex',
+        canActivate: [roleGuard(ROLE_SCOPES.SUPERADMIN_ONLY)],
+        loadComponent: () => import('./features/administration/digeex-root/digeex-root').then(m => m.DigeexRoot),
+        data: { breadcrumb: 'DIGEEX' }
+      },
+      {
         path: 'subdirecciones',
         canActivate: [roleGuard(ROLE_SCOPES.SUPERADMIN_ONLY)],
         loadComponent: () => import('./features/administration/communities/communities').then(m => m.Communities),

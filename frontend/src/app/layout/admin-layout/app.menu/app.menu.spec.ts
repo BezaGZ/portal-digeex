@@ -46,6 +46,7 @@ describe('AppMenu', () => {
     expect(labels).toEqual(
       expect.arrayContaining([
         'Estadísticas',
+        'DIGEEX',
         'Subdirecciones',
         'Programas',
         'Cargar contenido',
@@ -69,6 +70,7 @@ describe('AppMenu', () => {
     );
     expect(labels).not.toContain('Subdirecciones');
     expect(labels).not.toContain('Usuarios');
+    expect(labels).not.toContain('DIGEEX');
     expect(labels).not.toContain('Reportes');
   });
 

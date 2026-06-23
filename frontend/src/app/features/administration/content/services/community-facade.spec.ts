@@ -189,6 +189,46 @@ describe('CommunityFacade', () => {
     });
   });
 
+  describe('createRoot$', () => {
+    const rootBody: CommunityCreateBody = {
+      name: 'DIGEEX',
+      type: 'community',
+      metadata: {
+        'dc.title': [
+          { value: 'Dirección General de Educación Extraescolar', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    it('should assert top-level scope and create the root community without a parent or groups', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      const result = await firstValueFrom(facade.createRoot$(rootBody));
+
+      expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
+        dsoType: 'community-toplevel',
+        resourceSufijo: null,
+        caller: { role: 'superadmin', sufijo: null },
+      });
+      expect(mockCommunityApi.create).toHaveBeenCalledWith(rootBody);
+      // Sin parent: create se invoca con un solo argumento (el body).
+      expect(mockCommunityApi.create.mock.calls[0]).toHaveLength(1);
+      // La raíz no lleva grupos ADMIN_/SUBMITTERS_.
+      expect(mockGroupApi.create).not.toHaveBeenCalled();
+      expect(result).toEqual(newCommunity);
+    });
+
+    it('should propagate the scope error without creating when caller is not superadmin', async () => {
+      setupFacadeWithCaller('admin_subdireccion', 'ED_BASICA');
+      mockScope.assertWithinScope.mockImplementation(() => {
+        throw new BusinessRuleError('OUT_OF_SCOPE', 'rejected');
+      });
+
+      await expect(firstValueFrom(facade.createRoot$(rootBody))).rejects.toBeInstanceOf(BusinessRuleError);
+      expect(mockCommunityApi.create).not.toHaveBeenCalled();
+    });
+  });
+
   describe('updateSubdireccion$', () => {
     it('should validate scope and PATCH the community when superadmin', async () => {
       setupFacadeWithCaller('superadmin', null);

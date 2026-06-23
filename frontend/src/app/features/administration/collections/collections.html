@@ -39,10 +39,13 @@
   @if (loading()) {
     <app-loading-spinner minHeight="240px" />
   } @else if (rootUuid() === null) {
-    <p-message
-      severity="warn"
-      text="El repositorio no está inicializado. Pídale al administrador del sistema que ejecute el bootstrap (setup-dspace.sh)."
-      [closable]="false" />
+    <p-card class="shadow-sm">
+      <app-empty-state
+        icon="pi pi-database"
+        title="Repositorio sin inicializar"
+        message="Aún no existe la comunidad raíz DIGEEX. Creala desde la opción «DIGEEX» del menú (solo superadmin)."
+        testId="repo-not-initialized" />
+    </p-card>
   } @else if (!selectedSubdireccion()) {
     <p-message
       severity="info"

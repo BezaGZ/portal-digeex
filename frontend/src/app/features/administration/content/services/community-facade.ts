@@ -70,6 +70,30 @@ export class CommunityFacade {
   }
 
   /**
+   * Crea la comunidad raíz del repositorio (top-level, sin parent). Solo
+   * SuperAdmin (lo valida el scope `community-toplevel`). A diferencia de una
+   * subdirección, la raíz no lleva grupos `ADMIN_/SUBMITTERS_` ni sufijo: es el
+   * contenedor del que cuelga todo. Reemplaza el bloque que creaba la raíz en
+   * setup-dspace.sh.
+   */
+  createRoot$(body: CommunityCreateBody): Observable<Community> {
+    return resolveCaller$(this.authCaller).pipe(
+      switchMap((caller) => {
+        try {
+          this.scope.assertWithinScope({
+            dsoType: 'community-toplevel',
+            resourceSufijo: null,
+            caller,
+          });
+        } catch (err) {
+          return throwError(() => err);
+        }
+        return this.communityApi.create(body);
+      }),
+    );
+  }
+
+  /**
    * Edita metadata de una subdirección. SuperAdmin sobre cualquiera o
    * admin_subdireccion sobre la suya (matching sufijo). El sufijo lo pasa
    * el caller para que la validación de scope sea inmediata sin depender
