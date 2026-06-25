@@ -199,6 +199,44 @@ describe('UserManagementService', () => {
     service = TestBed.inject(UserManagementService);
   });
 
+  describe('resolveCallerSnapshot', () => {
+    /** Verifica que el snapshot devuelva el caller superadmin (grupo Administrator), sin subdivisión. */
+    it('should return the superadmin caller from the live EPerson', () => {
+      expect(service.resolveCallerSnapshot()).toEqual({ role: 'superadmin', sufijo: null });
+    });
+
+    /** Verifica que el snapshot devuelva el admin de subdirección con su sufijo. */
+    it('should return the admin_subdireccion caller with its suffix', () => {
+      currentEPersonSignal.set(buildCallerEPerson([adminBasica]));
+      expect(service.resolveCallerSnapshot()).toEqual({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' });
+    });
+
+    /** Verifica que el snapshot sea null cuando el EPerson no tiene grupo de rol del portal. */
+    it('should return null when the EPerson has no portal role group', () => {
+      currentEPersonSignal.set(buildCallerEPerson([]));
+      expect(service.resolveCallerSnapshot()).toBeNull();
+    });
+
+    /** Verifica que el snapshot sea null cuando no hay EPerson en sesión. */
+    it('should return null when there is no current EPerson', () => {
+      currentEPersonSignal.set(null);
+      expect(service.resolveCallerSnapshot()).toBeNull();
+    });
+
+    /**
+     * Verifica que el snapshot resuelva el EPerson actual (X) aunque
+     * `currentUserView$` haya quedado caliente con un usuario previo (Y).
+     */
+    it('should reflect the current EPerson even after currentUserView$ was warmed with a previous user', async () => {
+      currentEPersonSignal.set(buildCallerEPerson([adminBasica]));
+      expect(await firstValueFrom(service.currentUserView$)).not.toBeNull();
+
+      currentEPersonSignal.set(buildCallerEPerson([adminGlobal]));
+
+      expect(service.resolveCallerSnapshot()).toEqual({ role: 'superadmin', sufijo: null });
+    });
+  });
+
   describe('currentUserView$', () => {
     /** Verifica que sin EPerson cacheado el observable emita null. */
     it('should emit null when the cached EPerson is null', async () => {

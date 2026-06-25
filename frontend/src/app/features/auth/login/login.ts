@@ -1,7 +1,6 @@
 import { Component, ChangeDetectionStrategy, OnInit, signal, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { CheckboxModule } from 'primeng/checkbox';
@@ -63,12 +62,10 @@ export class LoginComponent implements OnInit {
   }
 
   /**
-   * Tras un login exitoso contra DSpace espera el primer valor de
-   * `CallerProvider.currentCaller$` para conocer el rol del eperson
-   * autenticado. Si resuelve, navega al panel administrativo. Si rechaza (no
-   * hay grupo de rol del portal o la consulta de grupos falló), cierra la
-   * sesión y muestra el mensaje correspondiente. Depende del contrato de core,
-   * no de la feature de administración.
+   * Tras un login exitoso resuelve el rol con `currentCallerSnapshot()` —desde
+   * el EPerson recién autenticado, no del `shareReplay` de `currentCaller$`, que
+   * puede servir el caller del usuario anterior—. Con rol navega al panel; sin
+   * rol cierra la sesión y recarga al login con el motivo.
    */
   onLogin() {
     this.errorMessage.set('');
@@ -76,21 +73,19 @@ export class LoginComponent implements OnInit {
 
     this.authService.login(this.email(), this.password()).subscribe({
       next: () => {
-        firstValueFrom(this.callerProvider.currentCaller$).then(
-          () => {
-            this.isLoading.set(false);
-            this.router.navigate(['/administrador']);
-          },
-          () => {
-            // Sin rol: cerrar sesión y recargar duro al login con el motivo en el
-            // query param. La recarga resincroniza el CSRF y el param restaura el
-            // mensaje (mismo patrón que `?expired=true` de dspace).
-            this.authService.logout().subscribe({
-              next: () => this.hardRedirect.redirect(`/iniciar-sesion?error=${NO_ROLE_ERROR_PARAM}`),
-              error: () => this.hardRedirect.redirect(`/iniciar-sesion?error=${NO_ROLE_ERROR_PARAM}`),
-            });
-          },
-        );
+        const caller = this.callerProvider.currentCallerSnapshot();
+        if (caller) {
+          this.isLoading.set(false);
+          this.router.navigate(['/administrador']);
+        } else {
+          // Sin rol: cerrar sesión y recargar duro al login con el motivo en el
+          // query param. La recarga resincroniza el CSRF y el param restaura el
+          // mensaje (mismo patrón que `?expired=true` de dspace).
+          this.authService.logout().subscribe({
+            next: () => this.hardRedirect.redirect(`/iniciar-sesion?error=${NO_ROLE_ERROR_PARAM}`),
+            error: () => this.hardRedirect.redirect(`/iniciar-sesion?error=${NO_ROLE_ERROR_PARAM}`),
+          });
+        }
       },
       error: (err: { status?: number }) => {
         this.isLoading.set(false);

@@ -9,6 +9,7 @@ import { EPersonApiService } from '../../../../core/api/eperson-api.service';
 import { GroupApiService } from '../../../../core/api/group-api.service';
 import { EPerson } from '../../../../core/api/models/eperson.model';
 import { Group } from '../../../../core/api/models/group.model';
+import { Caller } from '../../../../core/auth/caller.model';
 import { Paginated } from '../../../../core/api/models/hal.model';
 import {
   ADMINISTRATOR_GROUP_NAME,
@@ -151,6 +152,20 @@ export class UserManagementService {
     }),
     shareReplay({ bufferSize: 1, refCount: false }),
   );
+
+  /**
+   * Snapshot síncrono del caller desde el `currentEPerson` vivo, no del stream
+   * cacheado `currentUserView$` (cuyo `shareReplay` puede emitir el caller del
+   * usuario anterior). Null si no hay eperson o no tiene grupo de rol del portal.
+   */
+  resolveCallerSnapshot(): Caller | null {
+    const eperson = this.authService.currentEPerson();
+    if (!eperson) return null;
+    const resolved = this.resolveEPersonFromGroups(eperson, this.extractEmbeddedGroups(eperson));
+    return resolved.role !== null
+      ? { role: resolved.role, sufijo: resolved.subdivisionSuffix }
+      : null;
+  }
 
   /**
    * Listado paginado con búsqueda server-side alineado al patrón

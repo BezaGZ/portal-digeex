@@ -17,13 +17,14 @@ import { Caller } from '../../../core/auth/caller.model';
 
 /**
  * Tests de `LoginComponent`. Conecta el formulario con `AuthService` y, tras un login exitoso,
- * consulta `CallerProvider.currentCaller$` (contrato de core) para resolver el rol del eperson
- * autenticado. Si el rol es válido navega a `/administrador`; si la resolución falla cierra la
+ * lee `CallerProvider.currentCallerSnapshot()` (contrato de core) para resolver el rol del eperson
+ * autenticado. Si el rol es válido navega a `/administrador`; si el snapshot no tiene rol cierra la
  * sesión y hace una recarga dura al login con `?error=sin-rol` (la recarga resincroniza
  * el CSRF; el query param restaura el mensaje, como dspace con `?expired=true`).
  *
- * Ciclo 4 TDD — Sprint 5. Ajustado en Ciclo 13, Ciclo 43 (Sprint 8) y 2026-06-21
- * (mejora 5: depende de CallerProvider de core, no de UserManagementService).
+ * Ciclo 4 TDD — Sprint 5. Ajustado en Ciclo 13, Ciclo 43 (Sprint 8), 2026-06-21
+ * (mejora 5: depende de CallerProvider de core, no de UserManagementService) y
+ * Ciclo 22 (Sprint 10: snapshot síncrono en vez de firstValueFrom).
  */
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -32,17 +33,20 @@ describe('LoginComponent', () => {
   let router: Router;
   let httpMock: HttpTestingController;
   let currentCaller$: BehaviorSubject<Caller | null>;
+  let callerSnapshot: Caller | null;
   let redirectFn: ReturnType<typeof vi.fn>;
 
   /** Setup */
 
   beforeEach(async () => {
     currentCaller$ = new BehaviorSubject<Caller | null>(null);
+    callerSnapshot = null;
     redirectFn = vi.fn();
 
     const callerProviderStub = {
       currentCaller$: currentCaller$.asObservable(),
       currentActor$: of(null),
+      currentCallerSnapshot: () => callerSnapshot,
     };
 
     await TestBed.configureTestingModule({
@@ -127,7 +131,7 @@ describe('LoginComponent', () => {
   describe('login exitoso', () => {
     /** Con rol resuelto válido (`superadmin`), el componente navega a `/administrador`. */
     it('should navigate to /administrador when the resolved role is superadmin', async () => {
-      currentCaller$.next({ role: 'superadmin', sufijo: null });
+      callerSnapshot = { role: 'superadmin', sufijo: null };
 
       component.email.set('juan@mineduc.gob.gt');
       component.password.set('Password1');
@@ -198,11 +202,11 @@ describe('LoginComponent', () => {
 
   describe('role resolution failure', () => {
     /**
-     * Si la autenticación pasa pero `currentUserView$` propaga error, el componente cierra
-     * sesión y hace recarga dura al login con `?error=sin-rol`. No navega al panel.
+     * Si la autenticación pasa pero el snapshot del caller es null (sin rol), el componente
+     * cierra sesión y hace recarga dura al login con `?error=sin-rol`. No navega al panel.
      */
-    it('should logout and hard-redirect to login with ?error=sin-rol when currentCaller$ throws', async () => {
-      currentCaller$.error(new Error('boom: currentCaller$ falló'));
+    it('should logout and hard-redirect to login with ?error=sin-rol when the snapshot has no role', async () => {
+      callerSnapshot = null;
 
       const logoutSpy = vi.spyOn(authService, 'logout').mockReturnValue(of(null));
 
@@ -235,7 +239,7 @@ describe('LoginComponent mensaje por query param', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         AuthService,
-        { provide: CallerProvider, useValue: { currentCaller$: of(null), currentActor$: of(null) } },
+        { provide: CallerProvider, useValue: { currentCaller$: of(null), currentActor$: of(null), currentCallerSnapshot: () => null } },
         { provide: HardRedirectService, useValue: { redirect: vi.fn() } },
         {
           provide: ActivatedRoute,

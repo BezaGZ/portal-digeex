@@ -34,4 +34,9 @@ export class AuthCallerService extends CallerProvider {
         : null,
     ),
   );
+
+  /** Snapshot síncrono del caller; delega en la resolución desde el EPerson vivo. */
+  override currentCallerSnapshot(): Caller | null {
+    return this.userMgmt.resolveCallerSnapshot();
+  }
 }
