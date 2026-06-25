@@ -582,6 +582,26 @@ h6 {
   line-height: 1.4;
 }
 
+/* Controles del visor de álbum (p-galleria fullscreen): círculo oscuro
+   translúcido + ícono blanco sólido para que se vean sobre cualquier foto
+   (sin fondo, los íconos blancos se perdían en las zonas claras). */
+.p-galleria-prev-button,
+.p-galleria-next-button,
+.p-galleria-close-button {
+  color: #fff !important;
+  opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  border-radius: 9999px;
+  width: 3rem;
+  height: 3rem;
+}
+.p-galleria-prev-button:hover,
+.p-galleria-next-button:hover,
+.p-galleria-close-button:hover {
+  background: rgba(0, 0, 0, 0.7) !important;
+  color: #fff !important;
+}
+
 /* =============================================================================
    MODO OSCURO — superficies, texto y elevacion del tema noche
    Tokens del tema oscuro del portal. Viven aqui porque la paleta (clara y

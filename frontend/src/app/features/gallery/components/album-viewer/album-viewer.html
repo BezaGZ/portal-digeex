@@ -134,7 +134,12 @@
         [baseZIndex]="100000"
       >
         <ng-template #item let-photo>
-          <img [src]="photo.url" style="width: 100%; height: 100%; object-fit: contain" />
+          <img [src]="photo.url" style="display: block; margin: auto; max-width: 100vw; max-height: 90vh; object-fit: contain" />
+        </ng-template>
+        <ng-template #caption>
+          <span style="display: inline-block; color: #fff; background: rgba(0, 0, 0, 0.5); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem">
+            {{ activeIndex() + 1 }} / {{ album()!.photos.length }}
+          </span>
         </ng-template>
       </p-galleria>
     </div>
