@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FileUploadModule } from 'primeng/fileupload';
+import { FileUpload, FileUploadModule } from 'primeng/fileupload';
 import { ButtonModule } from 'primeng/button';
 
 import { FileSizePipe } from '../../pipes';
@@ -39,6 +39,9 @@ export class FileDropzoneComponent {
 
   @Output() readonly filesChange = new EventEmitter<File[]>();
 
+  /** Referencia al p-fileUpload interno para limpiar su estado visual. */
+  @ViewChild('pfu') private readonly fileUpload?: FileUpload;
+
   /**
    * `(onSelect)` del p-fileUpload entrega los archivos en `currentFiles`
    * (advanced mode acumulado) o `files` (sólo el lote actual). Tomamos
@@ -64,6 +67,14 @@ export class FileDropzoneComponent {
   /** El `(onClear)` del p-fileUpload notifica que el usuario limpió la selección. */
   onClear(): void {
     this.filesChange.emit([]);
+  }
+
+  /**
+   * Limpia el estado visual del p-fileUpload tras un submit exitoso. No re-emite
+   * `filesChange`: el `clear()` nativo dispara `onClear`, que ya lo emite.
+   */
+  clear(): void {
+    this.fileUpload?.clear();
   }
 
   /**

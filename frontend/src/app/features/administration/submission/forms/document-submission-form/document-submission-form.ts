@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, QueryList, signal, ViewChildren } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -124,6 +124,10 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
    * vuelo de las requests.
    */
   readonly vocabulariesLoading = signal(true);
+
+  /** Dropzones renderizados; se limpian visualmente tras un submit exitoso. */
+  @ViewChildren(FileDropzoneComponent)
+  private readonly dropzones?: QueryList<FileDropzoneComponent>;
 
   /** Estado del form como signal — los validators reactivos lo emiten en cada cambio. */
   private readonly formStatus = toSignal(
@@ -291,6 +295,7 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
     this.files.set([]);
     this.coverFile.set(null);
     this.visibility.set('public');
+    this.dropzones?.forEach((d) => d.clear());
     if (typeof window !== 'undefined') {
       window.scrollTo(0, 0);
     }

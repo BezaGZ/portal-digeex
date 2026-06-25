@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { QueryList } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -8,6 +9,7 @@ import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { StatsSubmissionForm } from './stats-submission-form';
+import { FileDropzoneComponent } from '../../../../../shared';
 import { Collection } from '../../../../../core/api/models/collection.model';
 import { Item } from '../../../../../core/api/models/item.model';
 import { SubmissionFacade } from '../../../content/services/submission-facade';
@@ -27,7 +29,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * `tipos-dataset-estadistica` y determina qué `StatsRenderer` monta la vista
  * pública. Patrón Template Method.
  *
- * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclo 5 (Sprint 7) y Ciclo 21 (Sprint 9).
+ * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclo 5 (Sprint 7) y Ciclo 21 (Sprint 9), y Ciclo 21 (Sprint 10): limpieza visual del dropzone.
  */
 describe('StatsSubmissionForm', () => {
   const DATASET_VOCAB: VocabularyEntry[] = [
@@ -217,6 +219,22 @@ describe('StatsSubmissionForm', () => {
     expect(c.form.value).toEqual({ title: '', abstract: '', issued: '', dataset: '' });
     expect(c.files()).toEqual([]);
     expect(c.visibility()).toBe('public');
+  });
+
+  /**
+   * Verifica que tras un submit exitoso en modo creación se limpie el estado
+   * visual del dropzone del Excel, no solo las signals.
+   */
+  it('should clear the rendered file dropzone after a successful submit in create mode', () => {
+    const c = mountForCreate();
+
+    const dropzones = (c as unknown as { dropzones: QueryList<FileDropzoneComponent> }).dropzones;
+    const spies = dropzones.map((d) => vi.spyOn(d, 'clear'));
+    expect(spies.length).toBeGreaterThan(0);
+
+    (c as unknown as { afterSuccess: () => void }).afterSuccess();
+
+    spies.forEach((s) => expect(s).toHaveBeenCalledTimes(1));
   });
 
   /** Verifica que un Date en `issued` se serialice como YYYY-MM-DD local en buildMetadata. */

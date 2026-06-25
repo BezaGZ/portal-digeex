@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, QueryList, signal, ViewChildren } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { startWith } from 'rxjs/operators';
@@ -94,6 +94,10 @@ export class StatsSubmissionForm extends BaseSubmissionForm {
    */
   readonly vocabulariesLoading = signal(true);
 
+  /** Dropzones renderizados; se limpian visualmente tras un submit exitoso. */
+  @ViewChildren(FileDropzoneComponent)
+  private readonly dropzones?: QueryList<FileDropzoneComponent>;
+
   /** Form de los cuatro campos del schema digeex-estadistica. */
   readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(200)]],
@@ -179,6 +183,7 @@ export class StatsSubmissionForm extends BaseSubmissionForm {
     this.form.reset({ title: '', abstract: '', issued: '', dataset: '' });
     this.files.set([]);
     this.visibility.set('public');
+    this.dropzones?.forEach((d) => d.clear());
     if (typeof window !== 'undefined') {
       window.scrollTo(0, 0);
     }

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { vi } from 'vitest';
 
 import { FileDropzoneComponent } from './file-dropzone';
 
@@ -16,7 +17,7 @@ import { FileDropzoneComponent } from './file-dropzone';
  * Reusable para Documento, Galería, Estadística y cualquier otro form que
  * necesite seleccionar archivos sin el chrome default de PrimeNG.
  *
- * Ciclo 26 TDD - Sprint 6.
+ * Ciclo 26 TDD - Sprint 6. Ajustado en Ciclo 21 (Sprint 10): método clear().
  */
 describe('FileDropzoneComponent', () => {
   beforeEach(async () => {
@@ -101,5 +102,41 @@ describe('FileDropzoneComponent', () => {
     c.onRemove({ file: f1 }, [f1, f2, f3]);
 
     expect(emitted[emitted.length - 1].map((f) => f.name)).toEqual(['b.jpg', 'c.jpg']);
+  });
+
+  /**
+   * Verifica que clear() delegue en el clear() nativo del p-fileUpload para
+   * limpiar su lista interna de archivos, que el reset de signals de los forms
+   * no toca.
+   */
+  it('should delegate to the underlying p-fileUpload clear when clear() is called', () => {
+    const fixture = TestBed.createComponent(FileDropzoneComponent);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    const inner = (c as unknown as { fileUpload?: { clear: () => void } }).fileUpload;
+    const spy = vi.spyOn(inner!, 'clear');
+
+    c.clear();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Verifica que clear() emita filesChange exactamente una vez: el clear()
+   * nativo dispara onClear, que ya emite []. El wrapper no re-emite.
+   */
+  it('should emit filesChange exactly once when clear() is called (no double emit)', () => {
+    const fixture = TestBed.createComponent(FileDropzoneComponent);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    const emitted: File[][] = [];
+    c.filesChange.subscribe((files) => emitted.push(files));
+
+    c.clear();
+
+    expect(emitted.length).toBe(1);
+    expect(emitted[0]).toEqual([]);
   });
 });

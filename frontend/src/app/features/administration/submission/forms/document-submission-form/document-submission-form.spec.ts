@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { QueryList } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Router } from '@angular/router';
@@ -7,6 +8,7 @@ import { vi } from 'vitest';
 import { Subject, of } from 'rxjs';
 
 import { DocumentSubmissionForm } from './document-submission-form';
+import { FileDropzoneComponent } from '../../../../../shared';
 import { Collection } from '../../../../../core/api/models/collection.model';
 import { Item } from '../../../../../core/api/models/item.model';
 import { SubmissionFacade } from '../../../content/services/submission-facade';
@@ -24,7 +26,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * (Video externo) según la decisión de Sprint 6 de no duplicar maquinaria
  * de submission para algo que tiene el mismo entity-type.
  *
- * Ciclo 23 TDD — Sprint 6. Ajustado en Ciclo 35 y Ciclo 21 (Sprint 9).
+ * Ciclo 23 TDD — Sprint 6. Ajustado en Ciclo 35 y Ciclo 21 (Sprint 9), y Ciclo 21 (Sprint 10): limpieza visual de dropzones.
  */
 describe('DocumentSubmissionForm', () => {
   function buildCollection(uuid: string): Collection {
@@ -509,6 +511,28 @@ describe('DocumentSubmissionForm', () => {
     expect(c.files()).toEqual([]);
     expect(c.coverFile()).toBeNull();
     expect(c.visibility()).toBe('public');
+  });
+
+  /**
+   * Verifica que tras un submit exitoso en modo creación se limpie el estado
+   * visual de los dropzones renderizados (principal + portada), no solo las
+   * signals: PrimeNG mantiene su lista interna de archivos que el reset de
+   * signals no toca.
+   */
+  it('should clear the rendered file dropzones after a successful submit in create mode', () => {
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    const dropzones = (c as unknown as { dropzones: QueryList<FileDropzoneComponent> }).dropzones;
+    const spies = dropzones.map((d) => vi.spyOn(d, 'clear'));
+    expect(spies.length).toBeGreaterThan(0);
+
+    (c as unknown as { afterSuccess: () => void }).afterSuccess();
+
+    spies.forEach((s) => expect(s).toHaveBeenCalledTimes(1));
   });
 
   /** Verifica que getCoverFile exponga el cover elegido tanto en modo Documento como en modo Video. */
