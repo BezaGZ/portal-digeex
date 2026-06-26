@@ -13,12 +13,12 @@ import { Caller } from './caller.model';
  *
  * Verifica que un `CanActivateFn` parametrizado por roles permitidos cumple
  * tres caminos: pasar cuando el rol del caller está en la lista, redirigir
- * a `/administrador` con toast OUT_OF_SCOPE cuando hay sesión pero el rol
+ * a `/administrador` con toast de acceso restringido cuando hay sesión pero el rol
  * no aplica, y redirigir cuando el caller no se puede resolver. La
  * verificación de sesión queda delegada al `authGuard` encadenado antes
  * (RN-32, RN-41, CA-12).
  *
- * Ciclo 41 TDD — Sprint 6.
+ * Ciclo 41 TDD — Sprint 6. Ajustado en Ciclo 27 (Sprint 10).
  */
 describe('roleGuard', () => {
   let mockCallerProvider: { currentCaller$: Observable<Caller | null> };
@@ -41,6 +41,7 @@ describe('roleGuard', () => {
     });
   }
 
+  /** Verifica que deje pasar cuando el rol del caller está en la lista permitida. */
   it('returns true when the caller role is in the allowed list', async () => {
     configureTestBed({ role: 'superadmin', sufijo: null });
 
@@ -54,7 +55,8 @@ describe('roleGuard', () => {
     expect(mockMessage.add).not.toHaveBeenCalled();
   });
 
-  it('redirects to /administrador with OUT_OF_SCOPE toast when role is not allowed', async () => {
+  /** Verifica que redirija a /administrador con toast de acceso restringido cuando el rol no aplica. */
+  it('redirects to /administrador with an access-restricted toast when role is not allowed', async () => {
     configureTestBed({ role: 'personal_delegado', sufijo: 'ED_BASICA' });
 
     const guard = roleGuard(['superadmin']);
@@ -65,10 +67,11 @@ describe('roleGuard', () => {
     expect(result).toEqual({ kind: 'urltree' });
     expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/administrador']);
     expect(mockMessage.add).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'warn', summary: 'OUT_OF_SCOPE' }),
+      expect.objectContaining({ severity: 'warn', summary: 'Acceso restringido' }),
     );
   });
 
+  /** Verifica que espere la primera emisión de caller no-null antes de evaluar el rol. */
   it('waits for the first non-null caller emission before evaluating the role', async () => {
     const callerSubject = new BehaviorSubject<Caller | null>(null);
     mockCallerProvider = { currentCaller$: callerSubject.asObservable() };

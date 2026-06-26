@@ -29,6 +29,7 @@ import { CommunityApiService } from '../../../core/api/community-api.service';
 import { Community } from '../../../core/api/models/community.model';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { findCallerSub } from '../shared/services/scope-resolver';
+import * as roleCaps from '../../../core/auth/role-capabilities';
 
 /**
  * Componente contenedor del Dashboard de KPIs.
@@ -83,13 +84,9 @@ export class Dashboard {
    * no-superadmin necesita un uuid de sub real; si su sufijo no resolvió (rol
    * huérfano), no se muestran widgets para no pedir métricas de todas las subs.
    */
-  readonly hasUsableScope = computed(() => {
-    const c = this.caller();
-    const s = this.scope();
-    if (!c || s === undefined) return false;
-    if (c.role === 'superadmin') return true;
-    return typeof s === 'string';
-  });
+  readonly hasUsableScope = computed(() =>
+    roleCaps.hasUsableScope(this.caller(), this.scope()),
+  );
 
   /** Ventana temporal del dashboard expresada en años (por defecto 5). */
   readonly selectedYearWindow = signal<number>(5);
@@ -119,7 +116,7 @@ export class Dashboard {
   private resolveScope$(): Observable<string | null> {
     return this.authCaller.currentCaller$.pipe(
       switchMap((caller) => {
-        if (!caller || caller.role === 'superadmin' || !caller.sufijo) {
+        if (!roleCaps.isCallerScoped(caller)) {
           return of<string | null>(null);
         }
         return this.communityApi.searchTop(0, 1).pipe(

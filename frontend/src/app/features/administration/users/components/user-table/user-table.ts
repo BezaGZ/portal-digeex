@@ -13,6 +13,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { CardModule } from 'primeng/card';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { UserView, UserRole, RoleLabels } from '../../models/user-view.model';
+import * as roleCaps from '../../../../../core/auth/role-capabilities';
 import { UserStatusBadge } from '../user-status-badge/user-status-badge';
 import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
 
@@ -76,8 +77,9 @@ export class UserTable {
     return { can: true };
   }
 
+  /** Solo el superadmin cambia el rol de un usuario (RN-13); controla la visibilidad de la acción. */
   canModifyRoles(): boolean {
-    return this.currentUser()?.role === 'superadmin';
+    return roleCaps.canModifyRoles(this.currentUser());
   }
 
   onResetPassword(user: UserView) {

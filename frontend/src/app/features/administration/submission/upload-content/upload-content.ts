@@ -16,6 +16,7 @@ import { CommunityApiService } from '../../../../core/api/community-api.service'
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { findCallerSub } from '../../shared/services/scope-resolver';
+import * as roleCaps from '../../../../core/auth/role-capabilities';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { TagModule } from 'primeng/tag';
 import { ENTITY_TYPE } from '../../../../core/config/digeex-values.config';
@@ -58,7 +59,7 @@ export class UploadContent {
     // Fail-closed: sin caller resuelto (carga inicial o logout) no se muestra
     // ninguna sub; el `!caller` no debe caer en "ver todo" como el superadmin.
     if (!c) return [];
-    if (c.role === 'superadmin') return all;
+    if (roleCaps.isSuperadmin(c)) return all;
     const matchSub = findCallerSub(all.map((g) => g.sub), c);
     if (!matchSub) return [];
     return all.filter((g) => g.sub.uuid === matchSub.uuid);

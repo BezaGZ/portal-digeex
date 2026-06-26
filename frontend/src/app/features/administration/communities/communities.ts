@@ -22,6 +22,7 @@ import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { DiscoveryService } from '../../../core/api/discovery.service';
 import { Community, CommunityCreateBody } from '../../../core/api/models/community.model';
 import { Collection } from '../../../core/api/models/collection.model';
+import * as roleCaps from '../../../core/auth/role-capabilities';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { CommunityFacade } from '../content/services/community-facade';
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
@@ -71,7 +72,7 @@ export class Communities {
   readonly caller = toSignal(this.authCaller.currentCaller$, { initialValue: null });
 
   /** Solo SuperAdmin puede crear subdirecciones top-level (RN-40). */
-  readonly canCreateTopLevel = computed(() => this.caller()?.role === 'superadmin');
+  readonly canCreateTopLevel = computed(() => roleCaps.canCreateTopLevel(this.caller()));
 
   /** Estado del dialog de crear/editar. La UI lo lee para mostrar/ocultar. */
   readonly dialogMode = signal<'closed' | 'create' | 'edit'>('closed');

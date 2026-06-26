@@ -31,6 +31,7 @@ import { JsonPatchEntry } from '../../../core/api/json-patch.util';
 import { buildMetadataPatch } from '../../../core/api/metadata-patch.util';
 import { LoadingService, withLoading } from '../../../core/loading';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
+import * as roleCaps from '../../../core/auth/role-capabilities';
 import { CollectionFacade } from '../content/services/collection-facade';
 import { findCallerSub } from '../shared/services/scope-resolver';
 import { ProgramaView } from './models/programa-view.model';
@@ -469,8 +470,8 @@ export class Collections {
   }
 
   /** SuperAdmin puede elegir cualquier subdirección; el resto va atado a su sufijo. */
-  readonly canChooseAnySubdireccion = computed(
-    () => this.caller()?.role === 'superadmin',
+  readonly canChooseAnySubdireccion = computed(() =>
+    roleCaps.canChooseAnySubdireccion(this.caller()),
   );
 
   constructor() {

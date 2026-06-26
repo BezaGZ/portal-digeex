@@ -6,12 +6,13 @@ import { filter, map, take } from 'rxjs/operators';
 import { CallerProvider } from './caller-provider';
 import { Caller } from './caller.model';
 import { UserRole } from './user-role.model';
+import { rejectAccess } from './access-rejection';
 
 /**
  * Factory de `CanActivateFn` parametrizado por roles permitidos. Se encadena
  * después del `authGuard` en `canActivate: [authGuard, roleGuard([...])]`:
  * el primero garantiza sesión, el segundo filtra por rol y redirige a
- * `/administrador` con toast `OUT_OF_SCOPE` cuando el rol no aplica. Espera
+ * `/administrador` con toast de acceso restringido cuando el rol no aplica. Espera
  * el primer caller resuelto (`!= null`) porque `AuthCallerService` emite
  * `null` mientras la vista del usuario aún no se carga.
  */
@@ -28,12 +29,7 @@ export function roleGuard(allowedRoles: UserRole[]): CanActivateFn {
         if (allowedRoles.includes(caller.role as UserRole)) {
           return true;
         }
-        message.add({
-          severity: 'warn',
-          summary: 'OUT_OF_SCOPE',
-          detail: 'No tienes acceso a esta sección.',
-        });
-        return router.createUrlTree(['/administrador']);
+        return rejectAccess(message, router, 'No tienes acceso a esta sección.', '/administrador');
       }),
     );
   };

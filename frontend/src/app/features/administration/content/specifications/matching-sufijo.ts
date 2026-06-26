@@ -1,4 +1,5 @@
 import { ScopeContext, ScopeSpecification } from './scope-context.model';
+import { isSuperadmin } from '../../../../core/auth/role-capabilities';
 
 /**
  * RN-32 + RN-41: para recursos asociados a una subdirección, el caller debe
@@ -7,7 +8,7 @@ import { ScopeContext, ScopeSpecification } from './scope-context.model';
  */
 export class MatchingSufijoSpec implements ScopeSpecification {
   isSatisfiedBy(context: ScopeContext): boolean {
-    if (context.caller.role === 'superadmin') {
+    if (isSuperadmin(context.caller)) {
       return true;
     }
     if (context.dsoType === 'community-toplevel') {

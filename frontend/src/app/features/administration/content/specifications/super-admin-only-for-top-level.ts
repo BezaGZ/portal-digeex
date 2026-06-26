@@ -1,4 +1,5 @@
 import { ScopeContext, ScopeSpecification } from './scope-context.model';
+import { isSuperadmin } from '../../../../core/auth/role-capabilities';
 
 /**
  * RN-40: solo SuperAdmin puede operar sobre la community raíz del repositorio.
@@ -9,7 +10,7 @@ export class SuperAdminOnlyForTopLevelSpec implements ScopeSpecification {
     if (context.dsoType !== 'community-toplevel') {
       return true;
     }
-    return context.caller.role === 'superadmin';
+    return isSuperadmin(context.caller);
   }
 
   rejectionMessage(context: ScopeContext): string {

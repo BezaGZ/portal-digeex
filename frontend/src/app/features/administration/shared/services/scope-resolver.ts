@@ -1,5 +1,6 @@
 import { Community } from '../../../../core/api/models/community.model';
 import { Caller } from '../../content/specifications/scope-context.model';
+import { isSuperadmin } from '../../../../core/auth/role-capabilities';
 
 const SUFIJO_METADATA_FIELD = 'digeex.sufijo';
 
@@ -19,7 +20,7 @@ export function findCallerSub(
   subs: Community[],
   caller: Caller | null,
 ): Community | null {
-  if (!caller || !caller.sufijo || caller.role === 'superadmin') {
+  if (!caller || !caller.sufijo || isSuperadmin(caller)) {
     return null;
   }
   return (

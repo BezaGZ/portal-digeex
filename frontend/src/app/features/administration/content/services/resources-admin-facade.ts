@@ -10,6 +10,7 @@ import { Paginated } from '../../../../core/api/models/hal.model';
 import { MyDSpaceObject } from '../../../../core/api/models/my-dspace.model';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { findCallerSub } from '../../shared/services/scope-resolver';
+import * as roleCaps from '../../../../core/auth/role-capabilities';
 
 export interface ResourcesAdminSearchOpts {
   withdrawn: boolean;
@@ -91,7 +92,7 @@ export class ResourcesAdminFacade {
       take(1),
       switchMap((caller) => {
         if (!caller) return of<Scope>({ mode: 'none' });
-        if (caller.role === 'superadmin') return of<Scope>({ mode: 'all' });
+        if (roleCaps.isSuperadmin(caller)) return of<Scope>({ mode: 'all' });
         if (!caller.sufijo) return of<Scope>({ mode: 'none' });
         return this.communityApi.searchTop(0, 1).pipe(
           switchMap((rootResp) => {

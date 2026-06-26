@@ -10,6 +10,7 @@ import { GroupApiService } from '../../../../core/api/group-api.service';
 import { EPerson } from '../../../../core/api/models/eperson.model';
 import { Group } from '../../../../core/api/models/group.model';
 import { Caller } from '../../../../core/auth/caller.model';
+import { isSuperadmin } from '../../../../core/auth/role-capabilities';
 import { Paginated } from '../../../../core/api/models/hal.model';
 import {
   ADMINISTRATOR_GROUP_NAME,
@@ -80,8 +81,7 @@ const ALLOWED_EMAIL_DOMAINS = environment.allowedEmailDomains;
  * Tope por página al traer el listado completo de grupos asignables. 100 es
  * el máximo aceptado por DSpace en una sola respuesta; `getAssignableGroups$`
  * pide la primera página y después el resto en paralelo para llenar el
- * dropdown sin techo arbitrario. El listado de epersons pasó a paginación
- * server-side lazy desde Ciclo 19 y no usa esta constante.
+ * dropdown sin techo arbitrario.
  */
 const LIST_PAGE_SIZE = 100;
 
@@ -405,7 +405,7 @@ export class UserManagementService {
   changeUserRole$(input: ChangeUserRoleInput): Observable<EPerson> {
     return this.getCallerContext$().pipe(
       switchMap((caller) => {
-        if (!caller || caller.role !== 'superadmin') {
+        if (!caller || !isSuperadmin(caller)) {
           return throwError(
             () =>
               new BusinessRuleError(
@@ -590,7 +590,7 @@ export class UserManagementService {
               ),
           );
         }
-        if (caller.role === 'superadmin') return of<void>(undefined);
+        if (isSuperadmin(caller)) return of<void>(undefined);
         if (caller.role === 'admin_subdireccion') {
           return this.groupApi.getGroupsOfEPerson(targetUuid).pipe(
             switchMap((page) => {
@@ -649,7 +649,7 @@ export class UserManagementService {
     if (!caller) {
       return new BusinessRuleError('INSUFFICIENT_PRIVILEGES', 'Sin permisos para crear usuarios.');
     }
-    if (caller.role === 'superadmin') return null;
+    if (isSuperadmin(caller)) return null;
     if (caller.role === 'admin_subdireccion') {
       const targetName = input.targetGroup.name;
       if (!targetName.startsWith('SUBMITTERS_')) {

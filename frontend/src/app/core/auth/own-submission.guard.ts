@@ -7,6 +7,7 @@ import { map, switchMap, take } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { CallerProvider } from './caller-provider';
 import { ItemApiService } from '../api/item-api.service';
+import { rejectAccess } from './access-rejection';
 
 /**
  * Factory de `CanActivateFn` que confina al `personal_delegado` a editar solo
@@ -41,12 +42,12 @@ export function ownSubmissionGuard(paramName = 'uuid'): CanActivateFn {
             if (myUuid && submitterUuid === myUuid) {
               return true;
             }
-            message.add({
-              severity: 'warn',
-              summary: 'OUT_OF_SCOPE',
-              detail: 'Solo puedes editar tus propios envíos.',
-            });
-            return router.createUrlTree(['/administrador/envios']);
+            return rejectAccess(
+              message,
+              router,
+              'Solo puedes editar tus propios envíos.',
+              '/administrador/envios',
+            );
           }),
         );
       }),

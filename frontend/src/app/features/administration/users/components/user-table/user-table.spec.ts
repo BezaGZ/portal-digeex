@@ -15,9 +15,8 @@ import { UserView } from '../../models/user-view.model';
  * y emite outputs cuando el usuario pide desactivar, reactivar o
  * restablecer contraseña. El contenedor Users hace el trabajo real
  * contra el facade y maneja los toasts.
- * 
- * Ciclo 12 — Sprint 5. Ajustado en Ciclo 35 (Sprint 8).
- * 
+ *
+ * Ciclo 12 — Sprint 5. Ajustado en Ciclo 35 (Sprint 8) y Ciclo 23 (Sprint 10).
  */
 describe('UserTable', () => {
   let fixture: ComponentFixture<UserTable>;
@@ -207,5 +206,19 @@ describe('UserTable', () => {
     asAny(component).lazyLoad.emit(lazyEvent);
 
     expect(emitted).toEqual([lazyEvent]);
+  });
+
+  /** Verifica que solo el caller superadmin pueda modificar roles (RN-13). */
+  it('should allow only a superadmin caller to modify roles', () => {
+    fixture.componentRef.setInput('currentUser', buildUserView({ role: 'superadmin' }));
+    expect(component.canModifyRoles()).toBe(true);
+
+    fixture.componentRef.setInput('currentUser', buildUserView({ role: 'admin_subdireccion' }));
+    expect(component.canModifyRoles()).toBe(false);
+  });
+
+  /** Verifica que sin caller resuelto no se permita modificar roles (fail-closed). */
+  it('should not allow modifying roles when there is no current user', () => {
+    expect(component.canModifyRoles()).toBe(false);
   });
 });

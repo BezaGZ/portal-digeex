@@ -20,11 +20,11 @@ import { ITEMS_PATH, buildBackendApiUrl } from '../api/dspace-rest.util';
  * Guard parametrizado por (feature, path del objeto): lee el uuid de la ruta,
  * arma el self absoluto del objeto y pregunta al backend nativo
  * (`AuthorizationApiService.isAuthorized`) si el usuario puede ejercer la
- * feature. Pasa en `true`, redirige a `/administrador` con toast OUT_OF_SCOPE
+ * feature. Pasa en `true`, redirige a `/administrador` con toast de acceso restringido
  * en `false`. Cierra la entrada por URL directa a un recurso ajeno (sección 2.6).
  * Va encadenado tras `authGuard`, que ya garantiza sesión.
  *
- * Ciclo 2 TDD — Mejora 9
+ * Ciclo 2 TDD — Mejora 9. Ajustado en Ciclo 27 (Sprint 10).
  */
 describe('featureGuard', () => {
   let mockAuthz: { isAuthorized: Mock };
@@ -54,6 +54,7 @@ describe('featureGuard', () => {
     });
   }
 
+  /** Verifica que consulte la feature sobre el objeto armado desde el uuid de ruta y deje pasar si está autorizado. */
   it('asks the backend for the feature on the object built from the route uuid and allows when authorized', async () => {
     configureTestBed(true);
 
@@ -70,7 +71,8 @@ describe('featureGuard', () => {
     expect(mockRouter.createUrlTree).not.toHaveBeenCalled();
   });
 
-  it('redirects to /administrador with OUT_OF_SCOPE toast when not authorized', async () => {
+  /** Verifica que redirija a /administrador con toast de acceso restringido cuando no está autorizado. */
+  it('redirects to /administrador with an access-restricted toast when not authorized', async () => {
     configureTestBed(false);
 
     const guard = featureGuard('canEditItem', ITEMS_PATH);
@@ -81,7 +83,7 @@ describe('featureGuard', () => {
     expect(result).toEqual({ kind: 'urltree' });
     expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/administrador']);
     expect(mockMessage.add).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'warn', summary: 'OUT_OF_SCOPE' }),
+      expect.objectContaining({ severity: 'warn', summary: 'Acceso restringido' }),
     );
   });
 });

@@ -6,13 +6,14 @@ import { map } from 'rxjs/operators';
 import { AuthorizationApiService } from '../api/authorization-api.service';
 import { buildBackendApiUrl } from '../api/dspace-rest.util';
 import { FeatureId } from '../api/models/feature-id';
+import { rejectAccess } from './access-rejection';
 
 /**
  * Factory de `CanActivateFn` parametrizado por una feature de DSpace y el path
  * del tipo de objeto. Lee el uuid de la ruta, arma el self absoluto del objeto
  * y le pregunta al backend nativo (`isAuthorized`) si el usuario del token puede
  * ejercer la feature: deja pasar en `true`, redirige a `/administrador` con toast
- * `OUT_OF_SCOPE` en `false`. Se encadena tras `authGuard`, que ya garantiza
+ * de acceso restringido en `false`. Se encadena tras `authGuard`, que ya garantiza
  * sesión. Reemplaza la heurística del sufijo en las rutas `:uuid` y cierra la
  * entrada por URL directa a un recurso de otra subdirección (sección 2.6).
  */
@@ -34,12 +35,7 @@ export function featureGuard(
         if (allowed) {
           return true;
         }
-        message.add({
-          severity: 'warn',
-          summary: 'OUT_OF_SCOPE',
-          detail: 'No tienes acceso a este recurso.',
-        });
-        return router.createUrlTree(['/administrador']);
+        return rejectAccess(message, router, 'No tienes acceso a este recurso.', '/administrador');
       }),
     );
   };

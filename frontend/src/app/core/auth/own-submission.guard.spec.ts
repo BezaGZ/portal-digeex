@@ -73,6 +73,7 @@ describe('ownSubmissionGuard', () => {
     );
   }
 
+  /** Verifica que el superadmin pase sin consultar el submitter del item. */
   it('lets superadmin through without checking the submitter', async () => {
     configureTestBed({ role: 'superadmin', sufijo: null }, 'me-uuid');
 
@@ -82,6 +83,7 @@ describe('ownSubmissionGuard', () => {
     expect(mockItemApi.getSubmitter).not.toHaveBeenCalled();
   });
 
+  /** Verifica que el admin_subdireccion pase sin consultar el submitter del item. */
   it('lets admin_subdireccion through without checking the submitter', async () => {
     configureTestBed({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }, 'me-uuid');
 
@@ -91,6 +93,7 @@ describe('ownSubmissionGuard', () => {
     expect(mockItemApi.getSubmitter).not.toHaveBeenCalled();
   });
 
+  /** Verifica que el personal_delegado pueda editar un item que él mismo subió. */
   it('lets personal_delegado edit an item they submitted', async () => {
     configureTestBed({ role: 'personal_delegado', sufijo: 'ED_BASICA' }, 'me-uuid', 'me-uuid');
 
@@ -100,6 +103,7 @@ describe('ownSubmissionGuard', () => {
     expect(result).toBe(true);
   });
 
+  /** Verifica que redirija al personal_delegado a /administrador/envios con toast cuando el item no es suyo. */
   it('redirects personal_delegado to /administrador/envios with toast when the item is not theirs', async () => {
     configureTestBed({ role: 'personal_delegado', sufijo: 'ED_BASICA' }, 'me-uuid', 'other-uuid');
 
@@ -108,7 +112,7 @@ describe('ownSubmissionGuard', () => {
     expect(result).toEqual({ kind: 'urltree' });
     expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/administrador/envios']);
     expect(mockMessage.add).toHaveBeenCalledWith(
-      expect.objectContaining({ severity: 'warn', summary: 'OUT_OF_SCOPE' }),
+      expect.objectContaining({ severity: 'warn', summary: 'Acceso restringido' }),
     );
   });
 });
