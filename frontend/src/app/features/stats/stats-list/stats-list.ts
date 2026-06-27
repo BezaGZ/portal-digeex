@@ -9,7 +9,7 @@ import { StatsListService } from '../services/stats-list.service';
 import { StatisticsTrackingService } from '../../../core/api/statistics-tracking.service';
 import { StatsItem } from '../models/stats-item.model';
 import { StatsCardComponent } from '../components/stats-card/stats-card';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { StatsCardSkeletonComponent } from '../components/stats-card-skeleton/stats-card-skeleton';
 import { EmptyStateComponent } from '../../../shared';
 import { PaginatorEvent } from '../../../core/api/models';
 
@@ -29,7 +29,7 @@ import { PaginatorEvent } from '../../../core/api/models';
     ButtonModule,
     PaginatorModule,
     StatsCardComponent,
-    LoadingSpinnerComponent,
+    StatsCardSkeletonComponent,
     EmptyStateComponent,
   ],
   templateUrl: './stats-list.html',

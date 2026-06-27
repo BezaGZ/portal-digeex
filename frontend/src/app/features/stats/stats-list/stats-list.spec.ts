@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 
 import { StatsList } from './stats-list';
 import { StatsListService } from '../services/stats-list.service';
@@ -15,7 +15,7 @@ import { StatsItem, StatsItemPage } from '../models/stats-item.model';
  * loading), filtra client-side por dataset y navega al detalle por uuid en
  * el click de la card.
  *
- * Ciclo 10 TDD — Sprint 7. Ajustado en Ciclo 26 (Sprint 8).
+ * Ciclo 10 TDD — Sprint 7. Ajustado en Ciclo 26 (Sprint 8) y Ciclo 35 (Sprint 10).
  */
 
 const SAMPLE_ITEMS: StatsItem[] = [
@@ -147,5 +147,15 @@ describe('StatsList', () => {
     c.openItem('a');
 
     expect(navigateFn).toHaveBeenCalledWith(['/estadistica', 'col-estadistica', 'item', 'a']);
+  });
+
+  /** Verifica que durante la carga el listado renderice el skeleton de stats compartido. */
+  it('should render the stats-card skeleton while loading', () => {
+    searchFn.mockReturnValue(NEVER);
+
+    const fixture = TestBed.createComponent(StatsList);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-stats-card-skeleton')).not.toBeNull();
   });
 });
