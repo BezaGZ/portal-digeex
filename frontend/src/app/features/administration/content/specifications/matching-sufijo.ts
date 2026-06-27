@@ -1,5 +1,6 @@
 import { ScopeContext, ScopeSpecification } from './scope-context.model';
 import { isSuperadmin } from '../../../../core/auth/role-capabilities';
+import { isSameSubdireccion } from '../../../../core/auth/subdivision-scope';
 
 /**
  * RN-32 + RN-41: para recursos asociados a una subdirección, el caller debe
@@ -14,10 +15,7 @@ export class MatchingSufijoSpec implements ScopeSpecification {
     if (context.dsoType === 'community-toplevel') {
       return true;
     }
-    return (
-      context.resourceSufijo !== null &&
-      context.caller.sufijo === context.resourceSufijo
-    );
+    return isSameSubdireccion(context.caller.sufijo, context.resourceSufijo);
   }
 
   rejectionMessage(context: ScopeContext): string {

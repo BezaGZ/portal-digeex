@@ -11,6 +11,7 @@ import { EPerson } from '../../../../core/api/models/eperson.model';
 import { Group } from '../../../../core/api/models/group.model';
 import { Caller } from '../../../../core/auth/caller.model';
 import { isSuperadmin } from '../../../../core/auth/role-capabilities';
+import { isSameSubdireccion } from '../../../../core/auth/subdivision-scope';
 import { Paginated } from '../../../../core/api/models/hal.model';
 import {
   ADMINISTRATOR_GROUP_NAME,
@@ -595,7 +596,7 @@ export class UserManagementService {
           return this.groupApi.getGroupsOfEPerson(targetUuid).pipe(
             switchMap((page) => {
               const targetSuffix = extractSubdivisionSuffix(page.items);
-              if (targetSuffix !== caller.subdivisionSuffix) {
+              if (!isSameSubdireccion(caller.subdivisionSuffix, targetSuffix)) {
                 return throwError(
                   () =>
                     new BusinessRuleError(
@@ -659,7 +660,7 @@ export class UserManagementService {
         );
       }
       const targetSuffix = targetName.slice('SUBMITTERS_'.length);
-      if (targetSuffix !== caller.subdivisionSuffix) {
+      if (!isSameSubdireccion(caller.subdivisionSuffix, targetSuffix)) {
         return new BusinessRuleError(
           'INSUFFICIENT_PRIVILEGES',
           'Solo puedes crear usuarios dentro de tu subdirección.',

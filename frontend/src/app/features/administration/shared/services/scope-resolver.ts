@@ -1,8 +1,6 @@
-import { Community } from '../../../../core/api/models/community.model';
+import { Community, sufijoOf } from '../../../../core/api/models/community.model';
 import { Caller } from '../../content/specifications/scope-context.model';
 import { isSuperadmin } from '../../../../core/auth/role-capabilities';
-
-const SUFIJO_METADATA_FIELD = 'digeex.sufijo';
 
 /**
  * Resuelve la subdirección que el caller tiene scopeada según su sufijo.
@@ -25,7 +23,7 @@ export function findCallerSub(
   }
   return (
     subs.find(
-      (s) => s.metadata?.[SUFIJO_METADATA_FIELD]?.[0]?.value === caller.sufijo,
+      (s) => sufijoOf(s) === caller.sufijo,
     ) ?? null
   );
 }

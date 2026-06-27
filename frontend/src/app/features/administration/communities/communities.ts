@@ -20,7 +20,7 @@ import { DangerousDeleteDialog } from '../../../shared/components/dangerous-dele
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { DiscoveryService } from '../../../core/api/discovery.service';
-import { Community, CommunityCreateBody } from '../../../core/api/models/community.model';
+import { Community, CommunityCreateBody, sufijoOf } from '../../../core/api/models/community.model';
 import { Collection } from '../../../core/api/models/collection.model';
 import * as roleCaps from '../../../core/auth/role-capabilities';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
@@ -159,7 +159,7 @@ export class Communities {
 
   /** Helper que el template usa para inferir el sufijo de una subdirección. */
   extractSufijo(c: Community): string {
-    return c.metadata?.['digeex.sufijo']?.[0]?.value ?? '';
+    return sufijoOf(c) ?? '';
   }
 
   /** Atajo de delete: el template pasa el target, el sufijo se deriva. */
@@ -260,14 +260,6 @@ export class Communities {
     if (!target) {
       return;
     }
-    // nombreCorto y sufijo son inmutables después de crear: nombreCorto
-    // está atado a dc.title.alternative (identificador estable, espejo de
-    // la sigla en programas) y sufijo rompe los grupos ADMIN_<sufijo>/
-    // SUBMITTERS_<sufijo>. Solo se patchean tituloCompleto (dc.title)
-    // y descripción.
-    // El diff lo arma el helper: el add de DSpace anexa sobre campos
-    // existentes (duplicaba la descripción en cada edición) y el helper
-    // emite replace/add/remove según el metadata actual del target.
     const patch: JsonPatchEntry[] = buildMetadataPatch(
       {
         'dc.title': payload.tituloCompleto,

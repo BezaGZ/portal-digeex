@@ -25,7 +25,7 @@ import { CollectionDialog } from './components/collection-dialog/collection-dial
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { DiscoveryService } from '../../../core/api/discovery.service';
-import { Community } from '../../../core/api/models/community.model';
+import { Community, sufijoOf } from '../../../core/api/models/community.model';
 import { Collection, CollectionCreateBody } from '../../../core/api/models/collection.model';
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
 import { buildMetadataPatch } from '../../../core/api/metadata-patch.util';
@@ -210,7 +210,7 @@ export class Collections {
 
   /** Helper que el template usa para inferir el sufijo de una subdirección. */
   extractSufijo(c: Community): string {
-    return c.metadata?.['digeex.sufijo']?.[0]?.value ?? '';
+    return sufijoOf(c) ?? '';
   }
 
   /**

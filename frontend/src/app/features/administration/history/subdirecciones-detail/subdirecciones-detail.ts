@@ -15,7 +15,7 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 
 import { CommunityApiService } from '../../../../core/api/community-api.service';
-import { Community } from '../../../../core/api/models/community.model';
+import { Community, sufijoOf } from '../../../../core/api/models/community.model';
 import { ProvenanceService } from '../../content/provenance/provenance.service';
 import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
 import { ExportHistoryButton } from '../../../../shared/components/export-history-button/export-history-button.component';
@@ -69,7 +69,7 @@ export class SubdireccionesDetail {
 
   readonly sufijo = computed(() => {
     const c = this.community();
-    return c ? (c.metadata['digeex.sufijo']?.[0]?.value ?? '') : '';
+    return c ? (sufijoOf(c) ?? '') : '';
   });
 
   readonly description = computed(() => {
