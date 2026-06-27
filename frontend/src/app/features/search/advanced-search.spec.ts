@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 import { AdvancedSearch } from './advanced-search';
 import { DiscoveryService } from '../../core/api/discovery.service';
 import { DSpaceApiService } from '../../core/api/dspace-api.service';
@@ -24,7 +24,7 @@ import { SearchResult } from '../../core/api/models/discovery.model';
  * f.contentType=documento para excluir galería/estadísticas cuando el scope
  * es community o sub-community.
  *
- * Ciclos del Sprint 4. Ajustado en Sprint 6 (Ciclo 37), en Ciclo 37 (Sprint 8) y en Ciclos 9, 17 y 18 (Sprint 9).
+ * Ciclos del Sprint 4. Ajustado en Sprint 6 (Ciclo 37), en Ciclo 37 (Sprint 8), en Ciclos 9, 17 y 18 (Sprint 9) y en Ciclo 36 (Sprint 10).
  */
 describe('AdvancedSearch', () => {
   let component: AdvancedSearch;
@@ -509,6 +509,26 @@ describe('AdvancedSearch', () => {
       fixture2.detectChanges();
 
       expect(listSpy).not.toHaveBeenCalled();
+    });
+
+    /** Verifica que isLoadingScope esté en true mientras se cargan las opciones del dropdown. */
+    it('should set isLoadingScope true while the scope options are loading', () => {
+      vi.spyOn(communityApi, 'list').mockReturnValue(NEVER);
+
+      (component as any).loadScopeOptions();
+
+      expect(component.isLoadingScope()).toBe(true);
+    });
+
+    /** Verifica que isLoadingScope vuelva a false cuando las opciones resuelven. */
+    it('should clear isLoadingScope after the scope options resolve', () => {
+      vi.spyOn(communityApi, 'list').mockReturnValue(of(digeexResponse as any));
+      vi.spyOn(communityApi, 'listAllSubcommunities').mockReturnValue(of(subs as any));
+      vi.spyOn(collectionApi, 'listAll').mockReturnValue(of([] as any));
+
+      (component as any).loadScopeOptions();
+
+      expect(component.isLoadingScope()).toBe(false);
     });
   });
   /* eslint-enable @typescript-eslint/no-explicit-any */

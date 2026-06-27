@@ -13,6 +13,7 @@
 
     <app-search-filters
       [scopeOptions]="scopeOptions()"
+      [scopeLoading]="isLoadingScope()"
       (search)="onSearch($event)"
       (clear)="onClear()"
       (scopeChange)="onScopeChange($event)"

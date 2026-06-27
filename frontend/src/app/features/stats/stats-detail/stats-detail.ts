@@ -19,7 +19,7 @@ import { ParsedExcel } from '../models/parsed-excel.model';
 import { Item } from '../../../core/api/models/item.model';
 import { ChartSectionComponent } from '../components/charts/chart-section/chart-section';
 import { StatsFiltersComponent } from '../components/stats-filters/stats-filters';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { ChartSectionSkeletonComponent } from '../components/charts/chart-section-skeleton/chart-section-skeleton';
 import { EmptyStateComponent } from '../../../shared';
 import { IsoDateLocalPipe } from '../../../core/i18n/iso-date-local.pipe';
 
@@ -45,7 +45,7 @@ export type StatsDetailError = 'not-found' | 'unsupported' | 'network';
     ButtonModule,
     ChartSectionComponent,
     StatsFiltersComponent,
-    LoadingSpinnerComponent,
+    ChartSectionSkeletonComponent,
     EmptyStateComponent,
     IsoDateLocalPipe,
   ],

@@ -9,6 +9,7 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { DatePickerModule } from 'primeng/datepicker';
 import { CardModule } from 'primeng/card';
+import { SkeletonModule } from 'primeng/skeleton';
 import { SearchFilters, SelectOption, ScopeOption } from '../../models/search-filters.model';
 import { Facet } from '../../../../core/api/models/discovery.model';
 import { VocabularyDisplayService } from '../../../../core/api/vocabulary-display.service';
@@ -26,6 +27,7 @@ import { VocabularyDisplayService } from '../../../../core/api/vocabulary-displa
     SelectModule,
     DatePickerModule,
     CardModule,
+    SkeletonModule,
   ],
   templateUrl: './search-filters.html',
 })
@@ -33,6 +35,9 @@ export class SearchFiltersComponent {
   private readonly vocabDisplay = inject(VocabularyDisplayService);
 
   scopeOptions = input<ScopeOption[]>([]);
+
+  /** True mientras el padre carga las opciones del dropdown (comunidad + subcomunidades + colecciones). */
+  scopeLoading = input<boolean>(false);
 
   search = output<SearchFilters>();
   clear = output<void>();

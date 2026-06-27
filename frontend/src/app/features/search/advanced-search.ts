@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { PaginatorModule } from 'primeng/paginator';
 import { forkJoin, of, EMPTY } from 'rxjs';
-import { switchMap, map, catchError } from 'rxjs/operators';
+import { switchMap, map, catchError, finalize } from 'rxjs/operators';
 import { DiscoveryService } from '../../core/api/discovery.service';
 import { SearchResult, FacetFilter } from '../../core/api/models/discovery.model';
 import { Item } from '../../core/api/models/item.model';
@@ -61,6 +61,9 @@ export class AdvancedSearch implements OnInit {
 
   /** Estado local que no necesita persistir al volver del detalle. */
   isLoadingFacets = signal(false);
+
+  /** True mientras se cargan las opciones del dropdown de scope (primera carga). */
+  isLoadingScope = signal(false);
 
   itemsPerPage = 10;
 
@@ -192,6 +195,7 @@ export class AdvancedSearch implements OnInit {
    * `forkJoin` y el orden del dropdown sigue al de las subdirecciones.
    */
   private loadScopeOptions() {
+    this.isLoadingScope.set(true);
     this.communityApi
       .list(0, 10)
       .pipe(
@@ -238,6 +242,8 @@ export class AdvancedSearch implements OnInit {
           );
         }),
         catchError(() => EMPTY),
+        // finalize, no el next del subscribe: apaga el flag aunque no haya raíz DIGEEX (EMPTY) o falle.
+        finalize(() => this.isLoadingScope.set(false)),
       )
       .subscribe((options) => this.searchState.scopeOptions.set(options));
   }

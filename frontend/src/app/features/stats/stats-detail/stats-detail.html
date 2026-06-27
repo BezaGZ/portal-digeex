@@ -30,7 +30,13 @@
   </header>
 
   @if (isLoading()) {
-    <app-loading-spinner minHeight="320px" />
+    <div class="rounded-xl overflow-hidden bg-[var(--color-surface)] shadow-md border border-[var(--color-border)]">
+      <div class="grid grid-cols-1 md:grid-cols-2">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <app-chart-section-skeleton />
+        }
+      </div>
+    </div>
   } @else if (errorState() === 'not-found') {
     <app-empty-state
       icon="pi pi-question-circle"

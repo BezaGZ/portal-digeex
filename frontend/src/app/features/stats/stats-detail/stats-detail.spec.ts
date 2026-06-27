@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 
 import { StatsDetail } from './stats-detail';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
@@ -30,7 +30,7 @@ import { Item } from '../../../core/api/models/item.model';
  * filtros. El breadcrumb y el `goBack` apuntan al listado de la colección
  * padre cuando el UUID está presente.
  *
- * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclos 16, 23, 26 y Ciclo 16 (Sprint 9).
+ * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclos 16, 23, 26 y Ciclo 16 (Sprint 9) y Ciclo 36 (Sprint 10).
  */
 
 const DASHBOARD: StatsDashboard = {
@@ -321,5 +321,15 @@ describe('StatsDetail', () => {
 
     expect(c.errorState()).toBeNull();
     expect(c.dashboard()).toBe(DASHBOARD);
+  });
+
+  /** Verifica que durante la carga el detalle renderice el skeleton de secciones. */
+  it('should render the chart-section skeleton while loading', () => {
+    getItemFn.mockReturnValue(NEVER);
+
+    const fixture = TestBed.createComponent(StatsDetail);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-chart-section-skeleton')).not.toBeNull();
   });
 });

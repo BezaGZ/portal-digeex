@@ -17,7 +17,7 @@ import { Facet } from '../../../../core/api/models/discovery.model';
  * display label del vocabulario controlado correspondiente (idiomas-digeex,
  * tipos-documento, niveles-educativos) usando VocabularyDisplayService.
  *
- * Ciclo 22 TDD — Sprint 6. Ajustado en Ciclos 10, 11 (Sprint 9).
+ * Ciclo 22 TDD — Sprint 6. Ajustado en Ciclos 10, 11 (Sprint 9) y Ciclo 36 (Sprint 10).
  */
 describe('SearchFiltersComponent', () => {
   let vocabDisplay: VocabularyDisplayService;
@@ -126,5 +126,27 @@ describe('SearchFiltersComponent', () => {
 
     expect(fixture.componentInstance.facetsLoaded()).toBe(true);
     expect(fixture.componentInstance.idiomaOptions()[0]).toEqual({ label: 'es (5)', value: 'es' });
+  });
+
+  /** Verifica que con scope elegido y facetas sin cargar, el panel renderice skeletons de filtro. */
+  it('should render filter skeletons while facets are loading', () => {
+    const fixture = TestBed.createComponent(SearchFiltersComponent);
+    fixture.componentInstance.filters.scope = 'col-1';
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="filters-skeleton"]'),
+    ).not.toBeNull();
+  });
+
+  /** Verifica que con scopeLoading en true, el dropdown de scope renderice un skeleton. */
+  it('should render the scope skeleton while scope options are loading', () => {
+    const fixture = TestBed.createComponent(SearchFiltersComponent);
+    fixture.componentRef.setInput('scopeLoading', true);
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="scope-skeleton"]'),
+    ).not.toBeNull();
   });
 });
