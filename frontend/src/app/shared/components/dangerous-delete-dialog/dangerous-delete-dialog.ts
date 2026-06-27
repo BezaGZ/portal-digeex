@@ -6,12 +6,12 @@ import { InputTextModule } from 'primeng/inputtext';
 import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
 
 /** Tipo de recurso que se borra; gobierna los textos del diálogo. */
-export type DangerousDeleteKind = 'programa' | 'subdireccion';
+export type DangerousDeleteKind = 'programa' | 'subdireccion' | 'recurso';
 
 /**
- * Diálogo presentacional de borrado destructivo, reusable para programa y
- * subdirección. Pide teclear el nombre completo del recurso para habilitar el
- * botón Eliminar (confirmación deliberada) y muestra qué se borrará.
+ * Diálogo presentacional de borrado destructivo, reusable para programa,
+ * subdirección y recurso. Pide teclear el nombre completo del recurso para
+ * habilitar el botón Eliminar (confirmación deliberada) y muestra qué se borrará.
  *
  * No hace HTTP ni conoce facades: recibe los datos por inputs y emite la
  * intención; la pantalla que lo monta resuelve conteos/títulos y el borrado.
@@ -72,12 +72,22 @@ export class DangerousDeleteDialog {
     () => !this.deleting() && this.typed().trim().length > 0 && this.typed().trim() === this.entityLabel().trim(),
   );
 
-  readonly headerText = computed(() =>
-    this.entityKind() === 'subdireccion' ? 'Eliminar subdirección' : 'Eliminar programa',
-  );
+  readonly headerText = computed(() => {
+    switch (this.entityKind()) {
+      case 'subdireccion':
+        return 'Eliminar subdirección';
+      case 'recurso':
+        return 'Eliminar recurso';
+      default:
+        return 'Eliminar programa';
+    }
+  });
 
   /** Resumen de lo que se borra; para subdirección suma programas + recursos. */
   readonly summaryText = computed(() => {
+    if (this.entityKind() === 'recurso') {
+      return 'Se eliminará el recurso de forma permanente.';
+    }
     const items = this.itemsCount() ?? 0;
     const itemsText = `${items} ${items === 1 ? 'recurso' : 'recursos'}`;
     if (this.entityKind() === 'subdireccion') {

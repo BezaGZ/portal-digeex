@@ -203,7 +203,7 @@
                       [text]="true"
                       [rounded]="true"
                       (onClick)="onDelete(o.indexableObject.uuid)"
-                      pTooltip="Eliminar"
+                      pTooltip="Retirar"
                       tooltipPosition="top" />
                   </span>
                 } @else {
@@ -217,6 +217,18 @@
                       pTooltip="Restaurar"
                       tooltipPosition="top" />
                   </span>
+                  @if (esSuperadmin()) {
+                    <span data-testid="action-permanent-delete">
+                      <p-button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        [text]="true"
+                        [rounded]="true"
+                        (onClick)="onPermanentDeleteClick(o)"
+                        pTooltip="Eliminar permanentemente"
+                        tooltipPosition="top" />
+                    </span>
+                  }
                 }
               </div>
             </td>
@@ -225,4 +237,12 @@
       </p-table>
     </p-card>
   }
+
+  <app-dangerous-delete-dialog
+    [visible]="deleteVisible()"
+    entityKind="recurso"
+    [entityLabel]="deleteEntityLabel()"
+    [deleting]="deleting()"
+    (confirmed)="onPermanentDeleteConfirmed()"
+    (cancelled)="onPermanentDeleteCancelled()" />
 </div>

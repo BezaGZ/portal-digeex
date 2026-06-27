@@ -17,6 +17,7 @@ type ItemApiMock = {
   withdraw: Mock;
   restore: Mock;
   getOne: Mock;
+  delete: Mock;
 };
 type BundleApiMock = {
   listForItem: Mock;
@@ -39,7 +40,7 @@ type AuditMock = { appendProvenance$: Mock };
  * desde el item al árbol jerárquico no se hace acá: la UI lo conoce
  * porque navega desde la colección y se lo pasa al facade.
  *
- * Ciclo 15 TDD — Sprint 6. Ajustado en Ciclos 34, 20 y 21 (Sprint 8).
+ * Ciclo 15 TDD — Sprint 6. Ajustado en Ciclos 34, 20 y 21 (Sprint 8) y Ciclo 31 (Sprint 10).
  */
 describe('ItemAdminFacade', () => {
   let facade: ItemAdminFacade;
@@ -83,6 +84,7 @@ describe('ItemAdminFacade', () => {
       withdraw: vi.fn(() => of({ ...archivedItem, withdrawn: true })),
       restore: vi.fn(() => of({ ...archivedItem, withdrawn: false })),
       getOne: vi.fn(() => of(archivedItem)),
+      delete: vi.fn(() => of(undefined)),
     };
     mockBundleApi = {
       listForItem: vi.fn(() => of({ _embedded: { bundles: [] } })),
@@ -481,6 +483,34 @@ describe('ItemAdminFacade', () => {
         firstValueFrom(facade.restoreItem$('item-uuid', 'ED_TRABAJO')),
       ).rejects.toBeInstanceOf(BusinessRuleError);
       expect(mockItemApi.restore).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteItem$', () => {
+    it('should call ItemApiService.delete when superadmin', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(facade.deleteItem$('item-uuid'));
+
+      expect(mockItemApi.delete).toHaveBeenCalledWith('item-uuid');
+    });
+
+    it('should reject with BusinessRuleError without calling delete when admin_subdireccion', async () => {
+      setupFacadeWithCaller('admin_subdireccion', 'ED_BASICA');
+
+      await expect(
+        firstValueFrom(facade.deleteItem$('item-uuid')),
+      ).rejects.toBeInstanceOf(BusinessRuleError);
+      expect(mockItemApi.delete).not.toHaveBeenCalled();
+    });
+
+    it('should reject with BusinessRuleError without calling delete when personal_delegado', async () => {
+      setupFacadeWithCaller('personal_delegado', 'ED_BASICA');
+
+      await expect(
+        firstValueFrom(facade.deleteItem$('item-uuid')),
+      ).rejects.toBeInstanceOf(BusinessRuleError);
+      expect(mockItemApi.delete).not.toHaveBeenCalled();
     });
   });
 

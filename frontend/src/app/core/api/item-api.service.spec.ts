@@ -19,7 +19,7 @@ import itemWithdrawnTrueFixture from './test-fixtures/item-patch-withdrawn-true-
  * privada. Los métodos de lectura siguen viviendo en DSpaceApiService;
  * la migración + withdraw + restore se hacen en C15.
  *
- * Ciclo 14 TDD — Sprint 6
+ * Ciclo 14 TDD — Sprint 6. Ajustado en Ciclo 30 (Sprint 10).
  */
 describe('ItemApiService', () => {
   let service: ItemApiService;
@@ -137,6 +137,26 @@ describe('ItemApiService', () => {
 
       expect(errored).toBe(false);
       expect(received).toBeNull();
+    });
+  });
+
+  describe('delete()', () => {
+    it('should DELETE /api/core/items/{uuid} and complete without emitting a value', () => {
+      let nextEmitted = false;
+      let completed = false;
+
+      service.delete('item-uuid').subscribe({
+        next: () => (nextEmitted = true),
+        complete: () => (completed = true),
+      });
+
+      const req = httpMock.expectOne('/server/api/core/items/item-uuid');
+      expect(req.request.method).toBe('DELETE');
+      expect(req.request.body).toBeNull();
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      expect(nextEmitted).toBe(true);
+      expect(completed).toBe(true);
     });
   });
 });

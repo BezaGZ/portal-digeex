@@ -11,7 +11,7 @@ import { DangerousDeleteDialog } from './dangerous-delete-dialog';
  * el botón Eliminar y muestra qué se borrará. No hace HTTP: recibe todo por
  * inputs y emite confirmed/cancelled; la feature resuelve los datos y el delete.
  *
- * Ciclo 3 TDD — Mejora 9. Extendido en Ciclo 4 (eventos y reset) y Ciclo 5 (contenido afectado).
+ * Ciclo 3 TDD — Mejora 9. Extendido en Ciclo 4 (eventos y reset), Ciclo 5 (contenido afectado) y Ciclo 32 (Sprint 10, kind recurso).
  */
 describe('DangerousDeleteDialog', () => {
   beforeEach(() => {
@@ -23,7 +23,7 @@ describe('DangerousDeleteDialog', () => {
 
   function createDialog(overrides: {
     visible?: boolean;
-    entityKind?: 'programa' | 'subdireccion';
+    entityKind?: 'programa' | 'subdireccion' | 'recurso';
     entityLabel?: string;
     deleting?: boolean;
   } = {}) {
@@ -97,6 +97,10 @@ describe('DangerousDeleteDialog', () => {
       expect(createDialog({ entityKind: 'programa' }).componentInstance.headerText()).toContain('programa');
       expect(createDialog({ entityKind: 'subdireccion' }).componentInstance.headerText()).toContain('subdirección');
     });
+
+    it('should expose a header text for the recurso kind', () => {
+      expect(createDialog({ entityKind: 'recurso' }).componentInstance.headerText()).toContain('recurso');
+    });
   });
 
   describe('events and reset', () => {
@@ -161,6 +165,12 @@ describe('DangerousDeleteDialog', () => {
       const summary = fixture.nativeElement.querySelector('[data-testid="affected-summary"]');
       expect(summary.textContent).toContain('12');
       expect(summary.textContent.toLowerCase()).toContain('recurso');
+    });
+
+    it('should summarize a single recurso as permanent without a count', () => {
+      const fixture = createDialog({ entityKind: 'recurso' });
+      const summary = fixture.nativeElement.querySelector('[data-testid="affected-summary"]');
+      expect(summary.textContent).toContain('Se eliminará el recurso de forma permanente');
     });
 
     it('should render the list of affected titles', () => {

@@ -30,7 +30,7 @@ import { LoadingService } from '../../../core/loading/loading.service';
  * bloqueado en su sufijo. Cada acción mutativa delega al
  * `CollectionFacade`.
  *
- * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4 (Sprint 7), Ciclos 12, 13, 24, 38 y 48 (Sprint 8).
+ * Ciclo 18 TDD — Sprint 6. Ajustado en Ciclo 4 (Sprint 7), Ciclos 12, 13, 24, 38 y 48 (Sprint 8) y Ciclo 33 (Sprint 10).
  */
 describe('Collections (contenedor)', () => {
   let searchTopFn: ReturnType<typeof vi.fn>;
@@ -202,6 +202,44 @@ describe('Collections (contenedor)', () => {
       const fixture = TestBed.createComponent(Collections);
       fixture.detectChanges();
       expect(fixture.componentInstance.canChooseAnySubdireccion()).toBe(false);
+    });
+  });
+
+  describe('canDeletePrograma signal', () => {
+    it('should be true when caller is superadmin', () => {
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.canDeletePrograma()).toBe(true);
+    });
+
+    it('should be false when caller is admin_subdireccion', () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [Collections],
+        providers: [
+          provideNoopAnimations(),
+          provideHttpClient(),
+          provideRouter([]),
+          {
+            provide: CommunityApiService,
+            useValue: { searchTop: searchTopFn, listAllSubcommunities: listAllSubcommunitiesFn },
+          },
+          {
+            provide: CollectionApiService,
+            useValue: { listByCommunity: vi.fn().mockReturnValue(buildPage([], 0)) },
+          },
+          { provide: CollectionFacade, useValue: {} },
+          {
+            provide: AuthCallerService,
+            useValue: { currentCaller$: of({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }) },
+          },
+          { provide: MessageService, useValue: { add: vi.fn(), messageObserver: EMPTY, clearObserver: EMPTY } },
+          ConfirmationService,
+        ],
+      });
+      const fixture = TestBed.createComponent(Collections);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.canDeletePrograma()).toBe(false);
     });
   });
 

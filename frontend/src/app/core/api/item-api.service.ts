@@ -61,6 +61,17 @@ export class ItemApiService {
   }
 
   /**
+   * Borra el item en duro por UUID. DSpace responde 204 sin body en caso de
+   * éxito; el wrapper expone `Observable<void>` para reflejar esa semántica
+   * y forzar al caller a manejar solo error/complete (no payload).
+   */
+  delete(uuid: string): Observable<void> {
+    return this.http.delete<void>(
+      `${DSPACE_API_BASE}${ITEMS_PATH}/${uuid}`,
+    );
+  }
+
+  /**
    * Devuelve el uuid del submitter (eperson que subió el item) o `null` si
    * no lo expone o falla. Lo usa el `ownSubmissionGuard` para confinar la
    * edición del delegado a lo que él subió. Sub-recurso `submitter` del

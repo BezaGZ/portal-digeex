@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
@@ -22,6 +22,8 @@ import { ItemAdminFacade } from '../content/services/item-admin-facade';
 import { LoadingService, withLoading } from '../../../core/loading';
 import { ResourcesAdminFacade } from '../content/services/resources-admin-facade';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
+import { DangerousDeleteDialog } from '../../../shared/components/dangerous-delete-dialog/dangerous-delete-dialog';
+import { isSuperadmin } from '../../../core/auth/role-capabilities';
 import {
   coverUrlOf as coverUrlOfUtil,
   entityTypeOf as entityTypeOfUtil,
@@ -79,6 +81,7 @@ type ResourcesTab = 'activos' | 'eliminados';
     LoadingSpinnerComponent,
     EmptyStateComponent,
     IsoDateLocalPipe,
+    DangerousDeleteDialog,
   ],
 })
 export class ResourcesAdmin {
@@ -107,6 +110,20 @@ export class ResourcesAdmin {
   readonly entityTypeOptions = ENTITY_TYPE_OPTIONS;
 
   readonly imageErrors = signal<ReadonlySet<string>>(new Set());
+
+  readonly caller = toSignal(this.authCaller.currentCaller$, { initialValue: null });
+  /** SuperAdmin: único rol que puede borrar en duro (RN-16); gobierna el botón de borrado permanente. */
+  readonly esSuperadmin = computed(() => isSuperadmin(this.caller()));
+
+  /** Estado del diálogo de borrado permanente; target no-null = abierto. */
+  readonly deleteTarget = signal<MyDSpaceObject | null>(null);
+  readonly deleteVisible = computed(() => this.deleteTarget() !== null);
+  readonly deleting = signal(false);
+  /** Nombre completo (dc.title) que el usuario teclea para confirmar el borrado. */
+  readonly deleteEntityLabel = computed(() => {
+    const t = this.deleteTarget();
+    return t ? this.titleOf(t) : '';
+  });
 
   private callerSufijo = '';
   private readonly queryInput$ = new Subject<string>();
@@ -161,7 +178,7 @@ export class ResourcesAdmin {
   onDelete(uuid: string): void {
     this.confirmation.confirm({
       message: 'Esto retira el envío del sitio público. Podés restaurarlo después.',
-      header: '¿Eliminar este envío?',
+      header: '¿Retirar este envío?',
       icon: 'pi pi-exclamation-triangle',
       rejectButtonProps: {
         label: 'Cancelar',
@@ -169,7 +186,7 @@ export class ResourcesAdmin {
         rounded: true,
       },
       acceptButtonProps: {
-        label: 'Sí, eliminar',
+        label: 'Sí, retirar',
         severity: 'danger',
         icon: 'pi pi-trash',
         rounded: true,
@@ -212,6 +229,39 @@ export class ResourcesAdmin {
           .subscribe(() => this.load(this.currentPage()));
       },
     });
+  }
+
+  /** Abre el diálogo de borrado permanente para el recurso elegido. */
+  onPermanentDeleteClick(o: MyDSpaceObject): void {
+    this.deleteTarget.set(o);
+  }
+
+  /**
+   * Confirma el borrado en duro: dispara deleteItem$ (el facade valida superadmin),
+   * cierra el diálogo y recarga la página al terminar.
+   */
+  onPermanentDeleteConfirmed(): void {
+    const target = this.deleteTarget();
+    if (!target) return;
+    this.deleting.set(true);
+    this.itemFacade
+      .deleteItem$(target.indexableObject.uuid)
+      .pipe(
+        withLoading(this.loadingService, { message: 'Eliminando el recurso…' }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.deleteTarget.set(null);
+          this.deleting.set(false);
+          this.load(this.currentPage());
+        },
+        error: () => this.deleting.set(false),
+      });
+  }
+
+  onPermanentDeleteCancelled(): void {
+    this.deleteTarget.set(null);
   }
 
   hasImageError(o: MyDSpaceObject): boolean {

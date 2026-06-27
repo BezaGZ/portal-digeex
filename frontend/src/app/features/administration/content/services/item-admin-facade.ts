@@ -11,6 +11,8 @@ import { Paginated } from '../../../../core/api/models/hal.model';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
 import { resolveCaller$, withAudit$ } from './facade-utils';
 import { AUDIT_ACTIONS, AuditTrailService } from '../provenance/audit-trail.service';
+import { BusinessRuleError } from '../../../../core/error/business-rule-error';
+import { isSuperadmin } from '../../../../core/auth/role-capabilities';
 
 /**
  * Bundle de cambios para edición de item archivado. Cada campo es opcional
@@ -232,6 +234,15 @@ export class ItemAdminFacade {
     return this.runScoped$(sufijoSubdireccion, () => this.itemApi.restore(uuid));
   }
 
+  /**
+   * Borra el ítem en duro. Reservado al superadministrador (RN-16 y las flags
+   * collection/community-admin.item.delete en false); el facade falla cerrado
+   * para el resto. No appendea provenance: el DSO se destruye y no puede recibirla.
+   */
+  deleteItem$(uuid: string): Observable<void> {
+    return this.runAsSuperadmin$(() => this.itemApi.delete(uuid));
+  }
+
   private runScoped$<T>(
     sufijoSubdireccion: string,
     op: () => Observable<T>,
@@ -246,6 +257,28 @@ export class ItemAdminFacade {
           });
         } catch (err) {
           return throwError(() => err);
+        }
+        return op();
+      }),
+    );
+  }
+
+  /**
+   * Ejecuta `op` solo si el caller es superadmin; si no, rechaza con
+   * BusinessRuleError sin tocar HTTP. Separado de `runScoped$` porque el
+   * borrado en duro no scopea por sufijo: es del administrador del sitio o de nadie.
+   */
+  private runAsSuperadmin$<T>(op: () => Observable<T>): Observable<T> {
+    return resolveCaller$(this.authCaller).pipe(
+      switchMap((caller) => {
+        if (!isSuperadmin(caller)) {
+          return throwError(
+            () =>
+              new BusinessRuleError(
+                'OUT_OF_SCOPE',
+                'Borrado en duro reservado al superadministrador.',
+              ),
+          );
         }
         return op();
       }),

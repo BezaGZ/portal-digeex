@@ -20,12 +20,13 @@ import { LoadingService } from '../../../core/loading/loading.service';
  * compartidos de `my-dspace-object.util` y delega scope + filtros al
  * `ResourcesAdminFacade`.
  *
- * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclo 50 (Sprint 8).
+ * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclo 50 (Sprint 8) y Ciclo 32 (Sprint 10).
  */
 describe('ResourcesAdmin', () => {
   let searchFn: ReturnType<typeof vi.fn>;
   let withdrawFn: ReturnType<typeof vi.fn>;
   let restoreFn: ReturnType<typeof vi.fn>;
+  let deleteFn: ReturnType<typeof vi.fn>;
   let confirmFn: ReturnType<typeof vi.fn>;
 
   function buildObject(uuid: string, withdrawn = false): MyDSpaceObject {
@@ -60,6 +61,7 @@ describe('ResourcesAdmin', () => {
     );
     withdrawFn = vi.fn().mockReturnValue(of({}));
     restoreFn = vi.fn().mockReturnValue(of({}));
+    deleteFn = vi.fn().mockReturnValue(of(undefined));
     confirmFn = vi.fn().mockImplementation((opts: { accept?: () => void }) => opts.accept?.());
 
     TestBed.configureTestingModule({
@@ -68,7 +70,10 @@ describe('ResourcesAdmin', () => {
         provideNoopAnimations(),
         provideRouter([]),
         { provide: ResourcesAdminFacade, useValue: { search$: searchFn } },
-        { provide: ItemAdminFacade, useValue: { withdrawItem$: withdrawFn, restoreItem$: restoreFn } },
+        {
+          provide: ItemAdminFacade,
+          useValue: { withdrawItem$: withdrawFn, restoreItem$: restoreFn, deleteItem$: deleteFn },
+        },
         {
           provide: AuthCallerService,
           useValue: { currentCaller$: of({ role: 'superadmin', sufijo: null }) },
@@ -181,6 +186,60 @@ describe('ResourcesAdmin', () => {
 
     expect(searchFn).toHaveBeenCalled();
     expect(searchFn.mock.calls[0][0].entityType).toBe('Documento');
+  });
+
+  /** Verifica que en la tab Eliminados el superadmin vea la acción de borrado permanente. */
+  it('should render the permanent delete action in the Eliminados tab for superadmin', () => {
+    searchFn.mockReturnValue(
+      of({
+        items: [buildObject('w', true)],
+        totalElements: 1,
+        totalPages: 1,
+        page: 0,
+        size: 20,
+      }),
+    );
+    const fixture = TestBed.createComponent(ResourcesAdmin);
+    fixture.detectChanges();
+    fixture.componentInstance.onTabChange('eliminados');
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('[data-testid="action-permanent-delete"]')).not.toBeNull();
+  });
+
+  /** Verifica que un caller no superadmin no vea el borrado permanente aunque esté en Eliminados. */
+  it('should NOT render the permanent delete action for a non-superadmin', () => {
+    searchFn.mockReturnValue(
+      of({
+        items: [buildObject('w', true)],
+        totalElements: 1,
+        totalPages: 1,
+        page: 0,
+        size: 20,
+      }),
+    );
+    TestBed.overrideProvider(AuthCallerService, {
+      useValue: { currentCaller$: of({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }) },
+    });
+    const fixture = TestBed.createComponent(ResourcesAdmin);
+    fixture.detectChanges();
+    fixture.componentInstance.onTabChange('eliminados');
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('[data-testid="action-permanent-delete"]')).toBeNull();
+  });
+
+  /** Verifica que confirmar el borrado permanente dispatche deleteItem$ con el uuid del item. */
+  it('should dispatch deleteItem$ when the permanent delete is confirmed', () => {
+    const fixture = TestBed.createComponent(ResourcesAdmin);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onPermanentDeleteClick(buildObject('perm-uuid', true));
+    fixture.componentInstance.onPermanentDeleteConfirmed();
+
+    expect(deleteFn).toHaveBeenCalledWith('perm-uuid');
   });
 
   /** Verifica que onEdit navegue a la ruta de edición del item. */

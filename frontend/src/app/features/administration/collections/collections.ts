@@ -474,6 +474,9 @@ export class Collections {
     roleCaps.canChooseAnySubdireccion(this.caller()),
   );
 
+  /** Borrado en duro de programas reservado al superadmin (RN-16); el resto no ve el botón. */
+  readonly canDeletePrograma = computed(() => roleCaps.isSuperadmin(this.caller()));
+
   constructor() {
     this.loadSubdirecciones$().subscribe({
       next: (subs) => {
