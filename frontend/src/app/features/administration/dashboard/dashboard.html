@@ -9,9 +9,7 @@
   </div>
 
   @if (!ready()) {
-    <div class="text-sm text-gray-500" data-testid="dashboard-loading">
-      Cargando indicadores…
-    </div>
+    <app-loading-spinner data-testid="dashboard-loading" minHeight="240px" />
   } @else if (widgets().length === 0 || !hasUsableScope()) {
     <app-empty-state
       testId="dashboard-empty"

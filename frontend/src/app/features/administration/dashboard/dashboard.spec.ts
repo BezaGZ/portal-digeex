@@ -23,7 +23,7 @@ import { CollectionApiService } from '../../../core/api/collection-api.service';
  * los widgets se mockean para no disparar HTTP real.
  *
  * Ciclo 12 TDD — Sprint 8. Ajustado en Ciclos 13 y 28 (Sprint 8) y 2026-06-21
- * (fail-closed: sin sub válida no se renderizan widgets globales).
+ * (fail-closed: sin sub válida no se renderizan widgets globales) y Ciclo 34 (Sprint 10).
  */
 describe('Dashboard', () => {
   let caller$: BehaviorSubject<Caller | null>;
@@ -99,6 +99,14 @@ describe('Dashboard', () => {
 
     expect(fixture.nativeElement.querySelector('[data-testid="dashboard-loading"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="dashboard-widget-grid"]')).toBeNull();
+  });
+
+  /** Verifica que el estado de carga use el spinner compartido, no un texto suelto. */
+  it('should render the shared app-loading-spinner while loading', () => {
+    const fixture = TestBed.createComponent(Dashboard);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-loading-spinner')).not.toBeNull();
   });
 
   /**
