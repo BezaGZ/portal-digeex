@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { catchError, tap, throwError } from 'rxjs';
 import Cookies from 'js-cookie';
 import { XSRF_COOKIE, XSRF_REQUEST_HEADER, XSRF_RESPONSE_HEADER } from './xsrf.constants';
+import { environment } from '../../../environments/environment';
 
 /**
  * Prefijo del REST de DSpace. El proyecto lo consume con URLs relativas
@@ -55,9 +56,15 @@ export const xsrfInterceptor: HttpInterceptorFn = (req, next) => {
 /**
  * Copia el token rotado del header DSPACE-XSRF-TOKEN a la cookie cliente
  * XSRF-TOKEN, unica fuente que lee HttpXsrfTokenExtractor en la siguiente
- * peticion. Se reemplaza el valor anterior para mantener sincronia.
+ * peticion. Se reemplaza el valor anterior para mantener sincronia. Los flags
+ * sameSite/secure la alinean con la cookie de auth; secure se apaga en dev
+ * porque el navegador descarta cookies Secure sobre HTTP local.
  */
 function saveXsrfToken(token: string): void {
   Cookies.remove(XSRF_COOKIE, { path: '/' });
-  Cookies.set(XSRF_COOKIE, token, { path: '/' });
+  Cookies.set(XSRF_COOKIE, token, {
+    path: '/',
+    sameSite: 'lax',
+    secure: environment.production,
+  });
 }

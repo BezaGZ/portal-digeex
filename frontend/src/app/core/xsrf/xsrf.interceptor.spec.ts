@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient, withInterceptors, withNoXsrfProtection, HttpClient } from '@angular/common/http';
 import { xsrfInterceptor } from './xsrf.interceptor';
+import Cookies from 'js-cookie';
+import { vi } from 'vitest';
 
 /**
  * Tests de `xsrfInterceptor`.
@@ -11,7 +13,7 @@ import { xsrfInterceptor } from './xsrf.interceptor';
  * toda peticion use credenciales. Siguen el flujo de dspace-angular y el contrato
  * de DSpace 9.2, con el XSRF nativo de Angular apagado.
  *
- * Ciclo 43 TDD — Sprint 8
+ * Ciclo 43 TDD — Sprint 8. Ajustado en el Ciclo 37 (Sprint 10).
  */
 describe('xsrfInterceptor', () => {
   let httpMock: HttpTestingController;
@@ -124,5 +126,25 @@ describe('xsrfInterceptor', () => {
     await promise.catch(() => {});
 
     expect(document.cookie).toContain('XSRF-TOKEN=fresh-token-after-error');
+  });
+
+  /** Verifica que la cookie XSRF se setee con sameSite y secure (alineada con la cookie de auth). */
+  it('should set the XSRF-TOKEN cookie with sameSite and secure flags', async () => {
+    const setSpy = vi.spyOn(Cookies, 'set');
+
+    const promise = new Promise((resolve, reject) => {
+      httpClient.get('/server/api/test').subscribe({ next: resolve, error: reject });
+    });
+
+    const req = httpMock.expectOne('/server/api/test');
+    req.flush({}, { headers: { 'DSPACE-XSRF-TOKEN': 'tok-flags' } });
+    await promise;
+
+    const call = setSpy.mock.calls.find(([name]) => name === 'XSRF-TOKEN');
+    expect(call).toBeDefined();
+    expect(call![2]).toMatchObject({ path: '/', sameSite: 'lax' });
+    expect(call![2]).toHaveProperty('secure');
+
+    setSpy.mockRestore();
   });
 });
