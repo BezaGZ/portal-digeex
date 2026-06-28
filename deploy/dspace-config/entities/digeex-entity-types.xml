@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE relationships SYSTEM "relationship-types.dtd">
+
+<!--
+  Entity types DIGEEX para enrutamiento dinámico de submission forms y vistas públicas.
+
+  Cada colección del portal queda marcada con dspace.entity.type = Documento | Galeria | Estadistica.
+  Los items heredan ese entity-type de su colección padre automáticamente al ser creados.
+  La búsqueda Discovery filtra por dspace.entity.type sin necesidad de campos custom.
+
+  Las relaciones declaradas son auto-referenciales con cardinalidad mínima 0; existen
+  únicamente porque la DTD de DSpace exige pares en <relationships>. El portal no crea
+  instancias de estas relaciones en runtime.
+
+  Aplicación: dentro del contenedor DSpace, ejecutar
+    /dspace/bin/dspace initialize-entities -f /dspace/config/entities/digeex-entity-types.xml
+
+  Fuente original DIGEEX. La copia operativa que lee DSpace vive en
+  backend/dspace/config/entities/digeex-entity-types.xml.
+-->
+<relationships>
+    <type>
+        <leftType>Documento</leftType>
+        <rightType>Documento</rightType>
+        <leftwardType>relacionado</leftwardType>
+        <rightwardType>relacionado</rightwardType>
+        <leftCardinality><min>0</min></leftCardinality>
+        <rightCardinality><min>0</min></rightCardinality>
+    </type>
+    <type>
+        <leftType>Galeria</leftType>
+        <rightType>Galeria</rightType>
+        <leftwardType>relacionado</leftwardType>
+        <rightwardType>relacionado</rightwardType>
+        <leftCardinality><min>0</min></leftCardinality>
+        <rightCardinality><min>0</min></rightCardinality>
+    </type>
+    <type>
+        <leftType>Estadistica</leftType>
+        <rightType>Estadistica</rightType>
+        <leftwardType>relacionado</leftwardType>
+        <rightwardType>relacionado</rightwardType>
+        <leftCardinality><min>0</min></leftCardinality>
+        <rightCardinality><min>0</min></rightCardinality>
+    </type>
+</relationships>

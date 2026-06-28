@@ -1,0 +1,8 @@
+# Fuera del contexto de build lo pesado o que no se usa.
+.git
+**/node_modules
+backend
+docs
+frontend/dist
+frontend/.angular
+**/*.log

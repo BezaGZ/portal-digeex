@@ -1,0 +1,21 @@
+# DSpace 9.2 oficial con la config del portal encima. No compila nada.
+
+FROM docker.io/dspace/dspace:dspace-9.2
+
+# La config del portal sobre la que ya trae la imagen.
+COPY deploy/dspace-config/ /dspace/config/
+
+# Los fuentes venian en 600; dejar lectura para el proceso.
+RUN chmod -R a+rX /dspace/config
+
+# registry.metadata.load se acumula, asi que la linea del schema propio se suma
+# al dspace.cfg stock en vez de reemplazarlo.
+RUN { \
+      echo ""; \
+      echo "registry.metadata.load = digeex-types.xml"; \
+    } >> /dspace/config/dspace.cfg
+
+# Espera la base, migra, registra entity-types y crea el superadmin antes de arrancar.
+COPY docker/entrypoint.sh /dspace/entrypoint.sh
+RUN chmod +x /dspace/entrypoint.sh
+ENTRYPOINT ["/bin/bash", "/dspace/entrypoint.sh"]

@@ -1,0 +1,124 @@
+# Stack de produccion del portal. Imagenes oficiales de DSpace 9.2 (sin compilar)
+# mas el frontend. Solo nginx expone puertos; el resto queda en la red interna.
+
+name: portal-digeex
+
+networks:
+  # La subnet tiene que coincidir con proxies.trusted.ipranges del servicio
+  # dspace; si no, el REST ignora los X-Forwarded-* de nginx y arma mal las URLs.
+  dspacenet:
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16
+
+services:
+  # Sirve el SPA y proxea /server/ al backend. Unico servicio con puertos afuera.
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/frontend.Dockerfile
+    container_name: portal-frontend
+    depends_on:
+      - dspace
+    networks:
+      - dspacenet
+    ports:
+      - "80:80"
+      # 443 y los certificados se activan cuando el dominio tenga HTTPS.
+      # - "443:443"
+    # volumes:
+    #   - /etc/letsencrypt:/etc/letsencrypt:ro
+    restart: unless-stopped
+
+  # DSpace 9.2 oficial con la config del portal encima (Dockerfile.dspace).
+  # Sin puertos al host; nginx lo alcanza en dspace:8080 por la red interna.
+  dspace:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.dspace
+    container_name: dspace
+    depends_on:
+      - dspacedb
+    networks:
+      - dspacenet
+    environment:
+      dspace__P__dir: /dspace
+      db__P__url: "jdbc:postgresql://dspacedb:5432/dspace"
+      solr__P__server: http://dspacesolr:8983/solr
+      # URLs publicas por env, asi no se edita local.cfg. En http hasta que haya HTTPS.
+      dspace__P__server__P__url: ${DSPACE_SERVER_URL}
+      dspace__P__ui__P__url: ${DSPACE_UI_URL}
+      dspace__P__name: ${DSPACE_NAME:-Portal de Gestion del Conocimiento DIGEEX}
+      # Debe coincidir con la subnet para que el REST confie en los headers de nginx.
+      proxies__P__trusted__P__ipranges: "172.23.0"
+      # SMTP de Resend; la key va en el .env.
+      mail__P__server: smtp.resend.com
+      mail__P__server__P__username: resend
+      mail__P__server__P__password: ${RESEND_API_KEY}
+      mail__P__server__P__port: "587"
+      mail__P__from__P__address: ${MAIL_FROM:-onboarding@resend.dev}
+      mail__P__extraproperties: "mail.smtp.starttls.enable=true, mail.smtp.starttls.required=true"
+      LOGGING_CONFIG: /dspace/config/log4j2-container.xml
+      # Primer superadmin, lo crea el entrypoint (idempotente).
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_FIRSTNAME: ${ADMIN_FIRSTNAME}
+      ADMIN_LASTNAME: ${ADMIN_LASTNAME}
+      ADMIN_LANGUAGE: ${ADMIN_LANGUAGE:-es}
+    volumes:
+      # Los archivos subidos sobreviven a reinicios.
+      - assetstore:/dspace/assetstore
+    restart: unless-stopped
+
+  # Base de datos. Sin puertos afuera; solo la usa dspace.
+  dspacedb:
+    image: docker.io/postgres:15
+    container_name: dspacedb
+    environment:
+      PGDATA: /pgdata
+      POSTGRES_DB: dspace
+      POSTGRES_USER: dspace
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - dspacenet
+    volumes:
+      - pgdata:/pgdata
+    restart: unless-stopped
+
+  # Buscador. Imagen oficial 9.2. Sin puertos afuera.
+  dspacesolr:
+    image: docker.io/dspace/dspace-solr:dspace-9.2
+    container_name: dspacesolr
+    networks:
+      - dspacenet
+    working_dir: /var/solr/data
+    volumes:
+      - solr_data:/var/solr/data
+    # root solo para crear los cores; despues Solr corre como "solr".
+    user: root
+    # Crea los cores si faltan y arranca Solr.
+    entrypoint:
+      - /bin/bash
+      - "-c"
+      - |
+        init-var-solr
+        precreate-core authority /opt/solr/server/solr/configsets/authority
+        cp -r /opt/solr/server/solr/configsets/authority/* authority
+        precreate-core oai /opt/solr/server/solr/configsets/oai
+        cp -r /opt/solr/server/solr/configsets/oai/* oai
+        precreate-core search /opt/solr/server/solr/configsets/search
+        cp -r /opt/solr/server/solr/configsets/search/* search
+        precreate-core statistics /opt/solr/server/solr/configsets/statistics
+        cp -r /opt/solr/server/solr/configsets/statistics/* statistics
+        precreate-core qaevent /opt/solr/server/solr/configsets/qaevent
+        cp -r /opt/solr/server/solr/configsets/qaevent/* qaevent
+        precreate-core suggestion /opt/solr/server/solr/configsets/suggestion
+        cp -r /opt/solr/server/solr/configsets/suggestion/* suggestion
+        chown -R solr:solr /var/solr
+        runuser -u solr -- solr-foreground
+    restart: unless-stopped
+
+volumes:
+  assetstore:
+  pgdata:
+  solr_data:
