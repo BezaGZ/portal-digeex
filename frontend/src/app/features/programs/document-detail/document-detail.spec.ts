@@ -4,14 +4,14 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute } from '@angular/router';
 import { vi } from 'vitest';
 import { of, throwError } from 'rxjs';
-import { DocumentDetailComponent } from './document-detail.component';
+import { DocumentDetail } from './document-detail';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { VocabularyDisplayService } from '../../../core/api/vocabulary-display.service';
 
 /**
- * Tests para DocumentDetailComponent.
+ * Tests para DocumentDetail.
  *
  * Vista detalle de recurso: carga metadata completa de un item
  * DSpace por UUID, muestra thumbnail, bitstreams descargables,
@@ -20,8 +20,8 @@ import { VocabularyDisplayService } from '../../../core/api/vocabulary-display.s
  * Ciclo 4 TDD — Sprint 4. Ajustado en Ciclo 36 (Sprint 6), Ciclo 12, Ciclo 13 y Ciclo 14 (Sprint 9).
  */
 
-describe('DocumentDetailComponent', () => {
-  let component: DocumentDetailComponent;
+describe('DocumentDetail', () => {
+  let component: DocumentDetail;
   let dspaceApi: DSpaceApiService;
   let collectionApi: CollectionApiService;
   let breadcrumbService: BreadcrumbService;
@@ -165,7 +165,7 @@ describe('DocumentDetailComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DocumentDetailComponent],
+      imports: [DocumentDetail],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -176,7 +176,7 @@ describe('DocumentDetailComponent', () => {
       ],
     }).compileComponents();
 
-    const fixture = TestBed.createComponent(DocumentDetailComponent);
+    const fixture = TestBed.createComponent(DocumentDetail);
     component = fixture.componentInstance;
     dspaceApi = TestBed.inject(DSpaceApiService);
     collectionApi = TestBed.inject(CollectionApiService);
@@ -357,7 +357,7 @@ describe('DocumentDetailComponent', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(MOCK_BUNDLES_MULTI as any));
 
-      const fixture = TestBed.createComponent(DocumentDetailComponent);
+      const fixture = TestBed.createComponent(DocumentDetail);
       fixture.componentInstance.ngOnInit();
       fixture.detectChanges();
 
@@ -376,7 +376,7 @@ describe('DocumentDetailComponent', () => {
     /** Verifica que el botón "Descargar todo" se oculte cuando hay un único bitstream. */
     it('should hide the "Descargar todo" button when there is only one bitstream', () => {
       // El default mock (MOCK_BUNDLES) tiene exactamente un bitstream en el ORIGINAL.
-      const fixture = TestBed.createComponent(DocumentDetailComponent);
+      const fixture = TestBed.createComponent(DocumentDetail);
       fixture.componentInstance.ngOnInit();
       fixture.detectChanges();
 
@@ -431,7 +431,7 @@ describe('DocumentDetailComponent', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.spyOn(dspaceApi, 'getBundles').mockReturnValue(of(MOCK_BUNDLES_MULTI as any));
 
-      const fixture = TestBed.createComponent(DocumentDetailComponent);
+      const fixture = TestBed.createComponent(DocumentDetail);
       fixture.componentInstance.ngOnInit();
       fixture.detectChanges();
 

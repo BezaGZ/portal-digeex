@@ -13,9 +13,9 @@ import { catchError, map, switchMap } from 'rxjs/operators';
 import { TableLazyLoadEvent } from 'primeng/table';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { EmptyState } from '../../../shared/components/empty-state/empty-state';
 import { CardModule } from 'primeng/card';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
 import { DangerousDeleteDialog } from '../../../shared/components/dangerous-delete-dialog/dangerous-delete-dialog';
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
@@ -56,7 +56,7 @@ const EMPTY_PAGE: PaginatedSubsView = { items: [], totalElements: 0 };
   selector: 'app-communities',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './communities.html',
-  imports: [ButtonModule, CardModule, LoadingSpinnerComponent, EmptyStateComponent, DangerousDeleteDialog, CommunityTable, CommunityDialog],
+  imports: [ButtonModule, CardModule, LoadingSpinner, EmptyState, DangerousDeleteDialog, CommunityTable, CommunityDialog],
 })
 export class Communities {
   private readonly communityApi = inject(CommunityApiService);

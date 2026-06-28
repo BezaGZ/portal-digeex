@@ -21,8 +21,8 @@ import {
 } from '../../../../../core/api/monthly-window.util';
 import { UsageReport } from '../../../../../core/api/models/usage-report.model';
 import { INSTITUTIONAL_COLORS, THEME_NEUTRALS } from '../../../../../core/theme/institutional-colors';
-import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
-import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { EmptyState } from '../../../../../shared/components/empty-state/empty-state';
+import { LoadingSpinner } from '../../../../../shared/components/loading-spinner/loading-spinner';
 
 /**
  * Renderiza el reporte `TotalVisitsPerMonth` en un gráfico de barras horizontales
@@ -41,7 +41,7 @@ import { LoadingSpinnerComponent } from '../../../../../shared/components/loadin
   selector: 'app-monthly-visits-grid',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CardModule, ChartModule, EmptyStateComponent, LoadingSpinnerComponent],
+  imports: [CardModule, ChartModule, EmptyState, LoadingSpinner],
   templateUrl: './monthly-visits-grid.html',
   host: { class: 'block w-full' },
 })

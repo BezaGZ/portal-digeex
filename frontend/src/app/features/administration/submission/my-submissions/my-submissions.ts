@@ -17,8 +17,8 @@ import { debounceTime, distinctUntilChanged, filter } from 'rxjs/operators';
 import { MyDSpaceApiService } from '../../../../core/api/my-dspace-api.service';
 import { MyDSpaceObject } from '../../../../core/api/models/my-dspace.model';
 import { IsoDateLocalPipe } from '../../../../core/i18n/iso-date-local.pipe';
-import { EmptyStateComponent } from '../../../../shared';
-import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
+import { EmptyState } from '../../../../shared';
+import { LoadingSpinner } from '../../../../shared/components/loading-spinner/loading-spinner';
 import { ItemAdminFacade } from '../../content/services/item-admin-facade';
 import { LoadingService, withLoading } from '../../../../core/loading';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
@@ -62,8 +62,8 @@ const SORT_OPTIONS: { label: string; value: string }[] = [
     InputTextModule,
     SelectModule,
     TooltipModule,
-    LoadingSpinnerComponent,
-    EmptyStateComponent,
+    LoadingSpinner,
+    EmptyState,
     IsoDateLocalPipe,
   ],
 })

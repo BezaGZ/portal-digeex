@@ -12,6 +12,6 @@ import { ProgressSpinner } from 'primeng/progressspinner';
     </div>
   `,
 })
-export class LoadingSpinnerComponent {
+export class LoadingSpinner {
   @Input() minHeight = '200px';
 }

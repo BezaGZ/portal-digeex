@@ -3,8 +3,8 @@ import { DecimalPipe } from '@angular/common';
 import { CardModule } from 'primeng/card';
 import { TableModule } from 'primeng/table';
 
-import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
-import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { EmptyState } from '../../../../../shared/components/empty-state/empty-state';
+import { LoadingSpinner } from '../../../../../shared/components/loading-spinner/loading-spinner';
 import { UsageReport, UsageReportType, REPORT_LABELS } from '../../../../../core/api/models/usage-report.model';
 
 /**
@@ -17,7 +17,7 @@ import { UsageReport, UsageReportType, REPORT_LABELS } from '../../../../../core
   selector: 'app-usage-report-table',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CardModule, TableModule, DecimalPipe, EmptyStateComponent, LoadingSpinnerComponent],
+  imports: [CardModule, TableModule, DecimalPipe, EmptyState, LoadingSpinner],
   templateUrl: './usage-report-table.html',
   host: { class: 'block w-full h-full' },
 })

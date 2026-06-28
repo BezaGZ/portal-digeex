@@ -18,15 +18,15 @@ export const routes: Routes = [
       },
       {
         path: 'programas/:id',
-        loadComponent: () => import('./features/programs/program-view/program-view.component').then(m => m.ProgramViewComponent),
+        loadComponent: () => import('./features/programs/program-view/program-view').then(m => m.ProgramView),
       },
       {
         path: 'programas/:id/documentos/:docId',
-        loadComponent: () => import('./features/programs/document-detail/document-detail.component').then(m => m.DocumentDetailComponent),
+        loadComponent: () => import('./features/programs/document-detail/document-detail').then(m => m.DocumentDetail),
       },
       {
         path: 'documentos/:docId',
-        loadComponent: () => import('./features/programs/document-detail/document-detail.component').then(m => m.DocumentDetailComponent),
+        loadComponent: () => import('./features/programs/document-detail/document-detail').then(m => m.DocumentDetail),
       },
       {
         path: 'busqueda-avanzada',

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
+import { LoadingSpinner } from '../loading-spinner/loading-spinner';
 
 /** Tipo de recurso que se borra; gobierna los textos del diálogo. */
 export type DangerousDeleteKind = 'programa' | 'subdireccion' | 'recurso';
@@ -21,7 +21,7 @@ export type DangerousDeleteKind = 'programa' | 'subdireccion' | 'recurso';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dangerous-delete-dialog.html',
-  imports: [FormsModule, DialogModule, ButtonModule, InputTextModule, LoadingSpinnerComponent],
+  imports: [FormsModule, DialogModule, ButtonModule, InputTextModule, LoadingSpinner],
 })
 export class DangerousDeleteDialog {
   readonly visible = input.required<boolean>();

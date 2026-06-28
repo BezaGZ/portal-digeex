@@ -21,6 +21,6 @@ import { Skeleton } from 'primeng/skeleton';
     </div>
   `,
 })
-export class SkeletonCardComponent {
+export class SkeletonCard {
   @Input() count = 1;
 }

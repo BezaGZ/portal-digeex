@@ -23,8 +23,8 @@ import { JsonPatchEntry } from '../../../../../core/api/json-patch.util';
 import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-display.service';
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
 import { FileDropzoneComponent } from '../../../../../shared';
-import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
-import { BitstreamBundleManagerComponent } from '../../../../../shared/components/bitstream-bundle-manager/bitstream-bundle-manager.component';
+import { LoadingSpinner } from '../../../../../shared/components/loading-spinner/loading-spinner';
+import { BitstreamBundleManager } from '../../../../../shared/components/bitstream-bundle-manager/bitstream-bundle-manager';
 
 /**
  * Formulario de submission para colecciones de tipo Galería. Persiste un
@@ -46,8 +46,8 @@ import { BitstreamBundleManagerComponent } from '../../../../../shared/component
     ToggleSwitchModule,
     ButtonModule,
     FileDropzoneComponent,
-    LoadingSpinnerComponent,
-    BitstreamBundleManagerComponent,
+    LoadingSpinner,
+    BitstreamBundleManager,
   ],
 })
 export class GallerySubmissionForm extends BaseSubmissionForm {

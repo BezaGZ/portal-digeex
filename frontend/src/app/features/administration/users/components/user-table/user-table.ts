@@ -15,7 +15,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { UserView, UserRole, RoleLabels } from '../../models/user-view.model';
 import * as roleCaps from '../../../../../core/auth/role-capabilities';
 import { UserStatusBadge } from '../user-status-badge/user-status-badge';
-import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
+import { EmptyState } from '../../../../../shared/components/empty-state/empty-state';
 
 /**
  * Tabla de usuarios con paginación server-side. El componente es pura
@@ -35,7 +35,7 @@ import { EmptyStateComponent } from '../../../../../shared/components/empty-stat
     ConfirmDialogModule,
     CardModule,
     UserStatusBadge,
-    EmptyStateComponent,
+    EmptyState,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './user-table.html',

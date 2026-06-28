@@ -20,7 +20,7 @@ import { Item } from '../../../core/api/models/item.model';
 import { ChartSectionComponent } from '../components/charts/chart-section/chart-section';
 import { StatsFiltersComponent } from '../components/stats-filters/stats-filters';
 import { ChartSectionSkeletonComponent } from '../components/charts/chart-section-skeleton/chart-section-skeleton';
-import { EmptyStateComponent } from '../../../shared';
+import { EmptyState } from '../../../shared';
 import { IsoDateLocalPipe } from '../../../core/i18n/iso-date-local.pipe';
 
 /** Estados terminales no exitosos del detalle; cada uno tiene su mensaje en la UI. */
@@ -46,7 +46,7 @@ export type StatsDetailError = 'not-found' | 'unsupported' | 'network';
     ChartSectionComponent,
     StatsFiltersComponent,
     ChartSectionSkeletonComponent,
-    EmptyStateComponent,
+    EmptyState,
     IsoDateLocalPipe,
   ],
   templateUrl: './stats-detail.html',
@@ -191,7 +191,7 @@ export class StatsDetail implements OnInit {
    * global muestre el título en lugar del literal de `route.data`. Si la
    * colección padre está presente, la entrada "Estadística" linkea al
    * listado de esa colección; si no, al raíz. Mismo patrón que
-   * `DocumentDetailComponent`.
+   * `DocumentDetail`.
    */
   private updateBreadcrumb(item: Item): void {
     const title = item.metadata?.['dc.title']?.[0]?.value ?? 'Detalle';

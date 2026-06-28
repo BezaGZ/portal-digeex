@@ -50,4 +50,4 @@ import { Skeleton } from 'primeng/skeleton';
     </div>
   `,
 })
-export class SkeletonDetailComponent {}
+export class SkeletonDetail {}

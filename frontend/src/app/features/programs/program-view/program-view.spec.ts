@@ -5,14 +5,14 @@ import { ActivatedRoute } from '@angular/router';
 import { vi } from 'vitest';
 import { of } from 'rxjs';
 
-import { ProgramViewComponent } from './program-view.component';
+import { ProgramView } from './program-view';
 import { DSpaceApiService } from '../../../core/api/dspace-api.service';
 import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { BreadcrumbService } from '../../../core/breadcrumb/breadcrumb.service';
 import { BitstreamDownloadService } from '../../../core/api/bitstream-download.service';
 
 /**
- * Tests de ProgramViewComponent.
+ * Tests de ProgramView.
  *
  * Listado de items de un programa. El listado es lazy: no pre-carga
  * bitstreams. El thumbnail se obtiene directo del endpoint nativo
@@ -22,7 +22,7 @@ import { BitstreamDownloadService } from '../../../core/api/bitstream-download.s
  *
  * Ciclo 20 TDD — Sprint 6. Ajustado en Ciclo 15 (Sprint 9).
  */
-describe('ProgramViewComponent', () => {
+describe('ProgramView', () => {
   let dspaceApi: DSpaceApiService;
   let collectionApi: CollectionApiService;
 
@@ -66,7 +66,7 @@ describe('ProgramViewComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ProgramViewComponent],
+      imports: [ProgramView],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -89,7 +89,7 @@ describe('ProgramViewComponent', () => {
 
   /** Verifica que el componente se instancie correctamente. */
   it('should create', () => {
-    const fixture = TestBed.createComponent(ProgramViewComponent);
+    const fixture = TestBed.createComponent(ProgramView);
     expect(fixture.componentInstance).toBeTruthy();
   });
 
@@ -98,7 +98,7 @@ describe('ProgramViewComponent', () => {
    * `dc.subject` quedó reservado para tags libres del item desde el refactor del Sprint 6 C19.
    */
   it('should read the program acronym from dc.title.alternative not from dc.subject', () => {
-    const fixture = TestBed.createComponent(ProgramViewComponent);
+    const fixture = TestBed.createComponent(ProgramView);
     fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
 
@@ -107,7 +107,7 @@ describe('ProgramViewComponent', () => {
 
   /** Verifica que el listado lazy no dispare llamadas a getBundles ni getBitstreamsFromBundle. */
   it('should NOT call getBundles or getBitstreamsFromBundle when loading the program list (lazy)', () => {
-    const fixture = TestBed.createComponent(ProgramViewComponent);
+    const fixture = TestBed.createComponent(ProgramView);
     fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
 
@@ -118,7 +118,7 @@ describe('ProgramViewComponent', () => {
 
   /** Verifica que coverImage se pueble con la URL del endpoint nativo /thumbnail para cada item. */
   it('should populate coverImage with the native /thumbnail endpoint URL for every item', () => {
-    const fixture = TestBed.createComponent(ProgramViewComponent);
+    const fixture = TestBed.createComponent(ProgramView);
     fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
 
@@ -154,7 +154,7 @@ describe('ProgramViewComponent', () => {
       } as any),
     );
 
-    const fixture = TestBed.createComponent(ProgramViewComponent);
+    const fixture = TestBed.createComponent(ProgramView);
     fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
 
@@ -165,7 +165,7 @@ describe('ProgramViewComponent', () => {
 
   /** Verifica que cada ItemView del listado quede con bitstreams vacíos hasta el click de descarga. */
   it('should leave bitstreams empty in the listed ItemView (hydrated only on download click)', () => {
-    const fixture = TestBed.createComponent(ProgramViewComponent);
+    const fixture = TestBed.createComponent(ProgramView);
     fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
 
@@ -204,7 +204,7 @@ describe('ProgramViewComponent', () => {
       (_uuid: string, page = 0) => of((page === 0 ? page0 : page1) as any),
     );
 
-    const fixture = TestBed.createComponent(ProgramViewComponent);
+    const fixture = TestBed.createComponent(ProgramView);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     fixture.componentInstance.onDownloadItem({ id: 'item-1', name: 'Documento 1', bitstreams: [] } as any);
     await new Promise((resolve) => setTimeout(resolve));

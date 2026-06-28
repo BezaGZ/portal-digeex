@@ -55,7 +55,7 @@ import { ButtonModule } from 'primeng/button';
     }
   `,
 })
-export class EmptyStateComponent {
+export class EmptyState {
   @Input() icon = 'pi pi-inbox';
   @Input() title = 'No hay contenido';
   @Input() message = 'No se encontraron elementos para mostrar';

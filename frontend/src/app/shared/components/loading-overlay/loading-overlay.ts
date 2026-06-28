@@ -46,6 +46,6 @@ import { LoadingService } from '../../../core/loading/loading.service';
     }
   `,
 })
-export class LoadingOverlayComponent {
+export class LoadingOverlay {
   protected readonly loading = inject(LoadingService);
 }

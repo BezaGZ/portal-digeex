@@ -17,7 +17,7 @@ import { Collection } from '../../../../core/api/models/collection.model';
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { SubmissionFormHost } from '../submission-form-host';
-import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
+import { LoadingSpinner } from '../../../../shared/components/loading-spinner/loading-spinner';
 
 /**
  * Página destino de la ruta `/administrador/programas/:uuid/cargar`. Resuelve
@@ -32,7 +32,7 @@ import { LoadingSpinnerComponent } from '../../../../shared/components/loading-s
 @Component({
   selector: 'app-submission-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SubmissionFormHost, LoadingSpinnerComponent],
+  imports: [SubmissionFormHost, LoadingSpinner],
   templateUrl: './submission-page.html',
 })
 export class SubmissionPage {

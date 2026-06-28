@@ -5,7 +5,7 @@ import { CommonModule } from '@angular/common';
 import { CardModule } from 'primeng/card';
 
 import { DiscoveryService } from '../../../../../core/api/discovery.service';
-import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { LoadingSpinner } from '../../../../../shared/components/loading-spinner/loading-spinner';
 
 /**
  * Tarjeta con el conteo total de items de un scope. Consume
@@ -16,7 +16,7 @@ import { LoadingSpinnerComponent } from '../../../../../shared/components/loadin
   selector: 'app-total-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CardModule, LoadingSpinnerComponent],
+  imports: [CommonModule, CardModule, LoadingSpinner],
   host: { class: 'block h-full' },
   templateUrl: './total-card.html',
 })

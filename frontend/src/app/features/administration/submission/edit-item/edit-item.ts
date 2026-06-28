@@ -15,7 +15,7 @@ import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.servic
 import { ItemApiService } from '../../../../core/api/item-api.service';
 import { Item } from '../../../../core/api/models/item.model';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
-import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
+import { LoadingSpinner } from '../../../../shared/components/loading-spinner/loading-spinner';
 import { DocumentSubmissionForm } from '../forms/document-submission-form/document-submission-form';
 import { GallerySubmissionForm } from '../forms/gallery-submission-form/gallery-submission-form';
 import { StatsSubmissionForm } from '../forms/stats-submission-form/stats-submission-form';
@@ -31,7 +31,7 @@ import { StatsSubmissionForm } from '../forms/stats-submission-form/stats-submis
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './edit-item.html',
   imports: [
-    LoadingSpinnerComponent,
+    LoadingSpinner,
     DocumentSubmissionForm,
     GallerySubmissionForm,
     StatsSubmissionForm,

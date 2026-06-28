@@ -6,13 +6,13 @@ import { extractLogoUrl } from '../../core/api/collection-logo.util';
 import { CollectionView, ItemView } from '../../core/api/models';
 import { getCollectionRoute } from '../../core/config/collection-format.config';
 import { NAV_LOCATION, ENTITY_TYPE } from '../../core/config/digeex-values.config';
-import { SkeletonCardComponent, EmptyStateComponent } from '../../shared';
+import { SkeletonCard, EmptyState } from '../../shared';
 
 @Component({
   selector: 'app-home',
   changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
-  imports: [CommonModule, SkeletonCardComponent, EmptyStateComponent],
+  imports: [CommonModule, SkeletonCard, EmptyState],
   templateUrl: './home.html',
 })
 export class Home implements OnInit {

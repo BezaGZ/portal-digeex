@@ -15,9 +15,9 @@ import { Bitstream } from '../../../core/api/models/bitstream.model';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ButtonModule, PaginatorModule],
-  templateUrl: './bitstream-bundle-manager.component.html',
+  templateUrl: './bitstream-bundle-manager.html',
 })
-export class BitstreamBundleManagerComponent {
+export class BitstreamBundleManager {
   @Input({ required: true }) bitstreams: Bitstream[] = [];
   @Input({ required: true }) pendingDeletes: ReadonlySet<string> = new Set();
   @Input() label = 'Archivos actuales';

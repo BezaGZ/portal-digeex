@@ -17,7 +17,7 @@ import { CollectionApiService } from '../../../../core/api/collection-api.servic
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { findCallerSub } from '../../shared/services/scope-resolver';
 import * as roleCaps from '../../../../core/auth/role-capabilities';
-import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
+import { LoadingSpinner } from '../../../../shared/components/loading-spinner/loading-spinner';
 import { TagModule } from 'primeng/tag';
 import { ENTITY_TYPE } from '../../../../core/config/digeex-values.config';
 
@@ -37,7 +37,7 @@ export interface SubdireccionWithPrograms {
   selector: 'app-upload-content',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './upload-content.html',
-  imports: [LoadingSpinnerComponent, TagModule],
+  imports: [LoadingSpinner, TagModule],
 })
 export class UploadContent {
   private readonly communityApi = inject(CommunityApiService);

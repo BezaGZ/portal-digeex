@@ -15,7 +15,7 @@ import { DSpaceApiService } from '../../core/api/dspace-api.service';
 import { CommunityApiService } from '../../core/api/community-api.service';
 import { CollectionApiService } from '../../core/api/collection-api.service';
 import { BitstreamDownloadService } from '../../core/api/bitstream-download.service';
-import { DocumentCardComponent, SkeletonCardComponent, EmptyStateComponent } from '../../shared';
+import { DocumentCardComponent, SkeletonCard, EmptyState } from '../../shared';
 import { SearchFiltersComponent } from './components/search-filters/search-filters';
 import { SearchFilters, ScopeOption } from './models/search-filters.model';
 import { ENTITY_TYPE } from '../../core/config/digeex-values.config';
@@ -30,8 +30,8 @@ import { paginateAll$ } from '../../core/api/dspace-rest.util';
     CommonModule,
     PaginatorModule,
     DocumentCardComponent,
-    SkeletonCardComponent,
-    EmptyStateComponent,
+    SkeletonCard,
+    EmptyState,
     SearchFiltersComponent,
   ],
   templateUrl: './advanced-search.html',

@@ -19,8 +19,8 @@ import { TotalCard } from './components/total-card/total-card';
 import { FacetBarCard } from './components/facet-bar-card/facet-bar-card';
 import { RangeBarCard } from './components/range-bar-card/range-bar-card';
 import { TopListCard, TopListEntry } from './components/top-list-card/top-list-card';
-import { EmptyStateComponent } from '../../../shared';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { EmptyState } from '../../../shared';
+import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
 import {
   DashboardWidgetSpec,
   DASHBOARD_WIDGETS_BY_ROLE,
@@ -51,8 +51,8 @@ import * as roleCaps from '../../../core/auth/role-capabilities';
     FacetBarCard,
     RangeBarCard,
     TopListCard,
-    EmptyStateComponent,
-    LoadingSpinnerComponent,
+    EmptyState,
+    LoadingSpinner,
   ],
   templateUrl: './dashboard.html',
 })

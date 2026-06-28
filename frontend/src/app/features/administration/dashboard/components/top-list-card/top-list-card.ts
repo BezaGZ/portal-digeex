@@ -17,8 +17,8 @@ import { Observable, map } from 'rxjs';
 
 import { CollectionApiService } from '../../../../../core/api/collection-api.service';
 import { Collection } from '../../../../../core/api/models/collection.model';
-import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
-import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { EmptyState } from '../../../../../shared/components/empty-state/empty-state';
+import { LoadingSpinner } from '../../../../../shared/components/loading-spinner/loading-spinner';
 
 /**
  * Fila del widget: `uuid` y `label` salen de Collection; `count` es
@@ -39,7 +39,7 @@ export interface TopListEntry {
   selector: 'app-top-list-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CardModule, ButtonModule, LoadingSpinnerComponent, EmptyStateComponent],
+  imports: [CommonModule, CardModule, ButtonModule, LoadingSpinner, EmptyState],
   host: { class: 'block h-full' },
   templateUrl: './top-list-card.html',
 })

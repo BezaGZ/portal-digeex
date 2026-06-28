@@ -26,9 +26,9 @@ import {
   REPORTS_BY_DSO_TYPE,
   UsageReportDsoType,
 } from '../../../core/api/models/usage-report.model';
-import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { ExportStatisticsButton } from '../../../shared/components/export-statistics-button/export-statistics-button.component';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { EmptyState } from '../../../shared/components/empty-state/empty-state';
+import { ExportStatisticsButton } from '../../../shared/components/export-statistics-button/export-statistics-button';
+import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
 import { UsageReportTable } from './components/usage-report-table/usage-report-table';
 import { MonthlyVisitsGrid } from './components/monthly-visits-grid/monthly-visits-grid';
 
@@ -56,8 +56,8 @@ const SITE_EXPORT_TITLE = 'Repositorio institucional DIGEEX';
     FormsModule,
     RouterModule,
     SelectModule,
-    LoadingSpinnerComponent,
-    EmptyStateComponent,
+    LoadingSpinner,
+    EmptyState,
     ExportStatisticsButton,
     UsageReportTable,
     MonthlyVisitsGrid,

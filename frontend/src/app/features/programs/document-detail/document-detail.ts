@@ -22,7 +22,7 @@ import { paginateAll$ } from '../../../core/api/dspace-rest.util';
 import { BitstreamView, MetadataFieldView, Item, MetadataMap, Bitstream } from '../../../core/api/models';
 import { Observable, forkJoin, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
-import { SkeletonDetailComponent } from '../../../shared';
+import { SkeletonDetail } from '../../../shared';
 import { FileSizePipe } from '../../../shared/pipes';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -30,10 +30,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   selector: 'app-document-detail',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ButtonModule, SkeletonDetailComponent, FileSizePipe],
-  templateUrl: './document-detail.component.html',
+  imports: [CommonModule, ButtonModule, SkeletonDetail, FileSizePipe],
+  templateUrl: './document-detail.html',
 })
-export class DocumentDetailComponent implements OnInit {
+export class DocumentDetail implements OnInit {
   private destroyRef = inject(DestroyRef);
   documentId: string = '';
   programId: string = '';

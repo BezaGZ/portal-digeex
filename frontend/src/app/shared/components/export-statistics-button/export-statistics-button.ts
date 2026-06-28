@@ -16,7 +16,7 @@ import { buildStatisticsPdf } from './statistics-pdf-builder';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ButtonModule, TooltipModule],
-  templateUrl: './export-statistics-button.component.html',
+  templateUrl: './export-statistics-button.html',
 })
 export class ExportStatisticsButton {
   readonly dsoTitle = input.required<string>();

@@ -18,9 +18,9 @@ import { ItemApiService } from '../../../../core/api/item-api.service';
 import { Item } from '../../../../core/api/models/item.model';
 import { ProvenanceService } from '../../content/provenance/provenance.service';
 import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.service';
-import { ExportHistoryButton } from '../../../../shared/components/export-history-button/export-history-button.component';
-import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
-import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { ExportHistoryButton } from '../../../../shared/components/export-history-button/export-history-button';
+import { LoadingSpinner } from '../../../../shared/components/loading-spinner/loading-spinner';
+import { EmptyState } from '../../../../shared/components/empty-state/empty-state';
 import { ProvenanceTimeline } from '../../content/provenance/timeline/provenance-timeline';
 
 /**
@@ -33,7 +33,7 @@ import { ProvenanceTimeline } from '../../content/provenance/timeline/provenance
   selector: 'app-items-detail',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ButtonModule, CardModule, LoadingSpinnerComponent, EmptyStateComponent, ProvenanceTimeline, ExportHistoryButton],
+  imports: [CommonModule, ButtonModule, CardModule, LoadingSpinner, EmptyState, ProvenanceTimeline, ExportHistoryButton],
   templateUrl: './items-detail.html',
 })
 export class ItemsDetail {

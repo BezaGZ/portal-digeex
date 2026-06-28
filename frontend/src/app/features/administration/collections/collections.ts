@@ -17,8 +17,8 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { Select } from 'primeng/select';
 import { MessageModule } from 'primeng/message';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
+import { EmptyState } from '../../../shared/components/empty-state/empty-state';
 import { DangerousDeleteDialog } from '../../../shared/components/dangerous-delete-dialog/dangerous-delete-dialog';
 import { CollectionTable } from './components/collection-table/collection-table';
 import { CollectionDialog } from './components/collection-dialog/collection-dialog';
@@ -64,8 +64,8 @@ interface ProgramaFormPayload {
     CardModule,
     Select,
     MessageModule,
-    LoadingSpinnerComponent,
-    EmptyStateComponent,
+    LoadingSpinner,
+    EmptyState,
     DangerousDeleteDialog,
     CollectionTable,
     CollectionDialog,

@@ -10,7 +10,7 @@ import { Album, GalleryFilters, FilterOption } from './models';
 import { GalleryFiltersComponent } from './components/gallery-filters/gallery-filters';
 import { AlbumCardComponent } from './components/album-card/album-card';
 import { AlbumSkeletonComponent } from './components/album-skeleton/album-skeleton';
-import { EmptyStateComponent } from '../../shared';
+import { EmptyState } from '../../shared';
 import { PaginatorEvent } from '../../core/api/models';
 
 @Component({
@@ -24,7 +24,7 @@ import { PaginatorEvent } from '../../core/api/models';
     GalleryFiltersComponent,
     AlbumCardComponent,
     AlbumSkeletonComponent,
-    EmptyStateComponent,
+    EmptyState,
   ],
   templateUrl: './gallery.html',
   styles: [

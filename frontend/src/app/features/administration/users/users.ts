@@ -22,7 +22,7 @@ import { UserTable } from './components/user-table/user-table';
 import { UserDialog } from './components/user-dialog/user-dialog';
 import { ChangeRoleDialog } from './components/change-role-dialog/change-role-dialog';
 import { EditUserDialog } from './components/edit-user-dialog/edit-user-dialog';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
 import {
   UserManagementService,
   CreateUserInput,
@@ -71,7 +71,7 @@ const UNEXPECTED_ERROR_FALLBACK = 'Ocurrió un error al procesar la solicitud. I
     UserDialog,
     ChangeRoleDialog,
     EditUserDialog,
-    LoadingSpinnerComponent,
+    LoadingSpinner,
   ],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,

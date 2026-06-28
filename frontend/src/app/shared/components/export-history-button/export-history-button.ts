@@ -15,7 +15,7 @@ import { HistoryDsoType, buildHistoryPdf } from './history-pdf-builder';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ButtonModule, TooltipModule],
-  templateUrl: './export-history-button.component.html',
+  templateUrl: './export-history-button.html',
 })
 export class ExportHistoryButton {
   @Input({ required: true }) dsoTitle = '';

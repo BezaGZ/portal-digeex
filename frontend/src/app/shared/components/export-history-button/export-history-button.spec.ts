@@ -3,7 +3,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { describe, expect, it, vi } from 'vitest';
 
 import { TimelineEntry } from '../../../core/provenance/timeline-entry.model';
-import { ExportHistoryButton } from './export-history-button.component';
+import { ExportHistoryButton } from './export-history-button';
 
 /**
  * Tests de `ExportHistoryButton`.

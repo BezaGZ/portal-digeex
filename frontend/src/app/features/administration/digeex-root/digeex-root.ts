@@ -7,7 +7,7 @@ import { MessageModule } from 'primeng/message';
 import { CommunityApiService } from '../../../core/api/community-api.service';
 import { CommunityFacade } from '../content/services/community-facade';
 import { CommunityCreateBody } from '../../../core/api/models/community.model';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
 
 /** Datos fijos de la comunidad raíz. Sin descripción ni uri (DSpace asigna el handle). */
 const ROOT_NAME = 'DIGEEX';
@@ -36,7 +36,7 @@ const ROOT_BODY: CommunityCreateBody = {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './digeex-root.html',
-  imports: [CardModule, ButtonModule, MessageModule, LoadingSpinnerComponent],
+  imports: [CardModule, ButtonModule, MessageModule, LoadingSpinner],
 })
 export class DigeexRoot {
   private readonly communityApi = inject(CommunityApiService);

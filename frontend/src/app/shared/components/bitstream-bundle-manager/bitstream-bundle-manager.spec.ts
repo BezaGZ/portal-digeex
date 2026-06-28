@@ -2,11 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser';
 
-import { BitstreamBundleManagerComponent } from './bitstream-bundle-manager.component';
+import { BitstreamBundleManager } from './bitstream-bundle-manager';
 import { Bitstream } from '../../../core/api/models/bitstream.model';
 
 /**
- * Tests de `BitstreamBundleManagerComponent`.
+ * Tests de `BitstreamBundleManager`.
  *
  * Componente presentacional de la sección "archivos actuales" compartida por
  * los tres submission forms (Documento, Galería, Estadística). Recibe la lista
@@ -31,10 +31,10 @@ function bitstream(uuid: string, name: string, sizeBytes = 2048): Bitstream {
 
 const TWO: Bitstream[] = [bitstream('a', 'uno.pdf'), bitstream('b', 'dos.pdf')];
 
-describe('BitstreamBundleManagerComponent', () => {
+describe('BitstreamBundleManager', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [BitstreamBundleManagerComponent],
+      imports: [BitstreamBundleManager],
       providers: [provideNoopAnimations()],
     });
   });
@@ -48,7 +48,7 @@ describe('BitstreamBundleManagerComponent', () => {
     size: number;
     page: number;
   }>) {
-    const fixture = TestBed.createComponent(BitstreamBundleManagerComponent);
+    const fixture = TestBed.createComponent(BitstreamBundleManager);
     const c = fixture.componentInstance;
     c.bitstreams = inputs.bitstreams ?? [];
     c.pendingDeletes = inputs.pendingDeletes ?? new Set();

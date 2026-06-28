@@ -13,8 +13,8 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
 import { FileDropzoneComponent } from '../../../../../shared';
-import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
-import { BitstreamBundleManagerComponent } from '../../../../../shared/components/bitstream-bundle-manager/bitstream-bundle-manager.component';
+import { LoadingSpinner } from '../../../../../shared/components/loading-spinner/loading-spinner';
+import { BitstreamBundleManager } from '../../../../../shared/components/bitstream-bundle-manager/bitstream-bundle-manager';
 import { BaseSubmissionForm } from '../../base-submission-form';
 import { registerSubmissionForm } from '../../submission-form-registry';
 import { mv } from '../../metadata-value.util';
@@ -50,8 +50,8 @@ import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry
     ButtonModule,
     MessageModule,
     FileDropzoneComponent,
-    LoadingSpinnerComponent,
-    BitstreamBundleManagerComponent,
+    LoadingSpinner,
+    BitstreamBundleManager,
   ],
 })
 export class DocumentSubmissionForm extends BaseSubmissionForm {

@@ -10,7 +10,7 @@ import { StatisticsTrackingService } from '../../../core/api/statistics-tracking
 import { StatsItem } from '../models/stats-item.model';
 import { StatsCardComponent } from '../components/stats-card/stats-card';
 import { StatsCardSkeletonComponent } from '../components/stats-card-skeleton/stats-card-skeleton';
-import { EmptyStateComponent } from '../../../shared';
+import { EmptyState } from '../../../shared';
 import { PaginatorEvent } from '../../../core/api/models';
 
 /**
@@ -30,7 +30,7 @@ import { PaginatorEvent } from '../../../core/api/models';
     PaginatorModule,
     StatsCardComponent,
     StatsCardSkeletonComponent,
-    EmptyStateComponent,
+    EmptyState,
   ],
   templateUrl: './stats-list.html',
 })

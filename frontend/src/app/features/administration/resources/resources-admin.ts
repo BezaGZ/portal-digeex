@@ -16,8 +16,8 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { MyDSpaceObject } from '../../../core/api/models/my-dspace.model';
 import { IsoDateLocalPipe } from '../../../core/i18n/iso-date-local.pipe';
-import { EmptyStateComponent } from '../../../shared';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { EmptyState } from '../../../shared';
+import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
 import { ItemAdminFacade } from '../content/services/item-admin-facade';
 import { LoadingService, withLoading } from '../../../core/loading';
 import { ResourcesAdminFacade } from '../content/services/resources-admin-facade';
@@ -78,8 +78,8 @@ type ResourcesTab = 'activos' | 'eliminados';
     RouterLink,
     SelectModule,
     TooltipModule,
-    LoadingSpinnerComponent,
-    EmptyStateComponent,
+    LoadingSpinner,
+    EmptyState,
     IsoDateLocalPipe,
     DangerousDeleteDialog,
   ],

@@ -2,13 +2,13 @@ import { Component, effect, inject, untracked } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Toast } from 'primeng/toast';
 import { SessionWarningModal } from './shared/components/session-warning-modal/session-warning-modal';
-import { LoadingOverlayComponent } from './shared/components/loading-overlay/loading-overlay.component';
+import { LoadingOverlay } from './shared/components/loading-overlay/loading-overlay';
 import { IdleTimeoutService } from './core/auth/idle-timeout.service';
 import { AuthService } from './core/auth/auth.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Toast, SessionWarningModal, LoadingOverlayComponent],
+  imports: [RouterOutlet, Toast, SessionWarningModal, LoadingOverlay],
   templateUrl: './app.html'
 })
 export class App {

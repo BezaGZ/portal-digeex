@@ -20,7 +20,7 @@ import { StatisticsTrackingService } from '../../../core/api/statistics-tracking
 import { BitstreamDownloadService } from '../../../core/api/bitstream-download.service';
 import { inferBitstreamFormat } from '../../../core/api/bitstream-format.util';
 import { CollectionView, ItemView, BitstreamView, PaginatorEvent, Bitstream } from '../../../core/api/models';
-import { SkeletonCardComponent, EmptyStateComponent, DocumentCardComponent } from '../../../shared';
+import { SkeletonCard, EmptyState, DocumentCardComponent } from '../../../shared';
 import { switchMap } from 'rxjs/operators';
 import { lastValueFrom } from 'rxjs';
 import { paginateAll$ } from '../../../core/api/dspace-rest.util';
@@ -38,13 +38,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     DataViewModule,
     PaginatorModule,
     ButtonModule,
-    SkeletonCardComponent,
-    EmptyStateComponent,
+    SkeletonCard,
+    EmptyState,
     DocumentCardComponent,
   ],
-  templateUrl: './program-view.component.html',
+  templateUrl: './program-view.html',
 })
-export class ProgramViewComponent implements OnInit {
+export class ProgramView implements OnInit {
   private destroyRef = inject(DestroyRef);
   private collectionUuid = '';
   readonly currentNode = signal<CollectionView | null>(null);

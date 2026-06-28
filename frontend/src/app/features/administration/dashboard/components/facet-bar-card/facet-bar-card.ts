@@ -14,8 +14,8 @@ import { CardModule } from 'primeng/card';
 
 import { DiscoveryService } from '../../../../../core/api/discovery.service';
 import { Facet, SearchResult } from '../../../../../core/api/models/discovery.model';
-import { EmptyStateComponent } from '../../../../../shared/components/empty-state/empty-state.component';
-import { LoadingSpinnerComponent } from '../../../../../shared/components/loading-spinner/loading-spinner.component';
+import { EmptyState } from '../../../../../shared/components/empty-state/empty-state';
+import { LoadingSpinner } from '../../../../../shared/components/loading-spinner/loading-spinner';
 import { BarChartComponent } from '../../../../stats/components/charts/bar-chart/bar-chart';
 import { ChartConfig } from '../../../../stats/models/stats-dashboard.model';
 
@@ -28,7 +28,7 @@ import { ChartConfig } from '../../../../stats/models/stats-dashboard.model';
   selector: 'app-facet-bar-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CardModule, LoadingSpinnerComponent, BarChartComponent, EmptyStateComponent],
+  imports: [CommonModule, CardModule, LoadingSpinner, BarChartComponent, EmptyState],
   host: { class: 'block h-full' },
   templateUrl: './facet-bar-card.html',
 })
