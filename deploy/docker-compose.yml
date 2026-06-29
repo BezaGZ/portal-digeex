@@ -60,6 +60,8 @@ services:
       mail__P__server__P__password: ${RESEND_API_KEY}
       mail__P__server__P__port: "587"
       mail__P__from__P__address: ${MAIL_FROM:-onboarding@resend.dev}
+      # A donde DSpace manda los avisos de admin y el destino del test-email.
+      mail__P__admin: ${MAIL_ADMIN:-admin@mineduc.gob.gt}
       mail__P__extraproperties: "mail.smtp.starttls.enable=true, mail.smtp.starttls.required=true"
       LOGGING_CONFIG: /dspace/config/log4j2-container.xml
       # Primer superadmin, lo crea el entrypoint (idempotente).
