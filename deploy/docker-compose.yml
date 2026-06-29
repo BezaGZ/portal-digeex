@@ -24,10 +24,10 @@ services:
       - dspacenet
     ports:
       - "80:80"
-      # 443 y los certificados se activan cuando el dominio tenga HTTPS.
-      # - "443:443"
-    # volumes:
-    #   - /etc/letsencrypt:/etc/letsencrypt:ro
+      - "443:443"
+    volumes:
+      # Certificados de Let's Encrypt del host (solo lectura).
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     restart: unless-stopped
 
   # DSpace 9.2 oficial con la config del portal encima (Dockerfile.dspace).
@@ -44,6 +44,9 @@ services:
     environment:
       dspace__P__dir: /dspace
       db__P__url: "jdbc:postgresql://dspacedb:5432/dspace"
+      # Mismo usuario y clave que la base; los dos lados leen POSTGRES_PASSWORD del .env.
+      db__P__username: dspace
+      db__P__password: ${POSTGRES_PASSWORD}
       solr__P__server: http://dspacesolr:8983/solr
       # URLs publicas por env, asi no se edita local.cfg. En http hasta que haya HTTPS.
       dspace__P__server__P__url: ${DSPACE_SERVER_URL}
