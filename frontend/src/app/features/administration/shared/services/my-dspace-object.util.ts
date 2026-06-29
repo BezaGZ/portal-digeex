@@ -12,10 +12,16 @@ export function titleOf(o: MyDSpaceObject): string {
   return o.indexableObject.metadata?.['dc.title']?.[0]?.value ?? o.indexableObject.name;
 }
 
-/** URL del thumbnail embebido; `null` cuando el item no tiene bundle THUMBNAIL. */
+/**
+ * URL del thumbnail embebido, o `null`. Solo para items públicos (archivados y
+ * no retirados), cuyo bitstream tiene READ anónimo; en borradores y withdrawn el
+ * bitstream está restringido y un `<img>` daría 401, así que cae al placeholder.
+ */
 export function coverUrlOf(o: MyDSpaceObject): string | null {
-  const uuid = o.indexableObject.thumbnail?.uuid;
-  return uuid ? `/server/api/core/bitstreams/${uuid}/content` : null;
+  const item = o.indexableObject;
+  const esPublico = item.inArchive && !item.withdrawn;
+  const uuid = item.thumbnail?.uuid;
+  return esPublico && uuid ? `/server/api/core/bitstreams/${uuid}/content` : null;
 }
 
 /** Valor crudo de `dc.date.issued`; string vacío si no viene poblado. El

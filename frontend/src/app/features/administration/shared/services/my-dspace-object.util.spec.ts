@@ -20,7 +20,7 @@ import { MyDSpaceObject } from '../../../../core/api/models/my-dspace.model';
  * `administrativeView`). Los consume `Mis envíos` y la pantalla
  * `/administrador/recursos`.
  *
- * Ciclo 33 TDD — Sprint 6.
+ * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclo 40 (Sprint 10).
  */
 describe('my-dspace-object.util', () => {
   beforeAll(() => registerLocaleData(localeEsGT));
@@ -75,6 +75,40 @@ describe('my-dspace-object.util', () => {
   /** Verifica que coverUrlOf devuelva null sin thumbnail embebido. */
   it('coverUrlOf returns null when the item has no thumbnail', () => {
     expect(coverUrlOf(build())).toBeNull();
+  });
+
+  const thumb = {
+    uuid: 'bs-1',
+    name: 'cover.jpg',
+    type: 'bitstream',
+    handle: null,
+    metadata: {},
+    sizeBytes: 0,
+    checkSum: { checkSumAlgorithm: 'MD5', value: '' },
+    sequenceId: 1,
+  };
+
+  /**
+   * Verifica que coverUrlOf devuelva null para un withdrawn con thumbnail.
+   * Withdrawn quita el READ anónimo al bitstream; sin URL el template cae al placeholder.
+   */
+  it('coverUrlOf returns null for a withdrawn item even with a thumbnail', () => {
+    expect(coverUrlOf(build({ withdrawn: true, thumbnail: thumb }))).toBeNull();
+  });
+
+  /** Verifica que coverUrlOf devuelva null para un borrador (no archivado) con thumbnail. */
+  it('coverUrlOf returns null for a non-archived draft even with a thumbnail', () => {
+    expect(coverUrlOf(build({ inArchive: false, thumbnail: thumb }))).toBeNull();
+  });
+
+  /**
+   * Verifica que un archivado privado (discoverable=false) igual devuelva la URL.
+   * La privacidad es nivel discovery en DSpace, no quita el READ anónimo del bitstream.
+   */
+  it('coverUrlOf returns the content URL for a private archived item with discoverable false', () => {
+    expect(coverUrlOf(build({ discoverable: false, thumbnail: thumb }))).toBe(
+      '/server/api/core/bitstreams/bs-1/content',
+    );
   });
 
   /** Verifica que issuedOf devuelva el valor crudo; el formato lo da el pipe. */
