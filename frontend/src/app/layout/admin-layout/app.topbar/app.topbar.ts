@@ -7,6 +7,7 @@ import { LayoutService } from '../services/layout.service';
 import { BreadcrumbComponent } from '../app.breadcrumb/app.breadcrumb';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
+import { LoadingService, withLoading } from '../../../core/loading';
 
 /**
  * Texto que se muestra cuando todavia no hay sesion cargada (signal vacia).
@@ -28,6 +29,7 @@ export class AppTopbar {
   private router = inject(Router);
   private authService = inject(AuthService);
   private hardRedirect = inject(HardRedirectService);
+  private loading = inject(LoadingService);
 
   /** Estado del panel de usuario. Signal para que OnPush refresque al togglearlo. */
   readonly isUserMenuOpen = signal(false);
@@ -93,9 +95,12 @@ export class AppTopbar {
    */
   onLogout() {
     this.isUserMenuOpen.set(false);
-    this.authService.logout().subscribe({
-      next: () => this.hardRedirect.redirect('/iniciar-sesion'),
-      error: () => this.hardRedirect.redirect('/iniciar-sesion'),
-    });
+    this.authService
+      .logout()
+      .pipe(withLoading(this.loading, { message: 'Cerrando sesión…' }))
+      .subscribe({
+        next: () => this.hardRedirect.redirect('/iniciar-sesion'),
+        error: () => this.hardRedirect.redirect('/iniciar-sesion'),
+      });
   }
 }

@@ -10,6 +10,7 @@ import { AppTopbar } from './app.topbar';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AuthUser } from '../../../core/auth/models/auth-session.model';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
+import { LoadingService } from '../../../core/loading';
 
 /**
  * Tests de `AppTopbar`.
@@ -19,7 +20,7 @@ import { HardRedirectService } from '../../../core/navigation/hard-redirect.serv
  * una recarga dura al login via `HardRedirectService`: reinicia la app para
  * resincronizar el token CSRF, igual que dspace (refreshAfterLogout).
  *
- * Ciclo 15 — Sprint 5. Recarga dura en Ciclo 43 — Sprint 8.
+ * Ciclo 15 TDD — Sprint 5. Ajustado en Ciclo 43 (Sprint 8) y Ciclo 39 (Sprint 10).
  */
 describe('AppTopbar', () => {
   let component: AppTopbar;
@@ -88,5 +89,19 @@ describe('AppTopbar', () => {
     redirectFn.mockClear();
     component.onLogout();
     expect(redirectFn).toHaveBeenCalledWith('/iniciar-sesion');
+  });
+
+  /** Verifica que onLogout() muestre el overlay de carga mientras cierra sesión. */
+  it('should show the loading overlay while logging out', () => {
+    configure(buildAuthUser());
+    const loading = TestBed.inject(LoadingService);
+    const beginSpy = vi.spyOn(loading, 'begin');
+    fixture.detectChanges();
+
+    component.onLogout();
+
+    expect(beginSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Cerrando sesión…' }),
+    );
   });
 });

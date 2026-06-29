@@ -16,6 +16,7 @@ import { CollectionApiService } from '../../../core/api/collection-api.service';
 import { StatisticsTrackingService } from '../../../core/api/statistics-tracking.service';
 import { VocabularyDisplayService } from '../../../core/api/vocabulary-display.service';
 import { BitstreamDownloadService } from '../../../core/api/bitstream-download.service';
+import { LoadingService } from '../../../core/loading';
 import { inferBitstreamFormat } from '../../../core/api/bitstream-format.util';
 import { parseIsoDateLocal } from '../../../core/i18n/iso-date.util';
 import { paginateAll$ } from '../../../core/api/dspace-rest.util';
@@ -62,6 +63,7 @@ export class DocumentDetail implements OnInit {
     private vocabDisplay: VocabularyDisplayService,
     private downloader: BitstreamDownloadService,
     private tracking: StatisticsTrackingService,
+    private loading: LoadingService,
   ) {}
 
   ngOnInit() {
@@ -297,27 +299,29 @@ export class DocumentDetail implements OnInit {
   }
 
   /**
-   * Abre un PDF en pestana nueva via blob URL para evitar el "open with"
-   * del browser. Para otros mimes el navegador no tiene preview universal,
-   * asi que cae al download directo.
+   * Abre un PDF en pestana nueva via blob URL para evitar el "open with" del
+   * browser; otros mimes caen al download directo. El overlay de carga cubre la
+   * descarga para que un PDF pesado no parezca un clic muerto.
    */
-  viewBitstream(bitstream: BitstreamView): void {
+  async viewBitstream(bitstream: BitstreamView): Promise<void> {
     if (bitstream.format !== 'application/pdf') {
       this.downloadBitstream(bitstream);
       return;
     }
-    fetch(bitstream.url)
-      .then((response) => response.blob())
-      .then((blob) => {
-        const blobUrl = URL.createObjectURL(blob);
-        const viewerWindow = window.open(blobUrl, '_blank');
-        if (viewerWindow) {
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-        }
-      })
-      .catch(() => {
-        window.open(bitstream.url, '_blank');
-      });
+    const taskId = this.loading.begin({ message: 'Preparando documento…' });
+    try {
+      const response = await fetch(bitstream.url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const viewerWindow = window.open(blobUrl, '_blank');
+      if (viewerWindow) {
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      }
+    } catch {
+      window.open(bitstream.url, '_blank');
+    } finally {
+      this.loading.end(taskId);
+    }
   }
 
   /**
