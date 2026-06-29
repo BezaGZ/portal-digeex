@@ -1,5 +1,11 @@
 import { firstValueFrom, of } from 'rxjs';
-import { paginateAll$, paginateAllByNext$ } from './dspace-rest.util';
+import {
+  buildAbsoluteApiUrl,
+  buildBackendApiUrl,
+  paginateAll$,
+  paginateAllByNext$,
+} from './dspace-rest.util';
+import { environment } from '../../../environments/environment';
 
 /**
  * Tests de `paginateAll$`.
@@ -110,5 +116,42 @@ describe('paginateAllByNext$', () => {
     const result = await firstValueFrom(paginateAllByNext$(fetchPage, (r) => r.values.map((n) => n * 2)));
 
     expect(result).toEqual([20, 40]);
+  });
+});
+
+/**
+ * Tests de `buildBackendApiUrl`.
+ *
+ * Arma la URL absoluta del objeto que DSpace exige en los endpoints que reciben
+ * una `uri` (como `/authz/authorizations/search/object`): el self-link canónico
+ * del backend. En dev el backend (8080) no es el origen del front (4200), así que
+ * usa `environment.apiUrl`; en producción `apiUrl` está vacío (mismo origen) y el
+ * host canónico es el del navegador.
+ *
+ * Fix operativo Sprint 10 — buildBackendApiUrl en dev y producción.
+ */
+describe('buildBackendApiUrl', () => {
+  const originalApiUrl = environment.apiUrl;
+
+  afterEach(() => {
+    environment.apiUrl = originalApiUrl;
+  });
+
+  /** Verifica que con environment.apiUrl seteado (dev) arme el uri contra el host del backend. */
+  it('builds the object uri against the configured backend host when apiUrl is set', () => {
+    environment.apiUrl = 'http://localhost:8080/server';
+
+    expect(buildBackendApiUrl('/core/communities/abc')).toBe(
+      'http://localhost:8080/server/api/core/communities/abc',
+    );
+  });
+
+  /** Verifica que con apiUrl vacío (producción, mismo origen) caiga al origen del navegador. */
+  it('builds the object uri against the browser origin when apiUrl is empty in production', () => {
+    environment.apiUrl = '';
+
+    expect(buildBackendApiUrl('/core/communities/abc')).toBe(
+      buildAbsoluteApiUrl('/core/communities/abc'),
+    );
   });
 });

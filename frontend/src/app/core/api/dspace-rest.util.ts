@@ -144,15 +144,18 @@ export function buildAbsoluteApiUrl(relativePath: string): string {
 }
 
 /**
- * URL absoluta al REST usando el host del backend configurado
- * (`environment.apiUrl`), no el origen del navegador. DSpace identifica un
- * objeto por su self-link canónico (`dspace.server.url`), así que los endpoints
- * que reciben una `uri` de objeto —como `/authz/authorizations/search/object`—
- * exigen ese host (8080 en dev), no el del frontend proxeado (4200), que daría
- * 400 al no resolver el objeto.
+ * URL absoluta del objeto para los endpoints que reciben una `uri` (como
+ * `/authz/authorizations/search/object`): DSpace identifica el objeto por su
+ * self-link canónico (`dspace.server.url`). En dev el backend (8080) no es el
+ * origen del front (4200), así que se usa `environment.apiUrl`; en producción
+ * `apiUrl` está vacío (mismo origen) y el host canónico es el del navegador, así
+ * que cae a `buildAbsoluteApiUrl`. Sin esto, en prod armaría una ruta relativa y
+ * DSpace devolvería 400 al no resolver el objeto.
  */
 export function buildBackendApiUrl(relativePath: string): string {
-  return `${environment.apiUrl}/api${relativePath}`;
+  return environment.apiUrl
+    ? `${environment.apiUrl}/api${relativePath}`
+    : buildAbsoluteApiUrl(relativePath);
 }
 
 /**
