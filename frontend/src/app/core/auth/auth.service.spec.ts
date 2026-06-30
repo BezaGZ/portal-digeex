@@ -14,7 +14,7 @@ import { environment } from '../../../environments/environment';
  * /api/authn/login, /api/authn/status y /api/authn/logout de DSpace.
  * Expone signals reactivos `isAuthenticated` y `currentUser`.
  *
- * Ciclo 1 TDD — Sprint 5. Ajustado en Ciclo 14.
+ * Ciclo 1 TDD — Sprint 5. Ajustado en Ciclos 14 y 41 (Sprint 10).
  */
 describe('AuthService', () => {
   let service: AuthService;
@@ -528,34 +528,6 @@ describe('AuthService', () => {
       const merged = service.currentEPerson()!;
       expect(merged.metadata['eperson.firstname'][0].value).toBe('Juana');
       expect(merged._embedded?.groups).toEqual(priorGroups);
-    });
-  });
-
-  /**
-   * storeRotatedToken persiste el JWT que el `jwtInterceptor` captura del
-   * header `Authorization` en responses autenticadas. Es idempotente cuando
-   * el token coincide con el actual para evitar reescribir la cookie en cada
-   * response.
-   */
-  describe('storeRotatedToken()', () => {
-    /** Verifica que un token distinto al actual se escriba en la cookie. */
-    it('should write the new token to dsAuthInfo when it differs from the current one', async () => {
-      await performLogin();
-      expect(service.getToken()).toBe('fake-jwt-token-123');
-
-      service.storeRotatedToken('rotated-token-abc');
-
-      expect(service.getToken()).toBe('rotated-token-abc');
-    });
-
-    /** Verifica que un token idéntico al actual no gatille un set de cookie. */
-    it('should be a no-op when the token equals the current one', async () => {
-      await performLogin();
-      const setSpy = vi.spyOn(Cookies, 'set');
-
-      service.storeRotatedToken('fake-jwt-token-123');
-
-      expect(setSpy).not.toHaveBeenCalled();
     });
   });
 });

@@ -31,6 +31,10 @@ export const LOGIN_INVALID_CREDENTIALS_MESSAGE =
 export const LOGIN_SERVICE_UNAVAILABLE_MESSAGE =
   'No se pudo conectar con el servidor. Intente de nuevo en unos minutos.';
 
+/** Mensaje cuando el login se recargó por sesión vencida (`?expired=true`). */
+export const LOGIN_SESSION_EXPIRED_MESSAGE =
+  'Tu sesión expiró. Volvé a iniciar sesión.';
+
 @Component({
   selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,13 +55,16 @@ export class LoginComponent implements OnInit {
   isLoading = signal(false);
 
   /**
-   * Restaura el mensaje "sin rol" cuando el login se cargó por recarga dura con
-   * `?error=sin-rol`. El caso sin rol cierra sesión y recarga; el query param
-   * sobrevive a la recarga (mismo patrón que `?expired=true` de dspace).
+   * Restaura el mensaje desde el query param tras una recarga dura: `?error=sin-rol`
+   * (cuenta sin rol) o `?expired=true` (sesión vencida). El param sobrevive a la
+   * recarga, que además resincroniza el CSRF.
    */
   ngOnInit(): void {
-    if (this.route.snapshot.queryParamMap.get('error') === NO_ROLE_ERROR_PARAM) {
+    const params = this.route.snapshot.queryParamMap;
+    if (params.get('error') === NO_ROLE_ERROR_PARAM) {
       this.errorMessage.set(LOGIN_MISSING_ROLE_MESSAGE);
+    } else if (params.get('expired') === 'true') {
+      this.errorMessage.set(LOGIN_SESSION_EXPIRED_MESSAGE);
     }
   }
 

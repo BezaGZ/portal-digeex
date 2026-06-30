@@ -245,7 +245,7 @@ export class AuthService {
    * Borra la cookie `dsAuthInfo` para que un próximo reload arranque sin sesión.
    * Requiere `path: '/'` idéntico al del `set`; si no, `js-cookie` no la elimina.
    */
-  private removeToken(): void {
+  removeToken(): void {
     Cookies.remove(TOKENITEM, { path: '/' });
   }
 
@@ -311,18 +311,6 @@ export class AuthService {
     const priorGroups = this.currentEPerson()?._embedded?.groups;
     if (!priorGroups) return eperson;
     return { ...eperson, _embedded: { ...eperson._embedded, groups: priorGroups } };
-  }
-
-  /**
-   * Persiste un JWT rotado capturado por el `jwtInterceptor` desde el header
-   * `Authorization` de una response. DSpace rota el token en cada request
-   * autenticada; persistirlo evita relogin cuando el token en memoria vence.
-   * No-op si el token es idéntico al actual, para no reescribir la cookie
-   * en cada response.
-   */
-  storeRotatedToken(accessToken: string): void {
-    if (accessToken === this.getToken()) return;
-    this.storeToken(accessToken);
   }
 
   /**

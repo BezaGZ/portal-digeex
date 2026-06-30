@@ -1,41 +1,48 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient, withInterceptors, HttpClient } from '@angular/common/http';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { jwtInterceptor } from './auth.interceptor';
 import { AuthService } from './auth.service';
+import { HardRedirectService } from '../navigation/hard-redirect.service';
 
 /**
  * Tests para jwtInterceptor.
  *
- * Interceptor HTTP que adjunta el header Authorization: Bearer,
- * gestiona refresh automático del JWT cuando está próximo a expirar,
- * y redirige al login cuando DSpace responde 401.
+ * Interceptor HTTP que adjunta el header Authorization: Bearer, gestiona el
+ * refresh anticipado del JWT, y redirige al login solo cuando un 401 llega con
+ * el token ya vencido localmente.
  *
- * Ciclo 2 TDD — Sprint 5. Ajustado en Ciclo 23.
+ * Ciclo 2 TDD — Sprint 5. Ajustado en Ciclos 23 y 41 (Sprint 10).
  */
 describe('jwtInterceptor', () => {
   let httpMock: HttpTestingController;
   let httpClient: HttpClient;
   let authService: AuthService;
-  let router: Router;
+  let redirectFn: ReturnType<typeof vi.fn>;
+
+  /** JWT de prueba: vencido (exp en el pasado) y válido (exp lejano). */
+  const EXPIRED_JWT = 'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjF9.sig';
+  const VALID_JWT = 'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjk5OTk5OTk5OTl9.sig';
 
   /** Setup */
 
   beforeEach(() => {
+    redirectFn = vi.fn();
+
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([jwtInterceptor])),
         provideHttpClientTesting(),
         provideRouter([]),
         AuthService,
+        { provide: HardRedirectService, useValue: { redirect: redirectFn } },
       ],
     });
 
     httpMock = TestBed.inject(HttpTestingController);
     httpClient = TestBed.inject(HttpClient);
     authService = TestBed.inject(AuthService);
-    router = TestBed.inject(Router);
   });
 
   afterEach(() => {
@@ -112,10 +119,9 @@ describe('jwtInterceptor', () => {
      * aunque el AuthService tenga un token. El endpoint es anónimo en
      * DSpace 9 (`@PreAuthorize("permitAll()")` sobre `findByToken`), pero
      * el filtro de seguridad valida el JWT antes de llegar al endpoint y
-     * rechaza con 401 cuando el token está stale o expirado, lo que cascada
-     * en un `router.navigate(['/iniciar-sesion'])` por `redirectOn401`.
-     * Excluir el path del Bearer mantiene la pantalla de reset utilizable
-     * desde una pestaña con sesión obsoleta.
+     * rechaza con 401 cuando el token está stale o expirado, lo que dispararía
+     * el redirect al login. Excluir el path del Bearer mantiene la pantalla de
+     * reset utilizable desde una pestaña con sesión obsoleta.
      */
     it('should NOT attach Bearer on /eperson/registrations requests', async () => {
       vi.spyOn(authService, 'getToken').mockReturnValue('stale-jwt');
@@ -294,10 +300,10 @@ describe('jwtInterceptor', () => {
   /** Redirección en 401 */
 
   describe('redirect on 401', () => {
-    /** Verifica que redirige a /login cuando DSpace responde 401. */
-    it('should redirect to /login on 401 response', async () => {
-      vi.spyOn(authService, 'getToken').mockReturnValue('valid-token');
-      vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    /** Verifica que un 401 con token vencido purgue el token y recargue a `?expired=true`. */
+    it('should remove the token and hard-redirect to ?expired on 401 when the token is expired', async () => {
+      vi.spyOn(authService, 'getToken').mockReturnValue(EXPIRED_JWT);
+      const removeSpy = vi.spyOn(authService, 'removeToken').mockImplementation(() => {});
 
       const promise = new Promise<void>((resolve) => {
         httpClient.get('/server/api/core/communities').subscribe({
@@ -310,13 +316,31 @@ describe('jwtInterceptor', () => {
       req.flush(null, { status: 401, statusText: 'Unauthorized' });
 
       await promise;
-      expect(router.navigate).toHaveBeenCalledWith(['/iniciar-sesion']);
+      expect(removeSpy).toHaveBeenCalled();
+      expect(redirectFn).toHaveBeenCalledWith('/iniciar-sesion?expired=true');
     });
 
-    /** Verifica que NO redirige cuando la respuesta es exitosa (200). */
+    /** Verifica que un 401 con token válido NO redirija (no atrapa páginas públicas). */
+    it('should NOT redirect on 401 when the token is still valid', async () => {
+      vi.spyOn(authService, 'getToken').mockReturnValue(VALID_JWT);
+
+      const promise = new Promise<void>((resolve) => {
+        httpClient.get('/server/api/core/communities').subscribe({
+          next: () => resolve(),
+          error: () => resolve(),
+        });
+      });
+
+      const req = httpMock.expectOne('/server/api/core/communities');
+      req.flush(null, { status: 401, statusText: 'Unauthorized' });
+
+      await promise;
+      expect(redirectFn).not.toHaveBeenCalled();
+    });
+
+    /** Verifica que una respuesta exitosa no dispare redirect. */
     it('should NOT redirect on successful response', async () => {
-      vi.spyOn(authService, 'getToken').mockReturnValue('valid-token');
-      vi.spyOn(router, 'navigate');
+      vi.spyOn(authService, 'getToken').mockReturnValue(VALID_JWT);
 
       const promise = new Promise((resolve, reject) => {
         httpClient.get('/server/api/core/communities').subscribe({
@@ -329,79 +353,15 @@ describe('jwtInterceptor', () => {
       req.flush({});
 
       await promise;
-      expect(router.navigate).not.toHaveBeenCalled();
-    });
-  });
-
-  /**
-   * DSpace 9.2 rota el JWT en cada response autenticada; el interceptor lee
-   * el header Authorization del HttpResponse y lo persiste vía
-   * storeRotatedToken. Esto evita relogin innecesario en sesiones largas.
-   */
-  describe('rotated JWT capture', () => {
-    /** Verifica que un Authorization en el response persista el token rotado. */
-    it('should call storeRotatedToken with the new token when response brings an Authorization header', async () => {
-      vi.spyOn(authService, 'getToken').mockReturnValue('current-token');
-      const storeRotatedSpy = vi.spyOn(authService, 'storeRotatedToken');
-
-      const promise = new Promise((resolve, reject) => {
-        httpClient.get('/server/api/core/communities').subscribe({
-          next: resolve,
-          error: reject,
-        });
-      });
-
-      const req = httpMock.expectOne('/server/api/core/communities');
-      req.flush({}, { headers: { Authorization: 'Bearer rotated-token-xyz' } });
-
-      await promise;
-      expect(storeRotatedSpy).toHaveBeenCalledWith('rotated-token-xyz');
-    });
-
-    /** Verifica que sin Authorization en el response no se toque el token. */
-    it('should NOT call storeRotatedToken when response has no Authorization header', async () => {
-      vi.spyOn(authService, 'getToken').mockReturnValue('current-token');
-      const storeRotatedSpy = vi.spyOn(authService, 'storeRotatedToken');
-
-      const promise = new Promise((resolve, reject) => {
-        httpClient.get('/server/api/core/communities').subscribe({
-          next: resolve,
-          error: reject,
-        });
-      });
-
-      const req = httpMock.expectOne('/server/api/core/communities');
-      req.flush({});
-
-      await promise;
-      expect(storeRotatedSpy).not.toHaveBeenCalled();
-    });
-
-    /** Verifica que un Authorization mal formado (sin prefijo Bearer) se ignora. */
-    it('should NOT call storeRotatedToken when the Authorization header is malformed', async () => {
-      vi.spyOn(authService, 'getToken').mockReturnValue('current-token');
-      const storeRotatedSpy = vi.spyOn(authService, 'storeRotatedToken');
-
-      const promise = new Promise((resolve, reject) => {
-        httpClient.get('/server/api/core/communities').subscribe({
-          next: resolve,
-          error: reject,
-        });
-      });
-
-      const req = httpMock.expectOne('/server/api/core/communities');
-      req.flush({}, { headers: { Authorization: 'NotBearer garbage' } });
-
-      await promise;
-      expect(storeRotatedSpy).not.toHaveBeenCalled();
+      expect(redirectFn).not.toHaveBeenCalled();
     });
   });
 
   /**
    * Endpoints de `/authn/*` reciben el Bearer pero se saltan la rama de
-   * refresh y el `redirectOn401`. Esto evita la recursión del refresh sobre
-   * sí mismo y el doble navigate cuando un refresh falla con 401. El
-   * AuthService dueño de esas llamadas gestiona sus propios errores.
+   * refresh y el redirect. Esto evita la recursión del refresh sobre sí mismo
+   * y el doble redirect cuando un refresh falla con 401. El AuthService dueño
+   * de esas llamadas gestiona sus propios errores.
    */
   describe('endpoints under /authn/*', () => {
     function fakeJwt(expTimestamp: number): string {
@@ -442,7 +402,6 @@ describe('jwtInterceptor', () => {
      */
     it('should NOT redirect to /login when /authn/* responds 401', async () => {
       vi.spyOn(authService, 'getToken').mockReturnValue('valid-token');
-      const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
       const promise = new Promise<void>((resolve) => {
         httpClient.post('/server/api/authn/login', null).subscribe({
@@ -455,7 +414,7 @@ describe('jwtInterceptor', () => {
       req.flush(null, { status: 401, statusText: 'Unauthorized' });
 
       await promise;
-      expect(navigateSpy).not.toHaveBeenCalled();
+      expect(redirectFn).not.toHaveBeenCalled();
     });
   });
 });

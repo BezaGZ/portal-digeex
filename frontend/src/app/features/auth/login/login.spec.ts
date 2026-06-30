@@ -9,6 +9,7 @@ import {
   LOGIN_MISSING_ROLE_MESSAGE,
   LOGIN_INVALID_CREDENTIALS_MESSAGE,
   LOGIN_SERVICE_UNAVAILABLE_MESSAGE,
+  LOGIN_SESSION_EXPIRED_MESSAGE,
 } from './login';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
@@ -23,8 +24,8 @@ import { Caller } from '../../../core/auth/caller.model';
  * el CSRF; el query param restaura el mensaje, como dspace con `?expired=true`).
  *
  * Ciclo 4 TDD — Sprint 5. Ajustado en Ciclo 13, Ciclo 43 (Sprint 8), 2026-06-21
- * (mejora 5: depende de CallerProvider de core, no de UserManagementService) y
- * Ciclo 22 (Sprint 10: snapshot síncrono en vez de firstValueFrom).
+ * (mejora 5: depende de CallerProvider de core, no de UserManagementService),
+ * Ciclo 22 (Sprint 10: snapshot síncrono) y Ciclo 41 (Sprint 10: mensaje de sesión vencida).
  */
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -252,5 +253,34 @@ describe('LoginComponent mensaje por query param', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.errorMessage()).toBe(LOGIN_MISSING_ROLE_MESSAGE);
+  });
+});
+
+/**
+ * Al cargar el login con `?expired=true` (tras la recarga dura por sesión vencida),
+ * el componente muestra el mensaje de sesión expirada desde el query param.
+ */
+describe('LoginComponent mensaje por sesión vencida', () => {
+  it('should show the session-expired message when loaded with ?expired=true', () => {
+    TestBed.configureTestingModule({
+      imports: [LoginComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        AuthService,
+        { provide: CallerProvider, useValue: { currentCaller$: of(null), currentActor$: of(null), currentCallerSnapshot: () => null } },
+        { provide: HardRedirectService, useValue: { redirect: vi.fn() } },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({ expired: 'true' }) } },
+        },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(LoginComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.errorMessage()).toBe(LOGIN_SESSION_EXPIRED_MESSAGE);
   });
 });

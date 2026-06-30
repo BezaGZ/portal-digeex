@@ -1,40 +1,27 @@
 import { inject } from '@angular/core';
-import { HttpEvent, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { HttpInterceptorFn } from '@angular/common/http';
 import { Observable, OperatorFunction, catchError, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
+import { HardRedirectService } from '../navigation/hard-redirect.service';
 
-/** Umbral en segundos para disparar refresh automático (5 minutos). */
+/** Umbral en segundos para disparar refresh anticipado (5 minutos). */
 const REFRESH_THRESHOLD_SECONDS = 300;
 
 /**
- * Observable compartido del refresh en curso.
- * Garantiza que múltiples peticiones concurrentes disparen
- * una sola llamada a refreshToken() de DSpace.
- * Se limpia al completarse para permitir futuros refreshes.
+ * Observable compartido del refresh en curso. Garantiza que múltiples peticiones
+ * concurrentes disparen una sola llamada a refreshToken() de DSpace. Se limpia al
+ * completarse para permitir futuros refreshes.
  */
 let refreshInProgress$: Observable<void> | null = null;
 
 /**
- * Interceptor que adjunta el JWT en el header Authorization, dispara refresh
- * automático cuando el token está próximo a expirar, captura la rotación del
- * JWT que DSpace devuelve en cada response autenticada, y redirige al login
- * si DSpace responde 401.
- *
- * Las peticiones a `/authn/*` (login, status, logout, refresh) siguen
- * recibiendo el Bearer y la captura de rotación, pero no disparan la rama
- * de refresh ni el `redirectOn401`. Esto evita dos bugs: la recursión
- * cuando el POST del refresh entra al interceptor y dispararía otro refresh
- * sobre sí mismo, y el doble navigate a /login cuando un 401 del refresh
- * propaga también al wrapper externo. El AuthService dueño de esas llamadas
- * maneja sus propios errores (credenciales en login, refresh fallido en
- * refreshToken, 401 en status durante restoreSession).
- *
- * Sin token, las peticiones pasan sin modificar.
+ * Adjunta el JWT y refresca anticipadamente. Ante un 401 redirige al login solo si
+ * el token venció localmente; con token válido propaga sin redirigir (no atrapa lo
+ * público). `/authn/*` recibe Bearer pero salta refresh y redirect (sin recursión).
  */
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
-  const router = inject(Router);
+  const hardRedirect = inject(HardRedirectService);
   const token = authService.getToken();
 
   if (!token) {
@@ -42,13 +29,10 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   // Endpoints anónimos de DSpace 9 que no deben llevar el JWT del caller.
-  // `/eperson/registrations` es `permitAll`, pero el filtro de seguridad
-  // valida el Bearer antes de llegar al endpoint y rechaza con 401 cuando
-  // el token está expirado. La pantalla de reset por token se rompía
-  // porque ese 401 cascadeaba en un redirect a `/iniciar-sesion`.
-  // `/statistics/viewevents` registra visitas en Solr Statistics: si llega
-  // autenticado como admin DSpace filtra el hit para no inflar los reportes
-  // con tráfico de administración. Las visitas siempre son anónimas.
+  // `/eperson/registrations` es permitAll, pero el filtro valida el Bearer antes
+  // y rechaza con 401 uno expirado, rompiendo el reset por token.
+  // `/statistics/viewevents` registra visitas anónimas; con Bearer de admin
+  // DSpace filtra el hit.
   if (req.url.includes('/eperson/registrations') || req.url.includes('/statistics/viewevents')) {
     return next(req);
   }
@@ -58,58 +42,47 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   });
 
   if (req.url.includes('/authn/')) {
-    return next(authReq).pipe(captureRotatedJwt(authService));
+    return next(authReq);
   }
 
-  if (isTokenExpiringSoon(token)) {
+  if (isTokenExpiringSoon(token) && !isTokenExpired(token)) {
     return getRefresh$(authService).pipe(
       switchMap(() => {
         const freshToken = authService.getToken() ?? token;
         const refreshedReq = req.clone({
           setHeaders: { Authorization: `Bearer ${freshToken}` },
         });
-        return next(refreshedReq).pipe(captureRotatedJwt(authService));
+        return next(refreshedReq);
       }),
-      redirectOn401(router),
+      redirectWhenTokenExpired(authService, hardRedirect),
     );
   }
 
-  return next(authReq).pipe(captureRotatedJwt(authService), redirectOn401(router));
+  return next(authReq).pipe(redirectWhenTokenExpired(authService, hardRedirect));
 };
 
 /**
- * DSpace 9.2 rota el JWT en cada response autenticada y lo devuelve en el
- * header `Authorization`. El operador lee ese header cuando llega un
- * `HttpResponse` y delega a `authService.storeRotatedToken`, que es idempotente
- * si el token coincide con el actual.
+ * Redirige al login solo si el 401 trae un token vencido localmente: purga el token
+ * y recarga duro a `/iniciar-sesion?expired=true`. Otro 401 se propaga sin redirigir,
+ * para no patear desde páginas públicas ni por un 401 de autorización puntual.
  */
-function captureRotatedJwt<T>(authService: AuthService): OperatorFunction<HttpEvent<T>, HttpEvent<T>> {
-  return tap((event) => {
-    if (!(event instanceof HttpResponse)) return;
-    const header = event.headers.get('Authorization');
-    if (header?.startsWith('Bearer ')) {
-      authService.storeRotatedToken(header.substring(7));
-    }
-  });
-}
-
-/**
- * Operador que intercepta respuestas 401 (Unauthorized)
- * y redirige al usuario a la pantalla de login.
- */
-function redirectOn401<T>(router: Router): OperatorFunction<T, T> {
+function redirectWhenTokenExpired<T>(
+  authService: AuthService,
+  hardRedirect: HardRedirectService,
+): OperatorFunction<T, T> {
   return catchError((error: { status?: number }) => {
-    if (error.status === 401) {
-      router.navigate(['/iniciar-sesion']);
+    const token = authService.getToken();
+    if (error.status === 401 && token && isTokenExpired(token)) {
+      authService.removeToken();
+      hardRedirect.redirect('/iniciar-sesion?expired=true');
     }
     return throwError(() => error);
   });
 }
 
 /**
- * Obtiene o crea el Observable compartido del refresh en curso.
- * Usa shareReplay(1) para que múltiples peticiones concurrentes
- * compartan la misma llamada a DSpace sin disparar otra.
+ * Obtiene o crea el Observable compartido del refresh en curso. shareReplay(1)
+ * para que varias peticiones concurrentes compartan la misma llamada.
  */
 function getRefresh$(authService: AuthService): Observable<void> {
   if (!refreshInProgress$) {
@@ -121,21 +94,28 @@ function getRefresh$(authService: AuthService): Observable<void> {
   return refreshInProgress$;
 }
 
-/**
- * Decodifica el payload del JWT y verifica si el claim `exp`
- * indica que faltan menos de REFRESH_THRESHOLD_SECONDS.
- */
+/** True si al `exp` del JWT le faltan menos de REFRESH_THRESHOLD_SECONDS. */
 function isTokenExpiringSoon(token: string): boolean {
+  const exp = tokenExp(token);
+  if (exp === null) return false;
+  return (exp - Math.floor(Date.now() / 1000)) < REFRESH_THRESHOLD_SECONDS;
+}
+
+/** True si el `exp` del JWT ya pasó. Token ilegible o sin `exp` → false (no redirige). */
+function isTokenExpired(token: string): boolean {
+  const exp = tokenExp(token);
+  if (exp === null) return false;
+  return exp <= Math.floor(Date.now() / 1000);
+}
+
+/** Lee el claim `exp` (epoch en segundos) del JWT, o null si no se puede decodificar. */
+function tokenExp(token: string): number | null {
   try {
     const parts = token.split('.');
-    if (parts.length !== 3) { return false; }
-
+    if (parts.length !== 3) return null;
     const payload = JSON.parse(atob(parts[1]));
-    if (!payload.exp) { return false; }
-
-    const nowSeconds = Math.floor(Date.now() / 1000);
-    return (payload.exp - nowSeconds) < REFRESH_THRESHOLD_SECONDS;
+    return typeof payload.exp === 'number' ? payload.exp : null;
   } catch {
-    return false;
+    return null;
   }
 }
