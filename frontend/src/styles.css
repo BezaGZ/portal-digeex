@@ -582,6 +582,20 @@ h6 {
   line-height: 1.4;
 }
 
+/* Programa (programas-digeex) tiene opciones de ~90 caracteres. Inline en iOS
+   Safari estiran la página, así que el select usa appendTo y este panel se topa
+   al viewport con wrap forzado, para no salirse ni ensanchar el documento. */
+.p-select-overlay.digeex-programa-panel {
+  max-width: calc(100vw - 2rem) !important;
+}
+.p-select-overlay.digeex-programa-panel .p-select-option,
+.p-select-overlay.digeex-programa-panel .p-select-option-label,
+.p-select-overlay.digeex-programa-panel [data-pc-section="option"],
+.p-select-overlay.digeex-programa-panel [data-pc-section="optionlabel"] {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
 /* Controles del visor de álbum (p-galleria fullscreen): círculo oscuro
    translúcido + ícono blanco sólido para que se vean sobre cualquier foto
    (sin fondo, los íconos blancos se perdían en las zonas claras). */

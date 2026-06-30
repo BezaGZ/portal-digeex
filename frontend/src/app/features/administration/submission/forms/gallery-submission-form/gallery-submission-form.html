@@ -59,8 +59,9 @@
       <label for="classification" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
         Programa <span class="text-[var(--color-error)]">*</span>
       </label>
-      <!-- Sin appendTo a propósito: programas-digeex tiene opciones largas que,
-           flotando en el body, estiran el panel fuera de la card; inline se acota. -->
+      <!-- Con appendTo: inline en iOS Safari estira la página por las opciones
+           largas de programas-digeex. El panel flota y se topa al viewport con
+           .digeex-programa-panel, sin salirse ni ensanchar el documento. -->
       <p-select
         inputId="classification"
         formControlName="classification"
@@ -68,6 +69,9 @@
         optionLabel="display"
         optionValue="value"
         placeholder="Elegí un programa"
+        appendTo="body"
+        panelStyleClass="digeex-programa-panel"
+        (onShow)="onProgramaShow()"
         styleClass="w-full" />
       @if (form.controls.classification.touched && form.controls.classification.invalid) {
         <small class="text-[var(--color-error)]">El programa es obligatorio.</small>

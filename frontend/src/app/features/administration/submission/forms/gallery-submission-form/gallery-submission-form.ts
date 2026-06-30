@@ -236,6 +236,24 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
     this.coverFile.set(files[0] ?? null);
   }
 
+  /**
+   * Iguala ancho y posición del overlay de Programa a los del campo. Con appendTo
+   * el panel flota en el body y no hereda el ancho ni queda alineado al input; sin
+   * esto queda más ancho (y en iOS un panel ancho ensancha la página) o corrido a
+   * un lado. Los nombres largos igual se leen por el wrap forzado del overlay.
+   */
+  onProgramaShow(): void {
+    requestAnimationFrame(() => {
+      const trigger = document.getElementById('classification')?.closest('p-select') as HTMLElement | null;
+      const panel = document.querySelector('.digeex-programa-panel') as HTMLElement | null;
+      if (trigger && panel) {
+        const rect = trigger.getBoundingClientRect();
+        panel.style.width = `${rect.width}px`;
+        panel.style.left = `${rect.left + window.scrollX}px`;
+      }
+    });
+  }
+
   /** Vuelve al listado de programas en creación, o a Mis envíos en edición. */
   cancel(): void {
     const target = this.isEditMode()
