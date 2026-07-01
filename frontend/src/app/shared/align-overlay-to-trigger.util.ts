@@ -1,10 +1,15 @@
 /**
- * Con `appendTo="body"` el panel del `p-select` flota en el body y no hereda el
- * ancho ni queda alineado al campo; en iOS un panel más ancho o corrido ensancha
- * la página. Esto lo topa al ancho del trigger y lo alinea a su izquierda; los
- * nombres largos igual se leen por el wrap forzado del overlay (styles.css).
+ * Con `appendTo="body"` PrimeNG posiciona el wrapper `.p-overlay` alineado al
+ * campo, pero si el panel a su ancho natural no cabe hacia la derecha,
+ * `absolutePosition` lo corre a la izquierda para alinear bordes derechos.
+ * Esto topa el panel interno al ancho del trigger y devuelve el wrapper a la
+ * izquierda del campo (ya achicado, siempre cabe); en iOS un panel que
+ * sobresale ensancha la página. Los nombres largos igual se leen por el wrap
+ * forzado del overlay (styles.css). No tocar el `left` del panel interno: trae
+ * `position:absolute; left:0` dentro del wrapper y moverlo duplica el offset.
  *
- * `triggerId` es el `inputId` del `p-select`; `panelClass` es su `panelStyleClass`.
+ * `triggerId` es el `inputId` (o `id`) del `p-select`; `panelClass` es su
+ * `panelStyleClass`.
  */
 export function alignOverlayToTrigger(triggerId: string, panelClass: string): void {
   requestAnimationFrame(() => {
@@ -13,7 +18,10 @@ export function alignOverlayToTrigger(triggerId: string, panelClass: string): vo
     if (trigger && panel) {
       const rect = trigger.getBoundingClientRect();
       panel.style.width = `${rect.width}px`;
-      panel.style.left = `${rect.left + window.scrollX}px`;
+      const wrapper = panel.closest('.p-overlay') as HTMLElement | null;
+      if (wrapper) {
+        wrapper.style.insetInlineStart = `${rect.left + window.scrollX}px`;
+      }
     }
   });
 }
