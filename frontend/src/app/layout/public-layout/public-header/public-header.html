@@ -1,5 +1,6 @@
 <header
-  class="public-topbar text-white shadow-lg sticky top-0 z-50"
+  class="public-topbar text-white sticky top-0 z-50 transition-shadow duration-300"
+  [class.shadow-lg]="scrolled()"
 >
   <div class="container mx-auto px-6 py-4 flex justify-between items-center">
     <a routerLink="/" class="flex items-center hover:opacity-90 transition-opacity">

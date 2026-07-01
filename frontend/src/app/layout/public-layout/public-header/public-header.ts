@@ -8,6 +8,12 @@ import { CollectionCacheService } from '../../../core/api/collection-cache.servi
 import { getCollectionRoute } from '../../../core/config/collection-format.config';
 import { NAV_LOCATION, ENTITY_TYPE } from '../../../core/config/digeex-values.config';
 
+/**
+ * Píxeles de scroll a partir de los que el header gana sombra. Umbral chico
+ * para que no titile con el rebote elástico de iOS cerca del tope.
+ */
+const SCROLL_ELEVATION_THRESHOLD = 8;
+
 @Component({
   selector: 'app-public-header',
   standalone: true,
@@ -19,6 +25,12 @@ import { NAV_LOCATION, ENTITY_TYPE } from '../../../core/config/digeex-values.co
 export class PublicHeader implements OnInit {
   mobileOpen = signal(false);
   menuError = signal(false);
+
+  /** True al despegarse del tope; el template le da sombra al header (elevación). */
+  readonly scrolled = signal(false);
+
+  /** Coalesce los eventos de scroll a un frame para no recalcular de más. */
+  private scrollTicking = false;
 
   /** Ítems del menú secundario. Signal para que OnPush refresque al cargarlos. */
   readonly menuItems = signal<MenuItem[]>([]);
@@ -78,6 +90,25 @@ export class PublicHeader implements OnInit {
   @HostListener('document:keydown.escape')
   onEscape() {
     this.closeMobileMenu();
+  }
+
+  /** Lee la posición de scroll una vez por frame y ajusta la elevación del header. */
+  @HostListener('window:scroll')
+  onWindowScroll() {
+    if (this.scrollTicking) return;
+    this.scrollTicking = true;
+    requestAnimationFrame(() => {
+      this.onScroll(window.scrollY);
+      this.scrollTicking = false;
+    });
+  }
+
+  /**
+   * Prende la sombra del header al despegarse del tope. Recibe la posición por
+   * parámetro en vez de leer `window` para no acoplar la decisión al scroll global.
+   */
+  onScroll(currentY: number) {
+    this.scrolled.set(currentY > SCROLL_ELEVATION_THRESHOLD);
   }
 
   goToLogin() {

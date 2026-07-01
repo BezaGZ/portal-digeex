@@ -16,7 +16,7 @@ import { PublicHeader } from './public-header';
  * feedback de error: la apertura/cierre del panel la maneja `p-popover` de
  * PrimeNG, así que no se prueba acá.
  *
- * Ciclo 32 TDD — Sprint 8. Ajustado en Ciclo 40.
+ * Ciclo 32 TDD — Sprint 8. Ajustado en Ciclos 40, 44.
  */
 describe('PublicHeader', () => {
   function setup(collections: unknown[], cacheOverride: Record<string, unknown> = {}) {
@@ -104,5 +104,28 @@ describe('PublicHeader', () => {
     expect(
       fixture.componentInstance.menuItems().filter((m) => !m.separator).length,
     ).toBe(1);
+  });
+
+  /** Verifica que el header arranque sin elevación (sin sombra). */
+  it('should start not scrolled', () => {
+    expect(setup([]).componentInstance.scrolled()).toBe(false);
+  });
+
+  /** Verifica que arriba del todo el header quede sin elevación. */
+  it('should not be scrolled at the top of the page', () => {
+    const c = setup([]).componentInstance;
+
+    c.onScroll(0);
+
+    expect(c.scrolled()).toBe(false);
+  });
+
+  /** Verifica que al scrolear pasado el umbral el header gane elevación. */
+  it('should be scrolled once past the elevation threshold', () => {
+    const c = setup([]).componentInstance;
+
+    c.onScroll(40);
+
+    expect(c.scrolled()).toBe(true);
   });
 });
