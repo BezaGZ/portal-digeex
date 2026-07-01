@@ -5,6 +5,7 @@ import {
   StatsDashboard,
   ChartSection,
   FilterConfig,
+  FilterOption,
 } from '../models/stats-dashboard.model';
 import { ParsedExcel } from '../models/parsed-excel.model';
 import {
@@ -67,9 +68,70 @@ export abstract class BaseStatsRenderer implements StatsRenderer {
     }
   }
 
-  getFilters(_dashboard: StatsDashboard): readonly FilterConfig[] {
+  getFilters(
+    _dashboard: StatsDashboard,
+    active: Record<string, string | string[]> = {},
+  ): readonly FilterConfig[] {
     if (!this.latestRows || !this.latestHeaderMap) return [];
-    return this.buildFilters(this.latestRows, this.latestHeaderMap);
+    const rows = this.latestRows;
+    const headerMap = this.latestHeaderMap;
+    return this.buildFilters(rows, headerMap).map((filter) =>
+      filter.dependsOn ? this.narrowDependentFilter(filter, active, rows, headerMap) : filter,
+    );
+  }
+
+  /**
+   * Recalcula las opciones de un filtro dependiente con las filas que matchean
+   * el valor activo de su filtro padre (cascada). Si el padre no tiene
+   * selección, deja las opciones completas.
+   */
+  protected narrowDependentFilter(
+    filter: FilterConfig,
+    active: Record<string, string | string[]>,
+    rows: readonly Record<string, unknown>[],
+    headerMap: Record<string, string>,
+  ): FilterConfig {
+    const parentKey = filter.dependsOn;
+    if (!parentKey) return filter;
+
+    const parentValue = active[parentKey];
+    const parentTargets = Array.isArray(parentValue)
+      ? parentValue
+      : parentValue
+        ? [parentValue]
+        : [];
+    if (parentTargets.length === 0) return filter;
+
+    const parentColumn = headerMap[this.getFilterColumnKey(parentKey)];
+    const ownColumn = headerMap[this.getFilterColumnKey(filter.key)];
+    if (!parentColumn || !ownColumn) return filter;
+
+    const parentSet = new Set(parentTargets);
+    const scoped = rows.filter((row) => {
+      const v = readCell(row, parentColumn);
+      return typeof v === 'string' && parentSet.has(v);
+    });
+    return { ...filter, options: this.selectOptions(scoped, ownColumn) };
+  }
+
+  /**
+   * Opciones de un filtro select: valores string distintos, no vacíos, de una
+   * columna, ordenados. Lo comparten el armado inicial de los renderers y el
+   * recorte de los filtros dependientes, así ambos derivan las mismas opciones.
+   */
+  protected selectOptions(
+    rows: readonly Record<string, unknown>[],
+    column: string | undefined,
+  ): readonly FilterOption[] {
+    if (!column) return [];
+    const unique = new Set<string>();
+    for (const row of rows) {
+      const v = readCell(row, column);
+      if (typeof v === 'string' && v.length > 0) unique.add(v);
+    }
+    return Array.from(unique)
+      .sort()
+      .map((value) => ({ value, label: value }));
   }
 
   applyFilters(

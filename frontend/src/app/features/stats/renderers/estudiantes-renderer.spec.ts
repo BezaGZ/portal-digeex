@@ -12,7 +12,7 @@ import { ChartConfig, ChartSection } from '../models/stats-dashboard.model';
  * PowerBI de DIGEEX. Auto-registrado bajo `estudiantes` con dos filtros
  * (`departamental`, `municipios`) que reconstruyen las secciones al aplicar.
  *
- * Ciclo 9 TDD — Sprint 7. Ajustado en Ciclo 15.
+ * Ciclo 9 TDD — Sprint 7. Ajustado en Ciclos 15, 43.
  */
 
 const HEADERS = [
@@ -404,6 +404,35 @@ describe('EstudiantesRenderer', () => {
     );
     expect(filters[1].options.map((o) => o.value)).toEqual(
       expect.arrayContaining(['GUATEMALA', 'CHAHAL', 'COBAN', 'MIXCO']),
+    );
+  });
+
+  /** Verifica que municipios declare que depende del departamental (cascada). */
+  it('should declare municipios as dependent on departamental', () => {
+    const dashboard = renderer.parse(buildExcel());
+    const municipios = renderer.getFilters(dashboard).find((f) => f.key === 'municipios');
+
+    expect(municipios?.dependsOn).toBe('departamental');
+  });
+
+  /** Verifica que municipios liste todos los del archivo cuando no hay departamento activo. */
+  it('should list every municipio when no departamental is active', () => {
+    const dashboard = renderer.parse(buildExcel());
+    const municipios = renderer.getFilters(dashboard, {}).find((f) => f.key === 'municipios');
+
+    expect(municipios?.options.map((o) => o.value)).toEqual(['CHAHAL', 'COBAN', 'GUATEMALA', 'MIXCO']);
+  });
+
+  /** Verifica que municipios se recorte al departamento activo y departamental quede completo. */
+  it('should narrow municipios to the active departamental and keep departamental full', () => {
+    const dashboard = renderer.parse(buildExcel());
+    const filters = renderer.getFilters(dashboard, { departamental: 'DIDEDUC DE GUATEMALA' });
+    const departamental = filters.find((f) => f.key === 'departamental');
+    const municipios = filters.find((f) => f.key === 'municipios');
+
+    expect(municipios?.options.map((o) => o.value)).toEqual(['GUATEMALA', 'MIXCO']);
+    expect(departamental?.options.map((o) => o.value)).toEqual(
+      expect.arrayContaining(['DIDEDUC DE GUATEMALA', 'DIDEDUC DE ALTA VERAPAZ']),
     );
   });
 

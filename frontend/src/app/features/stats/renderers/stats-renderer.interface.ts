@@ -14,10 +14,15 @@ export interface StatsRenderer {
 
   /**
    * Devuelve los filtros declarativos derivados del dashboard. Las opciones
-   * se extraen del workbook al parsear; un dataset que agregue valores
-   * nuevos los expone sin redeploy.
+   * se extraen del workbook al parsear; un dataset que agregue valores nuevos
+   * los expone sin redeploy. Los filtros con `dependsOn` recalculan sus
+   * opciones con las filas del valor activo del padre, así que `active`
+   * (los filtros seleccionados) permite recortarlos en cascada.
    */
-  getFilters(dashboard: StatsDashboard): readonly FilterConfig[];
+  getFilters(
+    dashboard: StatsDashboard,
+    active?: Record<string, string | string[]>,
+  ): readonly FilterConfig[];
 
   /**
    * Aplica un conjunto de filtros y devuelve un dashboard nuevo. Los modelos

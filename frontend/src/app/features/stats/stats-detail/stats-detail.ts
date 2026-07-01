@@ -94,13 +94,15 @@ export class StatsDetail implements OnInit {
 
   /**
    * Al cambiar los filtros activos, el renderer reconstruye el dashboard con
-   * las filas que matchean. Aplica también cuando el usuario limpia (mapa
-   * vacío) — el renderer devuelve el dashboard sin filtrar.
+   * las filas que matchean. También refresca los filtros: los que dependen de
+   * otro (p. ej. municipios de un departamento) recortan sus opciones según la
+   * selección del padre. Aplica también al limpiar (mapa vacío).
    */
   onFiltersChange(active: Record<string, string | string[]>): void {
     const current = this.dashboard();
     if (!current || !this.renderer) return;
     this.dashboard.set(this.renderer.applyFilters(current, active));
+    this.filters.set(this.renderer.getFilters(current, active));
   }
 
   /** Permite reintentar tras un error de red sin recargar la página completa. */

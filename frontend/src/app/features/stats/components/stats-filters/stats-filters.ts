@@ -46,7 +46,9 @@ export class StatsFiltersComponent {
   /**
    * Actualiza el valor de un filtro y emite el mapa completo. Si el valor
    * cae a empty (string vacío o array vacío), borra la entrada del mapa
-   * para que el `applyFilters` del renderer no la considere activa.
+   * para que el `applyFilters` del renderer no la considere activa. Cambiar
+   * un filtro padre limpia la selección de los que dependen de él (`dependsOn`),
+   * porque esa selección deja de ser válida bajo el nuevo valor.
    */
   setValue(filterKey: string, value: string | string[]): void {
     const next = { ...this.activeFilters() };
@@ -60,6 +62,9 @@ export class StatsFiltersComponent {
       delete next[filterKey];
     } else {
       next[filterKey] = value;
+    }
+    for (const dependent of this._filters()) {
+      if (dependent.dependsOn === filterKey) delete next[dependent.key];
     }
     this.activeFilters.set(next);
     this.filtersChange.emit(next);

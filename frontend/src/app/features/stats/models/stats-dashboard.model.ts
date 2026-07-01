@@ -68,6 +68,12 @@ export interface FilterConfig {
   readonly label: string;
   readonly type: 'select' | 'multi-select';
   readonly options: readonly FilterOption[];
+  /**
+   * Key del filtro padre del que depende este. Cuando el padre tiene un valor
+   * activo, las opciones se recalculan con las filas de esa selección
+   * (cascada); ausente = filtro independiente.
+   */
+  readonly dependsOn?: string;
 }
 
 /** Opción seleccionable dentro de un filtro. */

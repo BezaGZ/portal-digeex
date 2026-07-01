@@ -218,8 +218,19 @@ export class EstudiantesRenderer extends BaseStatsRenderer {
     headerMap: Record<string, string>,
   ): readonly FilterConfig[] {
     return [
-      buildSelectFilter('departamental', 'Departamental', headerMap['departamento_sede'], rows),
-      buildSelectFilter('municipios', 'Municipios', headerMap['municipio'], rows),
+      {
+        key: 'departamental',
+        label: 'Departamental',
+        type: 'select',
+        options: this.selectOptions(rows, headerMap['departamento_sede']),
+      },
+      {
+        key: 'municipios',
+        label: 'Municipios',
+        type: 'select',
+        dependsOn: 'departamental',
+        options: this.selectOptions(rows, headerMap['municipio']),
+      },
     ];
   }
 
@@ -278,24 +289,6 @@ function stripDideduc(value: unknown): unknown {
     .replace(/^DIDEDUC\s+DE\s+/i, '')
     .replace(/\s+(NORTE|SUR|ORIENTE|OCCIDENTE)$/i, '')
     .trim();
-}
-
-function buildSelectFilter(
-  key: string,
-  label: string,
-  column: string | undefined,
-  rows: readonly Record<string, unknown>[],
-): FilterConfig {
-  const options: { value: string; label: string }[] = [];
-  if (column) {
-    const unique = new Set<string>();
-    for (const row of rows) {
-      const v = readCell(row, column);
-      if (typeof v === 'string' && v.length > 0) unique.add(v);
-    }
-    for (const v of Array.from(unique).sort()) options.push({ value: v, label: v });
-  }
-  return { key, label, type: 'select', options };
 }
 
 registerStatsRenderer('estudiantes', EstudiantesRenderer);

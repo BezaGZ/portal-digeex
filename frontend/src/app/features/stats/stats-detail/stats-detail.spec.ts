@@ -30,7 +30,7 @@ import { Item } from '../../../core/api/models/item.model';
  * filtros. El breadcrumb y el `goBack` apuntan al listado de la colección
  * padre cuando el UUID está presente.
  *
- * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclos 16, 23, 26 y Ciclo 16 (Sprint 9) y Ciclo 36 (Sprint 10).
+ * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclos 16, 23, 26 y Ciclo 16 (Sprint 9) y Ciclos 36, 43 (Sprint 10).
  */
 
 const DASHBOARD: StatsDashboard = {
@@ -262,6 +262,24 @@ describe('StatsDetail', () => {
 
     expect(renderer.applySpy).toHaveBeenCalled();
     expect(c.dashboard()).toBe(filteredDashboard);
+  });
+
+  /** Verifica que onFiltersChange refresque los filtros (opciones recortadas), no solo el dashboard. */
+  it('should refresh the filters on filtersChange', () => {
+    mockHappyPath();
+    const fixture = TestBed.createComponent(StatsDetail);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    const narrowed: FilterConfig[] = [
+      { key: 'municipios', label: 'Municipios', type: 'select', dependsOn: 'departamental', options: [] },
+    ];
+    const renderer = TestBed.inject(FakeRenderer);
+    renderer.filtersSpy.mockReturnValue(narrowed);
+
+    c.onFiltersChange({ departamental: 'X' });
+
+    expect(c.filters()).toBe(narrowed);
   });
 
   /** goBack navega al listado. */

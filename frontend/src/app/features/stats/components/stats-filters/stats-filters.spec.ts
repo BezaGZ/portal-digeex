@@ -11,7 +11,7 @@ import { FilterConfig } from '../../models/stats-dashboard.model';
  * container para que llame a `renderer.applyFilters` y reconstruya el
  * dashboard. Soporta single (`select`) y multi (`multi-select`).
  *
- * Ciclo 11 TDD — Sprint 7.
+ * Ciclo 11 TDD — Sprint 7. Ajustado en Ciclo 43.
  */
 
 const FILTERS: FilterConfig[] = [
@@ -80,6 +80,37 @@ describe('StatsFiltersComponent', () => {
     c.setValue('departamental', '');
     expect(c.activeFilters()).toEqual({});
     expect(c.hasActive()).toBe(false);
+  });
+
+  /**
+   * Verifica que cambiar un filtro padre limpie la selección de los que dependen de él.
+   * Sin esto, cambiar de departamento dejaría un municipio de otro departamento y vaciaría el resultado.
+   */
+  it('should clear dependent filters when their parent changes', () => {
+    const withDependent: FilterConfig[] = [
+      FILTERS[0],
+      {
+        key: 'municipios',
+        label: 'Municipios',
+        type: 'select',
+        dependsOn: 'departamental',
+        options: [{ value: 'MIXCO', label: 'MIXCO' }],
+      },
+    ];
+    const fixture = TestBed.createComponent(StatsFiltersComponent);
+    fixture.componentRef.setInput('filters', withDependent);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.setValue('municipios', 'MIXCO');
+    expect(c.activeFilters()['municipios']).toBe('MIXCO');
+
+    let emitted: Record<string, string | string[]> | undefined;
+    c.filtersChange.subscribe((v) => (emitted = v));
+    c.setValue('departamental', 'DIDEDUC ALTA VERAPAZ');
+
+    expect(c.activeFilters()['municipios']).toBeUndefined();
+    expect(emitted).toEqual({ departamental: 'DIDEDUC ALTA VERAPAZ' });
   });
 
   /** clear() resetea todo y emite el mapa vacío. */
