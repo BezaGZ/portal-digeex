@@ -22,6 +22,8 @@ import { Item } from '../../../../../core/api/models/item.model';
 import { JsonPatchEntry } from '../../../../../core/api/json-patch.util';
 import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-display.service';
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
+import { CommunityApiService } from '../../../../../core/api/community-api.service';
+import { subdireccionNames$ } from '../../subdireccion-options.util';
 import { FileDropzoneComponent } from '../../../../../shared';
 import { LoadingSpinner } from '../../../../../shared/components/loading-spinner/loading-spinner';
 import { BitstreamBundleManager } from '../../../../../shared/components/bitstream-bundle-manager/bitstream-bundle-manager';
@@ -53,6 +55,7 @@ import { BitstreamBundleManager } from '../../../../../shared/components/bitstre
 export class GallerySubmissionForm extends BaseSubmissionForm {
   private readonly fb = inject(FormBuilder);
   private readonly vocabDisplay = inject(VocabularyDisplayService);
+  private readonly communityApi = inject(CommunityApiService);
 
   readonly visibility = signal<'public' | 'private'>('public');
 
@@ -104,6 +107,13 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
 
   /** Entries del dropdown "Enfoque visual" (vocabulario enfoque-imagen). */
   readonly enfoqueImagenOptions = signal<VocabularyEntry[]>([]);
+
+  /**
+   * Nombres de las subdirecciones para el desplegable editable de autor. Salen
+   * de las subcomunidades de la raíz, así renombrar o agregar una se refleja
+   * sin tocar config ni reiniciar.
+   */
+  readonly subdireccionOptions = signal<string[]>([]);
 
   /**
    * True hasta que los cuatro vocabularios respondieron. El template lo bindea
@@ -160,6 +170,10 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
       this.enfoqueImagenOptions.set(enfoque);
       this.vocabulariesLoading.set(false);
     });
+
+    subdireccionNames$(this.communityApi)
+      .pipe(takeUntilDestroyed())
+      .subscribe((names) => this.subdireccionOptions.set(names));
   }
 
   override getSectionName(): string {

@@ -14,6 +14,7 @@ import { Item } from '../../../../../core/api/models/item.model';
 import { SubmissionFacade } from '../../../content/services/submission-facade';
 import { ItemAdminFacade } from '../../../content/services/item-admin-facade';
 import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-display.service';
+import { CommunityApiService } from '../../../../../core/api/community-api.service';
 import { getSubmissionFormComponent } from '../../submission-form-registry';
 
 /**
@@ -25,7 +26,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * subir las fotos del álbum. Usa los vocabularios programas-digeex,
  * tipo-poblacion, enfoque-imagen y tipos-evento.
  *
- * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclos 29, 30 y 34, y Ciclo 21 (Sprint 9), y Ciclo 21 (Sprint 10): limpieza visual de dropzones.
+ * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclos 29, 30 y 34, y Ciclo 21 (Sprint 9), y Ciclos 21 y 46 (Sprint 10).
  */
 describe('GallerySubmissionForm', () => {
   function buildCollection(uuid: string): Collection {
@@ -42,6 +43,8 @@ describe('GallerySubmissionForm', () => {
   let entriesFn: ReturnType<typeof vi.fn>;
   let editItemFn: ReturnType<typeof vi.fn>;
   let listOriginalFn: ReturnType<typeof vi.fn>;
+  let searchTopFn: ReturnType<typeof vi.fn>;
+  let listSubsFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     entriesFn = vi.fn().mockReturnValue(of([]));
@@ -51,6 +54,8 @@ describe('GallerySubmissionForm', () => {
       .mockReturnValue(
         of({ items: [], totalElements: 0, totalPages: 0, size: 20, page: 0 }),
       );
+    searchTopFn = vi.fn().mockReturnValue(of({ _embedded: { communities: [{ uuid: 'root' }] } }));
+    listSubsFn = vi.fn().mockReturnValue(of([]));
     TestBed.configureTestingModule({
       imports: [GallerySubmissionForm],
       providers: [
@@ -67,6 +72,10 @@ describe('GallerySubmissionForm', () => {
         { provide: MessageService, useValue: { add: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: VocabularyDisplayService, useValue: { entries$: entriesFn } },
+        {
+          provide: CommunityApiService,
+          useValue: { searchTop: searchTopFn, listAllSubcommunities: listSubsFn },
+        },
       ],
     });
   });
@@ -621,5 +630,36 @@ describe('GallerySubmissionForm', () => {
 
     c.onAddBitstreams([new File(['x'], 'nueva.jpg', { type: 'image/jpeg' })]);
     expect(c.canSubmit()).toBe(true);
+  });
+
+  /** Verifica que el autor elegido (nombre de subdirección) caiga en dc.contributor.author. */
+  it('should map the selected subdirección name to dc.contributor.author', () => {
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({ author: 'Subdirección de Educación Extraescolar' });
+
+    expect(c.buildMetadata()['dc.contributor.author']?.[0]?.value).toBe(
+      'Subdirección de Educación Extraescolar',
+    );
+  });
+
+  /** Verifica que las opciones de subdirección se armen con los nombres de las subcomunidades de la raíz. */
+  it('should load subdirección options from the root subcommunity names', () => {
+    listSubsFn.mockReturnValue(
+      of([
+        { uuid: 's1', name: 'Extraescolar', handle: '', type: 'community', metadata: {} },
+        { uuid: 's2', name: 'Básica', handle: '', type: 'community', metadata: {} },
+      ]),
+    );
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.subdireccionOptions()).toEqual(['Básica', 'Extraescolar']);
   });
 });

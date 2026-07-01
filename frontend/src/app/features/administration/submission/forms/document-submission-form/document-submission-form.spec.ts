@@ -14,6 +14,7 @@ import { Item } from '../../../../../core/api/models/item.model';
 import { SubmissionFacade } from '../../../content/services/submission-facade';
 import { ItemAdminFacade } from '../../../content/services/item-admin-facade';
 import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-display.service';
+import { CommunityApiService } from '../../../../../core/api/community-api.service';
 import { getSubmissionFormComponent } from '../../submission-form-registry';
 
 /**
@@ -26,7 +27,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * (Video externo) según la decisión de Sprint 6 de no duplicar maquinaria
  * de submission para algo que tiene el mismo entity-type.
  *
- * Ciclo 23 TDD — Sprint 6. Ajustado en Ciclo 35 y Ciclo 21 (Sprint 9), y Ciclo 21 (Sprint 10): limpieza visual de dropzones.
+ * Ciclo 23 TDD — Sprint 6. Ajustado en Ciclo 35 y Ciclo 21 (Sprint 9), y Ciclos 21 y 45 (Sprint 10).
  */
 describe('DocumentSubmissionForm', () => {
   function buildCollection(uuid: string): Collection {
@@ -43,6 +44,8 @@ describe('DocumentSubmissionForm', () => {
   let entriesFn: ReturnType<typeof vi.fn>;
   let editItemFn: ReturnType<typeof vi.fn>;
   let listOriginalFn: ReturnType<typeof vi.fn>;
+  let searchTopFn: ReturnType<typeof vi.fn>;
+  let listSubsFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     entriesFn = vi.fn().mockReturnValue(of([]));
@@ -52,6 +55,8 @@ describe('DocumentSubmissionForm', () => {
       .mockReturnValue(
         of({ items: [], totalElements: 0, totalPages: 0, size: 20, page: 0 }),
       );
+    searchTopFn = vi.fn().mockReturnValue(of({ _embedded: { communities: [{ uuid: 'root' }] } }));
+    listSubsFn = vi.fn().mockReturnValue(of([]));
     TestBed.configureTestingModule({
       imports: [DocumentSubmissionForm],
       providers: [
@@ -68,6 +73,10 @@ describe('DocumentSubmissionForm', () => {
         { provide: MessageService, useValue: { add: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: VocabularyDisplayService, useValue: { entries$: entriesFn } },
+        {
+          provide: CommunityApiService,
+          useValue: { searchTop: searchTopFn, listAllSubcommunities: listSubsFn },
+        },
       ],
     });
   });
@@ -1122,5 +1131,89 @@ describe('DocumentSubmissionForm', () => {
       value: { value: 'Nuevos' },
     });
     expect(patch).not.toContainEqual({ op: 'remove', path: '/metadata/dc.subject' });
+  });
+
+  /** Verifica que el autor elegido (nombre de subdirección) caiga en dc.contributor.author. */
+  it('should map the selected subdirección name to dc.contributor.author', () => {
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({ author: 'Subdirección de Educación Básica' });
+
+    expect(c.buildMetadata()['dc.contributor.author']?.[0]?.value).toBe(
+      'Subdirección de Educación Básica',
+    );
+  });
+
+  /** Verifica que un autor tecleado fuera de la lista (texto libre) se guarde tal cual. */
+  it('should keep a free-typed author verbatim in dc.contributor.author', () => {
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({ author: 'Comisión Ad-hoc 2026' });
+
+    expect(c.buildMetadata()['dc.contributor.author']?.[0]?.value).toBe('Comisión Ad-hoc 2026');
+  });
+
+  /** Verifica que al crear el publisher venga prellenado con la institución. */
+  it('should prefill dc.publisher with the institution on create', () => {
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.form.controls.publisher.value).toBe('DIGEEX, MINEDUC');
+    expect(c.buildMetadata()['dc.publisher']?.[0]?.value).toBe('DIGEEX, MINEDUC');
+  });
+
+  /** Verifica que al editar el publisher cargue el guardado y el default no lo pise. */
+  it('should load the stored publisher on edit without clobbering it with the default', () => {
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Doc',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.publisher': [
+          { value: 'Editorial Distinta', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.publisher.value).toBe('Editorial Distinta');
+  });
+
+  /** Verifica que las opciones de subdirección se armen con los nombres de las subcomunidades de la raíz. */
+  it('should load subdirección options from the root subcommunity names', () => {
+    listSubsFn.mockReturnValue(
+      of([
+        { uuid: 's1', name: 'Subdirección de Educación Extraescolar', handle: '', type: 'community', metadata: {} },
+        { uuid: 's2', name: 'Subdirección de Educación Básica', handle: '', type: 'community', metadata: {} },
+      ]),
+    );
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.subdireccionOptions()).toEqual([
+      'Subdirección de Educación Básica',
+      'Subdirección de Educación Extraescolar',
+    ]);
   });
 });

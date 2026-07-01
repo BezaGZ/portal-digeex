@@ -29,6 +29,13 @@ import { Item } from '../../../../../core/api/models/item.model';
 import { JsonPatchEntry } from '../../../../../core/api/json-patch.util';
 import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-display.service';
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
+import { CommunityApiService } from '../../../../../core/api/community-api.service';
+import { subdireccionNames$ } from '../../subdireccion-options.util';
+
+/**
+ * Institución que publica por defecto. Va prellenada en el campo (editable).
+ */
+const DEFAULT_PUBLISHER = 'DIGEEX, MINEDUC';
 
 /**
  * Formulario de submission para colecciones de tipo Documento. Extiende
@@ -60,6 +67,7 @@ import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry
 export class DocumentSubmissionForm extends BaseSubmissionForm {
   private readonly fb = inject(FormBuilder);
   private readonly vocabDisplay = inject(VocabularyDisplayService);
+  private readonly communityApi = inject(CommunityApiService);
 
   /** Lo bindeará un toggle del template; default público para el caso común. */
   readonly visibility = signal<'public' | 'private'>('public');
@@ -105,7 +113,7 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
     audience: [''],
     issued: ['', [Validators.required]],
     author: [''],
-    publisher: [''],
+    publisher: [DEFAULT_PUBLISHER],
     subject: [''],
     language: [''],
     relationUri: [''],
@@ -120,6 +128,13 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
 
   /** Entradas del dropdown de idioma (vocabulario idiomas-digeex). */
   readonly idiomaOptions = signal<VocabularyEntry[]>([]);
+
+  /**
+   * Nombres de las subdirecciones para el desplegable editable de autor. Salen
+   * de las subcomunidades de la raíz (lo que administran desde Subdirecciones),
+   * así renombrar o agregar una se refleja sin tocar config ni reiniciar.
+   */
+  readonly subdireccionOptions = signal<string[]>([]);
 
   /**
    * True hasta que los tres vocabularios respondieron. El template lo bindea
@@ -179,6 +194,12 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
       this.idiomaOptions.set(idiomas);
       this.vocabulariesLoading.set(false);
     });
+
+    // Aparte del forkJoin de vocabularios para no bloquear el spinner: si esta
+    // carga falla, el campo de autor sigue usable como texto libre.
+    subdireccionNames$(this.communityApi)
+      .pipe(takeUntilDestroyed())
+      .subscribe((names) => this.subdireccionOptions.set(names));
 
     this.form.controls.isVideo.valueChanges
       .pipe(startWith(this.form.controls.isVideo.value), takeUntilDestroyed())
@@ -289,7 +310,7 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
       audience: '',
       issued: '',
       author: '',
-      publisher: '',
+      publisher: DEFAULT_PUBLISHER,
       subject: '',
       language: '',
       relationUri: '',
