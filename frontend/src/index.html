@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <title>Frontend</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- maximum-scale=1 evita el auto-zoom de iOS al enfocar inputs; el pinch
+       manual del usuario sigue funcionando (iOS lo ignora para gestos). -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>

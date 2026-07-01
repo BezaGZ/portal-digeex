@@ -337,6 +337,15 @@ h1, h2, h3, h4, h5, h6, p {
   overflow-wrap: break-word;
 }
 
+/* El documento nunca genera scroll horizontal. iOS Safari agranda el lienzo
+   de la página si un elemento absoluto sobresale aunque sea un frame (p. ej.
+   un overlay antes de posicionarse) y no lo vuelve a encoger, dejando una
+   franja muerta paneable a la derecha. Con clip (no hidden, que crea otro
+   contenedor de scroll con sus propios quirks) el lienzo no puede crecer. */
+html, body {
+  overflow-x: clip;
+}
+
 /* ============================================
    ENCABEZADOS — Jerarquía según DESIGN_SYSTEM_DIGEEX v3
 
@@ -584,10 +593,11 @@ h6 {
 
 /* Ningún panel de dropdown debe superar el ancho del viewport: en móvil un
    overlay más ancho que la pantalla abre scroll horizontal y ensancha la
-   página (quirk de iOS Safari). Aplica a todos los select y multiselect —
-   autor por subdirección, filtros de estadísticas, Programa, etc. */
+   página (quirk de iOS Safari). Aplica a select, multiselect y datepicker —
+   autor por subdirección, filtros de estadísticas, Programa, años, etc. */
 .p-select-overlay,
-.p-multiselect-overlay {
+.p-multiselect-overlay,
+.p-datepicker-panel {
   max-width: calc(100vw - 2rem) !important;
 }
 .p-multiselect-overlay .p-multiselect-option,
