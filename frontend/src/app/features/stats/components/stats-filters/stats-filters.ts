@@ -6,7 +6,6 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { ButtonModule } from 'primeng/button';
 
 import { FilterConfig } from '../../models/stats-dashboard.model';
-import { alignOverlayToTrigger } from '../../../../shared/align-overlay-to-trigger.util';
 
 /**
  * Renderiza los `FilterConfig` declarativos que expone un renderer. Cada
@@ -82,8 +81,27 @@ export class StatsFiltersComponent {
     return Object.keys(this.activeFilters()).length > 0;
   }
 
-  /** Alinea el overlay del filtro (appendTo body) al ancho y posición de su campo. */
+  /**
+   * Con appendTo el overlay flota en el body sin heredar el ancho ni la posición
+   * del campo. Copia la solución de Programa: iguala el panel al contenedor del
+   * filtro (`#flt-<key>`, un div que sí resuelve el id, a diferencia del inputId
+   * dinámico del p-select dentro del `@for`). Misma clase de panel que Programa.
+   */
   onFilterShow(key: string): void {
-    alignOverlayToTrigger(key, 'digeex-dropdown-panel');
+    requestAnimationFrame(() => {
+      const trigger = document.getElementById('flt-' + key);
+      const panel = document.querySelector('.digeex-programa-panel') as HTMLElement | null;
+      const root = panel?.closest('.p-overlay') as HTMLElement | null;
+      if (!trigger || !root) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const viewport = document.documentElement.clientWidth;
+      const width = Math.min(rect.width, viewport - 16);
+      const left = Math.max(8, Math.min(rect.left, viewport - width - 8));
+      root.style.setProperty('width', `${width}px`, 'important');
+      root.style.setProperty('min-width', `${width}px`, 'important');
+      root.style.setProperty('max-width', `${width}px`, 'important');
+      root.style.setProperty('left', `${left}px`, 'important');
+    });
   }
 }

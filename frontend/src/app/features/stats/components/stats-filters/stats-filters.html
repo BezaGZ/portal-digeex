@@ -1,7 +1,7 @@
 @if (filterList().length > 0) {
   <div class="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4 flex-wrap">
     @for (filter of filterList(); track filter.key) {
-      <div class="flex flex-col gap-1 flex-1 min-w-[180px]">
+      <div [id]="'flt-' + filter.key" class="flex flex-col gap-1 flex-1 min-w-[180px]">
         <label class="text-xs font-semibold uppercase tracking-wide"
                style="color: var(--color-text-secondary)">
           {{ filter.label }}
@@ -18,11 +18,10 @@
             [ngModel]="valueOf(filter.key)"
             (ngModelChange)="setValue(filter.key, $event)"
             appendTo="body"
-            panelStyleClass="digeex-dropdown-panel"
+            panelStyleClass="digeex-programa-panel"
             styleClass="w-full" />
         } @else {
           <p-select
-            [inputId]="filter.key"
             [options]="filter.options.slice()"
             optionLabel="label"
             optionValue="value"
@@ -31,7 +30,7 @@
             [ngModel]="valueOf(filter.key)"
             (ngModelChange)="setValue(filter.key, $event ?? '')"
             appendTo="body"
-            panelStyleClass="digeex-dropdown-panel"
+            panelStyleClass="digeex-programa-panel"
             (onShow)="onFilterShow(filter.key)"
             styleClass="w-full" />
         }
