@@ -18,7 +18,10 @@ import { BitstreamBundleManager } from '../../../../../shared/components/bitstre
 import { BaseSubmissionForm } from '../../base-submission-form';
 import { registerSubmissionForm } from '../../submission-form-registry';
 import { mv } from '../../metadata-value.util';
-import { buildMetadataPatch } from '../../../../../core/api/metadata-patch.util';
+import {
+  buildMetadataPatch,
+  buildRepeatableMetadataPatch,
+} from '../../../../../core/api/metadata-patch.util';
 import { toLocalIsoDate } from '../../../../../core/i18n/iso-date.util';
 import { MetadataValue } from '../../../../../core/api/models/metadata.model';
 import { Bitstream } from '../../../../../core/api/models/bitstream.model';
@@ -450,10 +453,9 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
   }
 
   /**
-   * Construye el JSON Patch contra la metadata original del item. dc.subject
-   * se trata aparte: es repeatable, así que cuando el usuario cambió la lista
-   * separada por comas reemplazamos el campo completo (remove + add); si la
-   * lista coincide con la original no emitimos op.
+   * Construye el JSON Patch contra la metadata original del item. dc.subject es
+   * repeatable y se resuelve por índice con buildRepeatableMetadataPatch: DSpace
+   * no persiste el remove del campo entero + add con array en una sola request.
    */
   override buildPatchFromForm(item: Item): JsonPatchEntry[] {
     const v = this.form.getRawValue();
@@ -475,23 +477,7 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
     };
 
     const ops = buildMetadataPatch(scalarFields, item.metadata ?? {});
-
-    const subjectsOld = (item.metadata?.['dc.subject'] ?? []).map((x) => x.value);
-    const sameSubjects =
-      subjectsOld.length === subjectsNew.length &&
-      subjectsOld.every((s, i) => s === subjectsNew[i]);
-    if (!sameSubjects) {
-      if (subjectsOld.length > 0) {
-        ops.push({ op: 'remove', path: '/metadata/dc.subject' });
-      }
-      if (subjectsNew.length > 0) {
-        ops.push({
-          op: 'add',
-          path: '/metadata/dc.subject',
-          value: subjectsNew.map((s) => ({ value: s })),
-        });
-      }
-    }
+    ops.push(...buildRepeatableMetadataPatch('dc.subject', subjectsNew, item.metadata ?? {}));
 
     return ops;
   }

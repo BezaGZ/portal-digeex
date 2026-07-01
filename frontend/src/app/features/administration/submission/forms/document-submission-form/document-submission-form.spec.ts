@@ -1085,4 +1085,42 @@ describe('DocumentSubmissionForm', () => {
       ]),
     );
   });
+
+  /**
+   * Verifica que agregar una palabra clave anexe con `/-` en vez de reemplazar el campo.
+   * DSpace acepta con 200 el remove del campo entero + add array pero no lo persiste.
+   */
+  it('should append a new keyword by index instead of removing and re-adding the whole subject field', () => {
+    const item: Item = {
+      uuid: 'item-1',
+      name: 'Manual',
+      handle: '123/1',
+      inArchive: true,
+      discoverable: true,
+      withdrawn: false,
+      lastModified: '2026-05-11T00:00:00Z',
+      type: 'item',
+      metadata: {
+        'dc.subject': [
+          { value: 'Requisitos', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+    };
+
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('item', item);
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({ subject: 'Requisitos, Nuevos' });
+    const patch = c.buildPatchFromForm(item);
+
+    expect(patch).toContainEqual({
+      op: 'add',
+      path: '/metadata/dc.subject/-',
+      value: { value: 'Nuevos' },
+    });
+    expect(patch).not.toContainEqual({ op: 'remove', path: '/metadata/dc.subject' });
+  });
 });
