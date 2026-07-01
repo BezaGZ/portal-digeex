@@ -5,6 +5,7 @@ import { SelectModule } from 'primeng/select';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { GalleryFilters, FilterOption } from '../../models';
+import { alignOverlayToTrigger } from '../../../../shared/align-overlay-to-trigger.util';
 
 @Component({
   selector: 'app-gallery-filters',
@@ -27,6 +28,11 @@ export class GalleryFiltersComponent {
   selectedEventType: string | null = null;
   selectedPopulationType: string | null = null;
   selectedImageContext: string | null = null;
+
+  /** Alinea el overlay de Programa (appendTo body) al ancho y posición del campo. */
+  onProgramShow(): void {
+    alignOverlayToTrigger('program', 'digeex-programa-panel');
+  }
 
   onFilterChange() {
     const filters: GalleryFilters = {};

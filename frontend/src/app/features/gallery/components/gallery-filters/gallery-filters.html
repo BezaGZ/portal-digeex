@@ -36,6 +36,9 @@
     >
       Programa
     </label>
+    <!-- Con appendTo: inline en iOS Safari estira la página por los nombres
+         largos de programas. El panel flota y se topa al viewport con
+         .digeex-programa-panel, sin salirse ni ensanchar el documento. -->
     <p-select
       id="program"
       [options]="programOptions"
@@ -44,6 +47,9 @@
       optionValue="value"
       placeholder="Todos los programas"
       [showClear]="true"
+      appendTo="body"
+      panelStyleClass="digeex-programa-panel"
+      (onShow)="onProgramShow()"
       (onChange)="onFilterChange()"
       class="w-full"
     />
@@ -65,6 +71,7 @@
       optionValue="value"
       placeholder="Todos los tipos"
       [showClear]="true"
+      appendTo="body"
       (onChange)="onFilterChange()"
       class="w-full"
     />
@@ -86,6 +93,7 @@
       optionValue="value"
       placeholder="Todas las poblaciones"
       [showClear]="true"
+      appendTo="body"
       (onChange)="onFilterChange()"
       class="w-full"
     />
@@ -107,6 +115,7 @@
       optionValue="value"
       placeholder="Todos los enfoques"
       [showClear]="true"
+      appendTo="body"
       (onChange)="onFilterChange()"
       class="w-full"
     />

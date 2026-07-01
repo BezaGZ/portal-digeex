@@ -13,6 +13,7 @@ import { SkeletonModule } from 'primeng/skeleton';
 import { SearchFilters, SelectOption, ScopeOption } from '../../models/search-filters.model';
 import { Facet } from '../../../../core/api/models/discovery.model';
 import { VocabularyDisplayService } from '../../../../core/api/vocabulary-display.service';
+import { alignOverlayToTrigger } from '../../../../shared/align-overlay-to-trigger.util';
 
 @Component({
   selector: 'app-search-filters',
@@ -87,6 +88,11 @@ export class SearchFiltersComponent {
     anioFin: null,
     orderBy: 'relevancia',
   };
+
+  /** Alinea el overlay de programa/subdirección (appendTo body) al ancho y posición del campo. */
+  onScopeShow(): void {
+    alignOverlayToTrigger('search-scope', 'digeex-programa-panel');
+  }
 
   onScopeSelected() {
     if (this.filters.scope) {

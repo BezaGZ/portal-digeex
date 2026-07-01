@@ -12,7 +12,12 @@
       @if (scopeLoading()) {
         <p-skeleton width="100%" height="2.5rem" borderRadius="6px" data-testid="scope-skeleton" />
       } @else {
+        <!-- Con appendTo: inline en iOS Safari estira la página por los nombres
+             largos de programas/subdirecciones. El panel flota y se topa al
+             viewport con .digeex-programa-panel, sin salirse ni ensanchar el
+             documento. -->
         <p-select
+          inputId="search-scope"
           [(ngModel)]="filters.scope"
           [options]="scopeOptions()"
           optionLabel="label"
@@ -20,6 +25,9 @@
           optionGroupLabel="group"
           placeholder="-- Selecciona para habilitar la búsqueda --"
           styleClass="w-full"
+          appendTo="body"
+          panelStyleClass="digeex-programa-panel"
+          (onShow)="onScopeShow()"
           [showClear]="true"
           (onChange)="onScopeSelected()"
         />
@@ -73,6 +81,7 @@
             optionValue="value"
             placeholder="Todos los tipos"
             [maxSelectedLabels]="2"
+            appendTo="body"
             styleClass="w-full"
             [showClear]="true"
           />
@@ -92,6 +101,7 @@
             optionValue="value"
             placeholder="Todos los niveles"
             [maxSelectedLabels]="2"
+            appendTo="body"
             styleClass="w-full"
             [showClear]="true"
           />
@@ -111,6 +121,7 @@
             optionValue="value"
             placeholder="Todos los idiomas"
             [maxSelectedLabels]="2"
+            appendTo="body"
             styleClass="w-full"
             [showClear]="true"
           />
@@ -144,6 +155,7 @@
             [options]="orderByOptions"
             optionLabel="label"
             optionValue="value"
+            appendTo="body"
             styleClass="w-full"
           />
         </div>
@@ -160,6 +172,7 @@
             view="year"
             dateFormat="yy"
             placeholder="Seleccionar año"
+            appendTo="body"
             styleClass="w-full"
             [showClear]="true"
           />
@@ -177,6 +190,7 @@
             view="year"
             dateFormat="yy"
             placeholder="Seleccionar año"
+            appendTo="body"
             styleClass="w-full"
             [showClear]="true"
           />
