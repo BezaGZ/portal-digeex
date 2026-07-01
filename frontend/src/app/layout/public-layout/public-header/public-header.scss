@@ -5,10 +5,17 @@
 }
 
 @keyframes slide-down {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .animate-slide-down {
-  animation: slide-down 0.2s ease-out forwards;
+  transform-origin: top center;
+  animation: slide-down 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }

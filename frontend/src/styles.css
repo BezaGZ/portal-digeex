@@ -582,6 +582,22 @@ h6 {
   line-height: 1.4;
 }
 
+/* Ningún panel de dropdown debe superar el ancho del viewport: en móvil un
+   overlay más ancho que la pantalla abre scroll horizontal y ensancha la
+   página (quirk de iOS Safari). Aplica a todos los select y multiselect —
+   autor por subdirección, filtros de estadísticas, Programa, etc. */
+.p-select-overlay,
+.p-multiselect-overlay {
+  max-width: calc(100vw - 2rem) !important;
+}
+.p-multiselect-overlay .p-multiselect-option,
+.p-multiselect-overlay [data-pc-section="option"],
+.p-multiselect-overlay [data-pc-section="optionlabel"] {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
 /* Programa (programas-digeex) tiene opciones de ~90 caracteres. Inline en iOS
    Safari estiran la página, así que el select usa appendTo y este panel se topa
    al viewport con wrap forzado, para no salirse ni ensanchar el documento. */

@@ -16,7 +16,7 @@ import { PublicHeader } from './public-header';
  * feedback de error: la apertura/cierre del panel la maneja `p-popover` de
  * PrimeNG, así que no se prueba acá.
  *
- * Ciclo 32 TDD — Sprint 8. Ajustado en Ciclos 40, 44.
+ * Ciclo 32 TDD — Sprint 8. Ajustado en Ciclos 40, 44, 47.
  */
 describe('PublicHeader', () => {
   function setup(collections: unknown[], cacheOverride: Record<string, unknown> = {}) {
@@ -127,5 +127,27 @@ describe('PublicHeader', () => {
     c.onScroll(40);
 
     expect(c.scrolled()).toBe(true);
+  });
+
+  /** Verifica que un click fuera del header cierre el menú móvil abierto. */
+  it('should close the mobile menu on a click outside the header', () => {
+    const c = setup([]).componentInstance;
+    c.toggleMobileMenu();
+    expect(c.mobileOpen()).toBe(true);
+
+    c.onDocumentClick({ target: document.createElement('div') } as unknown as MouseEvent);
+
+    expect(c.mobileOpen()).toBe(false);
+  });
+
+  /** Verifica que un click dentro del header no cierre el menú (el toggle y los ítems lo manejan). */
+  it('should keep the mobile menu open on a click inside the header', () => {
+    const fixture = setup([]);
+    const c = fixture.componentInstance;
+    c.toggleMobileMenu();
+
+    c.onDocumentClick({ target: fixture.nativeElement } as unknown as MouseEvent);
+
+    expect(c.mobileOpen()).toBe(true);
   });
 });

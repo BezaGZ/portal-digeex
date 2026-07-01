@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, signal, HostListener, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, signal, HostListener, OnInit } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { Popover } from 'primeng/popover';
@@ -38,6 +38,7 @@ export class PublicHeader implements OnInit {
   constructor(
     private router: Router,
     private collectionCache: CollectionCacheService,
+    private readonly el: ElementRef<HTMLElement>,
   ) {}
 
   ngOnInit() {
@@ -90,6 +91,18 @@ export class PublicHeader implements OnInit {
   @HostListener('document:keydown.escape')
   onEscape() {
     this.closeMobileMenu();
+  }
+
+  /**
+   * Cierra el menú móvil al hacer click fuera del header. El click del propio
+   * botón hamburguesa cae dentro del host, así que abrirlo no lo cierra en el
+   * mismo evento; los ítems ya cierran por su cuenta al navegar.
+   */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    if (this.mobileOpen() && !this.el.nativeElement.contains(event.target as Node)) {
+      this.closeMobileMenu();
+    }
   }
 
   /** Lee la posición de scroll una vez por frame y ajusta la elevación del header. */
