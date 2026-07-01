@@ -83,25 +83,38 @@ export class StatsFiltersComponent {
 
   /**
    * Con appendTo el overlay flota en el body sin heredar el ancho ni la posición
-   * del campo. Copia la solución de Programa: iguala el panel al contenedor del
-   * filtro (`#flt-<key>`, un div que sí resuelve el id, a diferencia del inputId
-   * dinámico del p-select dentro del `@for`). Misma clase de panel que Programa.
+   * del campo. Se corre el clamp sincrónico (antes de pintar) y en el rAF: iOS
+   * Safari "recuerda" el ancho máximo con que PrimeNG crea el overlay, así que
+   * toparlo un frame después no alcanza; hay que hacerlo de entrada.
    */
   onFilterShow(key: string): void {
-    requestAnimationFrame(() => {
-      const trigger = document.getElementById('flt-' + key);
-      const panel = document.querySelector('.digeex-programa-panel') as HTMLElement | null;
-      const root = panel?.closest('.p-overlay') as HTMLElement | null;
-      if (!trigger || !root) return;
+    this.clampFilterOverlay(key);
+    requestAnimationFrame(() => this.clampFilterOverlay(key));
+  }
 
-      const rect = trigger.getBoundingClientRect();
-      const viewport = document.documentElement.clientWidth;
-      const width = Math.min(rect.width, viewport - 16);
-      const left = Math.max(8, Math.min(rect.left, viewport - width - 8));
-      root.style.setProperty('width', `${width}px`, 'important');
-      root.style.setProperty('min-width', `${width}px`, 'important');
-      root.style.setProperty('max-width', `${width}px`, 'important');
-      root.style.setProperty('left', `${left}px`, 'important');
-    });
+  /**
+   * PrimeNG posiciona y pone el min-width en el wrapper `.p-overlay` (root), no en
+   * el panel interno; topamos ambos al ancho del contenedor del filtro
+   * (`#flt-<key>`, un div que sí resuelve el id, a diferencia del inputId dinámico
+   * del p-select en el `@for`), clampeado al viewport real para que no se ensanche.
+   */
+  private clampFilterOverlay(key: string): void {
+    const trigger = document.getElementById('flt-' + key);
+    const panel = document.querySelector('.digeex-programa-panel') as HTMLElement | null;
+    const root = panel?.closest('.p-overlay') as HTMLElement | null;
+    if (!trigger || !panel || !root) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const viewport = document.documentElement.clientWidth;
+    const width = Math.min(rect.width, viewport - 16);
+    const left = Math.max(8, Math.min(rect.left, viewport - width - 8));
+    const value = `${width}px`;
+    for (const el of [root, panel]) {
+      el.style.setProperty('width', value, 'important');
+      el.style.setProperty('min-width', value, 'important');
+      el.style.setProperty('max-width', value, 'important');
+    }
+    root.style.setProperty('left', `${left}px`, 'important');
+    root.style.setProperty('overflow-x', 'clip', 'important');
   }
 }
