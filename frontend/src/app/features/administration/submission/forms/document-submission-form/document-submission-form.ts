@@ -31,6 +31,7 @@ import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-dis
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
 import { CommunityApiService } from '../../../../../core/api/community-api.service';
 import { subdireccionNames$ } from '../../subdireccion-options.util';
+import { alignOverlayToTrigger } from '../../../../../shared/align-overlay-to-trigger.util';
 
 /**
  * Institución que publica por defecto. Va prellenada en el campo (editable).
@@ -333,6 +334,11 @@ export class DocumentSubmissionForm extends BaseSubmissionForm {
   /** `(filesChange)` del app-file-dropzone emite la lista actual completa. */
   onFilesChange(files: File[]): void {
     this.files.set(files);
+  }
+
+  /** Alinea el overlay del autor (appendTo body) al ancho y posición del campo. */
+  onAuthorShow(): void {
+    alignOverlayToTrigger('author', 'digeex-dropdown-panel');
   }
 
   /** Vuelve al listado de programas en creación, o a Mis envíos en edición. */

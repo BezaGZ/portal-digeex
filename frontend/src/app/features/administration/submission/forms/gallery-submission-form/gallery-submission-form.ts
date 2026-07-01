@@ -24,6 +24,7 @@ import { VocabularyDisplayService } from '../../../../../core/api/vocabulary-dis
 import { VocabularyEntry } from '../../../../../core/api/models/vocabulary-entry.model';
 import { CommunityApiService } from '../../../../../core/api/community-api.service';
 import { subdireccionNames$ } from '../../subdireccion-options.util';
+import { alignOverlayToTrigger } from '../../../../../shared/align-overlay-to-trigger.util';
 import { FileDropzoneComponent } from '../../../../../shared';
 import { LoadingSpinner } from '../../../../../shared/components/loading-spinner/loading-spinner';
 import { BitstreamBundleManager } from '../../../../../shared/components/bitstream-bundle-manager/bitstream-bundle-manager';
@@ -250,22 +251,14 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
     this.coverFile.set(files[0] ?? null);
   }
 
-  /**
-   * Iguala ancho y posición del overlay de Programa a los del campo. Con appendTo
-   * el panel flota en el body y no hereda el ancho ni queda alineado al input; sin
-   * esto queda más ancho (y en iOS un panel ancho ensancha la página) o corrido a
-   * un lado. Los nombres largos igual se leen por el wrap forzado del overlay.
-   */
+  /** Alinea el overlay de Programa (appendTo body) al ancho y posición del campo. */
   onProgramaShow(): void {
-    requestAnimationFrame(() => {
-      const trigger = document.getElementById('classification')?.closest('p-select') as HTMLElement | null;
-      const panel = document.querySelector('.digeex-programa-panel') as HTMLElement | null;
-      if (trigger && panel) {
-        const rect = trigger.getBoundingClientRect();
-        panel.style.width = `${rect.width}px`;
-        panel.style.left = `${rect.left + window.scrollX}px`;
-      }
-    });
+    alignOverlayToTrigger('classification', 'digeex-programa-panel');
+  }
+
+  /** Alinea el overlay del autor (appendTo body) al ancho y posición del campo. */
+  onAuthorShow(): void {
+    alignOverlayToTrigger('author', 'digeex-dropdown-panel');
   }
 
   /** Vuelve al listado de programas en creación, o a Mis envíos en edición. */

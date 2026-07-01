@@ -89,6 +89,9 @@
         [editable]="true"
         [showClear]="true"
         placeholder="Elegí una subdirección o escribí otro"
+        appendTo="body"
+        panelStyleClass="digeex-dropdown-panel"
+        (onShow)="onAuthorShow()"
         styleClass="w-full" />
     </div>
 

@@ -17,9 +17,12 @@
             [maxSelectedLabels]="2"
             [ngModel]="valueOf(filter.key)"
             (ngModelChange)="setValue(filter.key, $event)"
+            appendTo="body"
+            panelStyleClass="digeex-dropdown-panel"
             styleClass="w-full" />
         } @else {
           <p-select
+            [inputId]="filter.key"
             [options]="filter.options.slice()"
             optionLabel="label"
             optionValue="value"
@@ -27,6 +30,9 @@
             [showClear]="true"
             [ngModel]="valueOf(filter.key)"
             (ngModelChange)="setValue(filter.key, $event ?? '')"
+            appendTo="body"
+            panelStyleClass="digeex-dropdown-panel"
+            (onShow)="onFilterShow(filter.key)"
             styleClass="w-full" />
         }
       </div>

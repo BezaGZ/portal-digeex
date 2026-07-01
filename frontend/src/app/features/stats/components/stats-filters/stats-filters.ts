@@ -6,6 +6,7 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { ButtonModule } from 'primeng/button';
 
 import { FilterConfig } from '../../models/stats-dashboard.model';
+import { alignOverlayToTrigger } from '../../../../shared/align-overlay-to-trigger.util';
 
 /**
  * Renderiza los `FilterConfig` declarativos que expone un renderer. Cada
@@ -79,5 +80,10 @@ export class StatsFiltersComponent {
   /** True si hay al menos un filtro activo; usado para mostrar el botón Limpiar. */
   hasActive(): boolean {
     return Object.keys(this.activeFilters()).length > 0;
+  }
+
+  /** Alinea el overlay del filtro (appendTo body) al ancho y posición de su campo. */
+  onFilterShow(key: string): void {
+    alignOverlayToTrigger(key, 'digeex-dropdown-panel');
   }
 }
