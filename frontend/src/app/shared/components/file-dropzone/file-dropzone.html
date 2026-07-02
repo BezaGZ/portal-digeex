@@ -50,3 +50,10 @@
     </div>
   </ng-template>
 </p-fileupload>
+
+@if (rejectedBySize().length > 0) {
+  <small class="block mt-1 text-[var(--color-error)]" data-testid="dropzone-size-rejection">
+    {{ rejectedBySize().join(', ') }}
+    {{ rejectedBySize().length === 1 ? 'supera' : 'superan' }} el máximo de {{ maxSizeMb }} MB.
+  </small>
+}

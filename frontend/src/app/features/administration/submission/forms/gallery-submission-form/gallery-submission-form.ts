@@ -63,6 +63,13 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
   /** Multi-bitstream: cada foto del álbum llega al bundle ORIGINAL del workspaceitem. */
   readonly files = signal<File[]>([]);
 
+  /**
+   * Videos del álbum (opcionales); van al mismo bundle ORIGINAL que las fotos.
+   * Signal aparte de `files` porque las fotos son obligatorias y el mínimo de
+   * canSubmit no debe contaminarse con videos.
+   */
+  readonly videoFiles = signal<File[]>([]);
+
   /** Imagen de portada que el facade coloca en el bundle THUMBNAIL post-archive. Required en Galería. */
   readonly coverFile = signal<File | null>(null);
 
@@ -77,6 +84,9 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
 
   /** Archivos nuevos en la pila de "subir al ORIGINAL" del próximo Submit. */
   readonly pendingAdds = signal<File[]>([]);
+
+  /** Videos nuevos en edición; pila aparte porque su dropzone valida tipo y tope propios. */
+  readonly pendingVideoAdds = signal<File[]>([]);
 
   private readonly destroyRef = inject(DestroyRef);
 
@@ -145,7 +155,8 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
       const effective =
         this.currentBitstreamsTotal() -
         this.pendingDeletes().size +
-        this.pendingAdds().length;
+        this.pendingAdds().length +
+        this.pendingVideoAdds().length;
       return effective > 0;
     }
     if (this.files().length === 0) return false;
@@ -197,7 +208,7 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
   }
 
   override getFiles(): File[] {
-    return this.files();
+    return [...this.files(), ...this.videoFiles()];
   }
 
   override getVisibility(): 'public' | 'private' {
@@ -233,6 +244,7 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
       imageFocus: '',
     });
     this.files.set([]);
+    this.videoFiles.set([]);
     this.coverFile.set(null);
     this.visibility.set('public');
     this.dropzones?.forEach((d) => d.clear());
@@ -244,6 +256,11 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
   /** Selección de fotos desde el app-file-dropzone (multiple, image/*). */
   onFilesChange(files: File[]): void {
     this.files.set(files);
+  }
+
+  /** Selección de videos desde el app-file-dropzone (multiple, mp4/webm). */
+  onVideosChange(files: File[]): void {
+    this.videoFiles.set(files);
   }
 
   /** Selección de la portada desde el app-file-dropzone (single, image/*). */
@@ -324,12 +341,17 @@ export class GallerySubmissionForm extends BaseSubmissionForm {
     this.pendingAdds.set([...files]);
   }
 
+  /** Reemplaza la pila de videos nuevos de edición con la lista que emite su dropzone. */
+  onAddVideoBitstreams(files: File[]): void {
+    this.pendingVideoAdds.set([...files]);
+  }
+
   protected override getBitstreamsToRemove(): string[] {
     return Array.from(this.pendingDeletes());
   }
 
   protected override getBitstreamsToAdd(): File[] {
-    return this.pendingAdds();
+    return [...this.pendingAdds(), ...this.pendingVideoAdds()];
   }
 
   /** Pide al facade una página del bundle ORIGINAL y llena las signals visibles. */

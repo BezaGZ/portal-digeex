@@ -15,7 +15,8 @@ import { ENTITY_TYPE } from '../../../core/config/digeex-values.config';
  * álbumes con facetas, la carga de un álbum individual con sus fotos,
  * la obtención de opciones de filtro y el mapeo de metadata Dublin Core + digeex.
  *
- * Ciclo 8 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8) y Ciclos 2, 5, 7 (Sprint 9).
+ * Ciclo 8 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8), Ciclos 2, 5, 7
+ * (Sprint 9) y Ciclo 50 (Sprint 10: videos del bundle ORIGINAL).
  */
 describe('GalleryService', () => {
   let service: GalleryService;
@@ -315,6 +316,40 @@ describe('GalleryService', () => {
     expect(album?.title).toBe('Graduación PEAC 2024');
     expect(album?.photos.length).toBe(2);
     expect(album?.photos[0].id).toBe('photo-1');
+  });
+
+  /** Verifica que un bundle mixto se reparta: imágenes a photos, mp4/webm a videos, el resto fuera. */
+  it('should split ORIGINAL bitstreams into photos and videos by extension', async () => {
+    let album: { photos: { id: string }[]; videos: { id: string; url: string; name: string }[] } | undefined;
+    const promise = new Promise<void>((resolve, reject) => {
+      service.getAlbumById('album-1').subscribe({
+        next: (a) => {
+          album = a as typeof album;
+          resolve();
+        },
+        error: reject,
+      });
+    });
+
+    httpMock.expectOne('/server/api/core/items/album-1').flush(mockAlbumItem);
+    httpMock.expectOne('/server/api/core/items/album-1/bundles?page=0&size=20').flush(mockBundlesResponse);
+    httpMock.expectOne('/server/api/core/bundles/bundle-original/bitstreams?page=0&size=100').flush({
+      _embedded: {
+        bitstreams: [
+          { uuid: 'photo-1', name: 'foto-01.jpg', _links: { content: { href: '' } } },
+          { uuid: 'video-1', name: 'clip-01.mp4', _links: { content: { href: '' } } },
+          { uuid: 'video-2', name: 'clip-02.WEBM', _links: { content: { href: '' } } },
+          { uuid: 'marker', name: 'video-marcador.txt', _links: { content: { href: '' } } },
+        ],
+      },
+      page: { number: 0, size: 100, totalPages: 1, totalElements: 4 },
+    });
+
+    await promise;
+    expect(album?.photos.map((p) => p.id)).toEqual(['photo-1']);
+    expect(album?.videos.map((v) => v.id)).toEqual(['video-1', 'video-2']);
+    expect(album?.videos[0].url).toBe('/server/api/core/bitstreams/video-1/content');
+    expect(album?.videos[0].name).toBe('clip-01.mp4');
   });
 
   /** Verifica que getAlbumById() agote las páginas del bundle ORIGINAL para traer todas las fotos. */

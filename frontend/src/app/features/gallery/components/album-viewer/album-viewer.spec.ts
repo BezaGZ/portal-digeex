@@ -14,7 +14,8 @@ import { Album } from '../../models';
  * Carga un álbum completo por UUID desde route params,
  * muestra grid de fotos y abre modal PrimeNG Galleria.
  *
- * Ciclo 6 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8) y Ciclo 48 (Sprint 10).
+ * Ciclo 6 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8) y Ciclos 48 y 51
+ * (Sprint 10).
  */
 describe('AlbumViewer', () => {
   let galleryService: GalleryService;
@@ -41,6 +42,7 @@ describe('AlbumViewer', () => {
     populationType: 'Jóvenes',
     imageContext: 'Grupal',
     photoCount: 3,
+    videos: [],
   };
 
   /** Setup */
@@ -110,6 +112,39 @@ describe('AlbumViewer', () => {
       fixture.detectChanges();
 
       expect(router.navigate).toHaveBeenCalledWith(['/galeria', 'col-galeria']);
+    });
+  });
+
+  /** Sección de videos */
+
+  describe('videos section', () => {
+    /** Verifica que con videos en el álbum se renderice la sección con un player nativo por video. */
+    it('should render a native video player per album video', () => {
+      vi.spyOn(galleryService, 'getAlbumById').mockReturnValue(
+        of({
+          ...MOCK_ALBUM,
+          videos: [
+            { id: 'v1', url: '/server/api/core/bitstreams/v1/content', name: 'clip-01.mp4' },
+            { id: 'v2', url: '/server/api/core/bitstreams/v2/content', name: 'clip-02.webm' },
+          ],
+        }),
+      );
+
+      const fixture = TestBed.createComponent(AlbumViewer);
+      fixture.detectChanges();
+
+      const section = fixture.nativeElement.querySelector('[data-testid="album-videos-section"]');
+      expect(section).toBeTruthy();
+      expect(fixture.nativeElement.querySelectorAll('video').length).toBe(2);
+    });
+
+    /** Verifica que sin videos la sección no exista y el visor quede como siempre. */
+    it('should not render the videos section when the album has no videos', () => {
+      const fixture = TestBed.createComponent(AlbumViewer);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('[data-testid="album-videos-section"]')).toBeFalsy();
+      expect(fixture.nativeElement.querySelectorAll('video').length).toBe(0);
     });
   });
 

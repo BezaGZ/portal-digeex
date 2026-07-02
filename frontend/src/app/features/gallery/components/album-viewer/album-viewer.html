@@ -64,6 +64,12 @@
             <i class="pi pi-images"></i>
             {{ album()!.photos.length }} {{ album()!.photos.length === 1 ? 'foto' : 'fotos' }}
           </span>
+          @if (album()!.videos.length > 0) {
+            <span class="flex items-center gap-2">
+              <i class="pi pi-video"></i>
+              {{ album()!.videos.length }} {{ album()!.videos.length === 1 ? 'video' : 'videos' }}
+            </span>
+          }
         </div>
 
         <p
@@ -112,6 +118,38 @@
         }
       </div>
 
+      <!-- Player nativo (PrimeNG no trae uno): preload=metadata da la miniatura
+           sin bajar el archivo y DSpace sirve el bitstream en streaming por rangos. -->
+      @if (album()!.videos.length > 0) {
+        <div data-testid="album-videos-section" class="mb-8">
+          <h3 class="text-lg font-semibold mb-4" style="color: var(--color-text-primary); font-family: var(--font-heading)">
+            <i class="pi pi-video mr-2"></i>Videos
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            @for (video of album()!.videos; track video.id) {
+              <div class="rounded-lg overflow-hidden bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm">
+                <!-- playsinline: sin él, iOS fuerza fullscreen al dar play. -->
+                <video
+                  [src]="video.url"
+                  controls
+                  playsinline
+                  preload="metadata"
+                  class="w-full aspect-video bg-black"
+                ></video>
+                <p class="px-3 py-2 text-sm truncate" style="color: var(--color-text-secondary); font-family: var(--font-body)">
+                  {{ video.name }}
+                </p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (album()!.videos.length > 0) {
+        <h3 class="text-lg font-semibold mb-4" style="color: var(--color-text-primary); font-family: var(--font-heading)">
+          <i class="pi pi-camera mr-2"></i>Fotografías
+        </h3>
+      }
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         @for (photo of album()!.photos; track photo.id; let i = $index) {
           <app-photo-grid-item

@@ -9,9 +9,9 @@ import { Item } from '../../../core/api/models/item.model';
 import { Bitstream } from '../../../core/api/models/bitstream.model';
 import { MetadataValue } from '../../../core/api/models/metadata.model';
 import { paginateAll$ } from '../../../core/api/dspace-rest.util';
-import { Album, Photo, AlbumPage, GalleryFilters, FilterOption, FilterOptions } from '../models';
+import { Album, Photo, AlbumVideo, AlbumPage, GalleryFilters, FilterOption, FilterOptions } from '../models';
 import { ENTITY_TYPE } from '../../../core/config/digeex-values.config';
-export type { Album, Photo, AlbumPage, GalleryFilters, FilterOption, FilterOptions } from '../models';
+export type { Album, Photo, AlbumVideo, AlbumPage, GalleryFilters, FilterOption, FilterOptions } from '../models';
 
 /**
  * Servicio dedicado a la galería institucional.
@@ -124,8 +124,10 @@ export class GalleryService {
   /** ─── Cargar un álbum con todas sus fotos ─── */
 
   /**
-   * Carga un álbum completo por UUID con todas sus fotos del bundle ORIGINAL,
-   * agotando las páginas. No pide portada: el visor no la muestra.
+   * Carga un álbum completo por UUID con las fotos y videos del bundle
+   * ORIGINAL, agotando las páginas. El mismo bundle guarda ambos; se reparten
+   * por extensión y lo que no es imagen ni video (p. ej. un marcador .txt)
+   * queda fuera. No pide portada: el visor no la muestra.
    * @param uuid - UUID del ítem (álbum) en DSpace
    * @returns Observable con el álbum completo o undefined si falla
    */
@@ -137,20 +139,23 @@ export class GalleryService {
             const bundles = bundlesResponse._embedded?.['bundles'] || [];
             const originalBundle = bundles.find((b) => b.name === 'ORIGINAL');
 
-            const photos$ = originalBundle
+            const media$ = originalBundle
               ? paginateAll$(
                   (page) => this.dspaceApi.getBitstreamsFromBundle(originalBundle.uuid, page, 100),
-                  (res) =>
-                    (res._embedded?.['bitstreams'] || [])
-                      .filter((b) => this.isImageBitstream(b.name))
-                      .map((b) => this.toPhoto(b)),
-                ).pipe(catchError(() => of([] as Photo[])))
-              : of([] as Photo[]);
+                  (res) => res._embedded?.['bitstreams'] || [],
+                ).pipe(catchError(() => of([] as Bitstream[])))
+              : of([] as Bitstream[]);
 
-            return photos$.pipe(
-              map((photos) => {
+            return media$.pipe(
+              map((bitstreams) => {
+                const photos = bitstreams
+                  .filter((b) => this.isImageBitstream(b.name))
+                  .map((b) => this.toPhoto(b));
                 const album = this.mapItemToAlbum(item, '', photos.length);
                 album.photos = photos;
+                album.videos = bitstreams
+                  .filter((b) => this.isVideoBitstream(b.name))
+                  .map((b) => this.toVideo(b));
                 return album;
               })
             );
@@ -227,6 +232,24 @@ export class GalleryService {
     return { id: bitstream.uuid, url, thumbnailUrl: url };
   }
 
+  /**
+   * True si el nombre corresponde a un video reproducible en navegador. Solo
+   * mp4 y webm.
+   */
+  private isVideoBitstream(name?: string | null): boolean {
+    const n = (name || '').toLowerCase();
+    return n.endsWith('.mp4') || n.endsWith('.webm');
+  }
+
+  /** Mapea un bitstream del bundle ORIGINAL a AlbumVideo apuntando a su contenido. */
+  private toVideo(bitstream: Bitstream): AlbumVideo {
+    return {
+      id: bitstream.uuid,
+      url: `/server/api/core/bitstreams/${bitstream.uuid}/content`,
+      name: bitstream.name || '',
+    };
+  }
+
   private mapItemToAlbum(item: Item, coverPhoto: string, photoCount: number): Album {
     const allSubjects: string[] = (item.metadata?.['dc.subject'] || []).map((s: MetadataValue) => s.value);
 
@@ -244,6 +267,7 @@ export class GalleryService {
       imageContext: item.metadata?.['digeex.imageFocus']?.[0]?.value || '',
       coverPhoto,
       photos: [],
+      videos: [],
       photoCount,
     };
   }

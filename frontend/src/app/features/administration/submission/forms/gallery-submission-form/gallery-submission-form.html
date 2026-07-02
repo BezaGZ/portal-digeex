@@ -140,13 +140,29 @@
           dropMessage="Arrastrá las fotos aquí o usá el botón de elegir."
           (filesChange)="onFilesChange($event)" />
       </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Videos del álbum
+          <span class="text-gray-400 font-normal">
+            (opcional; MP4 o WebM, máx. 500 MB — exportá en 1080p si viene de cámara profesional)
+          </span>
+        </label>
+        <app-file-dropzone
+          accept="video/mp4,video/webm"
+          [multiple]="true"
+          [maxSizeMb]="500"
+          chooseLabel="Seleccionar videos"
+          dropMessage="Arrastrá los videos aquí o usá el botón de elegir."
+          (filesChange)="onVideosChange($event)" />
+      </div>
     }
 
     @if (isEditMode()) {
       <div class="flex flex-col gap-2">
         <app-bitstream-bundle-manager
-          label="Fotos actuales"
-          emptyMessage="No hay fotos cargadas."
+          label="Fotos y videos actuales"
+          emptyMessage="No hay fotos ni videos cargados."
           [bitstreams]="currentBitstreams()"
           [pendingDeletes]="pendingDeletes()"
           [total]="currentBitstreamsTotal()"
@@ -165,6 +181,18 @@
           chooseLabel="Seleccionar fotos"
           dropMessage="Arrastrá las fotos aquí o usá el botón de elegir."
           (filesChange)="onAddBitstreams($event)" />
+
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-2">
+          Agregar videos
+          <span class="text-gray-400 font-normal">(MP4 o WebM, máx. 500 MB; se suben al guardar)</span>
+        </label>
+        <app-file-dropzone
+          accept="video/mp4,video/webm"
+          [multiple]="true"
+          [maxSizeMb]="500"
+          chooseLabel="Seleccionar videos"
+          dropMessage="Arrastrá los videos aquí o usá el botón de elegir."
+          (filesChange)="onAddVideoBitstreams($event)" />
       </div>
     }
 

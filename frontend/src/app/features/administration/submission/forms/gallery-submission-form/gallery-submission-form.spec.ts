@@ -26,7 +26,8 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * subir las fotos del álbum. Usa los vocabularios programas-digeex,
  * tipo-poblacion, enfoque-imagen y tipos-evento.
  *
- * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclos 29, 30 y 34, y Ciclo 21 (Sprint 9), y Ciclos 21 y 46 (Sprint 10).
+ * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclos 29, 30 y 34, y Ciclo 21 (Sprint 9),
+ * y Ciclos 21, 46 y 53 (Sprint 10: videos del álbum).
  */
 describe('GallerySubmissionForm', () => {
   function buildCollection(uuid: string): Collection {
@@ -118,6 +119,60 @@ describe('GallerySubmissionForm', () => {
     const b = new File([''], 'foto2.jpg', { type: 'image/jpeg' });
     c.files.set([a, b]);
     expect(c.getFiles()).toEqual([a, b]);
+  });
+
+  /** Verifica que los videos elegidos viajen después de las fotos en getFiles (mismo bundle ORIGINAL). */
+  it('should append selected videos after photos in getFiles', () => {
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    const foto = new File([''], 'foto1.jpg', { type: 'image/jpeg' });
+    const clip = new File([''], 'clip1.mp4', { type: 'video/mp4' });
+    c.files.set([foto]);
+    c.onVideosChange([clip]);
+
+    expect(c.getFiles().map((f) => f.name)).toEqual(['foto1.jpg', 'clip1.mp4']);
+  });
+
+  /** Verifica que sin fotos el envío siga deshabilitado aunque haya videos: los videos no las sustituyen. */
+  it('should keep canSubmit=false when there are only videos and no photos', () => {
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.setValue({
+      title: 'Álbum',
+      abstract: '',
+      issued: '2026-07-01',
+      type: 'Taller',
+      classification: 'PEAC',
+      author: '',
+      populationType: '',
+      imageFocus: '',
+    });
+    c.onVideosChange([new File([''], 'clip1.mp4', { type: 'video/mp4' })]);
+    c.onCoverChange([new File([''], 'portada.jpg', { type: 'image/jpeg' })]);
+
+    expect(c.canSubmit()).toBe(false);
+  });
+
+  /** Verifica que en edición los videos pendientes viajen después de las fotos pendientes al bundle. */
+  it('should append pending video additions after pending photo additions in getBitstreamsToAdd', () => {
+    const fixture = TestBed.createComponent(GallerySubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.onAddBitstreams([new File([''], 'foto-nueva.jpg', { type: 'image/jpeg' })]);
+    c.onAddVideoBitstreams([new File([''], 'clip-nuevo.mp4', { type: 'video/mp4' })]);
+
+    expect(c['getBitstreamsToAdd']().map((f: File) => f.name)).toEqual(['foto-nueva.jpg', 'clip-nuevo.mp4']);
   });
 
   /** Verifica que buildMetadata mapee cada campo del form a su clave dc.* o digeex.* correspondiente. */

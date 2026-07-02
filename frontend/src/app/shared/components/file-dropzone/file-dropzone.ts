@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewChild, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FileUpload, FileUploadModule } from 'primeng/fileupload';
 import { ButtonModule } from 'primeng/button';
@@ -37,6 +37,15 @@ export class FileDropzoneComponent {
   @Input() chooseLabel = 'Elegir archivos';
   @Input() dropMessage = 'Arrastrá los archivos aquí o usá el botón de elegir.';
 
+  /**
+   * Tope de tamaño por archivo en MB; 0 desactiva la validación (default).
+   * Rechazar acá evita el 413 del servidor al final de una subida larga.
+   */
+  @Input() maxSizeMb = 0;
+
+  /** Nombres de los archivos rechazados por tamaño en la última selección. */
+  readonly rejectedBySize = signal<string[]>([]);
+
   @Output() readonly filesChange = new EventEmitter<File[]>();
 
   /** Referencia al p-fileUpload interno para limpiar su estado visual. */
@@ -49,8 +58,22 @@ export class FileDropzoneComponent {
    * que mockean con shape `{files}`.
    */
   onSelect(event: { files?: File[]; currentFiles?: File[] }): void {
-    const list = event.currentFiles ?? event.files ?? [];
-    this.filesChange.emit(Array.from(list));
+    const list = Array.from(event.currentFiles ?? event.files ?? []);
+    if (this.maxSizeMb > 0) {
+      const limit = this.maxSizeMb * 1024 * 1024;
+      const rejected = list.filter((f) => f.size > limit);
+      this.rejectedBySize.set(rejected.map((f) => f.name));
+      const accepted = list.filter((f) => f.size <= limit);
+      // Sincroniza la lista visual del p-fileUpload: sin esto la fila del
+      // archivo rechazado seguiría visible aunque no viaje en el emit.
+      if (rejected.length && this.fileUpload) {
+        this.fileUpload.files = accepted;
+      }
+      this.filesChange.emit(accepted);
+      return;
+    }
+    this.rejectedBySize.set([]);
+    this.filesChange.emit(list);
   }
 
   /**
@@ -66,6 +89,8 @@ export class FileDropzoneComponent {
 
   /** El `(onClear)` del p-fileUpload notifica que el usuario limpió la selección. */
   onClear(): void {
+    // El aviso de rechazo describe la selección anterior; no debe sobrevivirla.
+    this.rejectedBySize.set([]);
     this.filesChange.emit([]);
   }
 

@@ -17,7 +17,8 @@ import { FileDropzoneComponent } from './file-dropzone';
  * Reusable para Documento, Galería, Estadística y cualquier otro form que
  * necesite seleccionar archivos sin el chrome default de PrimeNG.
  *
- * Ciclo 26 TDD - Sprint 6. Ajustado en Ciclo 21 (Sprint 10): método clear().
+ * Ciclo 26 TDD - Sprint 6. Ajustado en Ciclo 21 (Sprint 10: método clear) y
+ * Ciclo 52 (Sprint 10: tope opcional de tamaño maxSizeMb).
  */
 describe('FileDropzoneComponent', () => {
   beforeEach(async () => {
@@ -66,6 +67,55 @@ describe('FileDropzoneComponent', () => {
     c.onSelect({ files: [pdf], currentFiles: [pdf] });
     expect(emitted.length).toBe(1);
     expect(emitted[0][0].name).toBe('a.pdf');
+  });
+
+  /** Verifica que con maxSizeMb un archivo que excede el tope se rechace con aviso y no se emita. */
+  it('should reject files over maxSizeMb and expose a rejection message', () => {
+    const fixture = TestBed.createComponent(FileDropzoneComponent);
+    const c = fixture.componentInstance;
+    c.maxSizeMb = 1;
+    fixture.detectChanges();
+
+    const small = new File([new Uint8Array(1024)], 'ok.mp4');
+    const big = new File([new Uint8Array(2 * 1024 * 1024)], 'grande.mp4');
+    const emitted: File[][] = [];
+    c.filesChange.subscribe((files) => emitted.push(files));
+
+    c.onSelect({ files: [small, big], currentFiles: [small, big] });
+
+    expect(emitted[0].map((f) => f.name)).toEqual(['ok.mp4']);
+    expect(c.rejectedBySize()).toEqual(['grande.mp4']);
+  });
+
+  /** Verifica que el aviso de rechazo no sobreviva a una limpieza de la selección. */
+  it('should reset the rejection message when the selection is cleared', () => {
+    const fixture = TestBed.createComponent(FileDropzoneComponent);
+    const c = fixture.componentInstance;
+    c.maxSizeMb = 1;
+    fixture.detectChanges();
+
+    c.onSelect({ files: [new File([new Uint8Array(2 * 1024 * 1024)], 'grande.mp4')] });
+    expect(c.rejectedBySize()).toEqual(['grande.mp4']);
+
+    c.onClear();
+
+    expect(c.rejectedBySize()).toEqual([]);
+  });
+
+  /** Verifica que sin maxSizeMb no se valide tamaño: todo pasa y sin avisos. */
+  it('should not validate size when maxSizeMb is not set', () => {
+    const fixture = TestBed.createComponent(FileDropzoneComponent);
+    const c = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const big = new File([new Uint8Array(2 * 1024 * 1024)], 'grande.mp4');
+    const emitted: File[][] = [];
+    c.filesChange.subscribe((files) => emitted.push(files));
+
+    c.onSelect({ files: [big], currentFiles: [big] });
+
+    expect(emitted[0].map((f) => f.name)).toEqual(['grande.mp4']);
+    expect(c.rejectedBySize()).toEqual([]);
   });
 
   /** Verifica que filesChange emita un array vacío cuando el usuario limpia los archivos. */
