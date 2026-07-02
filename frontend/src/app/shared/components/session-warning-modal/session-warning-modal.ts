@@ -33,7 +33,7 @@ export class SessionWarningModal {
   constructor() {
     effect(() => {
       if (this.idleService.sessionExpired()) {
-        this.onLogout();
+        this.onLogout(true);
       }
     });
   }
@@ -42,20 +42,28 @@ export class SessionWarningModal {
   onContinue(): void {
     // Si el refresh falla la sesión no se pudo extender; se trata como expirada.
     this.authService.refreshToken().subscribe({
-      error: () => this.onLogout(),
+      error: () => this.onLogout(true),
     });
     this.idleService.warningVisible.set(false);
   }
 
-  /** Cierra sesión y hace una recarga dura al login. */
-  onLogout(): void {
+  /**
+   * Cierra sesión y hace una recarga dura al login. Con `expired` (expiración
+   * automática o refresh fallido) arrastra la ruta actual en `returnUrl` para
+   * que el login devuelva al usuario donde estaba; el click manual en "Cerrar
+   * sesión" va limpio, como el logout de dspace-angular.
+   */
+  onLogout(expired = false): void {
     this.idleService.stop();
+    const target = expired
+      ? `/iniciar-sesion?expired=true&returnUrl=${encodeURIComponent(this.hardRedirect.getCurrentRoute())}`
+      : '/iniciar-sesion';
     // Recarga dura (no SPA): reinicia la app y vuelve a correr initXSRFToken,
     // dejando el token CSRF sincronizado para el próximo login. Misma recarga en
     // ambas ramas: aunque el backend falle, el usuario debe terminar en login.
     this.authService.logout().subscribe({
-      next: () => this.hardRedirect.redirect('/iniciar-sesion'),
-      error: () => this.hardRedirect.redirect('/iniciar-sesion'),
+      next: () => this.hardRedirect.redirect(target),
+      error: () => this.hardRedirect.redirect(target),
     });
   }
 }

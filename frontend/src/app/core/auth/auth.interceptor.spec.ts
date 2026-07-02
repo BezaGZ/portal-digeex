@@ -13,7 +13,7 @@ import { HardRedirectService } from '../navigation/hard-redirect.service';
  * refresh anticipado del JWT, y redirige al login solo cuando un 401 llega con
  * el token ya vencido localmente.
  *
- * Ciclo 2 TDD — Sprint 5. Ajustado en Ciclos 23 y 41 (Sprint 10).
+ * Ciclo 2 TDD — Sprint 5. Ajustado en Ciclos 23, 41 y 49 (Sprint 10).
  */
 describe('jwtInterceptor', () => {
   let httpMock: HttpTestingController;
@@ -36,7 +36,10 @@ describe('jwtInterceptor', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         AuthService,
-        { provide: HardRedirectService, useValue: { redirect: redirectFn } },
+        {
+          provide: HardRedirectService,
+          useValue: { redirect: redirectFn, getCurrentRoute: () => '/administrador/envios/abc' },
+        },
       ],
     });
 
@@ -300,8 +303,8 @@ describe('jwtInterceptor', () => {
   /** Redirección en 401 */
 
   describe('redirect on 401', () => {
-    /** Verifica que un 401 con token vencido purgue el token y recargue a `?expired=true`. */
-    it('should remove the token and hard-redirect to ?expired on 401 when the token is expired', async () => {
+    /** Verifica que un 401 con token vencido purgue el token y recargue a `?expired=true` con la ruta actual. */
+    it('should remove the token and hard-redirect to ?expired with the current route on 401 when the token is expired', async () => {
       vi.spyOn(authService, 'getToken').mockReturnValue(EXPIRED_JWT);
       const removeSpy = vi.spyOn(authService, 'removeToken').mockImplementation(() => {});
 
@@ -317,7 +320,9 @@ describe('jwtInterceptor', () => {
 
       await promise;
       expect(removeSpy).toHaveBeenCalled();
-      expect(redirectFn).toHaveBeenCalledWith('/iniciar-sesion?expired=true');
+      expect(redirectFn).toHaveBeenCalledWith(
+        `/iniciar-sesion?expired=true&returnUrl=${encodeURIComponent('/administrador/envios/abc')}`,
+      );
     });
 
     /** Verifica que un 401 con token válido NO redirija (no atrapa páginas públicas). */

@@ -16,19 +16,21 @@ import { HardRedirectService } from '../../../core/navigation/hard-redirect.serv
  * o "Cerrar sesión" (logout + recarga dura al login).
  * Si llega a 30 min, ejecuta logout automático.
  *
- * Ciclo 3 TDD — Sprint 5. Recarga dura en Ciclo 43 — Sprint 8.
+ * Ciclo 3 TDD — Sprint 5. Recarga dura en Ciclo 43 — Sprint 8. Ajustado en
+ * Ciclo 49 (Sprint 10): la expiración automática arrastra returnUrl; el
+ * cierre manual queda limpio.
  */
 describe('SessionWarningModal', () => {
   let component: SessionWarningModal;
   let fixture: ComponentFixture<SessionWarningModal>;
   let idleService: IdleTimeoutService;
   let authService: AuthService;
-  let hardRedirect: { redirect: ReturnType<typeof vi.fn> };
+  let hardRedirect: { redirect: ReturnType<typeof vi.fn>; getCurrentRoute: () => string };
 
   /** Setup */
 
   beforeEach(() => {
-    hardRedirect = { redirect: vi.fn() };
+    hardRedirect = { redirect: vi.fn(), getCurrentRoute: () => '/administrador/envios/abc' };
 
     TestBed.configureTestingModule({
       imports: [SessionWarningModal],
@@ -119,7 +121,9 @@ describe('SessionWarningModal', () => {
       button.click();
 
       expect(authService.logout).toHaveBeenCalled();
-      expect(hardRedirect.redirect).toHaveBeenCalledWith('/iniciar-sesion');
+      expect(hardRedirect.redirect).toHaveBeenCalledWith(
+        `/iniciar-sesion?expired=true&returnUrl=${encodeURIComponent('/administrador/envios/abc')}`,
+      );
     });
   });
 
@@ -194,7 +198,9 @@ describe('SessionWarningModal', () => {
       fixture.detectChanges();
 
       expect(authService.logout).toHaveBeenCalled();
-      expect(hardRedirect.redirect).toHaveBeenCalledWith('/iniciar-sesion');
+      expect(hardRedirect.redirect).toHaveBeenCalledWith(
+        `/iniciar-sesion?expired=true&returnUrl=${encodeURIComponent('/administrador/envios/abc')}`,
+      );
     });
   });
 });

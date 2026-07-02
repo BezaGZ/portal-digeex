@@ -10,6 +10,7 @@ import {
   LOGIN_INVALID_CREDENTIALS_MESSAGE,
   LOGIN_SERVICE_UNAVAILABLE_MESSAGE,
   LOGIN_SESSION_EXPIRED_MESSAGE,
+  resolvePostLoginRoute,
 } from './login';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
@@ -25,7 +26,8 @@ import { Caller } from '../../../core/auth/caller.model';
  *
  * Ciclo 4 TDD — Sprint 5. Ajustado en Ciclo 13, Ciclo 43 (Sprint 8), 2026-06-21
  * (mejora 5: depende de CallerProvider de core, no de UserManagementService),
- * Ciclo 22 (Sprint 10: snapshot síncrono) y Ciclo 41 (Sprint 10: mensaje de sesión vencida).
+ * Ciclo 22 (Sprint 10: snapshot síncrono), Ciclo 41 (Sprint 10: mensaje de sesión
+ * vencida) y Ciclo 49 (Sprint 10: regreso a la ruta original vía returnUrl).
  */
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -146,6 +148,24 @@ describe('LoginComponent', () => {
       expect(router.navigate).toHaveBeenCalledWith(['/administrador']);
       expect(component.errorMessage()).toBe('');
     });
+
+    /** Con `?returnUrl=` interno presente, el login navega a esa ruta en vez del panel. */
+    it('should navigate to the internal returnUrl after a successful login', async () => {
+      callerSnapshot = { role: 'superadmin', sufijo: null };
+      const route = TestBed.inject(ActivatedRoute);
+      vi.spyOn(route.snapshot.queryParamMap, 'get').mockImplementation(
+        (key: string) => (key === 'returnUrl' ? '/administrador/envios/abc' : null),
+      );
+      const byUrlSpy = vi.spyOn(router, 'navigateByUrl');
+
+      component.email.set('juan@mineduc.gob.gt');
+      component.password.set('Password1');
+      component.onLogin();
+      flushSuccessfulAuth();
+      await fixture.whenStable();
+
+      expect(byUrlSpy).toHaveBeenCalledWith('/administrador/envios/abc');
+    });
   });
 
   describe('login fallido', () => {
@@ -224,6 +244,22 @@ describe('LoginComponent', () => {
       expect(redirectFn).toHaveBeenCalledWith('/iniciar-sesion?error=sin-rol');
       expect(router.navigate).not.toHaveBeenCalledWith(['/administrador']);
     });
+  });
+});
+
+/**
+ * Destino tras un login con rol: `returnUrl` interno gana; cualquier valor
+ * ausente, externo, protocolo-relativo o que apunte al propio login cae al
+ * panel por defecto.
+ */
+describe('resolvePostLoginRoute', () => {
+  it('should return an internal returnUrl and fall back to the panel for unsafe values', () => {
+    expect(resolvePostLoginRoute('/administrador/envios/abc?x=1')).toBe('/administrador/envios/abc?x=1');
+    expect(resolvePostLoginRoute(null)).toBe('/administrador');
+    expect(resolvePostLoginRoute('')).toBe('/administrador');
+    expect(resolvePostLoginRoute('https://evil.example')).toBe('/administrador');
+    expect(resolvePostLoginRoute('//evil.example')).toBe('/administrador');
+    expect(resolvePostLoginRoute('/iniciar-sesion?expired=true')).toBe('/administrador');
   });
 });
 

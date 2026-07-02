@@ -63,8 +63,10 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
 
 /**
  * Redirige al login solo si el 401 trae un token vencido localmente: purga el token
- * y recarga duro a `/iniciar-sesion?expired=true`. Otro 401 se propaga sin redirigir,
- * para no patear desde páginas públicas ni por un 401 de autorización puntual.
+ * y recarga duro a `/iniciar-sesion?expired=true` con la ruta actual en `returnUrl`,
+ * para que el login devuelva al usuario donde estaba tras reautenticarse. Otro 401
+ * se propaga sin redirigir, para no patear desde páginas públicas ni por un 401 de
+ * autorización puntual.
  */
 function redirectWhenTokenExpired<T>(
   authService: AuthService,
@@ -74,7 +76,8 @@ function redirectWhenTokenExpired<T>(
     const token = authService.getToken();
     if (error.status === 401 && token && isTokenExpired(token)) {
       authService.removeToken();
-      hardRedirect.redirect('/iniciar-sesion?expired=true');
+      const returnUrl = encodeURIComponent(hardRedirect.getCurrentRoute());
+      hardRedirect.redirect(`/iniciar-sesion?expired=true&returnUrl=${returnUrl}`);
     }
     return throwError(() => error);
   });

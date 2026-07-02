@@ -35,6 +35,21 @@ export const LOGIN_SERVICE_UNAVAILABLE_MESSAGE =
 export const LOGIN_SESSION_EXPIRED_MESSAGE =
   'Tu sesión expiró. Volvé a iniciar sesión.';
 
+/**
+ * Destino tras un login con rol. Acepta solo rutas internas: con `/` inicial
+ * pero no `//` (protocolo-relativa, open redirect) ni el propio login (loop).
+ * Cualquier otro valor cae al panel. Mismo circuito que dspace-angular: el
+ * guard guarda la ruta pretendida y el login la consume al autenticar.
+ */
+export function resolvePostLoginRoute(returnUrl: string | null): string {
+  const isInternal =
+    !!returnUrl &&
+    returnUrl.startsWith('/') &&
+    !returnUrl.startsWith('//') &&
+    !returnUrl.startsWith('/iniciar-sesion');
+  return isInternal ? returnUrl : '/administrador';
+}
+
 @Component({
   selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -83,7 +98,14 @@ export class LoginComponent implements OnInit {
         const caller = this.callerProvider.currentCallerSnapshot();
         if (caller) {
           this.isLoading.set(false);
-          this.router.navigate(['/administrador']);
+          // Devuelve al usuario a la ruta que pretendía (guard) o donde estaba
+          // al vencer la sesión (interceptor/idle); sin returnUrl, al panel.
+          const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+          if (returnUrl) {
+            this.router.navigateByUrl(resolvePostLoginRoute(returnUrl));
+          } else {
+            this.router.navigate(['/administrador']);
+          }
         } else {
           // Sin rol: cerrar sesión y recargar duro al login con el motivo en el
           // query param. La recarga resincroniza el CSRF y el param restaura el
