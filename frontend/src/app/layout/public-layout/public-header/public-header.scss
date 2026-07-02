@@ -1,7 +1,10 @@
 :host {
   position: sticky;
   top: 0;
-  z-index: 50;
+  /* Por encima de los overlays de PrimeNG (dropdowns desde 1000) para que un
+     panel abierto pase por debajo del header al scrolear, y por debajo de
+     modales y toasts (desde 1100), que sí deben cubrir el header. */
+  z-index: 1050;
 }
 
 @keyframes slide-down {
