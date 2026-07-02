@@ -14,7 +14,7 @@ import { Album } from '../../models';
  * Carga un álbum completo por UUID desde route params,
  * muestra grid de fotos y abre modal PrimeNG Galleria.
  *
- * Ciclo 6 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8).
+ * Ciclo 6 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8) y Ciclo 48 (Sprint 10).
  */
 describe('AlbumViewer', () => {
   let galleryService: GalleryService;
@@ -125,6 +125,49 @@ describe('AlbumViewer', () => {
 
       expect(component.activeIndex()).toBe(3);
       expect(component.displayGalleria()).toBe(true);
+    });
+
+    /** Verifica que abrir el visor marque la foto activa como cargando. */
+    it('should flag the active photo as loading when the galleria opens', () => {
+      const fixture = TestBed.createComponent(AlbumViewer);
+      const component = fixture.componentInstance;
+
+      component.openGalleria(1);
+
+      expect(component.imageLoading()).toBe(true);
+    });
+
+    /** Verifica que navegar a otra foto marque la nueva como cargando. */
+    it('should flag the new photo as loading when the active index changes', () => {
+      const fixture = TestBed.createComponent(AlbumViewer);
+      const component = fixture.componentInstance;
+
+      component.onActiveIndexChange(2);
+
+      expect(component.activeIndex()).toBe(2);
+      expect(component.imageLoading()).toBe(true);
+    });
+
+    /** Verifica que el estado de carga termine cuando la foto activa descarga. */
+    it('should clear the loading flag when the active photo finishes loading', () => {
+      const fixture = TestBed.createComponent(AlbumViewer);
+      const component = fixture.componentInstance;
+      component.openGalleria(1);
+
+      component.onImageLoad();
+
+      expect(component.imageLoading()).toBe(false);
+    });
+
+    /** Verifica que una foto que falla no deje el visor colgado en cargando. */
+    it('should clear the loading flag when the active photo fails to load', () => {
+      const fixture = TestBed.createComponent(AlbumViewer);
+      const component = fixture.componentInstance;
+      component.openGalleria(1);
+
+      component.onImageError();
+
+      expect(component.imageLoading()).toBe(false);
     });
 
     /** Verifica que goBack() navegue al listado de la colección padre. */

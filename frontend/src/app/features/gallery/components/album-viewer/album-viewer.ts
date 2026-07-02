@@ -27,6 +27,14 @@ export class AlbumViewer implements OnInit {
   displayGalleria = signal(false);
   activeIndex = signal(0);
 
+  /**
+   * True mientras descarga la foto activa del visor. Al cambiar el src de un
+   * <img> ya renderizado el navegador mantiene el frame anterior hasta que la
+   * imagen nueva decodifica, así que sin este flag el visor muestra la foto
+   * previa como si fuera la actual.
+   */
+  imageLoading = signal(false);
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -97,7 +105,23 @@ export class AlbumViewer implements OnInit {
 
   openGalleria(index: number) {
     this.activeIndex.set(index);
+    this.imageLoading.set(true);
     this.displayGalleria.set(true);
+  }
+
+  /** Navegación dentro del visor: la foto entrante empieza en estado de carga. */
+  onActiveIndexChange(index: number) {
+    this.activeIndex.set(index);
+    this.imageLoading.set(true);
+  }
+
+  onImageLoad() {
+    this.imageLoading.set(false);
+  }
+
+  /** El error también apaga el spinner: un 404 no debe dejar el visor colgado. */
+  onImageError() {
+    this.imageLoading.set(false);
   }
 
 }
