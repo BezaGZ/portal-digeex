@@ -186,6 +186,18 @@
                     [routerLink]="['/administrador/uso/items', o.indexableObject.uuid]" />
                 </span>
                 @if (tab() === 'activos') {
+                  @if (publicRouteOf(o)) {
+                    <span data-testid="action-view">
+                      <p-button
+                        icon="pi pi-eye"
+                        severity="secondary"
+                        [text]="true"
+                        [rounded]="true"
+                        (onClick)="onView(o)"
+                        pTooltip="Ver en el portal"
+                        tooltipPosition="top" />
+                    </span>
+                  }
                   <span data-testid="action-edit">
                     <p-button
                       icon="pi pi-pencil"

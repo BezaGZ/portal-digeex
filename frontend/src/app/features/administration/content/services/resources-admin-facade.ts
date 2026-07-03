@@ -51,6 +51,9 @@ export class ResourcesAdminFacade {
           .search({
             configuration: 'administrativeView',
             scope: scope.mode === 'scoped' ? scope.uuid : undefined,
+            // owningCollection embebido: la acción "Ver" arma la URL pública
+            // canónica sin una petición por item (patrón de advanced-search).
+            embeds: ['thumbnail', 'owningCollection'],
             page: opts.page,
             size: opts.size,
             sort: opts.sort,

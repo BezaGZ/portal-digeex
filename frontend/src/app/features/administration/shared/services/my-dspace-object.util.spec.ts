@@ -6,6 +6,7 @@ import {
   entityTypeOf,
   isWithdrawn,
   issuedOf,
+  publicRouteOf,
   resourceTypeOf,
   stateOf,
   titleOf,
@@ -20,7 +21,7 @@ import { MyDSpaceObject } from '../../../../core/api/models/my-dspace.model';
  * `administrativeView`). Los consume `Mis envíos` y la pantalla
  * `/administrador/recursos`.
  *
- * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclo 40 (Sprint 10).
+ * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclos 40, 54 y 56 (Sprint 10).
  */
 describe('my-dspace-object.util', () => {
   beforeAll(() => registerLocaleData(localeEsGT));
@@ -181,5 +182,75 @@ describe('my-dspace-object.util', () => {
   it('isWithdrawn returns the native withdrawn flag', () => {
     expect(isWithdrawn(build({ withdrawn: true }))).toBe(true);
     expect(isWithdrawn(build({ withdrawn: false }))).toBe(false);
+  });
+
+  /** Item activo con entity-type y owningCollection embebido, base de publicRouteOf. */
+  function buildRouted(entityType: string): MyDSpaceObject {
+    return build({
+      metadata: {
+        'dspace.entity.type': [
+          { value: entityType, language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      owningCollection: { uuid: 'col-1', name: 'Programa', type: 'collection' } as any,
+    });
+  }
+
+  /** Verifica la ruta canónica del detalle de Documento (misma que arma advanced-search). */
+  it('publicRouteOf returns the programa/documento route for Documento items', () => {
+    expect(publicRouteOf(buildRouted('Documento'))).toEqual([
+      '/programas',
+      'col-1',
+      'documentos',
+      'item-1',
+    ]);
+  });
+
+  /** Verifica la ruta del visor de álbum para Galería. */
+  it('publicRouteOf returns the album viewer route for Galeria items', () => {
+    expect(publicRouteOf(buildRouted('Galeria'))).toEqual(['/galeria', 'col-1', 'album', 'item-1']);
+  });
+
+  /** Verifica la ruta del detalle de Estadística. */
+  it('publicRouteOf returns the stats detail route for Estadistica items', () => {
+    expect(publicRouteOf(buildRouted('Estadistica'))).toEqual([
+      '/estadistica',
+      'col-1',
+      'item',
+      'item-1',
+    ]);
+  });
+
+  /** Verifica que devuelva null sin owningCollection embebido; el consumidor oculta la acción. */
+  it('publicRouteOf returns null when owningCollection is not embedded', () => {
+    const o = buildRouted('Documento');
+    delete o.indexableObject.owningCollection;
+    expect(publicRouteOf(o)).toBeNull();
+  });
+
+  /** Verifica que devuelva null para un entity-type sin vista pública mapeada. */
+  it('publicRouteOf returns null for an unknown entity type', () => {
+    expect(publicRouteOf(buildRouted('Otro'))).toBeNull();
+  });
+
+  /**
+   * Verifica que devuelva null para withdrawn.
+   * El GET anónimo de un retirado devuelve tombstone (metadata vacía) y los bundles 401.
+   */
+  it('publicRouteOf returns null for withdrawn items', () => {
+    const o = buildRouted('Documento');
+    o.indexableObject.withdrawn = true;
+    expect(publicRouteOf(o)).toBeNull();
+  });
+
+  /**
+   * Verifica que devuelva null para un borrador no archivado.
+   * Mis envíos mezcla drafts y archivados; un workspaceitem no tiene publicación que mostrar.
+   */
+  it('publicRouteOf returns null for non-archived drafts', () => {
+    const o = buildRouted('Documento');
+    o.indexableObject.inArchive = false;
+    expect(publicRouteOf(o)).toBeNull();
   });
 });

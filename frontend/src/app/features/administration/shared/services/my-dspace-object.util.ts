@@ -64,3 +64,26 @@ export function stateOf(o: MyDSpaceObject): 'Pública' | 'Privada' | 'Eliminada'
 export function isWithdrawn(o: MyDSpaceObject): boolean {
   return o.indexableObject.withdrawn === true;
 }
+
+/** Comandos de router de la vista pública por entity-type. Las tres rutas llevan
+ *  el uuid de la colección padre porque los componentes lo leen del path. */
+const PUBLIC_ROUTES: Record<string, (col: string, item: string) => string[]> = {
+  Documento: (col, item) => ['/programas', col, 'documentos', item],
+  Galeria: (col, item) => ['/galeria', col, 'album', item],
+  Estadistica: (col, item) => ['/estadistica', col, 'item', item],
+};
+
+/**
+ * Ruta de la vista pública del item (misma URL canónica que arma la búsqueda
+ * avanzada), o null cuando no hay vista útil: withdrawn (tombstone anónimo),
+ * borrador sin publicar, entity-type sin mapa o sin `owningCollection` embebido.
+ */
+export function publicRouteOf(o: MyDSpaceObject): string[] | null {
+  const item = o.indexableObject;
+  if (item.withdrawn || !item.inArchive) return null;
+  const collectionUuid = item.owningCollection?.uuid;
+  if (!collectionUuid) return null;
+  const entityType = item.metadata?.['dspace.entity.type']?.[0]?.value ?? '';
+  const route = PUBLIC_ROUTES[entityType];
+  return route ? route(collectionUuid, item.uuid) : null;
+}

@@ -27,6 +27,7 @@ import {
   entityTypeOf as entityTypeOfUtil,
   isWithdrawn as isWithdrawnUtil,
   issuedOf as issuedOfUtil,
+  publicRouteOf as publicRouteOfUtil,
   resourceTypeOf as resourceTypeOfUtil,
   stateOf as stateOfUtil,
   titleOf as titleOfUtil,
@@ -175,6 +176,17 @@ export class MySubmissions {
   }
 
   /**
+   * Abre la vista pública del envío en pestaña nueva, para no perder la
+   * bandeja. La URL sale de `publicRouteOf`; si el envío no tiene ruta
+   * resoluble (borrador, withdrawn) el template ya ocultó el botón.
+   */
+  onView(o: MyDSpaceObject): void {
+    const route = publicRouteOfUtil(o);
+    if (!route) return;
+    window.open(this.router.serializeUrl(this.router.createUrlTree(route)), '_blank', 'noopener');
+  }
+
+  /**
    * Pide confirmación al usuario y ejecuta el soft delete del item. El facade
    * valida scope antes de pegar al backend; aquí pasamos el sufijo del caller
    * porque en Mis envíos los items siempre son del usuario logueado, así que
@@ -279,4 +291,5 @@ export class MySubmissions {
   readonly entityTypeOf = entityTypeOfUtil;
   readonly stateOf = stateOfUtil;
   readonly isWithdrawn = isWithdrawnUtil;
+  readonly publicRouteOf = publicRouteOfUtil;
 }

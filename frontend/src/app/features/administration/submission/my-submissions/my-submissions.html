@@ -139,6 +139,18 @@
             </td>
             <td class="text-right whitespace-nowrap">
               <div class="flex gap-2 justify-end">
+                @if (publicRouteOf(o)) {
+                  <span data-testid="action-view">
+                    <p-button
+                      icon="pi pi-eye"
+                      severity="secondary"
+                      [text]="true"
+                      [rounded]="true"
+                      (onClick)="onView(o)"
+                      pTooltip="Ver en el portal"
+                      tooltipPosition="top" />
+                  </span>
+                }
                 <span data-testid="action-edit">
                   <p-button
                     icon="pi pi-pencil"

@@ -23,6 +23,8 @@ import { LoadingService } from '../../../../core/loading/loading.service';
  * nativos `withdrawn` y `discoverable`. La acción Eliminar dispara el
  * facade pre-existente `ItemAdminFacade.withdrawItem$` con el sufijo del
  * caller logueado y recarga la página actual.
+ *
+ * Ajustado en Ciclo 56 (Sprint 10).
  */
 describe('MySubmissions', () => {
   let searchFn: ReturnType<typeof vi.fn>;
@@ -46,6 +48,25 @@ describe('MySubmissions', () => {
       type: 'item',
     },
   });
+
+  /** Item archivado con entity-type y owningCollection, con ruta pública resoluble. */
+  const buildRoutedObject = (uuid: string, inArchive = true) => {
+    const o = buildItemObject(uuid, `Item ${uuid}`);
+    return {
+      ...o,
+      indexableObject: {
+        ...o.indexableObject,
+        inArchive,
+        metadata: {
+          ...o.indexableObject.metadata,
+          'dspace.entity.type': [
+            { value: 'Documento', language: null, authority: null, confidence: -1, place: 0 },
+          ],
+        },
+        owningCollection: { uuid: 'col-1', name: 'Programa', type: 'collection' },
+      },
+    };
+  };
 
   beforeEach(() => {
     searchFn = vi.fn().mockReturnValue(
@@ -97,6 +118,46 @@ describe('MySubmissions', () => {
     expect(cards.length).toBe(2);
     expect(cards[0].textContent).toContain('Album A');
     expect(cards[1].textContent).toContain('Album B');
+  });
+
+  /** Verifica que se muestre "Ver" cuando el envío archivado tiene ruta pública resoluble. */
+  it('should render the Ver action for archived submissions with a public route', () => {
+    searchFn.mockReturnValue(
+      of({ items: [buildRoutedObject('a')], totalElements: 1, totalPages: 1, size: 20, page: 0 }),
+    );
+    const fixture = TestBed.createComponent(MySubmissions);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="action-view"]')).not.toBeNull();
+  });
+
+  /** Verifica que la acción "Ver" se oculte para borradores no archivados, sin vista pública. */
+  it('should NOT render the Ver action for non-archived drafts', () => {
+    searchFn.mockReturnValue(
+      of({
+        items: [buildRoutedObject('d', false)],
+        totalElements: 1,
+        totalPages: 1,
+        size: 20,
+        page: 0,
+      }),
+    );
+    const fixture = TestBed.createComponent(MySubmissions);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="action-view"]')).toBeNull();
+  });
+
+  /** Verifica que onView abra la vista pública en pestaña nueva (conserva la bandeja intacta). */
+  it('should open the public view in a new tab on onView', () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+    const fixture = TestBed.createComponent(MySubmissions);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onView(buildRoutedObject('item-9'));
+
+    expect(openSpy).toHaveBeenCalledWith('/programas/col-1/documentos/item-9', '_blank', 'noopener');
+    openSpy.mockRestore();
   });
 
   /** Verifica que retirar un envío enrole una tarea de carga global mientras está en vuelo. */

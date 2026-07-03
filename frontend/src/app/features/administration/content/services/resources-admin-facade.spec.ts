@@ -23,7 +23,7 @@ type CommunityApiMock = {
  * opciones de UI (withdrawn, entityType, rango de años) a los filtros
  * nativos del Discovery.
  *
- * Ciclo 33 TDD — Sprint 6.
+ * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclo 54 (Sprint 10).
  */
 describe('ResourcesAdminFacade', () => {
   let facade: ResourcesAdminFacade;
@@ -89,6 +89,19 @@ describe('ResourcesAdminFacade', () => {
     expect(params.configuration).toBe('administrativeView');
     expect(params.scope).toBeUndefined();
     expect(mockCommunityApi.searchTop).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Verifica que el search pida `owningCollection` embebido además del thumbnail.
+   * La acción "Ver" arma la URL pública con ese uuid sin una petición extra por item.
+   */
+  it('should request thumbnail and owningCollection embeds on search', async () => {
+    setupWith({ role: 'superadmin', sufijo: null });
+
+    await firstValueFrom(facade.search$({ withdrawn: false }));
+
+    const params = mockDiscovery.search.mock.calls[0][0];
+    expect(params.embeds).toEqual(['thumbnail', 'owningCollection']);
   });
 
   /** Verifica que para admin_subdireccion el scope se resuelva desde el sufijo del caller. */

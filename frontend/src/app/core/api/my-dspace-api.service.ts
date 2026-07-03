@@ -7,6 +7,7 @@ import { DSPACE_API_BASE } from './dspace-rest.util';
 import { HalPage } from './models/hal.model';
 import { Paginated } from './models/hal.model';
 import { Bitstream } from './models/bitstream.model';
+import { Collection } from './models/collection.model';
 import { Item } from './models/item.model';
 import { MyDSpaceObject } from './models/my-dspace.model';
 
@@ -27,7 +28,7 @@ import { MyDSpaceObject } from './models/my-dspace.model';
  * subirlo al campo `thumbnail` del Item (top-level) sin castear.
  */
 interface HalIndexableItem extends Item {
-  _embedded?: { thumbnail?: Bitstream };
+  _embedded?: { thumbnail?: Bitstream; owningCollection?: Collection };
 }
 
 interface HalSearchObject {
@@ -79,7 +80,9 @@ export class MyDSpaceApiService {
   ): Observable<Paginated<MyDSpaceObject>> {
     let params = new HttpParams()
       .set('configuration', 'workspace')
-      .set('embed', 'thumbnail')
+      // owningCollection embebido: la acción "Ver" arma la URL pública del
+      // detalle con el uuid del programa padre sin una petición por item.
+      .set('embed', 'thumbnail,owningCollection')
       .set('page', String(page))
       .set('size', String(size));
 
@@ -117,9 +120,14 @@ export class MyDSpaceApiService {
               const ix = o._embedded?.indexableObject;
               if (!ix?.uuid) return null;
               const thumbnail = ix._embedded?.thumbnail;
+              const owningCollection = ix._embedded?.owningCollection;
               return {
                 type: o.type,
-                indexableObject: thumbnail ? { ...ix, thumbnail } : ix,
+                indexableObject: {
+                  ...ix,
+                  ...(thumbnail ? { thumbnail } : {}),
+                  ...(owningCollection ? { owningCollection } : {}),
+                },
               };
             })
             .filter((o): o is MyDSpaceObject => o !== null);

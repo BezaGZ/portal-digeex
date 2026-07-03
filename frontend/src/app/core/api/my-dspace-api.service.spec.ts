@@ -18,7 +18,7 @@ import { MyDSpaceObject } from './models/my-dspace.model';
  * `_embedded.indexableObject`; el wrapper aplana esa envoltura a
  * `Paginated<MyDSpaceObject>` para que la UI no tenga que conocer HAL.
  *
- * Ciclo 37 TDD — Sprint 6.
+ * Ciclo 37 TDD — Sprint 6. Ajustado en Ciclo 56 (Sprint 10).
  */
 describe('MyDSpaceApiService', () => {
   let service: MyDSpaceApiService;
@@ -43,7 +43,7 @@ describe('MyDSpaceApiService', () => {
       (r) =>
         r.url === '/server/api/discover/search/objects' &&
         r.params.get('configuration') === 'workspace' &&
-        r.params.get('embed') === 'thumbnail' &&
+        r.params.get('embed') === 'thumbnail,owningCollection' &&
         r.params.get('page') === '1' &&
         r.params.get('size') === '20',
     );
@@ -133,6 +133,53 @@ describe('MyDSpaceApiService', () => {
     });
 
     expect(result?.items[0].indexableObject.thumbnail?.uuid).toBe('thumb-uuid-9');
+  });
+
+  /**
+   * Verifica que el owningCollection embebido se suba al top-level del Item.
+   * La acción "Ver" de Mis envíos arma la URL pública con ese uuid sin una petición por item.
+   */
+  it('should lift the embedded owningCollection from indexableObject._embedded to indexableObject.owningCollection', () => {
+    let result: Paginated<MyDSpaceObject> | undefined;
+    service.search$(0, 20).subscribe((p) => (result = p));
+
+    const req = httpMock.expectOne(
+      (r) => r.url === '/server/api/discover/search/objects',
+    );
+    req.flush({
+      _embedded: {
+        searchResult: {
+          page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+          _embedded: {
+            objects: [
+              {
+                hitHighlights: null,
+                type: 'discover',
+                _links: { indexableObject: { href: '...' } },
+                _embedded: {
+                  indexableObject: {
+                    uuid: 'item-col',
+                    name: 'Con programa',
+                    handle: '123/10',
+                    metadata: {},
+                    inArchive: true,
+                    discoverable: true,
+                    withdrawn: false,
+                    lastModified: '2026-05-11T00:00:00Z',
+                    type: 'item',
+                    _embedded: {
+                      owningCollection: { uuid: 'col-10', name: 'Programa X', type: 'collection' },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    expect(result?.items[0].indexableObject.owningCollection?.uuid).toBe('col-10');
   });
 
   /** Verifica que objetos con `_embedded.indexableObject` vacío se filtren del response. */

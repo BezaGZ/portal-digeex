@@ -20,7 +20,7 @@ import { LoadingService } from '../../../core/loading/loading.service';
  * compartidos de `my-dspace-object.util` y delega scope + filtros al
  * `ResourcesAdminFacade`.
  *
- * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclo 50 (Sprint 8) y Ciclo 32 (Sprint 10).
+ * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclo 50 (Sprint 8) y Ciclos 32 y 55 (Sprint 10).
  */
 describe('ResourcesAdmin', () => {
   let searchFn: ReturnType<typeof vi.fn>;
@@ -29,7 +29,11 @@ describe('ResourcesAdmin', () => {
   let deleteFn: ReturnType<typeof vi.fn>;
   let confirmFn: ReturnType<typeof vi.fn>;
 
-  function buildObject(uuid: string, withdrawn = false): MyDSpaceObject {
+  function buildObject(
+    uuid: string,
+    withdrawn = false,
+    extra: Record<string, unknown> = {},
+  ): MyDSpaceObject {
     return {
       type: 'discover',
       indexableObject: {
@@ -44,9 +48,22 @@ describe('ResourcesAdmin', () => {
         withdrawn,
         lastModified: '2026-05-12T00:00:00Z',
         type: 'item',
+        ...extra,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
     };
+  }
+
+  /** Item activo con entity-type y owningCollection, con ruta pública resoluble. */
+  function buildRoutedObject(uuid: string): MyDSpaceObject {
+    return buildObject(uuid, false, {
+      metadata: {
+        'dspace.entity.type': [
+          { value: 'Documento', language: null, authority: null, confidence: -1, place: 0 },
+        ],
+      },
+      owningCollection: { uuid: 'col-1', name: 'Programa', type: 'collection' },
+    });
   }
 
   beforeEach(() => {
@@ -240,6 +257,45 @@ describe('ResourcesAdmin', () => {
     fixture.componentInstance.onPermanentDeleteConfirmed();
 
     expect(deleteFn).toHaveBeenCalledWith('perm-uuid');
+  });
+
+  /** Verifica que en Activos se muestre "Ver" cuando el item tiene ruta pública resoluble. */
+  it('should render the Ver action in Activos for items with a public route', () => {
+    searchFn.mockReturnValue(
+      of({
+        items: [buildRoutedObject('a')],
+        totalElements: 1,
+        totalPages: 1,
+        page: 0,
+        size: 20,
+      }),
+    );
+    const fixture = TestBed.createComponent(ResourcesAdmin);
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('[data-testid="action-view"]')).not.toBeNull();
+  });
+
+  /** Verifica que la acción "Ver" se oculte cuando el item no tiene ruta pública resoluble. */
+  it('should NOT render the Ver action when the item has no resolvable public route', () => {
+    const fixture = TestBed.createComponent(ResourcesAdmin);
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('[data-testid="action-view"]')).toBeNull();
+  });
+
+  /** Verifica que onView abra la vista pública en pestaña nueva (conserva filtros y página del listado). */
+  it('should open the public view in a new tab on onView', () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+    const fixture = TestBed.createComponent(ResourcesAdmin);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onView(buildRoutedObject('item-9'));
+
+    expect(openSpy).toHaveBeenCalledWith('/programas/col-1/documentos/item-9', '_blank', 'noopener');
+    openSpy.mockRestore();
   });
 
   /** Verifica que onEdit navegue a la ruta de edición del item. */

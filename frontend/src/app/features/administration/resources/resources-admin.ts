@@ -29,6 +29,7 @@ import {
   entityTypeOf as entityTypeOfUtil,
   isWithdrawn as isWithdrawnUtil,
   issuedOf as issuedOfUtil,
+  publicRouteOf as publicRouteOfUtil,
   resourceTypeOf as resourceTypeOfUtil,
   stateOf as stateOfUtil,
   titleOf as titleOfUtil,
@@ -175,6 +176,17 @@ export class ResourcesAdmin {
     this.router.navigate(['/administrador/envios', uuid, 'editar']);
   }
 
+  /**
+   * Abre la vista pública del item en pestaña nueva, para no perder los
+   * filtros ni la página del listado. La URL sale de `publicRouteOf`; si el
+   * item no tiene ruta resoluble el template ya ocultó el botón.
+   */
+  onView(o: MyDSpaceObject): void {
+    const route = publicRouteOfUtil(o);
+    if (!route) return;
+    window.open(this.router.serializeUrl(this.router.createUrlTree(route)), '_blank', 'noopener');
+  }
+
   onDelete(uuid: string): void {
     this.confirmation.confirm({
       message: 'Esto retira el envío del sitio público. Podés restaurarlo después.',
@@ -282,6 +294,7 @@ export class ResourcesAdmin {
   readonly entityTypeOf = entityTypeOfUtil;
   readonly stateOf = stateOfUtil;
   readonly isWithdrawn = isWithdrawnUtil;
+  readonly publicRouteOf = publicRouteOfUtil;
 
   private load(page: number): void {
     this.loading.set(true);
