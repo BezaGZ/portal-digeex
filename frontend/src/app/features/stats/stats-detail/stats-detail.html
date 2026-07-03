@@ -15,7 +15,7 @@
         {{ it.metadata['dc.title']?.[0]?.value ?? 'Estadística' }}
       </h1>
       @if (it.metadata['dc.description.abstract']?.[0]?.value; as abstract) {
-        <p class="page-subtitle max-w-3xl text-justify mb-6">
+        <p class="page-subtitle max-w-7xl text-justify mb-6">
           {{ abstract | slice: 0 : 1000 }}
         </p>
       }

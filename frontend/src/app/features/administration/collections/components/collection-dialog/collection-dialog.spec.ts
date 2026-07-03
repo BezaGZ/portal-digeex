@@ -22,6 +22,7 @@ describe('CollectionDialog', () => {
     });
   });
 
+  /** Verifica que el form exija los campos obligatorios en modo create. */
   it('should mark the form invalid until siglas, titulo, entityType, navLocation and orden are filled in create mode', () => {
     const fixture = TestBed.createComponent(CollectionDialog);
     fixture.componentRef.setInput('mode', 'create');
@@ -39,6 +40,36 @@ describe('CollectionDialog', () => {
     c.form.patchValue({
       siglas: 'PEAC',
       titulo: 'Programa de Educación de Adultos por Correspondencia',
+      entityType: 'Documento',
+      navLocation: 'menu-principal',
+      orden: '1',
+    });
+    expect(c.form.valid).toBe(true);
+  });
+
+  /**
+   * Verifica los topes de caracteres: siglas 50, titulo 200 y description 1000,
+   * espejo de la convención de items (200/1000).
+   */
+  it('should enforce max lengths on siglas, titulo and description', () => {
+    const fixture = TestBed.createComponent(CollectionDialog);
+    fixture.componentRef.setInput('mode', 'create');
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.form.patchValue({
+      siglas: 'x'.repeat(51),
+      titulo: 'x'.repeat(201),
+      description: 'x'.repeat(1001),
+    });
+    expect(c.form.controls.siglas.errors?.['maxlength']).toBeTruthy();
+    expect(c.form.controls.titulo.errors?.['maxlength']).toBeTruthy();
+    expect(c.form.controls.description.errors?.['maxlength']).toBeTruthy();
+
+    c.form.patchValue({
+      siglas: 'x'.repeat(50),
+      titulo: 'x'.repeat(200),
+      description: 'x'.repeat(1000),
       entityType: 'Documento',
       navLocation: 'menu-principal',
       orden: '1',

@@ -73,10 +73,12 @@ export class CollectionDialog {
     { label: 'Menú secundario', value: NAV_LOCATION.MENU_SECUNDARIO },
   ];
 
+  // Topes espejo de la convención de items (200/1000); siglas cortas (50)
+  // porque van a cards, breadcrumbs y dropdowns.
   readonly form = this.fb.nonNullable.group({
-    siglas: ['', [Validators.required, Validators.minLength(2)]],
-    titulo: ['', [Validators.required, Validators.minLength(2)]],
-    description: [''],
+    siglas: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
+    titulo: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+    description: ['', [Validators.maxLength(1000)]],
     entityType: ['', [Validators.required]],
     navLocation: ['', [Validators.required]],
     orden: ['', [Validators.required, Validators.pattern(/^\d+$/)]],

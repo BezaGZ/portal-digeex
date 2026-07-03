@@ -15,7 +15,7 @@
           <span class="text-gray-400 font-normal">— no editable</span>
         }
       </label>
-      <input pInputText id="siglas" formControlName="siglas" class="w-full" />
+      <input pInputText id="siglas" formControlName="siglas" maxlength="50" class="w-full" />
       @if (form.controls.siglas.touched && form.controls.siglas.errors?.['required']) {
         <small class="text-[var(--color-error)]">Las siglas son obligatorias.</small>
       }
@@ -24,7 +24,7 @@
       <label for="titulo" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
         Título completo
       </label>
-      <input pInputText id="titulo" formControlName="titulo" class="w-full" />
+      <input pInputText id="titulo" formControlName="titulo" maxlength="200" class="w-full" />
       @if (form.controls.titulo.touched && form.controls.titulo.errors?.['required']) {
         <small class="text-[var(--color-error)]">El título completo es obligatorio.</small>
       }
@@ -87,6 +87,7 @@
         id="description"
         formControlName="description"
         rows="3"
+        maxlength="1000"
         class="w-full"></textarea>
     </div>
     @if (mode() !== 'closed') {

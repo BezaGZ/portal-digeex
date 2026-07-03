@@ -3,7 +3,7 @@
     <app-skeleton-detail />
   } @else {
     <div class="container mx-auto px-4 py-8">
-      <div class="max-w-5xl">
+      <div class="max-w-7xl">
         <div class="mb-4">
           <p-button
             label=" Regresar"
@@ -23,14 +23,14 @@
 
       @if (documentDescription()) {
         <p
-          class="page-subtitle max-w-3xl text-justify mb-8"
+          class="page-subtitle max-w-7xl text-justify mb-8"
         >
           {{ documentDescription() }}
         </p>
       }
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div class="lg:col-span-1 flex justify-center lg:justify-start items-start">
+      <div class="grid grid-cols-1 lg:grid-cols-[16rem_1fr] gap-8">
+        <div class="flex justify-center lg:justify-start items-start">
           @if (documentCoverImage() && !coverImageError()) {
             <div class="w-48 md:w-64">
               <img
@@ -53,7 +53,7 @@
           }
         </div>
 
-        <div class="lg:col-span-2">
+        <div>
           @if (isVideo() && videoUrl()) {
             <div class="mb-8">
               <h3

@@ -49,11 +49,13 @@ export class CommunityDialog {
   readonly submitForm = output<CommunityDialogPayload>();
   readonly cancelForm = output<void>();
 
+  // Topes espejo de la convención de items (200/1000). El nombre corto (100)
+  // alimenta el menú público y el sufijo (20) los nombres de grupo ADMIN_/SUBMITTERS_.
   readonly form = this.fb.nonNullable.group({
-    nombreCorto: ['', [Validators.required, Validators.minLength(2)]],
-    tituloCompleto: ['', [Validators.required, Validators.minLength(2)]],
-    sufijo: ['', [Validators.required, Validators.pattern(/^[A-Z][A-Z0-9_]*$/)]],
-    description: [''],
+    nombreCorto: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
+    tituloCompleto: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+    sufijo: ['', [Validators.required, Validators.pattern(/^[A-Z][A-Z0-9_]*$/), Validators.maxLength(20)]],
+    description: ['', [Validators.maxLength(1000)]],
   });
 
   /**
