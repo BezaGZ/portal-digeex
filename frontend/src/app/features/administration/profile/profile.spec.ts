@@ -3,7 +3,7 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { EMPTY, of, throwError } from 'rxjs';
+import { EMPTY, NEVER, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { MessageService } from 'primeng/api';
 
@@ -12,6 +12,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { AuthUser } from '../../../core/auth/models/auth-session.model';
 import { EPersonApiService } from '../../../core/api/eperson-api.service';
 import { EPerson } from '../../../core/api/models/eperson.model';
+import { LoadingService } from '../../../core/loading/loading.service';
 
 /**
  * Tests de `Profile`.
@@ -21,7 +22,7 @@ import { EPerson } from '../../../core/api/models/eperson.model';
  * Los errores se mapean a un toast con summary fija y detail por status,
  * siguiendo el enfoque de dspace-angular con sus claves de i18n.
  *
- * Ciclo 15 — Sprint 5.
+ * Ciclo 15 TDD — Sprint 5. Ajustado en Ciclo 57 (Sprint 10).
  */
 describe('Profile', () => {
   let component: Profile;
@@ -117,6 +118,22 @@ describe('Profile', () => {
     expect(changeOwnPasswordFn).toHaveBeenCalledWith('eperson-042', 'CurrentPass1', 'NuevaSegura1');
   });
 
+  /** Verifica que guardar la contraseña enrole una tarea de carga global mientras el PATCH está en vuelo. */
+  it('should enrol a loading task while the password change is in flight', () => {
+    configure();
+    changeOwnPasswordFn.mockReturnValue(NEVER);
+    const loading = TestBed.inject(LoadingService);
+    fixture.detectChanges();
+
+    (component as any).currentPassword = 'CurrentPass1';
+    (component as any).newPassword = 'NuevaSegura1';
+    (component as any).confirmPassword = 'NuevaSegura1';
+
+    expect(loading.active()).toBe(false);
+    component.onSave();
+    expect(loading.active()).toBe(true);
+  });
+
   /** Verifica que un 403 al cambiar password muestre el toast "La contraseña actual es incorrecta". */
   it('should show summary "No se pudo cambiar la contraseña" with detail "La contraseña actual es incorrecta" on 403', () => {
     configure();
@@ -181,7 +198,9 @@ describe('Profile', () => {
 
   /**
    * Verifica que el 422 de politica de longitud en ingles se traduzca al espanol del toast.
-   * DSpace emite ese texto sin respetar Accept-Language, asi que lo mapeamos aqui.
+   * DSpace emite ese texto sin respetar Accept-Language, asi que lo mapeamos aqui. El
+   * password pasa la validacion de cliente (RN-03) y el backend lo rechaza por un minimo
+   * mas estricto, que es el unico caso en que ese 422 sigue siendo alcanzable.
    */
   it('should translate the 422 "at least N characters long" backend message into spanish', () => {
     configure();
@@ -195,15 +214,15 @@ describe('Profile', () => {
             statusText: 'Unprocessable Entity',
             error: {
               message:
-                'New password is invalid. Valid passwords must be at least 8 characters long!',
+                'New password is invalid. Valid passwords must be at least 10 characters long!',
             },
           }),
       ),
     );
 
     (component as any).currentPassword = 'CurrentPass1';
-    (component as any).newPassword = 'corta';
-    (component as any).confirmPassword = 'corta';
+    (component as any).newPassword = 'Valida123';
+    (component as any).confirmPassword = 'Valida123';
 
     component.onSave();
 
@@ -211,9 +230,71 @@ describe('Profile', () => {
       expect.objectContaining({
         severity: 'error',
         summary: 'No se pudo cambiar la contraseña',
-        detail: 'La nueva contraseña debe tener al menos 8 caracteres.',
+        detail: 'La nueva contraseña debe tener al menos 10 caracteres.',
       }),
     );
+  });
+
+  /**
+   * RN-03 en cliente, espejo de recuperar contraseña. Una contraseña que no
+   * cumple longitud, mayúscula o número se rechaza sin tocar el backend, con el
+   * mismo motivo específico que muestra el flujo de recuperación.
+   */
+  describe('onSave() - client-side password rules (RN-03)', () => {
+    /** Verifica que un password corto se rechace con el mensaje de longitud y sin disparar el PATCH. */
+    it('should reject a short new password with the min-length message and NOT dispatch', () => {
+      configure();
+      fixture.detectChanges();
+
+      (component as any).currentPassword = 'CurrentPass1';
+      (component as any).newPassword = 'Ab12';
+      (component as any).confirmPassword = 'Ab12';
+
+      component.onSave();
+
+      expect(changeOwnPasswordFn).not.toHaveBeenCalled();
+      expect(messageAddFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          severity: 'error',
+          summary: 'No se pudo cambiar la contraseña',
+          detail: 'Debe tener al menos 8 caracteres.',
+        }),
+      );
+    });
+
+    /** Verifica que un password sin mayúscula se rechace en cliente. */
+    it('should reject a new password without uppercase and NOT dispatch', () => {
+      configure();
+      fixture.detectChanges();
+
+      (component as any).currentPassword = 'CurrentPass1';
+      (component as any).newPassword = 'contrase1na';
+      (component as any).confirmPassword = 'contrase1na';
+
+      component.onSave();
+
+      expect(changeOwnPasswordFn).not.toHaveBeenCalled();
+      expect(messageAddFn).toHaveBeenCalledWith(
+        expect.objectContaining({ detail: 'Debe incluir al menos una letra mayúscula.' }),
+      );
+    });
+
+    /** Verifica que un password sin número se rechace en cliente. */
+    it('should reject a new password without a digit and NOT dispatch', () => {
+      configure();
+      fixture.detectChanges();
+
+      (component as any).currentPassword = 'CurrentPass1';
+      (component as any).newPassword = 'ContraseñaSegura';
+      (component as any).confirmPassword = 'ContraseñaSegura';
+
+      component.onSave();
+
+      expect(changeOwnPasswordFn).not.toHaveBeenCalled();
+      expect(messageAddFn).toHaveBeenCalledWith(
+        expect.objectContaining({ detail: 'Debe incluir al menos un número.' }),
+      );
+    });
   });
 
   /**

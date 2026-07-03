@@ -1,4 +1,5 @@
-import { Component, ChangeDetectionStrategy, OnInit, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { InputTextModule } from 'primeng/inputtext';
@@ -12,6 +13,12 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { EPersonApiService } from '../../../core/api/eperson-api.service';
 import { EPerson } from '../../../core/api/models/eperson.model';
 import { extractErrorDetail } from '../../../core/error/extract-error-detail';
+import { LoadingService, withLoading } from '../../../core/loading';
+import {
+  PASSWORD_MIN_LENGTH,
+  PasswordRuleViolation,
+  passwordRuleViolations,
+} from '../../../core/validators/password-rules';
 
 /** Copys del cambio de contrasena, centralizados para no repetirlos en exito y errores. */
 const PASSWORD_CHANGE_ERROR_SUMMARY = 'No se pudo cambiar la contraseña';
@@ -50,6 +57,16 @@ const PASSWORD_VALIDATION_CONFIRM_MISMATCH =
   'La nueva contraseña y la confirmación no coinciden.';
 
 /**
+ * Mensajes de RN-03 por regla, con la misma redacción que el flujo de
+ * recuperar contraseña, para que ambos den el mismo feedback.
+ */
+const PASSWORD_RULE_MESSAGES: Record<PasswordRuleViolation, string> = {
+  minLength: `Debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres.`,
+  uppercase: 'Debe incluir al menos una letra mayúscula.',
+  number: 'Debe incluir al menos un número.',
+};
+
+/**
  * Warning cuando el usuario pulsa Guardar sin haber tocado nada (mismo aviso
  * que `ProfilePageComponent.updateProfile`), para que el boton no sea un
  * no-op silencioso.
@@ -68,6 +85,9 @@ export class Profile implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly epersonApi = inject(EPersonApiService);
   private readonly messageService = inject(MessageService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly loading = inject(LoadingService);
+  private readonly destroyRef = inject(DestroyRef);
 
   email = '';
   firstName = '';
@@ -143,10 +163,16 @@ export class Profile implements OnInit {
     }
 
     if (hasIdentityChange) {
-      this.epersonApi.update(uuid, identityChanges).subscribe({
-        next: (response: EPerson) => this.onIdentityUpdateSuccess(response),
-        error: (err: HttpErrorResponse) => this.showIdentityError(err),
-      });
+      this.epersonApi
+        .update(uuid, identityChanges)
+        .pipe(
+          withLoading(this.loading, { message: 'Guardando cambios…' }),
+          takeUntilDestroyed(this.destroyRef),
+        )
+        .subscribe({
+          next: (response: EPerson) => this.onIdentityUpdateSuccess(response),
+          error: (err: HttpErrorResponse) => this.showIdentityError(err),
+        });
     }
 
     if (passwordAttempted) {
@@ -161,10 +187,16 @@ export class Profile implements OnInit {
         return;
       }
       this.passwordValidationError.set(null);
-      this.epersonApi.changeOwnPassword(uuid, this.currentPassword, this.newPassword).subscribe({
-        next: () => this.onPasswordChangeSuccess(),
-        error: (err: HttpErrorResponse) => this.showPasswordError(err),
-      });
+      this.epersonApi
+        .changeOwnPassword(uuid, this.currentPassword, this.newPassword)
+        .pipe(
+          withLoading(this.loading, { message: 'Actualizando contraseña…' }),
+          takeUntilDestroyed(this.destroyRef),
+        )
+        .subscribe({
+          next: () => this.onPasswordChangeSuccess(),
+          error: (err: HttpErrorResponse) => this.showPasswordError(err),
+        });
     }
   }
 
@@ -182,9 +214,10 @@ export class Profile implements OnInit {
   }
 
   /**
-   * Valida la seccion de password con las mismas reglas triviales que
-   * dspace-angular (`checkPasswordEmpty` + `checkPasswordsEqual`) y devuelve
-   * el motivo o null. La complejidad la sigue validando el backend.
+   * Valida la seccion de password: campos obligatorios, RN-03 sobre la nueva
+   * (misma regla que recuperar contraseña vía `passwordRuleViolations`) y
+   * coincidencia. Devuelve el primer motivo o null. El backend revalida RN-03
+   * y puede rechazar por una política más estricta.
    */
   private getPasswordValidationError(): string | null {
     if (this.currentPassword.length === 0) {
@@ -192,6 +225,10 @@ export class Profile implements OnInit {
     }
     if (this.newPassword.length === 0) {
       return PASSWORD_VALIDATION_NEW_REQUIRED;
+    }
+    const ruleViolations = passwordRuleViolations(this.newPassword);
+    if (ruleViolations.length > 0) {
+      return PASSWORD_RULE_MESSAGES[ruleViolations[0]];
     }
     if (this.newPassword !== this.confirmPassword) {
       return PASSWORD_VALIDATION_CONFIRM_MISMATCH;
@@ -235,6 +272,9 @@ export class Profile implements OnInit {
     this.newPassword = '';
     this.confirmPassword = '';
     this.passwordValidationError.set(null);
+    // Los campos se limpian en un callback async y el componente es OnPush;
+    // sin markForCheck la vista no reevalúa los ngModel y los inputs quedan llenos.
+    this.cdr.markForCheck();
     this.messageService.add({
       severity: 'success',
       summary: PASSWORD_CHANGE_SUCCESS_SUMMARY,

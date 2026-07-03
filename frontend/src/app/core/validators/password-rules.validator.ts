@@ -1,27 +1,28 @@
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
+import { PASSWORD_MIN_LENGTH, passwordRuleViolations } from './password-rules';
 
 /**
- * Aplica RN-03: mínimo 8 caracteres, al menos una mayúscula y un número.
- * Emite `null` con valor vacío para no chocar con `Validators.required`.
- * Los keys (`passwordMinLength`, `passwordUppercase`, `passwordNumber`)
- * dan feedback específico antes del 422 que devolvería DSpace server-side.
+ * Adapta RN-03 (`passwordRuleViolations`) al contrato de validador reactivo.
+ * Emite `null` con valor vacío para no chocar con `Validators.required`. Los
+ * keys (`passwordMinLength`, `passwordUppercase`, `passwordNumber`) dan
+ * feedback específico en el template antes del 422 que devolvería DSpace.
  */
 export function passwordRulesValidator(): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
-    const value = (control.value ?? '').toString();
-    if (!value) {
+    const violations = passwordRuleViolations((control.value ?? '').toString());
+    if (violations.length === 0) {
       return null;
     }
     const errors: ValidationErrors = {};
-    if (value.length < 8) {
-      errors['passwordMinLength'] = { required: 8 };
+    if (violations.includes('minLength')) {
+      errors['passwordMinLength'] = { required: PASSWORD_MIN_LENGTH };
     }
-    if (!/[A-Z]/.test(value)) {
+    if (violations.includes('uppercase')) {
       errors['passwordUppercase'] = true;
     }
-    if (!/[0-9]/.test(value)) {
+    if (violations.includes('number')) {
       errors['passwordNumber'] = true;
     }
-    return Object.keys(errors).length > 0 ? errors : null;
+    return errors;
   };
 }

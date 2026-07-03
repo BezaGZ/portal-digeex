@@ -1,11 +1,11 @@
 <div class="p-6">
-  <div class="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Actualizacion del perfil</div>
+  <div class="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Actualización del perfil</div>
 
   <p-card styleClass="mb-6">
     <div class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Identidad</div>
     <div class="flex flex-col gap-4">
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Direccion de correo electronico</label>
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Dirección de correo electrónico</label>
         <input pInputText class="w-full" [(ngModel)]="email" name="email" disabled />
       </div>
 
@@ -26,11 +26,11 @@
     <div class="flex flex-col gap-4">
       <p-message
         severity="info"
-        text="Opcionalmente, puede introducir una nueva contrasena en el cuadro a continuacion y confirmarla escribiendola nuevamente en el segundo cuadro."
+        text="Opcionalmente, puede introducir una nueva contraseña en el cuadro a continuación y confirmarla escribiéndola nuevamente en el segundo cuadro."
         styleClass="w-full" />
 
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Contrasena actual *</label>
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Contraseña actual *</label>
         <p-password
           [(ngModel)]="currentPassword"
           (ngModelChange)="onPasswordFieldChange()"
@@ -44,7 +44,7 @@
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Contrasena</label>
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Contraseña</label>
         <p-password
           [(ngModel)]="newPassword"
           (ngModelChange)="onPasswordFieldChange()"
@@ -57,7 +57,7 @@
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Rescriba para confirmar</label>
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Reescriba para confirmar</label>
         <p-password
           [(ngModel)]="confirmPassword"
           (ngModelChange)="onPasswordFieldChange()"
