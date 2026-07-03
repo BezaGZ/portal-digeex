@@ -9,6 +9,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
@@ -106,7 +107,7 @@ export class CommunityDialog {
       });
     });
 
-    this.form.valueChanges.subscribe((v) => {
+    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe((v) => {
       this.formValue.set({
         tituloCompleto: v.tituloCompleto ?? '',
         description: v.description ?? '',

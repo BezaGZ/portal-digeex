@@ -8,6 +8,7 @@ import {
   computed,
   effect,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
@@ -114,7 +115,7 @@ export class EditUserDialog {
       this.hasChanges.set(false);
     });
 
-    this.form.valueChanges.subscribe(() => {
+    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       this.hasChanges.set(this.diffAgainstSnapshot() !== null);
     });
   }
