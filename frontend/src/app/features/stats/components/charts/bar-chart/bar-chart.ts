@@ -15,6 +15,8 @@ import {
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
+import '../chart-setup';
+
 import { INSTITUTIONAL_COLORS, THEME_NEUTRALS } from '../../../../../core/theme/institutional-colors';
 import { formatStatNumber } from '../../../../../core/i18n/number.util';
 import { ChartConfig } from '../../../models/stats-dashboard.model';
@@ -111,12 +113,9 @@ export class BarChartComponent implements OnInit {
   }
 
   /**
-   * Genera el objeto de opciones para Chart.js según el tema activo (claro/oscuro).
-   * Configura los colores de textos, cuadrículas y etiquetas utilizando `THEME_NEUTRALS`
-   * de `src/app/core/theme/institutional-colors.ts`.
-   *
-   * El color de las barras se define en `chartData` debido a la prioridad que tiene la
-   * paleta automática de Chart.js v4 sobre la configuración de opciones.
+   * Opciones de Chart.js según el tema activo: textos, grillas y etiquetas
+   * desde `THEME_NEUTRALS`. El color de las barras va en `chartData` porque
+   * la paleta automática de Chart.js v4 pisa a la de options.
    */
   private buildOptions() {
     const dark = this.isDark();

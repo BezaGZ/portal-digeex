@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, HostListener, Input, LOCALE_ID, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
+
+import '../chart-setup';
 import { topojson } from 'chartjs-chart-geo';
 
 import { ChartConfig } from '../../../models/stats-dashboard.model';

@@ -32,6 +32,13 @@
             "styles": [
               "src/styles.css",
               "src/app/layout/admin-layout/styles/layout.scss"
+            ],
+            "allowedCommonJsDependencies": [
+              "core-js",
+              "raf",
+              "rgbcolor",
+              "jszip",
+              "html2canvas"
             ]
           },
           "configurations": {

@@ -2,15 +2,15 @@ import { ChangeDetectionStrategy, Component, Input, computed, signal } from '@an
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
+import '../chart-setup';
+
 import { ChartConfig } from '../../../models/stats-dashboard.model';
 import { readChartColors } from '../chart-colors.util';
 
 /**
  * Wrapper de `<p-chart type="bar">` para distribuciones de frecuencia con
- * barras pegadas edge-to-edge. Reproduce el look de "histograma" del
- * Tablero Consultor de DIGEEX cuando el renderer ya entrega una tally por
- * valor discreto (e.g. una entrada por edad puntual). El binning, si hace
- * falta, vive en el renderer; el componente solo se ocupa del rendering.
+ * barras pegadas edge-to-edge, el look de histograma del Tablero Consultor.
+ * El binning, si hace falta, vive en el renderer; aquí solo el rendering.
  */
 @Component({
   selector: 'app-histogram-chart',

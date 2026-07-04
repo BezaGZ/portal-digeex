@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, Input, LOCALE_ID, computed, inject,
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
+import '../chart-setup';
+
 import { ChartConfig } from '../../../models/stats-dashboard.model';
 import { readChartColors } from '../chart-colors.util';
 import { formatStatNumber } from '../../../../../core/i18n/number.util';
@@ -48,11 +50,9 @@ export class PieChartComponent {
   });
 
   /**
-   * Opciones de Chart.js: leyenda abajo con valor + porcentaje al lado de
-   * cada label para que el usuario lea las cifras sin tener que hacer hover
-   * sobre el slice. Los datalabels dentro del pie quedan deshabilitados
-   * porque cuando un slice es muy dominante (ej. EN PROCESO 95.8% en
-   * Resultados) los textos se apilan ilegibles en el centro.
+   * Leyenda abajo con valor + porcentaje por label, para leer cifras sin
+   * hover. Datalabels dentro del pie deshabilitados: con un slice dominante
+   * (ej. 95.8% en Resultados) los textos se apilan ilegibles en el centro.
    */
   readonly chartOptions = {
     responsive: true,

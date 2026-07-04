@@ -128,7 +128,7 @@ describe('paginateAllByNext$', () => {
  * usa `environment.apiUrl`; en producción `apiUrl` está vacío (mismo origen) y el
  * host canónico es el del navegador.
  *
- * Fix operativo Sprint 10 — buildBackendApiUrl en dev y producción.
+ * Ciclo 59 TDD — Sprint 10.
  */
 describe('buildBackendApiUrl', () => {
   const originalApiUrl = environment.apiUrl;

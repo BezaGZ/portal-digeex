@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, Input, LOCALE_ID, computed, inject,
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
+import '../chart-setup';
+
 import { ChartConfig } from '../../../models/stats-dashboard.model';
 import { readChartColors } from '../chart-colors.util';
 import { formatStatNumber } from '../../../../../core/i18n/number.util';

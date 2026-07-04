@@ -2,20 +2,18 @@ import { ChangeDetectionStrategy, Component, Input, LOCALE_ID, computed, inject,
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
 
+import '../chart-setup';
+
 import { ChartConfig } from '../../../models/stats-dashboard.model';
 import { readChartColors } from '../chart-colors.util';
 import { formatStatNumber } from '../../../../../core/i18n/number.util';
 
 /**
  * Wrapper de `<p-chart type="treemap">` usando `chartjs-chart-treemap`.
- * Chart.js no expone `treemap` en su core; el plugin se registra una vez
- * en `app.config.ts` (`Chart.register(TreemapController, TreemapElement)`)
- * y a partir de ahí cualquier `<p-chart type="treemap">` funciona.
- *
- * El plugin pide un shape distinto al de bar/pie: `tree` (los puntos) +
- * `key` (la propiedad numérica que define el área de cada rectángulo) +
- * `labels` (cómo pintar el texto adentro). Por eso este wrapper no
- * comparte el `{ labels, datasets }` plano de los otros.
+ * Chart.js no expone `treemap` en su core; el controller se registra en
+ * `chart-setup.ts`. El plugin pide un shape distinto al de bar/pie —
+ * `tree` + `key` + `labels` — por eso este wrapper no comparte el
+ * `{ labels, datasets }` plano de los otros.
  */
 @Component({
   selector: 'app-treemap-chart',

@@ -7,30 +7,6 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import { firstValueFrom } from 'rxjs';
-import Chart from 'chart.js/auto';
-import ChartDataLabels from 'chartjs-plugin-datalabels';
-import { TreemapController, TreemapElement } from 'chartjs-chart-treemap';
-import {
-  ChoroplethController,
-  GeoFeature,
-  ProjectionScale,
-  ColorScale,
-} from 'chartjs-chart-geo';
-
-/**
- * Plugins y controllers de Chart.js usados por los chart components de Stats:
- * datalabels (valores sobre slices/barras), treemap (tipo `treemap`) y
- * geo (tipo `choropleth` con sus escalas `projection` y `color`).
- */
-Chart.register(
-  ChartDataLabels,
-  TreemapController,
-  TreemapElement,
-  ChoroplethController,
-  GeoFeature,
-  ProjectionScale,
-  ColorScale,
-);
 
 import { registerLocaleData } from '@angular/common';
 import localeEsGT from '@angular/common/locales/es-GT';
@@ -51,38 +27,26 @@ import { AuthCallerService } from './features/administration/shared/services/aut
 
 
 /**
- * Preset personalizado de PrimeNG para Portal DIGEEX.
- *
- * Implementa la paleta oficial del Gobierno de Guatemala según
- * la Estrategia Visual 2026. Configura colores primarios, superficies
- * y esquemas de color para todos los componentes de PrimeNG.
- *
- * Las anclas oficiales referencian las CSS vars de `styles.css` (fuente
- * única de la paleta) vía `var(--color-*)`: el engine de @primeuix/styled
- * emite los strings que no son tokens `{...}` tal cual al CSS generado y
- * el navegador los resuelve contra `:root`. Los tonos intermedios de cada
- * escala (50-950) son derivaciones propias del preset sin equivalente en
- * la fuente y permanecen como hex; `zinc` es la escala neutral estándar.
+ * Preset de PrimeNG con la paleta oficial del Gobierno de Guatemala
+ * (Estrategia Visual 2026). Las anclas oficiales referencian las CSS vars
+ * de `styles.css` (fuente única de la paleta) vía `var(--color-*)`; los
+ * tonos intermedios de cada escala (50-950) son derivaciones propias sin
+ * equivalente en la fuente y quedan como hex.
  *
  * @see {@link https://primeng.org/theming#customization PrimeNG Theming}
- * @see {@link https://www.primeuix.org/themes Themes Documentation}
  */
 const DigeexPreset = definePreset(Aura, {
   semantic: {
     /**
-     * Escala de tonos del color primario institucional.
-     * Base: #1E3159 (Azul Gobierno).
-     *
-     * Esta escala se genera desde el color oficial y se usa
-     * automáticamente en todos los componentes PrimeNG para
-     * estados hover, focus, active y disabled.
+     * Escala del primario institucional (base #1E3159, Azul Gobierno).
+     * PrimeNG deriva de aquí hover, focus, active y disabled.
      */
     primary: {
       50: '#E8EDF5',
       100: '#C4D0E5',
       200: '#9DB1D4',
       300: '#7691C3',
-      400: '#5879B6',      /** Base: Azul Gobierno oficial */
+      400: '#5879B6',
       500: 'var(--color-gob-primary)',
       600: '#1A2B4E',
       700: '#162443',
@@ -93,10 +57,7 @@ const DigeexPreset = definePreset(Aura, {
 
     colorScheme: {
       light: {
-        /**
-         * Configuración de colores primarios para modo claro.
-         * hoverColor usa #233E72 (Azul Acento) de la paleta oficial.
-         */
+        /** hoverColor usa el Azul Acento oficial (#233E72). */
         primary: {
           color: '{primary.500}',
           contrastColor: 'var(--color-surface)',
@@ -104,11 +65,7 @@ const DigeexPreset = definePreset(Aura, {
           activeColor: '{primary.700}'
         },
 
-        /**
-         * Escala de superficies y fondos.
-         * 50: #F5F2EE corresponde al fondo cálido oficial
-         * definido en la Estrategia Visual 2026.
-         */
+        /** Superficies y fondos; 50 es el fondo cálido oficial (#F5F2EE). */
         surface: {
           0: 'var(--color-surface)',
           50: 'var(--color-background)',
@@ -124,10 +81,7 @@ const DigeexPreset = definePreset(Aura, {
           950: '#615D58'
         },
 
-        /**
-         * Colores de texto para modo claro.
-         * mutedColor: #4A5568 garantiza contraste WCAG AA (7.4:1 sobre blanco).
-         */
+        /** mutedColor #4A5568 garantiza contraste WCAG AA (7.4:1 sobre blanco). */
         text: {
           color: 'var(--color-text-primary)',
           hoverColor: '{primary.700}',
@@ -140,13 +94,8 @@ const DigeexPreset = definePreset(Aura, {
 
   primitive: {
     /**
-     * Sistema de colores Ocre Amanecer (acento oficial).
-     * Usado para CTAs, botones destacados y elementos de acento.
-     *
-     * Valores clave:
-     * - 200: Ocre Claro (#FFD392)
-     * - 500: Ocre Amanecer oficial (#F2A119)
-     * - 800: Ocre Oscuro (#A8723A)
+     * Ocre Amanecer (acento oficial) para CTAs y botones destacados.
+     * Anclas oficiales en 200, 500 y 800; el resto es derivación propia.
      */
     amber: {
       50: '#FFF8E6',
@@ -162,13 +111,7 @@ const DigeexPreset = definePreset(Aura, {
       950: '#704A22'
     },
 
-    /**
-     * Sistema de colores Celeste Cielo (complementario).
-     * Usado para fondos suaves y estados informativos.
-     *
-     * Valor clave:
-     * - 200: Celeste Cielo oficial (#CCF0FF)
-     */
+    /** Celeste Cielo (complementario) para fondos suaves; ancla oficial en 200. */
     sky: {
       50: '#F0FAFF',
       100: '#E0F5FF',
@@ -184,15 +127,9 @@ const DigeexPreset = definePreset(Aura, {
     },
 
     /**
-     * Verde Quetzal Esmeralda — Macrotema Seguridad. Mapea a la severity
-     * "success" de PrimeNG (botones, toasts, badges de estado exitoso).
-     * Reemplaza el emerald-500 de Tailwind por la paleta oficial del
-     * Gobierno de Guatemala según la Estrategia Visual 2026.
-     *
-     * Valores clave:
-     * - 200: Quetzal Esmeralda claro (#8DD8D3)
-     * - 500: Quetzal Esmeralda principal (#026961)
-     * - 700: Quetzal Esmeralda oscuro (#235558)
+     * Verde Quetzal Esmeralda (macrotema Seguridad) mapeado a la severity
+     * "success" de PrimeNG en lugar del emerald de Tailwind. Anclas
+     * oficiales en 200, 500 y 700.
      */
     emerald: {
       50: '#E8F5F4',
@@ -209,15 +146,9 @@ const DigeexPreset = definePreset(Aura, {
     },
 
     /**
-     * Rojo Baya Wachil — Macrotema Competitividad. Mapea a la severity
-     * "danger" de PrimeNG (botones de eliminar, toasts de error, estados
-     * críticos). Reemplaza el red-500 de Tailwind por la paleta oficial
-     * del Gobierno de Guatemala según la Estrategia Visual 2026.
-     *
-     * Valores clave:
-     * - 100: Baya Wachil claro (#FFE1E5)
-     * - 500: Baya Wachil principal (#9F0B30)
-     * - 700: Baya Wachil oscuro (#7B162F)
+     * Rojo Baya Wachil (macrotema Competitividad) mapeado a la severity
+     * "danger" de PrimeNG en lugar del red de Tailwind. Anclas oficiales
+     * en 100, 500 y 700.
      */
     red: {
       50: '#FFF5F7',
@@ -233,12 +164,7 @@ const DigeexPreset = definePreset(Aura, {
       950: '#20060D'
     },
 
-    /**
-     * Gris neutral para botones secundarios (severity="secondary").
-     *
-     * Valor clave:
-     * - 500: zinc-500 de Tailwind (#71717A)
-     */
+    /** Gris neutral estándar (zinc de Tailwind) para severity "secondary". */
     zinc: {
       50: '#FAFAFA',
       100: '#F4F4F5',
@@ -254,26 +180,16 @@ const DigeexPreset = definePreset(Aura, {
     }
   },
 
-  /**
-   * Overrides de componentes.
-   *
-   * button: en modo oscuro Aura pinta danger con fondo {red.400} (rosa) y
-   * texto {red.950} (casi negro). Lo forzamos al rojo institucional {red.500}
-   * con texto blanco, espejo del modo claro (contraste 8.9:1).
-   *
-   * dialog: el content y el footer de Aura traen padding-top 0, lo que pega el
-   * contenido al header y los botones al contenido. Igualamos el padding en los
-   * cuatro lados de ambos.
-   */
   components: {
     button: {
       colorScheme: {
         dark: {
           root: {
             /**
-             * Con la escala surface oscura correcta, Aura saca el texto de
-             * contraste de primary/success de surface.900 (oscuro), dejando
-             * letras negras sobre el azul/verde institucional. Se fuerza blanco.
+             * En oscuro Aura saca el texto de primary/success de surface.900
+             * (letras negras sobre azul/verde institucional) y pinta danger
+             * rosa con texto casi negro. Se fuerza blanco y el rojo {red.500},
+             * espejo del modo claro (contraste 8.9:1).
              */
             primary: {
               color: '#ffffff',
@@ -300,6 +216,10 @@ const DigeexPreset = definePreset(Aura, {
         }
       }
     },
+    /**
+     * El content y el footer de Aura traen padding-top 0, pegando el
+     * contenido al header y los botones al contenido; se igualan los cuatro lados.
+     */
     dialog: {
       content: {
         padding: '{overlay.modal.padding}'
@@ -311,15 +231,6 @@ const DigeexPreset = definePreset(Aura, {
   }
 });
 
-/**
- * Configuración principal de la aplicación Angular.
- *
- * Provee todos los servicios necesarios incluyendo:
- * - Router con lazy loading
- * - HttpClient para llamadas API
- * - Animaciones del navegador
- * - Tema personalizado de PrimeNG (DigeexPreset)
- */
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
@@ -346,8 +257,7 @@ export const appConfig: ApplicationConfig = {
         }
       },
       /**
-       * Traducción global de PrimeNG al español. Cubre fileupload, calendar,
-       * paginator, confirm dialogs, datatables y demás. Cualquier componente
+       * Traducción global de PrimeNG al español. Cualquier componente
        * PrimeNG agregado a futuro hereda estas labels sin configuración local.
        */
       translation: {
