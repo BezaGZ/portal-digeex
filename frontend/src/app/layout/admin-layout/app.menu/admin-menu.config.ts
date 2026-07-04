@@ -22,7 +22,7 @@ export interface AdminMenuItem {
 export const ADMIN_MENU: readonly AdminMenuItem[] = [
   {
     section: 'Administración',
-    label: 'Estadísticas',
+    label: 'Estadísticas del portal',
     icon: 'pi pi-fw pi-home',
     routerLink: '/administrador/estadisticas',
     // El delegado no ve métricas: el dashboard queda para admin de sub y superadmin.

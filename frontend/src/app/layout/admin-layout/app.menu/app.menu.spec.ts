@@ -45,7 +45,7 @@ describe('AppMenu', () => {
     const labels = flatLabels(fixture.componentInstance.model());
     expect(labels).toEqual(
       expect.arrayContaining([
-        'Estadísticas',
+        'Estadísticas del portal',
         'DIGEEX',
         'Subdirecciones',
         'Programas',
@@ -62,7 +62,7 @@ describe('AppMenu', () => {
     const labels = flatLabels(fixture.componentInstance.model());
     expect(labels).toEqual(
       expect.arrayContaining([
-        'Estadísticas',
+        'Estadísticas del portal',
         'Programas',
         'Cargar contenido',
         'Recursos',

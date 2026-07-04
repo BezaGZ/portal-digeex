@@ -127,7 +127,7 @@ export const routes: Routes = [
         path: 'estadisticas',
         canActivate: [roleGuard(ROLE_SCOPES.ADMIN)],
         loadComponent: () => import('./features/administration/dashboard/dashboard').then(m => m.Dashboard),
-        data: { breadcrumb: 'Estadísticas' }
+        data: { breadcrumb: 'Estadísticas del portal' }
       },
       {
         path: 'digeex',

@@ -33,7 +33,7 @@ import { UsageReportTable } from './components/usage-report-table/usage-report-t
 import { MonthlyVisitsGrid } from './components/monthly-visits-grid/monthly-visits-grid';
 
 const DSO_TYPE_TITLES: Readonly<Record<UsageReportDsoType, string>> = {
-  site: 'Estadísticas del repositorio',
+  site: 'Estadísticas del portal',
   item: 'Estadísticas del recurso',
   collection: 'Estadísticas del programa',
 };
