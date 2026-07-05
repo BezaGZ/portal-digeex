@@ -29,7 +29,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * `tipos-dataset-estadistica` y determina qué `StatsRenderer` monta la vista
  * pública. Patrón Template Method.
  *
- * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclo 5 (Sprint 7) y Ciclo 21 (Sprint 9), y Ciclo 21 (Sprint 10): limpieza visual del dropzone.
+ * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclo 5 (Sprint 7) y Ciclo 21 (Sprint 9), y Ciclos 21 y 60 (Sprint 10).
  */
 describe('StatsSubmissionForm', () => {
   const DATASET_VOCAB: VocabularyEntry[] = [
@@ -127,6 +127,34 @@ describe('StatsSubmissionForm', () => {
 
     c.visibility.set('private');
     expect(c.getVisibility()).toBe('private');
+  });
+
+  /**
+   * Verifica que el toggle de visibilidad se oculte al personal_delegado.
+   * No accede a Recursos: un item privado suyo le quedaría irrecuperable.
+   */
+  it('should hide the visibility toggle for a personal_delegado caller', () => {
+    const fixture = TestBed.createComponent(StatsSubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'personal_delegado', sufijo: 'PEAC' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#visibility')).toBeNull();
+  });
+
+  /** Verifica que superadmin y admin_subdireccion conserven el toggle de visibilidad. */
+  it('should keep the visibility toggle for superadmin and admin_subdireccion callers', () => {
+    for (const caller of [
+      { role: 'superadmin', sufijo: null },
+      { role: 'admin_subdireccion', sufijo: 'ED_BASICA' },
+    ]) {
+      const fixture = TestBed.createComponent(StatsSubmissionForm);
+      fixture.componentRef.setInput('collection', buildCollection('col-1'));
+      fixture.componentRef.setInput('caller', caller);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('#visibility')).not.toBeNull();
+    }
   });
 
   /** Verifica que `getFiles` exponga el contenido del signal `files` (vacío por defecto, lleno cuando se setea). */

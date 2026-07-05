@@ -7,6 +7,7 @@ import { Item } from '../../../core/api/models/item.model';
 import { MetadataValue } from '../../../core/api/models/metadata.model';
 import { JsonPatchEntry } from '../../../core/api/json-patch.util';
 import { Caller } from '../content/specifications/scope-context.model';
+import { canToggleItemVisibility } from '../../../core/auth/role-capabilities';
 import {
   SubmissionFacade,
   SubmitItemRequest,
@@ -46,6 +47,9 @@ export abstract class BaseSubmissionForm {
 
   /** Conveniencia: el template se ramifica con esto para mostrar/ocultar dropzones y cambiar el label del botón. */
   readonly isEditMode = computed(() => this.item() !== null);
+
+  /** Gate del toggle Pública/Privada: oculto para el delegado, que no podría revertir un item privado. */
+  readonly canToggleVisibility = computed(() => canToggleItemVisibility(this.caller()));
 
   /** Pre-llena el form la primera vez que el input `item` entra con un valor no nulo. */
   private prefilledFor: string | null = null;

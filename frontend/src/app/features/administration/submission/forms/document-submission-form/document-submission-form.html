@@ -15,11 +15,11 @@
 
     <div class="flex flex-col gap-1">
       <label for="abstract" class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Resumen <span class="text-[var(--color-error)]">*</span>
+        Descripción <span class="text-[var(--color-error)]">*</span>
       </label>
       <textarea id="abstract" pTextarea formControlName="abstract" rows="3" maxlength="1000" class="w-full"></textarea>
       @if (form.controls.abstract.touched && form.controls.abstract.invalid) {
-        <small class="text-[var(--color-error)]">El resumen es obligatorio.</small>
+        <small class="text-[var(--color-error)]">La descripción es obligatoria.</small>
       }
     </div>
 
@@ -207,23 +207,25 @@
         (filesChange)="onCoverChange($event)" />
     </div>
 
-    <div class="flex flex-col gap-1">
-      <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Visibilidad
-      </label>
-      <div class="flex items-center gap-3">
-        <p-toggleswitch
-          inputId="visibility"
-          [ngModel]="visibility() === 'public'"
-          [ngModelOptions]="{ standalone: true }"
-          (ngModelChange)="visibility.set($event ? 'public' : 'private')" />
-        <label for="visibility" class="text-sm text-gray-700 dark:text-gray-300">
-          {{ visibility() === 'public'
-              ? 'Pública: aparece en búsqueda y listados.'
-              : 'Privada: oculta de búsqueda; solo accesible por URL directa.' }}
+    @if (canToggleVisibility()) {
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Visibilidad
         </label>
+        <div class="flex items-center gap-3">
+          <p-toggleswitch
+            inputId="visibility"
+            [ngModel]="visibility() === 'public'"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="visibility.set($event ? 'public' : 'private')" />
+          <label for="visibility" class="text-sm text-gray-700 dark:text-gray-300">
+            {{ visibility() === 'public'
+                ? 'Pública: aparece en búsqueda y listados.'
+                : 'Privada: oculta de búsqueda; solo accesible por URL directa.' }}
+          </label>
+        </div>
       </div>
-    </div>
+    }
 
     <div class="flex justify-end gap-2 pt-2">
       <p-button

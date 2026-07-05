@@ -32,7 +32,7 @@
               <p class="text-xs uppercase tracking-wide" style="color: var(--color-text-tertiary)">{{ affectedTitlesLabel() }}</p>
             }
             <ul class="list-disc pl-5 text-sm flex flex-col gap-0.5 max-h-40 overflow-y-auto" style="color: var(--color-text-secondary)" data-testid="affected-titles">
-              @for (title of affectedTitles(); track title) {
+              @for (title of affectedTitles(); track $index) {
                 <li class="break-words">{{ title }}</li>
               }
             </ul>

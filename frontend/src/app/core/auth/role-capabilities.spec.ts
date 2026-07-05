@@ -2,6 +2,7 @@ import {
   canChooseAnySubdireccion,
   canCreateTopLevel,
   canModifyRoles,
+  canToggleItemVisibility,
   hasUsableScope,
   isCallerScoped,
   isSuperadmin,
@@ -16,7 +17,7 @@ import { Caller } from './caller.model';
  * tres roles del portal (superadmin, admin_subdireccion, personal_delegado) y el
  * caller null, que siempre cae a false (fail-closed).
  *
- * Ciclo 22 TDD — Sprint 10.
+ * Ciclo 22 TDD — Sprint 10. Ajustado en Ciclo 60.
  */
 describe('role-capabilities', () => {
   const superadmin: Caller = { role: 'superadmin', sufijo: null };
@@ -80,6 +81,19 @@ describe('role-capabilities', () => {
       expect(canModifyRoles(adminSub)).toBe(false);
       expect(canModifyRoles(delegado)).toBe(false);
       expect(canModifyRoles(null)).toBe(false);
+    });
+  });
+
+  describe('canToggleItemVisibility', () => {
+    /**
+     * Verifica que solo superadmin y admin_subdireccion puedan togglear visibilidad.
+     * El delegado no accede a Recursos: un item privado suyo le quedaría irrecuperable.
+     */
+    it('should allow only superadmin and admin_subdireccion to toggle item visibility', () => {
+      expect(canToggleItemVisibility(superadmin)).toBe(true);
+      expect(canToggleItemVisibility(adminSub)).toBe(true);
+      expect(canToggleItemVisibility(delegado)).toBe(false);
+      expect(canToggleItemVisibility(null)).toBe(false);
     });
   });
 

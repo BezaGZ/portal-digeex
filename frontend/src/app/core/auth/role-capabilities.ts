@@ -35,6 +35,15 @@ export function canModifyRoles(holder: RoleHolder | null): boolean {
 }
 
 /**
+ * Solo quien puede ver un item privado puede ponerlo privado: el delegado no
+ * accede a Recursos (administrativeView) y el filtro nativo de discovery
+ * (SolrServicePrivateItemPlugin) le oculta los privados también en Mis envíos.
+ */
+export function canToggleItemVisibility(holder: RoleHolder | null): boolean {
+  return holder?.role === 'superadmin' || holder?.role === 'admin_subdireccion';
+}
+
+/**
  * El caller está acotado a una sub: existe, no es superadmin y tiene sufijo.
  * Es la condición previa a resolver su subdirección concreta.
  */

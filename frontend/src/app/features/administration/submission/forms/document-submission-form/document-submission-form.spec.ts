@@ -27,7 +27,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * (Video externo) según la decisión de Sprint 6 de no duplicar maquinaria
  * de submission para algo que tiene el mismo entity-type.
  *
- * Ciclo 23 TDD — Sprint 6. Ajustado en Ciclo 35 y Ciclo 21 (Sprint 9), y Ciclos 21 y 45 (Sprint 10).
+ * Ciclo 23 TDD — Sprint 6. Ajustado en Ciclo 35 y Ciclo 21 (Sprint 9), y Ciclos 21, 45 y 60 (Sprint 10).
  */
 describe('DocumentSubmissionForm', () => {
   function buildCollection(uuid: string): Collection {
@@ -103,6 +103,34 @@ describe('DocumentSubmissionForm', () => {
 
     c.visibility.set('private');
     expect(c.getVisibility()).toBe('private');
+  });
+
+  /**
+   * Verifica que el toggle de visibilidad se oculte al personal_delegado.
+   * No accede a Recursos: un item privado suyo le quedaría irrecuperable.
+   */
+  it('should hide the visibility toggle for a personal_delegado caller', () => {
+    const fixture = TestBed.createComponent(DocumentSubmissionForm);
+    fixture.componentRef.setInput('collection', buildCollection('col-1'));
+    fixture.componentRef.setInput('caller', { role: 'personal_delegado', sufijo: 'PEAC' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#visibility')).toBeNull();
+  });
+
+  /** Verifica que superadmin y admin_subdireccion conserven el toggle de visibilidad. */
+  it('should keep the visibility toggle for superadmin and admin_subdireccion callers', () => {
+    for (const caller of [
+      { role: 'superadmin', sufijo: null },
+      { role: 'admin_subdireccion', sufijo: 'ED_BASICA' },
+    ]) {
+      const fixture = TestBed.createComponent(DocumentSubmissionForm);
+      fixture.componentRef.setInput('collection', buildCollection('col-1'));
+      fixture.componentRef.setInput('caller', caller);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('#visibility')).not.toBeNull();
+    }
   });
 
   /** Verifica que getFiles exponga el contenido de la signal files. */
