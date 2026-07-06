@@ -148,7 +148,7 @@ export class Gallery implements OnInit {
       this.router.navigate(['/galeria']);
       return;
     }
-    this.router.navigate(['/galeria', uuid, 'album', album.id]);
+    this.router.navigate(['/galeria', uuid, 'recurso', album.id]);
   }
 
   goBack() {

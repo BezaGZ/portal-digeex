@@ -68,9 +68,9 @@ export function isWithdrawn(o: MyDSpaceObject): boolean {
 /** Comandos de router de la vista pública por entity-type. Las tres rutas llevan
  *  el uuid de la colección padre porque los componentes lo leen del path. */
 const PUBLIC_ROUTES: Record<string, (col: string, item: string) => string[]> = {
-  Documento: (col, item) => ['/programas', col, 'documentos', item],
-  Galeria: (col, item) => ['/galeria', col, 'album', item],
-  Estadistica: (col, item) => ['/estadistica', col, 'item', item],
+  Documento: (col, item) => ['/programas', col, 'recurso', item],
+  Galeria: (col, item) => ['/galeria', col, 'recurso', item],
+  Estadistica: (col, item) => ['/estadistica', col, 'recurso', item],
 };
 
 /**

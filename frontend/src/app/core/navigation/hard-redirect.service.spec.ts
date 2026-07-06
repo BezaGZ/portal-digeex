@@ -38,10 +38,10 @@ describe('HardRedirectService', () => {
 
   /** getCurrentRoute devuelve path + query, sin returnUrl previos para no anidarlos. */
   it('should return path with query params excluding any pre-existing returnUrl', () => {
-    doc.location.pathname = '/administrador/uso/items/abc';
+    doc.location.pathname = '/administrador/uso/recursos/abc';
     doc.location.search = '?meses=6&returnUrl=%2Finiciar-sesion';
 
-    expect(service.getCurrentRoute()).toBe('/administrador/uso/items/abc?meses=6');
+    expect(service.getCurrentRoute()).toBe('/administrador/uso/recursos/abc?meses=6');
   });
 
   /** Sin query, getCurrentRoute devuelve solo el path. */

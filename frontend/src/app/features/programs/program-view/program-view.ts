@@ -170,7 +170,7 @@ export class ProgramView implements OnInit {
     if (!node) return;
 
     const currentTrail: MenuItem[] = this.breadcrumbService.trail();
-    this.router.navigate(['/programas', node.id, 'documentos', item.id], {
+    this.router.navigate(['/programas', node.id, 'recurso', item.id], {
       state: { trail: currentTrail },
     });
   }

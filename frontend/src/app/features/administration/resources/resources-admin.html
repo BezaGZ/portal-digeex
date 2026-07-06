@@ -173,7 +173,7 @@
                     [rounded]="true"
                     pTooltip="Ver historial"
                     tooltipPosition="top"
-                    [routerLink]="['/administrador/historial/items', o.indexableObject.uuid]" />
+                    [routerLink]="['/administrador/historial/recursos', o.indexableObject.uuid]" />
                 </span>
                 <span data-testid="action-view-stats">
                   <p-button
@@ -183,7 +183,7 @@
                     [rounded]="true"
                     pTooltip="Ver estadísticas"
                     tooltipPosition="top"
-                    [routerLink]="['/administrador/uso/items', o.indexableObject.uuid]" />
+                    [routerLink]="['/administrador/uso/recursos', o.indexableObject.uuid]" />
                 </span>
                 @if (tab() === 'activos') {
                   @if (publicRouteOf(o)) {

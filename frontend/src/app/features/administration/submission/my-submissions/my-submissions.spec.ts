@@ -24,7 +24,7 @@ import { LoadingService } from '../../../../core/loading/loading.service';
  * facade pre-existente `ItemAdminFacade.withdrawItem$` con el sufijo del
  * caller logueado y recarga la página actual.
  *
- * Ajustado en Ciclo 56 (Sprint 10).
+ * Ajustado en Ciclos 56 y 62 (Sprint 10).
  */
 describe('MySubmissions', () => {
   let searchFn: ReturnType<typeof vi.fn>;
@@ -156,7 +156,7 @@ describe('MySubmissions', () => {
 
     fixture.componentInstance.onView(buildRoutedObject('item-9'));
 
-    expect(openSpy).toHaveBeenCalledWith('/programas/col-1/documentos/item-9', '_blank', 'noopener');
+    expect(openSpy).toHaveBeenCalledWith('/programas/col-1/recurso/item-9', '_blank', 'noopener');
     openSpy.mockRestore();
   });
 

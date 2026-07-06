@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter, Router, RouterLink } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
 import { vi } from 'vitest';
 import { EMPTY, NEVER, of } from 'rxjs';
@@ -20,7 +21,7 @@ import { LoadingService } from '../../../core/loading/loading.service';
  * compartidos de `my-dspace-object.util` y delega scope + filtros al
  * `ResourcesAdminFacade`.
  *
- * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclo 50 (Sprint 8) y Ciclos 32 y 55 (Sprint 10).
+ * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclo 50 (Sprint 8) y Ciclos 32, 55, 61 y 62 (Sprint 10).
  */
 describe('ResourcesAdmin', () => {
   let searchFn: ReturnType<typeof vi.fn>;
@@ -259,6 +260,27 @@ describe('ResourcesAdmin', () => {
     expect(deleteFn).toHaveBeenCalledWith('perm-uuid');
   });
 
+  /**
+   * Verifica que Historial y Uso enlacen a las rutas admin con el segmento recursos.
+   * Las URLs del panel nombran los contenidos como recursos; item es el type interno de DSpace.
+   */
+  it('should link the history and stats actions to the recursos admin routes', () => {
+    const fixture = TestBed.createComponent(ResourcesAdmin);
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
+
+    const linkOf = (testid: string): string => {
+      const link = fixture.debugElement
+        .query(By.css(`[data-testid="${testid}"]`))
+        .query(By.directive(RouterLink))
+        .injector.get(RouterLink);
+      return router.serializeUrl(link.urlTree!);
+    };
+
+    expect(linkOf('action-view-history')).toBe('/administrador/historial/recursos/a');
+    expect(linkOf('action-view-stats')).toBe('/administrador/uso/recursos/a');
+  });
+
   /** Verifica que en Activos se muestre "Ver" cuando el item tiene ruta pública resoluble. */
   it('should render the Ver action in Activos for items with a public route', () => {
     searchFn.mockReturnValue(
@@ -294,7 +316,7 @@ describe('ResourcesAdmin', () => {
 
     fixture.componentInstance.onView(buildRoutedObject('item-9'));
 
-    expect(openSpy).toHaveBeenCalledWith('/programas/col-1/documentos/item-9', '_blank', 'noopener');
+    expect(openSpy).toHaveBeenCalledWith('/programas/col-1/recurso/item-9', '_blank', 'noopener');
     openSpy.mockRestore();
   });
 

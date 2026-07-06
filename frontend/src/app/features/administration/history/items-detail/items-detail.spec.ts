@@ -13,7 +13,7 @@ import { BreadcrumbService } from '../../../../core/breadcrumb/breadcrumb.servic
 /**
  * Tests de `ItemsDetail`.
  *
- * Container de la ruta `/administrador/historial/items/:uuid`.
+ * Container de la ruta `/administrador/historial/recursos/:uuid`.
  * Resuelve el item vía `ItemApiService.getOne` con el `:uuid`, monta
  * `<app-provenance-timeline>` con las entradas derivadas por
  * `ProvenanceService.extractFrom` y publica el trail al `BreadcrumbService`.

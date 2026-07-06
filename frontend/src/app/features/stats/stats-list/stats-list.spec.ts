@@ -15,7 +15,7 @@ import { StatsItem, StatsItemPage } from '../models/stats-item.model';
  * loading), filtra client-side por dataset y navega al detalle por uuid en
  * el click de la card.
  *
- * Ciclo 10 TDD — Sprint 7. Ajustado en Ciclo 26 (Sprint 8) y Ciclo 35 (Sprint 10).
+ * Ciclo 10 TDD — Sprint 7. Ajustado en Ciclo 26 (Sprint 8) y Ciclos 35 y 62 (Sprint 10).
  */
 
 const SAMPLE_ITEMS: StatsItem[] = [
@@ -146,7 +146,7 @@ describe('StatsList', () => {
 
     c.openItem('a');
 
-    expect(navigateFn).toHaveBeenCalledWith(['/estadistica', 'col-estadistica', 'item', 'a']);
+    expect(navigateFn).toHaveBeenCalledWith(['/estadistica', 'col-estadistica', 'recurso', 'a']);
   });
 
   /** Verifica que durante la carga el listado renderice el skeleton de stats compartido. */

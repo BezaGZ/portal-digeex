@@ -42,7 +42,7 @@ export class AlbumViewer implements OnInit {
     private tracking: StatisticsTrackingService,
   ) {}
 
-  /** UUID de la colección padre, leído del route param `:uuid` de la ruta `/galeria/:uuid/album/:id`. */
+  /** UUID de la colección padre, leído del route param `:uuid` de la ruta `/galeria/:uuid/recurso/:id`. */
   private collectionUuid: string | null = null;
 
   /**

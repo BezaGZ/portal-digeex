@@ -21,7 +21,7 @@ import { MyDSpaceObject } from '../../../../core/api/models/my-dspace.model';
  * `administrativeView`). Los consume `Mis envíos` y la pantalla
  * `/administrador/recursos`.
  *
- * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclos 40, 54 y 56 (Sprint 10).
+ * Ciclo 33 TDD — Sprint 6. Ajustado en Ciclos 40, 54, 56 y 62 (Sprint 10).
  */
 describe('my-dspace-object.util', () => {
   beforeAll(() => registerLocaleData(localeEsGT));
@@ -202,14 +202,14 @@ describe('my-dspace-object.util', () => {
     expect(publicRouteOf(buildRouted('Documento'))).toEqual([
       '/programas',
       'col-1',
-      'documentos',
+      'recurso',
       'item-1',
     ]);
   });
 
   /** Verifica la ruta del visor de álbum para Galería. */
   it('publicRouteOf returns the album viewer route for Galeria items', () => {
-    expect(publicRouteOf(buildRouted('Galeria'))).toEqual(['/galeria', 'col-1', 'album', 'item-1']);
+    expect(publicRouteOf(buildRouted('Galeria'))).toEqual(['/galeria', 'col-1', 'recurso', 'item-1']);
   });
 
   /** Verifica la ruta del detalle de Estadística. */
@@ -217,7 +217,7 @@ describe('my-dspace-object.util', () => {
     expect(publicRouteOf(buildRouted('Estadistica'))).toEqual([
       '/estadistica',
       'col-1',
-      'item',
+      'recurso',
       'item-1',
     ]);
   });

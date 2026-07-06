@@ -28,7 +28,7 @@ export type StatsDetailError = 'not-found' | 'unsupported' | 'network';
 
 /**
  * Detalle público de un item Estadística en
- * `/estadistica/:uuid/item/:itemUuid`. El `:uuid` es la colección padre y
+ * `/estadistica/:uuid/recurso/:itemUuid`. El `:uuid` es la colección padre y
  * `:itemUuid` el item específico. Orquesta la carga del item, la resolución
  * del renderer del registry por `digeex.statsDataset`, la descarga lazy del
  * Excel y la construcción del dashboard con sus filtros. Cuatro modos de

@@ -120,7 +120,7 @@ export class AdvancedSearch implements OnInit {
        el item llegó sin owningCollectionUuid (search response incompleto, item
        huérfano), caer al deep link corto evita romper la navegación. */
     if (item.owningCollectionUuid) {
-      this.router.navigate(['/programas', item.owningCollectionUuid, 'documentos', item.id]);
+      this.router.navigate(['/programas', item.owningCollectionUuid, 'recurso', item.id]);
     } else {
       this.router.navigate(['/documentos', item.id]);
     }

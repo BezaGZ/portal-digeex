@@ -15,7 +15,7 @@ import { AlbumPage, FilterOptions } from './models';
  * Carga álbumes paginados desde GalleryService, puebla
  * opciones de filtro, maneja paginación y navegación.
  *
- * Ciclo 5 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8).
+ * Ciclo 5 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8) y Ciclo 62 (Sprint 10).
  */
 describe('Gallery', () => {
   let router: Router;
@@ -222,7 +222,7 @@ describe('Gallery', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       fixture.componentInstance.openAlbum({ id: 'album-1' } as any);
 
-      expect(router.navigate).toHaveBeenCalledWith(['/galeria', 'col-galeria', 'album', 'album-1']);
+      expect(router.navigate).toHaveBeenCalledWith(['/galeria', 'col-galeria', 'recurso', 'album-1']);
     });
 
     /** Verifica que goBack() navegue a la raíz. */

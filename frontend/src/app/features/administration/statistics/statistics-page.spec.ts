@@ -17,7 +17,7 @@ import { UsageReport, UsageReportType } from '../../../core/api/models/usage-rep
  * Tests del container `StatisticsPage`.
  *
  * Container reusable montado en tres rutas (`/administrador/uso`,
- * `/administrador/uso/items/:uuid`, `/administrador/uso/programas/:uuid`).
+ * `/administrador/uso/recursos/:uuid`, `/administrador/uso/programas/:uuid`).
  * Cubre los tres escenarios de scope (site, item, collection), el
  * descubrimiento del Site UUID + href cuando `dsoType === 'site'`, y la
  * resiliencia ante fallo de un report individual (los demás siguen

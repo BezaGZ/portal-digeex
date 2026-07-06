@@ -21,7 +21,7 @@ export const routes: Routes = [
         loadComponent: () => import('./features/programs/program-view/program-view').then(m => m.ProgramView),
       },
       {
-        path: 'programas/:id/documentos/:docId',
+        path: 'programas/:id/recurso/:docId',
         loadComponent: () => import('./features/programs/document-detail/document-detail').then(m => m.DocumentDetail),
       },
       {
@@ -42,7 +42,7 @@ export const routes: Routes = [
             loadComponent: () => import('./features/stats/stats-list/stats-list').then(m => m.StatsList),
           },
           {
-            path: ':uuid/item/:itemUuid',
+            path: ':uuid/recurso/:itemUuid',
             /**
              * Importar primero los renderers garantiza que `registerStatsRenderer`
              * de cada dataset (`docentes`, `estudiantes`, etc.) corrió antes de
@@ -71,7 +71,7 @@ export const routes: Routes = [
             loadComponent: () => import('./features/gallery/gallery').then(m => m.Gallery)
           },
           {
-            path: ':uuid/album/:id',
+            path: ':uuid/recurso/:id',
             loadComponent: () => import('./features/gallery/components/album-viewer/album-viewer').then(m => m.AlbumViewer),
             data: { breadcrumb: 'Álbum' }
           },
@@ -164,7 +164,7 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'historial/items/:uuid',
+        path: 'historial/recursos/:uuid',
         canActivate: [roleGuard(ROLE_SCOPES.ADMIN), featureGuard('administratorOf', ITEMS_PATH)],
         loadComponent: () =>
           import('./features/administration/history/items-detail/items-detail').then(
@@ -181,7 +181,7 @@ export const routes: Routes = [
         data: { breadcrumb: 'Estadísticas de uso', dsoType: 'site' },
       },
       {
-        path: 'uso/items/:uuid',
+        path: 'uso/recursos/:uuid',
         canActivate: [roleGuard(ROLE_SCOPES.ADMIN), featureGuard('administratorOf', ITEMS_PATH)],
         loadComponent: () =>
           import('./features/administration/statistics/statistics-page').then(
