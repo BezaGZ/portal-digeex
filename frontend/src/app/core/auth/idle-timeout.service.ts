@@ -22,6 +22,10 @@ const ACTIVITY_EVENTS = ['click', 'keydown', 'mousemove', 'scroll'] as const;
  * mouse no lo cierra (evita descartarlo por accidente); click, tecla y scroll
  * sí lo cierran.
  *
+ * Al volver la pestaña a visible se revalida el plazo contra el reloj real:
+ * los navegadores ralentizan los setTimeout en segundo plano y el vencimiento
+ * puede no haber disparado aún.
+ *
  * @see DT-02 (sesión 30 min idle con refresh por actividad)
  * @see DT-03 (modal de aviso a los 25 min)
  *
@@ -36,6 +40,7 @@ export class IdleTimeoutService {
   private warningTimer: ReturnType<typeof setTimeout> | null = null;
   private timeoutTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly onActivity = (e: Event) => this.handleActivity(e);
+  private readonly onVisibility = () => this.evaluateElapsedIdle();
 
   /** Inicia el monitoreo de actividad del usuario. */
   start(): void {
@@ -43,6 +48,7 @@ export class IdleTimeoutService {
     ACTIVITY_EVENTS.forEach((event) => {
       document.addEventListener(event, this.onActivity);
     });
+    document.addEventListener('visibilitychange', this.onVisibility);
     this.startTimers();
   }
 
@@ -51,9 +57,30 @@ export class IdleTimeoutService {
     ACTIVITY_EVENTS.forEach((event) => {
       document.removeEventListener(event, this.onActivity);
     });
+    document.removeEventListener('visibilitychange', this.onVisibility);
     this.clearTimers();
     this.warningVisible.set(false);
     this.sessionExpired.set(false);
+  }
+
+  /**
+   * Compara el reloj real contra los umbrales al volver la pestaña a visible.
+   * Corre antes que cualquier interacción del usuario, así la expiración gana
+   * la carrera contra el click de regreso que resetearía los timers.
+   */
+  private evaluateElapsedIdle(): void {
+    if (document.visibilityState !== 'visible' || this.sessionExpired()) {
+      return;
+    }
+    const elapsed = Date.now() - this.lastActivity();
+    if (elapsed >= TIMEOUT_MS) {
+      this.clearTimers();
+      this.sessionExpired.set(true);
+      return;
+    }
+    if (elapsed >= WARNING_MS) {
+      this.warningVisible.set(true);
+    }
   }
 
   /** Registra la actividad, oculta el warning y reinicia los timers. */

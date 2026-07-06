@@ -10,7 +10,7 @@ import { IdleTimeoutService } from './idle-timeout.service';
  * y emite señales de advertencia (25 min) y expiración (30 min)
  * para gestionar el timeout de sesión según DT-02 y DT-03.
  *
- * Ciclo 3 TDD — Sprint 5, Ajustado en Ciclo 1 - Sprint 9
+ * Ciclo 3 TDD — Sprint 5. Ajustado en Ciclo 1 (Sprint 9) y Ciclo 64 (Sprint 10).
  */
 describe('IdleTimeoutService', () => {
   let service: IdleTimeoutService;
@@ -157,6 +157,56 @@ describe('IdleTimeoutService', () => {
       document.dispatchEvent(new Event('click'));
       tick(0);
 
+      expect(service.warningVisible()).toBe(false);
+    }));
+
+    /**
+     * Verifica que volver a la pestaña expire la sesión si el plazo ya venció.
+     * Los navegadores ralentizan los setTimeout en segundo plano y el timer puede no haber disparado.
+     */
+    it('should expire the session on tab return when the idle deadline already passed', fakeAsync(() => {
+      service.start();
+      service.lastActivity.set(Date.now() - TIMEOUT_TIME_MS - ONE_MINUTE_MS);
+
+      document.dispatchEvent(new Event('visibilitychange'));
+      tick(0);
+
+      expect(service.sessionExpired()).toBe(true);
+    }));
+
+    /** Verifica que volver a la pestaña con 25-30 min transcurridos muestre el aviso sin expirar. */
+    it('should show the warning on tab return when elapsed idle is between 25 and 30 min', fakeAsync(() => {
+      service.start();
+      service.lastActivity.set(Date.now() - WARNING_TIME_MS - ONE_MINUTE_MS);
+
+      document.dispatchEvent(new Event('visibilitychange'));
+      tick(0);
+
+      expect(service.warningVisible()).toBe(true);
+      expect(service.sessionExpired()).toBe(false);
+    }));
+
+    /** Verifica que volver a la pestaña antes de los 25 min no cambie nada. */
+    it('should keep the session untouched on tab return before the warning threshold', fakeAsync(() => {
+      service.start();
+      service.lastActivity.set(Date.now() - ONE_MINUTE_MS);
+
+      document.dispatchEvent(new Event('visibilitychange'));
+      tick(0);
+
+      expect(service.warningVisible()).toBe(false);
+      expect(service.sessionExpired()).toBe(false);
+    }));
+
+    /** Verifica que la actividad posterior a la expiración no reviva la sesión. */
+    it('should NOT reset the expired state on user activity', fakeAsync(() => {
+      service.start();
+      service.sessionExpired.set(true);
+
+      document.dispatchEvent(new Event('click'));
+      tick(0);
+
+      expect(service.sessionExpired()).toBe(true);
       expect(service.warningVisible()).toBe(false);
     }));
 
