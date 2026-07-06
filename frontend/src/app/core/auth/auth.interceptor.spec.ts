@@ -1,9 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient, withInterceptors, HttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, HttpClient, HttpContext } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { jwtInterceptor } from './auth.interceptor';
 import { AuthService } from './auth.service';
+import { SKIP_BEARER } from './skip-bearer.context';
 import { HardRedirectService } from '../navigation/hard-redirect.service';
 
 /**
@@ -13,7 +14,7 @@ import { HardRedirectService } from '../navigation/hard-redirect.service';
  * refresh anticipado del JWT, y redirige al login solo cuando un 401 llega con
  * el token ya vencido localmente.
  *
- * Ciclo 2 TDD — Sprint 5. Ajustado en Ciclos 23, 41 y 49 (Sprint 10).
+ * Ciclo 2 TDD — Sprint 5. Ajustado en Ciclos 23, 41, 49 y 66 (Sprint 10).
  */
 describe('jwtInterceptor', () => {
   let httpMock: HttpTestingController;
@@ -68,6 +69,28 @@ describe('jwtInterceptor', () => {
 
       const req = httpMock.expectOne('/server/api/core/communities');
       expect(req.request.headers.get('Authorization')).toBe('Bearer my-jwt-token');
+      req.flush({});
+
+      await promise;
+    });
+
+    /**
+     * Verifica que una petición marcada con SKIP_BEARER salga sin Authorization.
+     * El login con credenciales no viaja con el Bearer viejo: DSpace lo trataría como refresh.
+     */
+    it('should NOT attach the Bearer token when the request opts out via SKIP_BEARER', async () => {
+      vi.spyOn(authService, 'getToken').mockReturnValue('my-jwt-token');
+
+      const promise = new Promise((resolve, reject) => {
+        httpClient
+          .post('/server/api/authn/login', 'user=x&password=y', {
+            context: new HttpContext().set(SKIP_BEARER, true),
+          })
+          .subscribe({ next: resolve, error: reject });
+      });
+
+      const req = httpMock.expectOne('/server/api/authn/login');
+      expect(req.request.headers.has('Authorization')).toBe(false);
       req.flush({});
 
       await promise;

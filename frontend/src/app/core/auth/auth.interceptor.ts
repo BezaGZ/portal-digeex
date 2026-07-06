@@ -4,6 +4,7 @@ import { Observable, OperatorFunction, catchError, shareReplay, switchMap, tap, 
 import { AuthService } from './auth.service';
 import { HardRedirectService } from '../navigation/hard-redirect.service';
 import { isTokenExpired, tokenExp } from './token-expiry.util';
+import { SKIP_BEARER } from './skip-bearer.context';
 
 /** Umbral en segundos para disparar refresh anticipado (5 minutos). */
 const REFRESH_THRESHOLD_SECONDS = 300;
@@ -18,12 +19,19 @@ let refreshInProgress$: Observable<void> | null = null;
 /**
  * Adjunta el JWT y refresca anticipadamente. Ante un 401 redirige al login solo si
  * el token venció localmente; con token válido propaga sin redirigir (no atrapa lo
- * público). `/authn/*` recibe Bearer pero salta refresh y redirect (sin recursión).
+ * público). `/authn/*` recibe Bearer pero salta refresh y redirect (sin recursión),
+ * salvo las peticiones marcadas con `SKIP_BEARER` (login con credenciales).
  */
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const hardRedirect = inject(HardRedirectService);
   const token = authService.getToken();
+
+  // Petición que renuncia al Bearer (login con credenciales): con el token
+  // adjunto DSpace trataría el POST como refresh de la sesión vieja.
+  if (req.context.get(SKIP_BEARER)) {
+    return next(req);
+  }
 
   if (!token) {
     return next(req);

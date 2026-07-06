@@ -1,7 +1,8 @@
 import { Injectable, signal } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable, of, tap, switchMap, map, catchError } from 'rxjs';
 import Cookies from 'js-cookie';
+import { SKIP_BEARER } from './skip-bearer.context';
 import { AuthStatus, AuthUser } from './models/auth-session.model';
 import { EPerson } from '../api/models';
 import { environment } from '../../../environments/environment';
@@ -70,6 +71,7 @@ export class AuthService {
     return this.http.post(`${this.apiUrl}/login`, body, {
       headers,
       observe: 'response',
+      context: new HttpContext().set(SKIP_BEARER, true),
     }).pipe(
       tap((response: HttpResponse<unknown>) => {
         const authHeader = response.headers.get('Authorization');

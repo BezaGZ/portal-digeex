@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { vi } from 'vitest';
 import Cookies from 'js-cookie';
 import { AuthService } from './auth.service';
+import { SKIP_BEARER } from './skip-bearer.context';
 import { AuthStatus } from './models/auth-session.model';
 import { environment } from '../../../environments/environment';
 
@@ -14,7 +15,7 @@ import { environment } from '../../../environments/environment';
  * /api/authn/login, /api/authn/status y /api/authn/logout de DSpace.
  * Expone signals reactivos `isAuthenticated` y `currentUser`.
  *
- * Ciclo 1 TDD — Sprint 5. Ajustado en Ciclos 14, 41 y 65 (Sprint 10).
+ * Ciclo 1 TDD — Sprint 5. Ajustado en Ciclos 14, 41, 65 y 66 (Sprint 10).
  */
 describe('AuthService', () => {
   let service: AuthService;
@@ -148,6 +149,29 @@ describe('AuthService', () => {
   /** Login */
 
   describe('login()', () => {
+    /**
+     * Verifica que el POST de login lleve la marca SKIP_BEARER.
+     * Sin ella el interceptor adjunta el Bearer actual y DSpace trata el login como refresh.
+     */
+    it('should mark the credentials POST with SKIP_BEARER', async () => {
+      const promise = new Promise<void>((resolve, reject) => {
+        service.login('juan@mineduc.gob.gt', 'Password1').subscribe({
+          next: () => resolve(),
+          error: reject,
+        });
+      });
+
+      const loginReq = httpMock.expectOne('/server/api/authn/login');
+      expect(loginReq.request.context.get(SKIP_BEARER)).toBe(true);
+      loginReq.flush(null, { headers: { Authorization: 'Bearer fake-jwt-token-123' } });
+      httpMock.expectOne('/server/api/authn/status').flush(mockAuthStatusAuthenticated);
+      httpMock
+        .expectOne('/server/api/eperson/epersons/eperson-001?embed=groups')
+        .flush(mockEPersonWithGroups);
+
+      await promise;
+    });
+
     /** Verifica que login() mande POST a /authn/login con credenciales form-urlencoded. */
     it('should POST credentials to /api/authn/login', async () => {
       const promise = new Promise<void>((resolve, reject) => {
@@ -202,6 +226,42 @@ describe('AuthService', () => {
       expect(eperson!.uuid).toBe('eperson-001');
       const embedded = eperson!._embedded?.groups?._embedded?.['groups'] ?? [];
       expect(embedded.map((g) => g.name)).toEqual(['Administrator']);
+    });
+
+    /**
+     * Verifica que un login con sesión previa reemplace token y usuario por la cuenta nueva.
+     * La última sesión gana; posible porque el POST sin Bearer autentica las credenciales nuevas.
+     */
+    it('should replace the previous session when logging in with different credentials', async () => {
+      await performLogin();
+      expect(service.currentUser()!.email).toBe('juan@mineduc.gob.gt');
+
+      const promise = new Promise<void>((resolve, reject) => {
+        service.login('ana@mineduc.gob.gt', 'Password2').subscribe({
+          next: () => resolve(),
+          error: reject,
+        });
+      });
+
+      httpMock.expectOne('/server/api/authn/login').flush(null, {
+        headers: { Authorization: 'Bearer fake-jwt-token-456' },
+      });
+      httpMock.expectOne('/server/api/authn/status').flush({
+        okay: true,
+        authenticated: true,
+        _links: { eperson: { href: 'http://localhost:8080/server/api/eperson/epersons/eperson-002' } },
+      });
+      httpMock.expectOne('/server/api/eperson/epersons/eperson-002?embed=groups').flush({
+        ...mockEPersonWithGroups,
+        uuid: 'eperson-002',
+        email: 'ana@mineduc.gob.gt',
+      });
+
+      await promise;
+
+      expect(service.isAuthenticated()).toBe(true);
+      expect(service.currentUser()!.email).toBe('ana@mineduc.gob.gt');
+      expect(Cookies.get('dsAuthInfo')).toContain('fake-jwt-token-456');
     });
   });
 
@@ -422,6 +482,32 @@ describe('AuthService', () => {
   /** Restore Session */
 
   describe('restoreSession()', () => {
+    /**
+     * Verifica que con cookie válida el arranque deje la sesión poblada.
+     * Es el camino del que depende el guard del login en el arranque en frío.
+     */
+    it('should restore the session and populate signals when the stored token is still valid', async () => {
+      const validTokenInfo = {
+        accessToken: 'still-valid-token',
+        expires: Date.now() + 60 * 60 * 1000,
+      };
+      Cookies.set('dsAuthInfo', JSON.stringify(validTokenInfo));
+
+      const promise = new Promise<void>((resolve, reject) => {
+        service.restoreSession().subscribe({ next: () => resolve(), error: reject });
+      });
+      httpMock.expectOne('/server/api/authn/status').flush(mockAuthStatusAuthenticated);
+      httpMock
+        .expectOne('/server/api/eperson/epersons/eperson-001?embed=groups')
+        .flush(mockEPersonWithGroups);
+      await promise;
+
+      expect(service.isAuthenticated()).toBe(true);
+      expect(service.currentUser()!.email).toBe('juan@mineduc.gob.gt');
+      expect(service.currentEPerson()!.uuid).toBe('eperson-001');
+      expect(Cookies.get('dsAuthInfo')).toContain('still-valid-token');
+    });
+
     /**
      * Verifica que restoreSession() borre la cookie si el `expires` ya pasó.
      * Un JWT vencido del lado cliente no debe viajar como Bearer al arranque.
