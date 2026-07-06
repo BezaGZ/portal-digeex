@@ -14,7 +14,7 @@ import { environment } from '../../../environments/environment';
  * /api/authn/login, /api/authn/status y /api/authn/logout de DSpace.
  * Expone signals reactivos `isAuthenticated` y `currentUser`.
  *
- * Ciclo 1 TDD — Sprint 5. Ajustado en Ciclos 14 y 41 (Sprint 10).
+ * Ciclo 1 TDD — Sprint 5. Ajustado en Ciclos 14, 41 y 65 (Sprint 10).
  */
 describe('AuthService', () => {
   let service: AuthService;
@@ -223,6 +223,33 @@ describe('AuthService', () => {
       const logoutReq = httpMock.expectOne('/server/api/authn/logout');
       expect(logoutReq.request.method).toBe('POST');
       logoutReq.flush(null, { status: 204, statusText: 'No Content' });
+
+      await logoutPromise;
+
+      expect(service.isAuthenticated()).toBe(false);
+      expect(service.currentUser()).toBeNull();
+      expect(service.currentEPerson()).toBeNull();
+    });
+
+    /**
+     * Verifica que la sesión local se purgue aunque el POST de logout falle.
+     * La intención del usuario es salir; conservar la sesión con backend caído
+     * haría rebotar entre el login y el panel a la cuenta sin rol.
+     */
+    it('should clear the local session even when the logout request fails', async () => {
+      await performLogin();
+      expect(service.isAuthenticated()).toBe(true);
+
+      const logoutPromise = new Promise<void>((resolve) => {
+        service.logout().subscribe({
+          next: () => resolve(),
+          error: () => resolve(),
+        });
+      });
+
+      httpMock
+        .expectOne('/server/api/authn/logout')
+        .flush(null, { status: 500, statusText: 'Server Error' });
 
       await logoutPromise;
 

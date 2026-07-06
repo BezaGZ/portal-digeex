@@ -10,7 +10,6 @@ import {
   LOGIN_INVALID_CREDENTIALS_MESSAGE,
   LOGIN_SERVICE_UNAVAILABLE_MESSAGE,
   LOGIN_SESSION_EXPIRED_MESSAGE,
-  resolvePostLoginRoute,
 } from './login';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
@@ -247,21 +246,6 @@ describe('LoginComponent', () => {
   });
 });
 
-/**
- * Destino tras un login con rol: `returnUrl` interno gana; cualquier valor
- * ausente, externo, protocolo-relativo o que apunte al propio login cae al
- * panel por defecto.
- */
-describe('resolvePostLoginRoute', () => {
-  it('should return an internal returnUrl and fall back to the panel for unsafe values', () => {
-    expect(resolvePostLoginRoute('/administrador/envios/abc?x=1')).toBe('/administrador/envios/abc?x=1');
-    expect(resolvePostLoginRoute(null)).toBe('/administrador');
-    expect(resolvePostLoginRoute('')).toBe('/administrador');
-    expect(resolvePostLoginRoute('https://evil.example')).toBe('/administrador');
-    expect(resolvePostLoginRoute('//evil.example')).toBe('/administrador');
-    expect(resolvePostLoginRoute('/iniciar-sesion?expired=true')).toBe('/administrador');
-  });
-});
 
 /**
  * Al cargar el login con `?error=sin-rol` (tras la recarga dura del caso sin rol),

@@ -3,6 +3,7 @@ import { HttpInterceptorFn } from '@angular/common/http';
 import { Observable, OperatorFunction, catchError, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 import { HardRedirectService } from '../navigation/hard-redirect.service';
+import { isTokenExpired, tokenExp } from './token-expiry.util';
 
 /** Umbral en segundos para disparar refresh anticipado (5 minutos). */
 const REFRESH_THRESHOLD_SECONDS = 300;
@@ -102,23 +103,4 @@ function isTokenExpiringSoon(token: string): boolean {
   const exp = tokenExp(token);
   if (exp === null) return false;
   return (exp - Math.floor(Date.now() / 1000)) < REFRESH_THRESHOLD_SECONDS;
-}
-
-/** True si el `exp` del JWT ya pasó. Token ilegible o sin `exp` → false (no redirige). */
-function isTokenExpired(token: string): boolean {
-  const exp = tokenExp(token);
-  if (exp === null) return false;
-  return exp <= Math.floor(Date.now() / 1000);
-}
-
-/** Lee el claim `exp` (epoch en segundos) del JWT, o null si no se puede decodificar. */
-function tokenExp(token: string): number | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1]));
-    return typeof payload.exp === 'number' ? payload.exp : null;
-  } catch {
-    return null;
-  }
 }

@@ -5,6 +5,7 @@ import { ROLE_SCOPES } from './core/auth/role-scopes';
 import { featureGuard } from './core/auth/feature.guard';
 import { ownSubmissionGuard } from './core/auth/own-submission.guard';
 import { rolePresenceGuard } from './core/auth/role-presence.guard';
+import { redirectIfAuthenticatedGuard } from './core/auth/redirect-if-authenticated.guard';
 import { ITEMS_PATH, COLLECTIONS_PATH, COMMUNITIES_PATH } from './core/api/dspace-rest.util';
 export const routes: Routes = [
 
@@ -86,6 +87,7 @@ export const routes: Routes = [
 
   {
     path: 'iniciar-sesion',
+    canActivate: [redirectIfAuthenticatedGuard],
     loadComponent: () => import('./features/auth/login/login').then(m => m.LoginComponent)
   },
 

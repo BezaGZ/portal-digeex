@@ -102,17 +102,19 @@ export class AuthService {
   /**
    * Cierra la sesión invalidando el token en DSpace.
    *
-   * POST /api/authn/logout. Limpia el JWT y los signals.
-   * DSpace responde 204 No Content.
+   * POST /api/authn/logout (responde 204). La sesión local se purga también
+   * si el POST falla: la intención del usuario es salir, y conservarla con el
+   * backend caído dejaría rebotando a la cuenta sin rol entre login y panel.
    */
   logout(): Observable<unknown> {
+    const clearLocalSession = () => {
+      this.removeToken();
+      this.isAuthenticated.set(false);
+      this.currentUser.set(null);
+      this.currentEPerson.set(null);
+    };
     return this.http.post(`${this.apiUrl}/logout`, null).pipe(
-      tap(() => {
-        this.removeToken();
-        this.isAuthenticated.set(false);
-        this.currentUser.set(null);
-        this.currentEPerson.set(null);
-      }),
+      tap({ next: clearLocalSession, error: clearLocalSession }),
     );
   }
 

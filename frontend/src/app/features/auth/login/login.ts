@@ -8,6 +8,7 @@ import { ButtonModule } from 'primeng/button';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
 import { CallerProvider } from '../../../core/auth/caller-provider';
+import { resolvePostLoginRoute } from '../../../core/auth/post-login-route';
 import { AuthCardShell } from '../../../shared/components/auth-card-shell/auth-card-shell';
 
 /** Valor del query param `error` con que el caso "sin rol" recarga el login para restaurar el mensaje. */
@@ -34,21 +35,6 @@ export const LOGIN_SERVICE_UNAVAILABLE_MESSAGE =
 /** Mensaje cuando el login se recargó por sesión vencida (`?expired=true`). */
 export const LOGIN_SESSION_EXPIRED_MESSAGE =
   'Tu sesión expiró. Volvé a iniciar sesión.';
-
-/**
- * Destino tras un login con rol. Acepta solo rutas internas: con `/` inicial
- * pero no `//` (protocolo-relativa, open redirect) ni el propio login (loop).
- * Cualquier otro valor cae al panel. Mismo circuito que dspace-angular: el
- * guard guarda la ruta pretendida y el login la consume al autenticar.
- */
-export function resolvePostLoginRoute(returnUrl: string | null): string {
-  const isInternal =
-    !!returnUrl &&
-    returnUrl.startsWith('/') &&
-    !returnUrl.startsWith('//') &&
-    !returnUrl.startsWith('/iniciar-sesion');
-  return isInternal ? returnUrl : '/administrador';
-}
 
 @Component({
   selector: 'app-login',
