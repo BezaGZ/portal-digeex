@@ -29,7 +29,7 @@ import { getSubmissionFormComponent } from '../../submission-form-registry';
  * `tipos-dataset-estadistica` y determina qué `StatsRenderer` monta la vista
  * pública. Patrón Template Method.
  *
- * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclo 5 (Sprint 7) y Ciclo 21 (Sprint 9), y Ciclos 21 y 60 (Sprint 10).
+ * Ciclo 35 TDD — Sprint 6. Ajustado en Ciclo 5 (Sprint 7) y Ciclo 21 (Sprint 9), y Ciclos 21, 60 y 63 (Sprint 10).
  */
 describe('StatsSubmissionForm', () => {
   const DATASET_VOCAB: VocabularyEntry[] = [
@@ -496,5 +496,36 @@ describe('StatsSubmissionForm', () => {
     c.togglePendingDelete('bs-xlsx');
     expect(c.isPendingDelete('bs-xlsx')).toBe(false);
     expect((c as unknown as { getBitstreamsToAdd(): File[] }).getBitstreamsToAdd()).toEqual([]);
+  });
+
+  /**
+   * Verifica que restaurar también limpie el dropzone renderizado, no solo la signal.
+   * Si el dropzone conserva el archivo, su siguiente emisión re-marca el reemplazo.
+   */
+  it('should clear the rendered dropzone when restoring cancels the replacement', () => {
+    listOriginalFn.mockReturnValue(
+      of({
+        items: [{ uuid: 'bs-xlsx', name: 'matricula.xlsx', sizeBytes: 47024 }],
+        totalElements: 1,
+        totalPages: 1,
+        size: 1,
+        page: 0,
+      }),
+    );
+
+    const fixture = TestBed.createComponent(StatsSubmissionForm);
+    fixture.componentRef.setInput('item', buildItem('item-1'));
+    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    const dropzones = (c as unknown as { dropzones: QueryList<FileDropzoneComponent> }).dropzones;
+    const spies = dropzones.map((d) => vi.spyOn(d, 'clear'));
+    expect(spies.length).toBeGreaterThan(0);
+
+    c.onAddBitstreams([new File(['x'], 'matricula-nueva.xlsx')]);
+    c.togglePendingDelete('bs-xlsx');
+
+    expect(spies.some((s) => s.mock.calls.length > 0)).toBe(true);
   });
 });

@@ -224,10 +224,14 @@ export class StatsSubmissionForm extends BaseSubmissionForm {
     const next = new Set(this.pendingDeletes());
     if (next.has(uuid)) {
       next.delete(uuid);
+      this.pendingDeletes.set(next);
       this.pendingAdds.set([]);
-    } else {
-      next.add(uuid);
+      // El dropzone conserva su estado interno; sin este clear su siguiente
+      // emisión traería el archivo viejo y re-marcaría el reemplazo cancelado.
+      this.dropzones?.forEach((d) => d.clear());
+      return;
     }
+    next.add(uuid);
     this.pendingDeletes.set(next);
   }
 
