@@ -19,7 +19,8 @@ services:
       dockerfile: deploy/frontend.Dockerfile
     container_name: portal-frontend
     depends_on:
-      - dspace
+      dspace:
+        condition: service_healthy
     networks:
       - dspacenet
     ports:
@@ -38,7 +39,8 @@ services:
       dockerfile: deploy/Dockerfile.dspace
     container_name: dspace
     depends_on:
-      - dspacedb
+      dspacedb:
+        condition: service_healthy
     networks:
       - dspacenet
     environment:
@@ -73,6 +75,13 @@ services:
     volumes:
       # Los archivos subidos sobreviven a reinicios.
       - assetstore:/dspace/assetstore
+    healthcheck:
+      # Puerto del REST arriba. bash porque /dev/tcp no existe en sh.
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/8080' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 120s
     restart: unless-stopped
 
   # Base de datos. Sin puertos afuera; solo la usa dspace.
@@ -88,6 +97,11 @@ services:
       - dspacenet
     volumes:
       - pgdata:/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dspace -d dspace"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   # Buscador. Imagen oficial 9.2. Sin puertos afuera.

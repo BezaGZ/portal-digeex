@@ -6,11 +6,8 @@
 # Docker data
 .dspace-cookies
 
-# Scripts: solo se versionan cleanup-*.sh y setup-*.sh
-# (los SAFs, captures con JWT, imports SAF y outputs locales no se commitean)
-scripts/*
-!scripts/cleanup-*.sh
-!scripts/setup-*.sh
+# Scripts: material local (setup, cleanup, imports SAF, captures, outputs). No se versiona.
+scripts/
 
 # Sistema
 .DS_Store

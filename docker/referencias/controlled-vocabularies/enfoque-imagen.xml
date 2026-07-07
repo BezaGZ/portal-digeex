@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<node id="enfoque-imagen" label="Enfoque de la imagen">
-  <isComposedBy>
-    <node id="infraestructura" label="Infraestructura"/>
-    <node id="tecnologia" label="Tecnología"/>
-    <node id="agricultura" label="Agricultura"/>
-  </isComposedBy>
-</node>
