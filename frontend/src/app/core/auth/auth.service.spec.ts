@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { vi } from 'vitest';
 import Cookies from 'js-cookie';
 import { AuthService } from './auth.service';
+import { SessionBroadcastService } from './session-broadcast.service';
 import { SKIP_BEARER } from './skip-bearer.context';
 import { AuthStatus } from './models/auth-session.model';
 import { environment } from '../../../environments/environment';
@@ -15,7 +16,7 @@ import { environment } from '../../../environments/environment';
  * /api/authn/login, /api/authn/status y /api/authn/logout de DSpace.
  * Expone signals reactivos `isAuthenticated` y `currentUser`.
  *
- * Ciclo 1 TDD — Sprint 5. Ajustado en Ciclos 14, 41, 65 y 66 (Sprint 10).
+ * Ciclo 1 TDD — Sprint 5. Ajustado en Ciclos 14, 41, 65, 66 y 67 (Sprint 10).
  */
 describe('AuthService', () => {
   let service: AuthService;
@@ -289,6 +290,37 @@ describe('AuthService', () => {
       expect(service.isAuthenticated()).toBe(false);
       expect(service.currentUser()).toBeNull();
       expect(service.currentEPerson()).toBeNull();
+    });
+
+    /** Verifica que el logout anuncie el cierre a las demás pestañas por el canal compartido. */
+    it('should announce the logout to the other tabs', async () => {
+      await performLogin();
+      const announceFn = vi.spyOn(TestBed.inject(SessionBroadcastService), 'announceLogout');
+
+      const logoutPromise = new Promise<void>((resolve, reject) => {
+        service.logout().subscribe({ next: () => resolve(), error: reject });
+      });
+      httpMock.expectOne('/server/api/authn/logout').flush(null, { status: 204, statusText: 'No Content' });
+      await logoutPromise;
+
+      expect(announceFn).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * Verifica que el anuncio a las otras pestañas salga aunque el POST falle.
+     * La purga local corre igual en error; las demás pestañas deben enterarse también.
+     */
+    it('should announce the logout to the other tabs even when the request fails', async () => {
+      await performLogin();
+      const announceFn = vi.spyOn(TestBed.inject(SessionBroadcastService), 'announceLogout');
+
+      const logoutPromise = new Promise<void>((resolve) => {
+        service.logout().subscribe({ next: () => resolve(), error: () => resolve() });
+      });
+      httpMock.expectOne('/server/api/authn/logout').flush(null, { status: 500, statusText: 'Server Error' });
+      await logoutPromise;
+
+      expect(announceFn).toHaveBeenCalledTimes(1);
     });
 
     /**

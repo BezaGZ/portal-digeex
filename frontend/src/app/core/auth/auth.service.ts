@@ -1,7 +1,8 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpContext, HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable, of, tap, switchMap, map, catchError } from 'rxjs';
 import Cookies from 'js-cookie';
+import { SessionBroadcastService } from './session-broadcast.service';
 import { SKIP_BEARER } from './skip-bearer.context';
 import { AuthStatus, AuthUser } from './models/auth-session.model';
 import { EPerson } from '../api/models';
@@ -55,7 +56,13 @@ export class AuthService {
    */
   readonly currentEPerson = signal<EPerson | null>(null);
 
-  constructor(private readonly http: HttpClient) {}
+  private readonly sessionBroadcast = inject(SessionBroadcastService);
+
+  constructor(private readonly http: HttpClient) {
+    // El logout de otra pestaña purga esta sesión local; el registro por
+    // callback evita la inyección circular entre ambos servicios.
+    this.sessionBroadcast.onLogout(() => this.clearLocalSession());
+  }
 
   /**
    * Envía credenciales a DSpace y establece la sesión.
@@ -109,15 +116,21 @@ export class AuthService {
    * backend caído dejaría rebotando a la cuenta sin rol entre login y panel.
    */
   logout(): Observable<unknown> {
-    const clearLocalSession = () => {
-      this.removeToken();
-      this.isAuthenticated.set(false);
-      this.currentUser.set(null);
-      this.currentEPerson.set(null);
+    const closeSession = () => {
+      this.clearLocalSession();
+      this.sessionBroadcast.announceLogout();
     };
     return this.http.post(`${this.apiUrl}/logout`, null).pipe(
-      tap({ next: clearLocalSession, error: clearLocalSession }),
+      tap({ next: closeSession, error: closeSession }),
     );
+  }
+
+  /** Purga cookie y signals; la ejecutan el logout propio y el anunciado por otra pestaña. */
+  private clearLocalSession(): void {
+    this.removeToken();
+    this.isAuthenticated.set(false);
+    this.currentUser.set(null);
+    this.currentEPerson.set(null);
   }
 
   /**
