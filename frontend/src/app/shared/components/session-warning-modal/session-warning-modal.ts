@@ -2,6 +2,7 @@ import { Component, effect, inject } from '@angular/core';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { IdleTimeoutService } from '../../../core/auth/idle-timeout.service';
+import { SessionKeepaliveService } from '../../../core/auth/session-keepalive.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
 
@@ -15,8 +16,9 @@ import { HardRedirectService } from '../../../core/navigation/hard-redirect.serv
  * - "Seguir trabajando" → refreshToken + reset del timer idle
  * - "Cerrar sesión" → logout + redirect a /login
  *
- * Si el usuario no responde y se alcanzan los 30 min,
- * ejecuta logout automático vía effect sobre sessionExpired.
+ * Ejecuta logout automático vía effect sobre sessionExpired, ya sea por
+ * inactividad (idle a los 30 min) o porque el keepalive no pudo mantener
+ * vivo el token (caduco o refresh fallido). Ambas fuentes cierran igual.
  *
  */
 @Component({
@@ -27,12 +29,13 @@ import { HardRedirectService } from '../../../core/navigation/hard-redirect.serv
 })
 export class SessionWarningModal {
   readonly idleService = inject(IdleTimeoutService);
+  private readonly keepaliveService = inject(SessionKeepaliveService);
   private readonly authService = inject(AuthService);
   private readonly hardRedirect = inject(HardRedirectService);
 
   constructor() {
     effect(() => {
-      if (this.idleService.sessionExpired()) {
+      if (this.idleService.sessionExpired() || this.keepaliveService.sessionExpired()) {
         this.onLogout(true);
       }
     });

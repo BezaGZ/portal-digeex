@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { SessionWarningModal } from './session-warning-modal';
 import { IdleTimeoutService } from '../../../core/auth/idle-timeout.service';
+import { SessionKeepaliveService } from '../../../core/auth/session-keepalive.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
 
@@ -18,12 +19,14 @@ import { HardRedirectService } from '../../../core/navigation/hard-redirect.serv
  *
  * Ciclo 3 TDD — Sprint 5. Recarga dura en Ciclo 43 — Sprint 8. Ajustado en
  * Ciclo 49 (Sprint 10): la expiración automática arrastra returnUrl; el
- * cierre manual queda limpio.
+ * cierre manual queda limpio. Ajustado en Ciclo 8 (Sprint 11): el keepalive
+ * también dispara el cierre automático.
  */
 describe('SessionWarningModal', () => {
   let component: SessionWarningModal;
   let fixture: ComponentFixture<SessionWarningModal>;
   let idleService: IdleTimeoutService;
+  let keepaliveService: SessionKeepaliveService;
   let authService: AuthService;
   let hardRedirect: { redirect: ReturnType<typeof vi.fn>; getCurrentRoute: () => string };
 
@@ -48,6 +51,7 @@ describe('SessionWarningModal', () => {
     fixture = TestBed.createComponent(SessionWarningModal);
     component = fixture.componentInstance;
     idleService = TestBed.inject(IdleTimeoutService);
+    keepaliveService = TestBed.inject(SessionKeepaliveService);
     authService = TestBed.inject(AuthService);
   });
 
@@ -195,6 +199,25 @@ describe('SessionWarningModal', () => {
       );
 
       idleService.sessionExpired.set(true);
+      fixture.detectChanges();
+
+      expect(authService.logout).toHaveBeenCalled();
+      expect(hardRedirect.redirect).toHaveBeenCalledWith(
+        `/iniciar-sesion?expired=true&returnUrl=${encodeURIComponent('/administrador/envios/abc')}`,
+      );
+    });
+
+    /** Verifica que ejecute logout automático cuando el keepalive marca la sesión expirada. */
+    it('should auto-logout when the keepalive flags the session as expired', () => {
+      const { Observable } = require('rxjs');
+      vi.spyOn(authService, 'logout').mockReturnValue(
+        new Observable((subscriber: { next: (v: unknown) => void; complete: () => void }) => {
+          subscriber.next(undefined);
+          subscriber.complete();
+        }),
+      );
+
+      keepaliveService.sessionExpired.set(true);
       fixture.detectChanges();
 
       expect(authService.logout).toHaveBeenCalled();

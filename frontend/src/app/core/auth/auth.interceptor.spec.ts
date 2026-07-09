@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient, withInterceptors, HttpClient, HttpContext } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, HttpClient, HttpContext, HttpXsrfTokenExtractor } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { jwtInterceptor } from './auth.interceptor';
 import { AuthService } from './auth.service';
@@ -14,13 +14,16 @@ import { HardRedirectService } from '../navigation/hard-redirect.service';
  * refresh anticipado del JWT, y redirige al login solo cuando un 401 llega con
  * el token ya vencido localmente.
  *
- * Ciclo 2 TDD — Sprint 5. Ajustado en Ciclos 23, 41, 49 y 66 (Sprint 10).
+ * Ciclo 2 TDD — Sprint 5. Ajustado en Ciclos 23, 41, 49 y 66 (Sprint 10) y en los
+ * Ciclos 9 y 10 (Sprint 11): el dedup del refresh se movió a AuthService
+ * (single-flight) y el reintento reaplica el token CSRF vigente.
  */
 describe('jwtInterceptor', () => {
   let httpMock: HttpTestingController;
   let httpClient: HttpClient;
   let authService: AuthService;
   let redirectFn: ReturnType<typeof vi.fn>;
+  let xsrfExtractor: { getToken: ReturnType<typeof vi.fn> };
 
   /** JWT de prueba: vencido (exp en el pasado) y válido (exp lejano). */
   const EXPIRED_JWT = 'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjF9.sig';
@@ -30,6 +33,7 @@ describe('jwtInterceptor', () => {
 
   beforeEach(() => {
     redirectFn = vi.fn();
+    xsrfExtractor = { getToken: vi.fn().mockReturnValue(null) };
 
     TestBed.configureTestingModule({
       providers: [
@@ -41,6 +45,7 @@ describe('jwtInterceptor', () => {
           provide: HardRedirectService,
           useValue: { redirect: redirectFn, getCurrentRoute: () => '/administrador/envios/abc' },
         },
+        { provide: HttpXsrfTokenExtractor, useValue: xsrfExtractor },
       ],
     });
 
@@ -251,17 +256,13 @@ describe('jwtInterceptor', () => {
     });
 
     /**
-     * Verifica que 3 peticiones concurrentes disparen solo 1 refresh.
-     * El mock usa Subject (asíncrono) para simular el comportamiento
-     * real del HTTP POST a DSpace que no completa inmediatamente.
+     * Verifica que tres peticiones concurrentes por vencer compartan un solo POST
+     * de refresh. El single-flight vive en `AuthService.refreshToken()`, así que el
+     * interceptor delega sin deduplicar; `expectOne` falla si hubiera más de un POST.
      */
-    it('should only call refreshToken once for multiple concurrent requests', async () => {
-      const { Subject } = await import('rxjs');
+    it('should coalesce concurrent refreshes into a single /authn/login', async () => {
       const expiringSoon = Math.floor(Date.now() / 1000) + 200;
       vi.spyOn(authService, 'getToken').mockReturnValue(fakeJwt(expiringSoon));
-
-      const refreshSubject = new Subject<void>();
-      vi.spyOn(authService, 'refreshToken').mockReturnValue(refreshSubject.asObservable());
 
       const promises = [
         new Promise((resolve, reject) => {
@@ -275,18 +276,14 @@ describe('jwtInterceptor', () => {
         }),
       ];
 
-      refreshSubject.next(undefined);
-      refreshSubject.complete();
+      const refreshReq = httpMock.expectOne('/server/api/authn/login');
+      refreshReq.flush(null, { headers: { Authorization: 'Bearer fresh-shared' } });
 
-      const reqs = [
-        httpMock.expectOne('/server/api/core/communities'),
-        httpMock.expectOne('/server/api/core/collections'),
-        httpMock.expectOne('/server/api/core/items'),
-      ];
-      reqs.forEach((r) => r.flush({}));
+      httpMock.expectOne('/server/api/core/communities').flush({});
+      httpMock.expectOne('/server/api/core/collections').flush({});
+      httpMock.expectOne('/server/api/core/items').flush({});
 
       await Promise.all(promises);
-      expect(authService.refreshToken).toHaveBeenCalledTimes(1);
     });
 
     /**
@@ -317,6 +314,31 @@ describe('jwtInterceptor', () => {
 
       const req = httpMock.expectOne('/server/api/core/communities');
       expect(req.request.headers.get('Authorization')).toBe(`Bearer ${refreshedToken}`);
+      req.flush({});
+
+      await promise;
+    });
+
+    /**
+     * Verifica que el reintento tras un refresh lleve el CSRF vigente y no el que
+     * viajaba antes. DSpace rota el token XSRF en el refresh (login), así que el
+     * `X-XSRF-TOKEN` previo daría 403 en una mutación reintentada.
+     */
+    it('should re-apply the fresh CSRF token to the retried request after a refresh', async () => {
+      const { of } = await import('rxjs');
+      const expiringSoon = Math.floor(Date.now() / 1000) + 200;
+      vi.spyOn(authService, 'getToken').mockReturnValue(fakeJwt(expiringSoon));
+      vi.spyOn(authService, 'refreshToken').mockReturnValue(of(undefined));
+      xsrfExtractor.getToken.mockReturnValue('fresh-csrf');
+
+      const promise = new Promise((resolve, reject) => {
+        httpClient
+          .post('/server/api/core/communities/abc', {}, { headers: { 'X-XSRF-TOKEN': 'stale-csrf' } })
+          .subscribe({ next: resolve, error: reject });
+      });
+
+      const req = httpMock.expectOne('/server/api/core/communities/abc');
+      expect(req.request.headers.get('X-XSRF-TOKEN')).toBe('fresh-csrf');
       req.flush({});
 
       await promise;

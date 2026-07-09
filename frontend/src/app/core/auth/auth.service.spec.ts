@@ -16,7 +16,8 @@ import { environment } from '../../../environments/environment';
  * /api/authn/login, /api/authn/status y /api/authn/logout de DSpace.
  * Expone signals reactivos `isAuthenticated` y `currentUser`.
  *
- * Ciclo 1 TDD — Sprint 5. Ajustado en Ciclos 14, 41, 65, 66 y 67 (Sprint 10).
+ * Ciclo 1 TDD — Sprint 5. Ajustado en Ciclos 14, 41, 65, 66 y 67 (Sprint 10) y
+ * en el Ciclo 8 (Sprint 11): single-flight del refresh compartido.
  */
 describe('AuthService', () => {
   let service: AuthService;
@@ -375,6 +376,28 @@ describe('AuthService', () => {
 
       await promise;
       expect(service.getToken()).toBe('new-refreshed-token-456');
+    });
+
+    /**
+     * Verifica que dos refreshToken() concurrentes compartan una sola petición
+     * en vuelo, para que el keepalive, el modal y el interceptor no dupliquen el
+     * POST cuando coinciden. `expectOne` falla si hay más de una petición.
+     */
+    it('should share a single in-flight request across concurrent refreshToken calls', async () => {
+      await performLogin();
+
+      const first = new Promise<void>((resolve, reject) => {
+        service.refreshToken().subscribe({ next: () => resolve(), error: reject });
+      });
+      const second = new Promise<void>((resolve, reject) => {
+        service.refreshToken().subscribe({ next: () => resolve(), error: reject });
+      });
+
+      const req = httpMock.expectOne('/server/api/authn/login');
+      req.flush(null, { headers: { Authorization: 'Bearer shared-refresh-token' } });
+
+      await Promise.all([first, second]);
+      expect(service.getToken()).toBe('shared-refresh-token');
     });
   });
 

@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpContext, HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
-import { Observable, of, tap, switchMap, map, catchError } from 'rxjs';
+import { Observable, of, tap, switchMap, map, catchError, shareReplay } from 'rxjs';
 import Cookies from 'js-cookie';
 import { SessionBroadcastService } from './session-broadcast.service';
 import { SKIP_BEARER } from './skip-bearer.context';
@@ -57,6 +57,9 @@ export class AuthService {
   readonly currentEPerson = signal<EPerson | null>(null);
 
   private readonly sessionBroadcast = inject(SessionBroadcastService);
+
+  /** Refresh en vuelo compartido: coalescea llamadas concurrentes en una sola petición. */
+  private refreshInFlight$: Observable<void> | null = null;
 
   constructor(private readonly http: HttpClient) {
     // El logout de otra pestaña purga esta sesión local; el registro por
@@ -192,16 +195,21 @@ export class AuthService {
   /**
    * Renueva el JWT enviando el token actual a DSpace.
    *
-   * POST /api/authn/login sin body, solo con el header
-   * Authorization: Bearer <token-actual>. DSpace responde
-   * con un nuevo JWT en el header Authorization.
+   * POST /api/authn/login sin body, solo con el header Authorization: Bearer
+   * <token-actual>; DSpace responde con un nuevo JWT en el header Authorization.
+   * Coalescea llamadas concurrentes en una sola petición en vuelo, para que el
+   * keepalive, el modal y el interceptor no dupliquen el refresh al coincidir.
    */
   refreshToken(): Observable<void> {
+    if (this.refreshInFlight$) {
+      return this.refreshInFlight$;
+    }
+
     const headers = new HttpHeaders({
       Authorization: `Bearer ${this.getToken()}`,
     });
 
-    return this.http.post(`${this.apiUrl}/login`, null, {
+    this.refreshInFlight$ = this.http.post(`${this.apiUrl}/login`, null, {
       headers,
       observe: 'response',
     }).pipe(
@@ -212,7 +220,14 @@ export class AuthService {
         }
       }),
       map(() => undefined),
+      shareReplay(1),
+      tap({
+        complete: () => { this.refreshInFlight$ = null; },
+        error: () => { this.refreshInFlight$ = null; },
+      }),
     );
+
+    return this.refreshInFlight$;
   }
 
   /**

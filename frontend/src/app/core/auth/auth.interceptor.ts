@@ -1,20 +1,14 @@
 import { inject } from '@angular/core';
-import { HttpInterceptorFn } from '@angular/common/http';
-import { Observable, OperatorFunction, catchError, shareReplay, switchMap, tap, throwError } from 'rxjs';
+import { HttpInterceptorFn, HttpXsrfTokenExtractor } from '@angular/common/http';
+import { OperatorFunction, catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 import { HardRedirectService } from '../navigation/hard-redirect.service';
 import { isTokenExpired, tokenExp } from './token-expiry.util';
 import { SKIP_BEARER } from './skip-bearer.context';
+import { XSRF_REQUEST_HEADER } from '../xsrf/xsrf.constants';
 
 /** Umbral en segundos para disparar refresh anticipado (5 minutos). */
 const REFRESH_THRESHOLD_SECONDS = 300;
-
-/**
- * Observable compartido del refresh en curso. Garantiza que múltiples peticiones
- * concurrentes disparen una sola llamada a refreshToken() de DSpace. Se limpia al
- * completarse para permitir futuros refreshes.
- */
-let refreshInProgress$: Observable<void> | null = null;
 
 /**
  * Adjunta el JWT y refresca anticipadamente. Ante un 401 redirige al login solo si
@@ -25,6 +19,7 @@ let refreshInProgress$: Observable<void> | null = null;
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const hardRedirect = inject(HardRedirectService);
+  const xsrfExtractor = inject(HttpXsrfTokenExtractor);
   const token = authService.getToken();
 
   // Petición que renuncia al Bearer (login con credenciales): con el token
@@ -55,13 +50,17 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   if (isTokenExpiringSoon(token) && !isTokenExpired(token)) {
-    return getRefresh$(authService).pipe(
+    return authService.refreshToken().pipe(
       switchMap(() => {
         const freshToken = authService.getToken() ?? token;
-        const refreshedReq = req.clone({
-          setHeaders: { Authorization: `Bearer ${freshToken}` },
-        });
-        return next(refreshedReq);
+        const setHeaders: Record<string, string> = { Authorization: `Bearer ${freshToken}` };
+        // DSpace rota el token XSRF en el refresh (login), así que un reintento de
+        // mutación con el X-XSRF-TOKEN previo daría 403; se reaplica el vigente.
+        const freshXsrf = xsrfExtractor.getToken();
+        if (freshXsrf && req.headers.has(XSRF_REQUEST_HEADER)) {
+          setHeaders[XSRF_REQUEST_HEADER] = freshXsrf;
+        }
+        return next(req.clone({ setHeaders }));
       }),
       redirectWhenTokenExpired(authService, hardRedirect),
     );
@@ -90,20 +89,6 @@ function redirectWhenTokenExpired<T>(
     }
     return throwError(() => error);
   });
-}
-
-/**
- * Obtiene o crea el Observable compartido del refresh en curso. shareReplay(1)
- * para que varias peticiones concurrentes compartan la misma llamada.
- */
-function getRefresh$(authService: AuthService): Observable<void> {
-  if (!refreshInProgress$) {
-    refreshInProgress$ = authService.refreshToken().pipe(
-      shareReplay(1),
-      tap({ complete: () => { refreshInProgress$ = null; } }),
-    );
-  }
-  return refreshInProgress$;
 }
 
 /** True si al `exp` del JWT le faltan menos de REFRESH_THRESHOLD_SECONDS. */
