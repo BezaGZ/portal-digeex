@@ -12,7 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { CardModule } from 'primeng/card';
 
-import { DiscoveryService } from '../../../../../core/api/discovery.service';
+import { DashboardStatsService } from '../../services/dashboard-stats.service';
 import { Facet, SearchResult } from '../../../../../core/api/models/discovery.model';
 import { EmptyState } from '../../../../../shared/components/empty-state/empty-state';
 import { LoadingSpinner } from '../../../../../shared/components/loading-spinner/loading-spinner';
@@ -33,7 +33,7 @@ import { ChartConfig } from '../../../../stats/models/stats-dashboard.model';
   templateUrl: './facet-bar-card.html',
 })
 export class FacetBarCard {
-  private readonly discovery = inject(DiscoveryService);
+  private readonly dashboardStats = inject(DashboardStatsService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly scope = input.required<string | null>();
@@ -93,8 +93,8 @@ export class FacetBarCard {
       this.scope();
       this.facetName();
       this.result.set(undefined);
-      this.discovery
-        .search({ size: 0, scope, dsoType: 'item' })
+      this.dashboardStats
+        .baseSearch$(scope)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (r) => this.result.set(r),

@@ -50,15 +50,15 @@ export const DASHBOARD_WIDGETS_BY_ROLE: Readonly<Partial<Record<UserRole, readon
   // Orden de render: cortos primero (total + top-list comparten fila en el
   // grid de 2 columnas) y los dos charts altos abajo, para filas parejas.
   superadmin: [
-    { kind: 'total', label: 'Total de items' },
-    { kind: 'top-list', label: 'Top colecciones', limit: 5 },
+    { kind: 'total', label: 'Total de recursos' },
+    { kind: 'top-list', label: 'Top programas', limit: 5 },
     { kind: 'facet-bar', label: 'Distribución por tipo', facetName: 'entityType' },
-    { kind: 'range-bar', label: 'Items por año' },
+    { kind: 'range-bar', label: 'Recursos por año' },
   ],
   admin_subdireccion: [
-    { kind: 'total', label: 'Items en mi subdirección' },
-    { kind: 'top-list', label: 'Top colecciones de mi subdirección', limit: 5 },
+    { kind: 'total', label: 'Recursos en mi subdirección' },
+    { kind: 'top-list', label: 'Top programas de mi subdirección', limit: 5 },
     { kind: 'facet-bar', label: 'Distribución por tipo', facetName: 'entityType' },
-    { kind: 'range-bar', label: 'Items por año' },
+    { kind: 'range-bar', label: 'Recursos por año' },
   ],
 };

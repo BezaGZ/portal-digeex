@@ -30,6 +30,7 @@ import { CommunityApiService } from '../../../core/api/community-api.service';
 import { Community } from '../../../core/api/models/community.model';
 import { AuthCallerService } from '../shared/services/auth-caller.service';
 import { findCallerSub } from '../shared/services/scope-resolver';
+import { DashboardStatsService } from './services/dashboard-stats.service';
 import * as roleCaps from '../../../core/auth/role-capabilities';
 
 /**
@@ -54,6 +55,9 @@ import * as roleCaps from '../../../core/auth/role-capabilities';
     EmptyState,
     LoadingSpinner,
   ],
+  // Instancia propia por visita: el caché de la búsqueda compartida de las
+  // cards muere con el componente y cada entrada al dashboard trae datos frescos.
+  providers: [DashboardStatsService],
   templateUrl: './dashboard.html',
 })
 export class Dashboard {

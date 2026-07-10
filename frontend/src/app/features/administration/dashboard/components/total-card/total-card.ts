@@ -4,13 +4,13 @@ import { DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CardModule } from 'primeng/card';
 
-import { DiscoveryService } from '../../../../../core/api/discovery.service';
+import { DashboardStatsService } from '../../services/dashboard-stats.service';
 import { LoadingSpinner } from '../../../../../shared/components/loading-spinner/loading-spinner';
 
 /**
- * Tarjeta con el conteo total de items de un scope. Consume
- * `DiscoveryService.search({ size: 0, scope? })` y renderiza `totalElements`
- * en tres estados: spinner pending, número formateado, `—` ante error.
+ * Tarjeta con el conteo total de items de un scope. Lee `totalElements` de la
+ * búsqueda base compartida del dashboard (`DashboardStatsService`) y renderiza
+ * tres estados: spinner pending, número formateado, `—` ante error.
  */
 @Component({
   selector: 'app-total-card',
@@ -21,7 +21,7 @@ import { LoadingSpinner } from '../../../../../shared/components/loading-spinner
   templateUrl: './total-card.html',
 })
 export class TotalCard {
-  private readonly discovery = inject(DiscoveryService);
+  private readonly dashboardStats = inject(DashboardStatsService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly scope = input.required<string | null>();
@@ -42,8 +42,8 @@ export class TotalCard {
     effect(() => {
       const scope = this.scope() ?? undefined;
       this.count.set(undefined);
-      this.discovery
-        .search({ size: 0, scope, dsoType: 'item' })
+      this.dashboardStats
+        .baseSearch$(scope)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (result) => this.count.set(result.totalElements),
