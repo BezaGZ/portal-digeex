@@ -1,0 +1,21 @@
+## Mensaje de recurso archivado
+##
+## {0}  Título del recurso
+## {1}  Nombre del programa (colección)
+## {2}  Handle (no se usa: el enlace se arma con dspace.ui.url)
+##
+## El enlace apunta a la bandeja de envíos del portal; se toma de dspace.ui.url
+## (misma fuente que el correo de recuperación de contraseña) para no fijar el
+## dominio a mano y que siga vigente si el dominio cambia.
+#set($subject = "${config.get('dspace.name')}: Recurso archivado")
+
+Hola,
+
+Tu recurso ${params[0]} fue recibido y archivado correctamente en el programa ${params[1]}.
+
+Podés consultarlo en tu bandeja de envíos:
+${config.get('dspace.ui.url')}/administrador/envios
+
+Gracias por tu colaboración.
+
+Equipo del ${config.get('dspace.name')}
