@@ -268,7 +268,7 @@ export class Communities {
       target.metadata ?? {},
     );
     this.facade
-      .updateSubdireccion$(target.uuid, patch, payload.sufijo)
+      .updateSubdireccion$(target.uuid, patch)
       .pipe(withLoading(this.loadingService, { message: 'Guardando la subdirección…' }))
       .subscribe({
       next: () => {
@@ -328,7 +328,7 @@ export class Communities {
     if (!target) return;
     this.deleting.set(true);
     this.facade
-      .deleteSubdireccion$(target.uuid, this.deleteSufijo)
+      .deleteSubdireccion$(target.uuid)
       .pipe(withLoading(this.loadingService, { message: 'Eliminando subdirección…' }))
       .subscribe({
         next: () => {

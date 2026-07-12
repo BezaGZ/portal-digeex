@@ -109,7 +109,7 @@ describe('StatsSubmissionForm', () => {
   function mountForCreate(): StatsSubmissionForm {
     const fixture = TestBed.createComponent(StatsSubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     return fixture.componentInstance;
   }
@@ -136,7 +136,7 @@ describe('StatsSubmissionForm', () => {
   it('should hide the visibility toggle for a personal_delegado caller', () => {
     const fixture = TestBed.createComponent(StatsSubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'personal_delegado', sufijo: 'PEAC' });
+    fixture.componentRef.setInput('caller', { role: 'personal_delegado', scopeUuid: 'PEAC' });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('#visibility')).toBeNull();
@@ -145,8 +145,8 @@ describe('StatsSubmissionForm', () => {
   /** Verifica que superadmin y admin_subdireccion conserven el toggle de visibilidad. */
   it('should keep the visibility toggle for superadmin and admin_subdireccion callers', () => {
     for (const caller of [
-      { role: 'superadmin', sufijo: null },
-      { role: 'admin_subdireccion', sufijo: 'ED_BASICA' },
+      { role: 'superadmin', scopeUuid: null },
+      { role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' },
     ]) {
       const fixture = TestBed.createComponent(StatsSubmissionForm);
       fixture.componentRef.setInput('collection', buildCollection('col-1'));
@@ -297,7 +297,7 @@ describe('StatsSubmissionForm', () => {
 
     const fixture = TestBed.createComponent(StatsSubmissionForm);
     fixture.componentRef.setInput('item', item);
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: 'PEAC' });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -320,7 +320,7 @@ describe('StatsSubmissionForm', () => {
   it('should fetch the first page of the ORIGINAL bundle with size 20 when entering edit mode', () => {
     const fixture = TestBed.createComponent(StatsSubmissionForm);
     fixture.componentRef.setInput('item', buildItem('item-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     expect(listOriginalFn).toHaveBeenCalledWith('item-1', 0, 20);
@@ -340,7 +340,7 @@ describe('StatsSubmissionForm', () => {
 
     const fixture = TestBed.createComponent(StatsSubmissionForm);
     fixture.componentRef.setInput('item', buildItem('item-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -390,7 +390,7 @@ describe('StatsSubmissionForm', () => {
 
     const fixture = TestBed.createComponent(StatsSubmissionForm);
     fixture.componentRef.setInput('item', buildItem('item-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -421,7 +421,7 @@ describe('StatsSubmissionForm', () => {
 
     const fixture = TestBed.createComponent(StatsSubmissionForm);
     fixture.componentRef.setInput('item', buildItem('item-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -452,7 +452,7 @@ describe('StatsSubmissionForm', () => {
 
     const fixture = TestBed.createComponent(StatsSubmissionForm);
     fixture.componentRef.setInput('item', buildItem('item-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -484,7 +484,7 @@ describe('StatsSubmissionForm', () => {
 
     const fixture = TestBed.createComponent(StatsSubmissionForm);
     fixture.componentRef.setInput('item', buildItem('item-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -515,7 +515,7 @@ describe('StatsSubmissionForm', () => {
 
     const fixture = TestBed.createComponent(StatsSubmissionForm);
     fixture.componentRef.setInput('item', buildItem('item-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 

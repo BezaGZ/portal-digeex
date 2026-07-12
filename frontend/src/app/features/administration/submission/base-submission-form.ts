@@ -126,7 +126,7 @@ export abstract class BaseSubmissionForm {
       metadata: this.buildMetadata(),
       files: this.getFiles(),
       visibility: this.getVisibility(),
-      sufijoSubdireccion: this.caller().sufijo ?? '',
+      subdireccionUuid: this.caller().scopeUuid ?? '',
       coverFile: this.getCoverFile() ?? undefined,
     };
 
@@ -192,7 +192,7 @@ export abstract class BaseSubmissionForm {
           bitstreamsToRemove,
           item: it,
         },
-        this.caller().sufijo ?? '',
+        this.caller().scopeUuid ?? '',
       )
       .pipe(withLoading(this.loading, { message: 'Guardando los cambios…' }))
       .subscribe({

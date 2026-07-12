@@ -24,7 +24,11 @@ import { Caller } from './caller.model';
  * logueado. `superadmin` y `admin_subdireccion` pasan sin chequeo (editan lo de
  * su scope, RN-18). Cierra la entrada por URL directa a un item ajeno de la
  * misma sub. No es frontera de seguridad —el backend en Final 1 lo permite— sino
- * consistencia de UI. Va último, tras `roleGuard` + `featureGuard`.
+ * consistencia de UI. Va último, tras `roleGuard` + `featureGuard`. Espera el
+ * primer caller resuelto: la identidad llega asíncrona desde el backend y el
+ * null inicial no es una decisión.
+ *
+ * Ciclo 8 TDD — Sprint 10. Ajustado en Ciclo 3 (Sprint 11).
  */
 describe('ownSubmissionGuard', () => {
   let mockAuth: { currentUser: Mock };
@@ -75,7 +79,7 @@ describe('ownSubmissionGuard', () => {
 
   /** Verifica que el superadmin pase sin consultar el submitter del item. */
   it('lets superadmin through without checking the submitter', async () => {
-    configureTestBed({ role: 'superadmin', sufijo: null }, 'me-uuid');
+    configureTestBed({ role: 'superadmin', scopeUuid: null }, 'me-uuid');
 
     const result = await runGuard();
 
@@ -85,7 +89,7 @@ describe('ownSubmissionGuard', () => {
 
   /** Verifica que el admin_subdireccion pase sin consultar el submitter del item. */
   it('lets admin_subdireccion through without checking the submitter', async () => {
-    configureTestBed({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }, 'me-uuid');
+    configureTestBed({ role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' }, 'me-uuid');
 
     const result = await runGuard();
 
@@ -95,7 +99,7 @@ describe('ownSubmissionGuard', () => {
 
   /** Verifica que el personal_delegado pueda editar un item que él mismo subió. */
   it('lets personal_delegado edit an item they submitted', async () => {
-    configureTestBed({ role: 'personal_delegado', sufijo: 'ED_BASICA' }, 'me-uuid', 'me-uuid');
+    configureTestBed({ role: 'personal_delegado', scopeUuid: 'ED_BASICA' }, 'me-uuid', 'me-uuid');
 
     const result = await runGuard();
 
@@ -105,7 +109,7 @@ describe('ownSubmissionGuard', () => {
 
   /** Verifica que redirija al personal_delegado a /administrador/envios con toast cuando el item no es suyo. */
   it('redirects personal_delegado to /administrador/envios with toast when the item is not theirs', async () => {
-    configureTestBed({ role: 'personal_delegado', sufijo: 'ED_BASICA' }, 'me-uuid', 'other-uuid');
+    configureTestBed({ role: 'personal_delegado', scopeUuid: 'ED_BASICA' }, 'me-uuid', 'other-uuid');
 
     const result = await runGuard();
 
@@ -114,5 +118,16 @@ describe('ownSubmissionGuard', () => {
     expect(mockMessage.add).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'warn', summary: 'Acceso restringido' }),
     );
+  });
+
+  /** Verifica que el guard espere la identidad resuelta y no pase de largo con el null inicial. */
+  it('waits for the first resolved caller instead of deciding on the initial null', async () => {
+    configureTestBed({ role: 'personal_delegado', scopeUuid: 'ED_BASICA' }, 'me-uuid', 'other-uuid');
+    mockCaller.currentCaller$ = of(null, { role: 'personal_delegado', scopeUuid: 'ED_BASICA' } as Caller);
+
+    const result = await runGuard();
+
+    expect(mockItemApi.getSubmitter).toHaveBeenCalledWith('item-uuid');
+    expect(result).toEqual({ kind: 'urltree' });
   });
 });

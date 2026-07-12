@@ -76,11 +76,11 @@ describe('SubmissionFacade', () => {
     },
     files: [new File(['contenido'], 'documento.pdf', { type: 'application/pdf' })],
     visibility: 'public',
-    sufijoSubdireccion: 'ED_BASICA',
+    subdireccionUuid: 'sub-basica-uuid',
   };
 
-  function setupFacadeWithCaller(role: UserRole, sufijo: string | null) {
-    mockAuthCaller = { currentCaller$: of({ role, sufijo }) };
+  function setupFacadeWithCaller(role: UserRole, scopeUuid: string | null) {
+    mockAuthCaller = { currentCaller$: of({ role, scopeUuid }) };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -122,8 +122,8 @@ describe('SubmissionFacade', () => {
 
       expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
         dsoType: 'item',
-        resourceSufijo: 'ED_BASICA',
-        caller: { role: 'superadmin', sufijo: null },
+        resourceScopeUuid: 'sub-basica-uuid',
+        caller: { role: 'superadmin', scopeUuid: null },
       });
       expect(mockWorkspace.create).toHaveBeenCalledWith('coll-uuid');
       expect(mockWorkspace.patchSection).toHaveBeenCalledWith(

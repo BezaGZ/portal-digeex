@@ -3,6 +3,7 @@ import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Collection, CollectionCreateBody } from './models/collection.model';
+import { Community } from './models/community.model';
 import { Group, AssociatedGroupCreateBody } from './models/group.model';
 import { Bitstream } from './models/bitstream.model';
 import { HalListResponse } from './models/hal.model';
@@ -20,8 +21,10 @@ import { JsonPatchEntry } from './json-patch.util';
  *
  * Expone el listado completo (`list`), el listado por community padre
  * (`listByCommunity`), una collection por UUID con embed opcional para
- * subrecursos como `submittersGroup` (`getOne`) y la collection dueña de
- * un item dado (`getOwningCollectionOfItem`).
+ * subrecursos como `submittersGroup` (`getOne`), la collection dueña de
+ * un item dado (`getOwningCollectionOfItem`), las colecciones donde el
+ * usuario puede hacer submit (`searchSubmitAuthorized`) y la comunidad
+ * padre de una colección (`getParentCommunity`).
  */
 @Injectable({ providedIn: 'root' })
 export class CollectionApiService {
@@ -76,6 +79,32 @@ export class CollectionApiService {
     return this.http.get<HalListResponse<Collection>>(
       `${DSPACE_API_BASE}${COMMUNITIES_PATH}/${communityUuid}/collections`,
       { params },
+    );
+  }
+
+  /**
+   * Colecciones donde el usuario del token puede hacer submit, afirmado por
+   * el backend (policies reales, no nombres de grupo). Para el delegado son
+   * sus programas; su subdirección se deduce vía `parentCommunity` de estos.
+   * @see https://github.com/DSpace/RestContract/blob/dspace-9_x/collections.md#findsubmitauthorized
+   */
+  searchSubmitAuthorized(page = 0, size = 20): Observable<HalListResponse<Collection>> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return this.http.get<HalListResponse<Collection>>(
+      `${DSPACE_API_BASE}${COLLECTIONS_PATH}/search/findSubmitAuthorized`,
+      { params },
+    );
+  }
+
+  /**
+   * Comunidad padre de una colección. El contrato garantiza un solo padre
+   * (con multipadre devuelve uno) y responde 204 sin body si no existe,
+   * que el wrapper expone como null.
+   * @see https://github.com/DSpace/RestContract/blob/dspace-9_x/collections.md#parent-community
+   */
+  getParentCommunity(collectionUuid: string): Observable<Community | null> {
+    return this.http.get<Community | null>(
+      `${DSPACE_API_BASE}${COLLECTIONS_PATH}/${collectionUuid}/parentCommunity`,
     );
   }
 

@@ -20,9 +20,9 @@ import { Caller } from './caller.model';
  * Ciclo 22 TDD — Sprint 10. Ajustado en Ciclo 60.
  */
 describe('role-capabilities', () => {
-  const superadmin: Caller = { role: 'superadmin', sufijo: null };
-  const adminSub: Caller = { role: 'admin_subdireccion', sufijo: 'ED_BASICA' };
-  const delegado: Caller = { role: 'personal_delegado', sufijo: 'ED_BASICA' };
+  const superadmin: Caller = { role: 'superadmin', scopeUuid: null };
+  const adminSub: Caller = { role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' };
+  const delegado: Caller = { role: 'personal_delegado', scopeUuid: 'ED_BASICA' };
 
   describe('isSuperadmin', () => {
     /** Verifica que un caller superadmin devuelva true. */
@@ -99,23 +99,23 @@ describe('role-capabilities', () => {
 
   describe('isCallerScoped', () => {
     /** Verifica que el superadmin no esté acotado a una sub. */
-    it('should return false for a superadmin (operates without a scoped sufijo)', () => {
+    it('should return false for a superadmin (operates without a scoped sub)', () => {
       expect(isCallerScoped(superadmin)).toBe(false);
     });
 
-    /** Verifica que un admin_subdireccion con sufijo esté acotado. */
-    it('should return true for an admin_subdireccion with a sufijo', () => {
+    /** Verifica que un admin_subdireccion con scope afirmado esté acotado. */
+    it('should return true for an admin_subdireccion with a backend scope', () => {
       expect(isCallerScoped(adminSub)).toBe(true);
     });
 
-    /** Verifica que un personal_delegado con sufijo esté acotado. */
-    it('should return true for a personal_delegado with a sufijo', () => {
+    /** Verifica que un personal_delegado con scope afirmado esté acotado. */
+    it('should return true for a personal_delegado with a backend scope', () => {
       expect(isCallerScoped(delegado)).toBe(true);
     });
 
-    /** Verifica que un rol acotado sin sufijo no cuente como scopeado. */
-    it('should return false for a scoped role without a sufijo', () => {
-      expect(isCallerScoped({ role: 'admin_subdireccion', sufijo: null })).toBe(false);
+    /** Verifica que un rol acotado sin scope del backend no cuente como scopeado (fail-closed). */
+    it('should return false for a scoped role without a backend scope', () => {
+      expect(isCallerScoped({ role: 'admin_subdireccion', scopeUuid: null })).toBe(false);
     });
 
     /** Verifica que el caller null no esté acotado (fail-closed). */

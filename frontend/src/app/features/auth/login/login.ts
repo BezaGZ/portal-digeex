@@ -6,8 +6,6 @@ import { PasswordModule } from 'primeng/password';
 import { CheckboxModule } from 'primeng/checkbox';
 import { ButtonModule } from 'primeng/button';
 import { AuthService } from '../../../core/auth/auth.service';
-import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
-import { CallerProvider } from '../../../core/auth/caller-provider';
 import { resolvePostLoginRoute } from '../../../core/auth/post-login-route';
 import { AuthCardShell } from '../../../shared/components/auth-card-shell/auth-card-shell';
 
@@ -46,8 +44,6 @@ export class LoginComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private authService = inject(AuthService);
-  private hardRedirect = inject(HardRedirectService);
-  private callerProvider = inject(CallerProvider);
 
   email = signal('');
   password = signal('');
@@ -70,10 +66,10 @@ export class LoginComponent implements OnInit {
   }
 
   /**
-   * Tras un login exitoso resuelve el rol con `currentCallerSnapshot()` —desde
-   * el EPerson recién autenticado, no del `shareReplay` de `currentCaller$`, que
-   * puede servir el caller del usuario anterior—. Con rol navega al panel; sin
-   * rol cierra la sesión y recarga al login con el motivo.
+   * Tras un login exitoso navega al panel (o a la ruta pretendida). El caso
+   * sin rol no se decide acá: `rolePresenceGuard` lo corta en la entrada a
+   * `/administrador` preguntando fresco al backend, con la misma UX (logout
+   * y recarga a `/iniciar-sesion?error=sin-rol` que restaura el mensaje).
    */
   onLogin() {
     this.errorMessage.set('');
@@ -81,25 +77,14 @@ export class LoginComponent implements OnInit {
 
     this.authService.login(this.email(), this.password()).subscribe({
       next: () => {
-        const caller = this.callerProvider.currentCallerSnapshot();
-        if (caller) {
-          this.isLoading.set(false);
-          // Devuelve al usuario a la ruta que pretendía (guard) o donde estaba
-          // al vencer la sesión (interceptor/idle); sin returnUrl, al panel.
-          const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-          if (returnUrl) {
-            this.router.navigateByUrl(resolvePostLoginRoute(returnUrl));
-          } else {
-            this.router.navigate(['/administrador']);
-          }
+        this.isLoading.set(false);
+        // Devuelve al usuario a la ruta que pretendía (guard) o donde estaba
+        // al vencer la sesión (interceptor/idle); sin returnUrl, al panel.
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        if (returnUrl) {
+          this.router.navigateByUrl(resolvePostLoginRoute(returnUrl));
         } else {
-          // Sin rol: cerrar sesión y recargar duro al login con el motivo en el
-          // query param. La recarga resincroniza el CSRF y el param restaura el
-          // mensaje (mismo patrón que `?expired=true` de dspace).
-          this.authService.logout().subscribe({
-            next: () => this.hardRedirect.redirect(`/iniciar-sesion?error=${NO_ROLE_ERROR_PARAM}`),
-            error: () => this.hardRedirect.redirect(`/iniciar-sesion?error=${NO_ROLE_ERROR_PARAM}`),
-          });
+          this.router.navigate(['/administrador']);
         }
       },
       error: (err: { status?: number }) => {

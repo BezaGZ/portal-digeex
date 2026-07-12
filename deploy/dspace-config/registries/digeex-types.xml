@@ -57,4 +57,18 @@
     <scope_note>Tipo de dataset estadistico del item (ej: docentes, estudiantes). Determina que renderer del portal interpreta el Excel adjunto.</scope_note>
   </dc-type>
 
+  <dc-type>
+    <schema>digeex</schema>
+    <element>adminGroup</element>
+    <qualifier></qualifier>
+    <scope_note>Uuid del grupo ADMIN_&lt;sufijo&gt; de la subdireccion, anotado al crearla. Unica relacion grupo-subdireccion que no depende de nombres; el portal la usa para eliminar la subdireccion sin lookup por nombre.</scope_note>
+  </dc-type>
+
+  <dc-type>
+    <schema>digeex</schema>
+    <element>submittersGroup</element>
+    <qualifier></qualifier>
+    <scope_note>Uuid del grupo SUBMITTERS_&lt;sufijo&gt; de la subdireccion, anotado al crearla. El portal lo lee al crear programas para enlazar el grupo compartido sin lookup por nombre.</scope_note>
+  </dc-type>
+
 </dspace-dc-types>

@@ -85,7 +85,7 @@ describe('GallerySubmissionForm', () => {
   it('should declare digeex-galeria as the submission section name', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     expect(fixture.componentInstance.getSectionName()).toBe('digeex-galeria');
@@ -95,7 +95,7 @@ describe('GallerySubmissionForm', () => {
   it('should default visibility to public and reflect changes from the signal', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -112,7 +112,7 @@ describe('GallerySubmissionForm', () => {
   it('should hide the visibility toggle for a personal_delegado caller', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'personal_delegado', sufijo: 'PEAC' });
+    fixture.componentRef.setInput('caller', { role: 'personal_delegado', scopeUuid: 'PEAC' });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('#visibility')).toBeNull();
@@ -121,8 +121,8 @@ describe('GallerySubmissionForm', () => {
   /** Verifica que superadmin y admin_subdireccion conserven el toggle de visibilidad. */
   it('should keep the visibility toggle for superadmin and admin_subdireccion callers', () => {
     for (const caller of [
-      { role: 'superadmin', sufijo: null },
-      { role: 'admin_subdireccion', sufijo: 'ED_BASICA' },
+      { role: 'superadmin', scopeUuid: null },
+      { role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' },
     ]) {
       const fixture = TestBed.createComponent(GallerySubmissionForm);
       fixture.componentRef.setInput('collection', buildCollection('col-1'));
@@ -137,7 +137,7 @@ describe('GallerySubmissionForm', () => {
   it('should expose multiple files via getFiles for the photo album', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -153,7 +153,7 @@ describe('GallerySubmissionForm', () => {
   it('should append selected videos after photos in getFiles', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -169,7 +169,7 @@ describe('GallerySubmissionForm', () => {
   it('should keep canSubmit=false when there are only videos and no photos', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -193,7 +193,7 @@ describe('GallerySubmissionForm', () => {
   it('should append pending video additions after pending photo additions in getBitstreamsToAdd', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -207,7 +207,7 @@ describe('GallerySubmissionForm', () => {
   it('should map every form field to its dc.* / digeex.* key in buildMetadata', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -243,7 +243,7 @@ describe('GallerySubmissionForm', () => {
   it('should expose the selected cover file via getCoverFile', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -258,7 +258,7 @@ describe('GallerySubmissionForm', () => {
   it('should map dc.contributor.author as a single trimmed entry when filled', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -278,7 +278,7 @@ describe('GallerySubmissionForm', () => {
   it('should reset form, files and visibility back to initial state after a successful submit', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -317,7 +317,7 @@ describe('GallerySubmissionForm', () => {
   it('should clear the rendered file dropzones after a successful submit in create mode', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -334,7 +334,7 @@ describe('GallerySubmissionForm', () => {
   it('should NOT include dc.contributor.author when the author field is empty', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -353,7 +353,7 @@ describe('GallerySubmissionForm', () => {
   it('should expose canSubmit=true only when the form is valid, there is at least one photo and a cover is selected', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -386,7 +386,7 @@ describe('GallerySubmissionForm', () => {
   it('should mark the form invalid when title, issued, type or classification are empty', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -427,7 +427,7 @@ describe('GallerySubmissionForm', () => {
 
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -449,7 +449,7 @@ describe('GallerySubmissionForm', () => {
   it('should fetch tipos-evento, programas-digeex, tipo-poblacion and enfoque-imagen vocabularies on init', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     expect(entriesFn).toHaveBeenCalledWith('tipos-evento');
@@ -480,7 +480,7 @@ describe('GallerySubmissionForm', () => {
 
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('item', item);
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: 'PEAC' });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -494,7 +494,7 @@ describe('GallerySubmissionForm', () => {
   it('should serialize a Date in issued as local YYYY-MM-DD in buildMetadata', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -532,7 +532,7 @@ describe('GallerySubmissionForm', () => {
 
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('item', item);
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: 'PEAC' });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: 'PEAC' });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -562,7 +562,7 @@ describe('GallerySubmissionForm', () => {
 
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('item', item);
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     expect(listOriginalFn).toHaveBeenCalledWith('item-1', 0, 20);
@@ -596,7 +596,7 @@ describe('GallerySubmissionForm', () => {
 
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('item', item);
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -607,7 +607,7 @@ describe('GallerySubmissionForm', () => {
   /** Verifica que togglePendingDelete maneje el set de uuids y getBitstreamsToRemove devuelva la lista. */
   it('should toggle uuids in pendingDeletes and expose them via getBitstreamsToRemove', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -625,7 +625,7 @@ describe('GallerySubmissionForm', () => {
    */
   it('should replace pendingAdds with the dropzone list and expose it via getBitstreamsToAdd', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -653,7 +653,7 @@ describe('GallerySubmissionForm', () => {
     };
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('item', item);
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -702,7 +702,7 @@ describe('GallerySubmissionForm', () => {
 
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('item', item);
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -719,7 +719,7 @@ describe('GallerySubmissionForm', () => {
   it('should map the selected subdirección name to dc.contributor.author', () => {
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
     const c = fixture.componentInstance;
 
@@ -740,7 +740,7 @@ describe('GallerySubmissionForm', () => {
     );
     const fixture = TestBed.createComponent(GallerySubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     expect(fixture.componentInstance.subdireccionOptions()).toEqual(['Básica', 'Extraescolar']);

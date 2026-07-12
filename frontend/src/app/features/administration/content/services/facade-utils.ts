@@ -8,12 +8,12 @@ import { AuditDsoType, AuditTrailService } from '../provenance/audit-trail.servi
  * Resuelve el caller actual a la forma que las reglas de scope esperan.
  * Si no hay sesión activa, devuelve el caller mínimo (rol con menos
  * privilegios) para que los specs traten al usuario anónimo igual que a
- * un personal_delegado sin sufijo y nunca le permitan operar sobre nada.
+ * un personal_delegado sin scope y nunca le permitan operar sobre nada.
  */
 export function resolveCaller$(authCaller: AuthCallerService): Observable<Caller> {
   return authCaller.currentCaller$.pipe(
     take(1),
-    map((caller) => caller ?? { role: 'personal_delegado', sufijo: null }),
+    map((caller) => caller ?? { role: 'personal_delegado', scopeUuid: null }),
   );
 }
 

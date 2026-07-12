@@ -3,7 +3,6 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { BehaviorSubject, of } from 'rxjs';
 import {
   LoginComponent,
   LOGIN_MISSING_ROLE_MESSAGE,
@@ -13,43 +12,29 @@ import {
 } from './login';
 import { AuthService } from '../../../core/auth/auth.service';
 import { HardRedirectService } from '../../../core/navigation/hard-redirect.service';
-import { CallerProvider } from '../../../core/auth/caller-provider';
-import { Caller } from '../../../core/auth/caller.model';
 
 /**
- * Tests de `LoginComponent`. Conecta el formulario con `AuthService` y, tras un login exitoso,
- * lee `CallerProvider.currentCallerSnapshot()` (contrato de core) para resolver el rol del eperson
- * autenticado. Si el rol es válido navega a `/administrador`; si el snapshot no tiene rol cierra la
- * sesión y hace una recarga dura al login con `?error=sin-rol` (la recarga resincroniza
- * el CSRF; el query param restaura el mensaje, como dspace con `?expired=true`).
+ * Tests de `LoginComponent`. Conecta el formulario con `AuthService` y, tras un
+ * login exitoso, navega a `/administrador` (o a la ruta pretendida vía
+ * `?returnUrl=`). El caso sin rol no se decide acá: `rolePresenceGuard` lo
+ * corta en la entrada al panel con la misma UX (`?error=sin-rol`, cuyo mensaje
+ * este componente restaura al recargar, como dspace con `?expired=true`).
  *
  * Ciclo 4 TDD — Sprint 5. Ajustado en Ciclo 13, Ciclo 43 (Sprint 8), 2026-06-21
- * (mejora 5: depende de CallerProvider de core, no de UserManagementService),
- * Ciclo 22 (Sprint 10: snapshot síncrono), Ciclo 41 (Sprint 10: mensaje de sesión
- * vencida) y Ciclo 49 (Sprint 10: regreso a la ruta original vía returnUrl).
+ * (mejora 5), Ciclos 22, 41 y 49 (Sprint 10), y Ciclo 6 (Sprint 11: el login
+ * deja el snapshot síncrono; el huérfano lo resuelve el guard).
  */
 describe('LoginComponent', () => {
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;
-  let authService: AuthService;
   let router: Router;
   let httpMock: HttpTestingController;
-  let currentCaller$: BehaviorSubject<Caller | null>;
-  let callerSnapshot: Caller | null;
   let redirectFn: ReturnType<typeof vi.fn>;
 
   /** Setup */
 
   beforeEach(async () => {
-    currentCaller$ = new BehaviorSubject<Caller | null>(null);
-    callerSnapshot = null;
     redirectFn = vi.fn();
-
-    const callerProviderStub = {
-      currentCaller$: currentCaller$.asObservable(),
-      currentActor$: of(null),
-      currentCallerSnapshot: () => callerSnapshot,
-    };
 
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
@@ -61,14 +46,12 @@ describe('LoginComponent', () => {
           { path: 'iniciar-sesion', component: LoginComponent },
         ]),
         AuthService,
-        { provide: CallerProvider, useValue: callerProviderStub },
         { provide: HardRedirectService, useValue: { redirect: redirectFn } },
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LoginComponent);
     component = fixture.componentInstance;
-    authService = TestBed.inject(AuthService);
     router = TestBed.inject(Router);
     httpMock = TestBed.inject(HttpTestingController);
 
@@ -131,10 +114,8 @@ describe('LoginComponent', () => {
   });
 
   describe('login exitoso', () => {
-    /** Con rol resuelto válido (`superadmin`), el componente navega a `/administrador`. */
-    it('should navigate to /administrador when the resolved role is superadmin', async () => {
-      callerSnapshot = { role: 'superadmin', sufijo: null };
-
+    /** Tras autenticar, el componente navega directo al panel; el rol lo valida el guard. */
+    it('should navigate to /administrador after a successful login', async () => {
       component.email.set('juan@mineduc.gob.gt');
       component.password.set('Password1');
 
@@ -150,7 +131,6 @@ describe('LoginComponent', () => {
 
     /** Con `?returnUrl=` interno presente, el login navega a esa ruta en vez del panel. */
     it('should navigate to the internal returnUrl after a successful login', async () => {
-      callerSnapshot = { role: 'superadmin', sufijo: null };
       const route = TestBed.inject(ActivatedRoute);
       vi.spyOn(route.snapshot.queryParamMap, 'get').mockImplementation(
         (key: string) => (key === 'returnUrl' ? '/administrador/envios/abc' : null),
@@ -219,31 +199,6 @@ describe('LoginComponent', () => {
       expect(router.navigate).not.toHaveBeenCalled();
     });
   });
-
-  describe('role resolution failure', () => {
-    /**
-     * Si la autenticación pasa pero el snapshot del caller es null (sin rol), el componente
-     * cierra sesión y hace recarga dura al login con `?error=sin-rol`. No navega al panel.
-     */
-    it('should logout and hard-redirect to login with ?error=sin-rol when the snapshot has no role', async () => {
-      callerSnapshot = null;
-
-      const logoutSpy = vi.spyOn(authService, 'logout').mockReturnValue(of(null));
-
-      component.email.set('juan@mineduc.gob.gt');
-      component.password.set('Password1');
-
-      component.onLogin();
-
-      flushSuccessfulAuth();
-
-      await fixture.whenStable();
-
-      expect(logoutSpy).toHaveBeenCalled();
-      expect(redirectFn).toHaveBeenCalledWith('/iniciar-sesion?error=sin-rol');
-      expect(router.navigate).not.toHaveBeenCalledWith(['/administrador']);
-    });
-  });
 });
 
 
@@ -260,7 +215,6 @@ describe('LoginComponent mensaje por query param', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         AuthService,
-        { provide: CallerProvider, useValue: { currentCaller$: of(null), currentActor$: of(null), currentCallerSnapshot: () => null } },
         { provide: HardRedirectService, useValue: { redirect: vi.fn() } },
         {
           provide: ActivatedRoute,
@@ -289,7 +243,6 @@ describe('LoginComponent mensaje por sesión vencida', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         AuthService,
-        { provide: CallerProvider, useValue: { currentCaller$: of(null), currentActor$: of(null), currentCallerSnapshot: () => null } },
         { provide: HardRedirectService, useValue: { redirect: vi.fn() } },
         {
           provide: ActivatedRoute,

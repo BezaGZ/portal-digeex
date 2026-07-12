@@ -112,7 +112,7 @@ describe('BaseSubmissionForm', () => {
   it('should call submitItem$ with the request built from the hooks and the caller sufijo', () => {
     const fixture = TestBed.createComponent(FakeSubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'admin_subdireccion', sufijo: 'ED_BASICA' });
+    fixture.componentRef.setInput('caller', { role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' });
     fixture.detectChanges();
 
     fixture.componentInstance.submit();
@@ -123,7 +123,7 @@ describe('BaseSubmissionForm', () => {
         collectionUuid: 'col-1',
         sectionName: 'digeex-documento',
         visibility: 'public',
-        sufijoSubdireccion: 'ED_BASICA',
+        subdireccionUuid: 'ED_BASICA',
         metadata: expect.objectContaining({ 'dc.title': expect.any(Array) }),
         files: expect.any(Array),
       }),
@@ -133,20 +133,20 @@ describe('BaseSubmissionForm', () => {
   it('should pass empty string as sufijo when the caller is superadmin (no scope)', () => {
     const fixture = TestBed.createComponent(FakeSubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     fixture.componentInstance.submit();
 
     expect(submitItemFn).toHaveBeenCalledWith(
-      expect.objectContaining({ sufijoSubdireccion: '' }),
+      expect.objectContaining({ subdireccionUuid: '' }),
     );
   });
 
   it('should toast success and reset submitting when the facade resolves', () => {
     const fixture = TestBed.createComponent(FakeSubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     fixture.componentInstance.submit();
@@ -161,7 +161,7 @@ describe('BaseSubmissionForm', () => {
     submitItemFn.mockReturnValue(throwError(() => new Error('OUT_OF_SCOPE')));
     const fixture = TestBed.createComponent(FakeSubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'admin_subdireccion', sufijo: 'ED_TRABAJO' });
+    fixture.componentRef.setInput('caller', { role: 'admin_subdireccion', scopeUuid: 'ED_TRABAJO' });
     fixture.detectChanges();
 
     fixture.componentInstance.submit();
@@ -179,7 +179,7 @@ describe('BaseSubmissionForm', () => {
     submitItemFn.mockReturnValue(NEVER);
     const fixture = TestBed.createComponent(FakeSubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     fixture.componentInstance.submit();
@@ -193,7 +193,7 @@ describe('BaseSubmissionForm', () => {
     const editItemFn = vi.fn(() => of({ uuid: 'item-1' } as Item));
     TestBed.overrideProvider(ItemAdminFacade, { useValue: { editItem$: editItemFn } });
     const fixture = TestBed.createComponent(FakeEditForm);
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.componentRef.setInput('item', {
       uuid: 'item-1',
       discoverable: true,
@@ -219,7 +219,7 @@ describe('BaseSubmissionForm', () => {
     const loading = TestBed.inject(LoadingService);
     const fixture = TestBed.createComponent(FakeSubmissionForm);
     fixture.componentRef.setInput('collection', buildCollection('col-1'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     expect(loading.active()).toBe(false);

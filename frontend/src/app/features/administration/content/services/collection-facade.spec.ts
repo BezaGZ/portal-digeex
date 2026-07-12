@@ -3,6 +3,7 @@ import { Observable, firstValueFrom, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 import { CollectionFacade } from './collection-facade';
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
+import { CommunityApiService } from '../../../../core/api/community-api.service';
 import { GroupApiService } from '../../../../core/api/group-api.service';
 import { BundleApiService } from '../../../../core/api/bundle-api.service';
 import { ContentScopeService } from './content-scope.service';
@@ -34,6 +35,7 @@ type BundleApiMock = {
 type ScopeMock = { assertWithinScope: Mock };
 type AuthCallerMock = { currentCaller$: Observable<Caller | null> };
 type AuditMock = { appendProvenance$: Mock };
+type CommunityApiMock = { getOne: Mock };
 
 /**
  * Tests de CollectionFacade.
@@ -42,11 +44,12 @@ type AuditMock = { appendProvenance$: Mock };
  * subdirección. Cada método valida scope antes de tocar HTTP, ejecuta el
  * pipeline transaccional y deshace lo creado en cascada inversa cuando un
  * paso intermedio falla. El SUBMITTERS_<sufijo> es por subdirección y
- * compartido entre sus colecciones, así que el facade lo busca por nombre
- * y solo lo enlaza como subgrupo del submittersGroup técnico de la nueva
- * colección, nunca lo crea ni lo borra.
+ * compartido entre sus colecciones; el facade lee su uuid del metadata de
+ * la community (`digeex.submittersGroup`) y solo lo enlaza como subgrupo
+ * del submittersGroup técnico de la nueva colección, nunca lo crea ni lo
+ * borra. Metadato ausente es error claro antes de crear (falta backfill).
  *
- * Ciclo 13 TDD — Sprint 6. Ajustado en Ciclos 3 y 21 (Sprint 8).
+ * Ciclo 13 TDD — Sprint 6. Ajustado en Ciclos 3 y 21 (Sprint 8) y Ciclos 4 y 5 (Sprint 11).
  */
 describe('CollectionFacade', () => {
   let facade: CollectionFacade;
@@ -56,6 +59,7 @@ describe('CollectionFacade', () => {
   let mockScope: ScopeMock;
   let mockAudit: AuditMock;
   let mockAuthCaller: AuthCallerMock;
+  let mockCommunityApi: CommunityApiMock;
 
   const newCollection = {
     uuid: 'coll-new',
@@ -91,6 +95,20 @@ describe('CollectionFacade', () => {
     _links: {},
   };
 
+  const parentCommunity = {
+    uuid: 'parent-comm-uuid',
+    name: 'Subdirección de Educación Básica',
+    handle: '123456789/2',
+    type: 'community',
+    archivedItemsCount: 0,
+    metadata: {
+      'digeex.submittersGroup': [
+        { value: 'shared-subm-uuid', language: null, authority: null, confidence: -1, place: 0 },
+      ],
+    },
+    _links: {},
+  };
+
   const sampleBody: CollectionCreateBody = {
     name: 'Documentos PEAC',
     metadata: {
@@ -101,15 +119,16 @@ describe('CollectionFacade', () => {
     type: 'collection',
   };
 
-  function setupFacadeWithCaller(role: UserRole, sufijo: string | null) {
+  function setupFacadeWithCaller(role: UserRole, scopeUuid: string | null) {
     mockAuthCaller = {
-      currentCaller$: of({ role, sufijo }),
+      currentCaller$: of({ role, scopeUuid }),
     };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         CollectionFacade,
         { provide: CollectionApiService, useValue: mockCollectionApi },
+        { provide: CommunityApiService, useValue: mockCommunityApi },
         { provide: GroupApiService, useValue: mockGroupApi },
         { provide: BundleApiService, useValue: mockBundleApi },
         { provide: ContentScopeService, useValue: mockScope },
@@ -142,6 +161,7 @@ describe('CollectionFacade', () => {
       assertWithinScope: vi.fn(),
     };
     mockAudit = { appendProvenance$: vi.fn(() => of(undefined)) };
+    mockCommunityApi = { getOne: vi.fn(() => of(parentCommunity)) };
   });
 
   describe('createColeccion$', () => {
@@ -149,17 +169,18 @@ describe('CollectionFacade', () => {
       setupFacadeWithCaller('superadmin', null);
 
       const result = await firstValueFrom(
-        facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA'),
+        facade.createColeccion$('parent-comm-uuid', sampleBody),
       );
 
       expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
         dsoType: 'collection',
-        resourceSufijo: 'ED_BASICA',
-        caller: { role: 'superadmin', sufijo: null },
+        resourceScopeUuid: 'parent-comm-uuid',
+        caller: { role: 'superadmin', scopeUuid: null },
       });
+      expect(mockCommunityApi.getOne).toHaveBeenCalledWith('parent-comm-uuid');
       expect(mockCollectionApi.create).toHaveBeenCalledWith('parent-comm-uuid', sampleBody);
       expect(mockCollectionApi.createSubmittersGroup).toHaveBeenCalledWith('coll-new', expect.any(Object));
-      expect(mockGroupApi.getByName).toHaveBeenCalledWith('SUBMITTERS_ED_BASICA');
+      expect(mockGroupApi.getByName).not.toHaveBeenCalled();
       expect(mockGroupApi.addSubgroup).toHaveBeenCalledWith(
         'tech-subm-uuid',
         expect.stringContaining('shared-subm-uuid'),
@@ -174,7 +195,7 @@ describe('CollectionFacade', () => {
       });
 
       await expect(
-        firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA')),
+        firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody)),
       ).rejects.toBeInstanceOf(BusinessRuleError);
       expect(mockCollectionApi.create).not.toHaveBeenCalled();
       expect(mockCollectionApi.createSubmittersGroup).not.toHaveBeenCalled();
@@ -182,14 +203,14 @@ describe('CollectionFacade', () => {
 
     /**
      * Verifica que el pipeline cree el `_admin` técnico y enlace el SUBMITTERS
-     * shared como subgroup reusando el `getByName` previo, manteniendo simetría
-     * con el seed sin pegarle dos veces a DSpace.
+     * shared como subgroup con una sola lectura del metadata de la community,
+     * sin ningún lookup por nombre.
      */
-    it('should also create the adminGroup and link SUBMITTERS, reusing the getByName result (single lookup)', async () => {
+    it('should also create the adminGroup and link SUBMITTERS from the community metadata (single read)', async () => {
       setupFacadeWithCaller('superadmin', null);
 
       await firstValueFrom(
-        facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA'),
+        facade.createColeccion$('parent-comm-uuid', sampleBody),
       );
 
       expect(mockCollectionApi.createAdminGroup).toHaveBeenCalledWith('coll-new', expect.any(Object));
@@ -197,20 +218,19 @@ describe('CollectionFacade', () => {
         'tech-admin-uuid',
         expect.stringContaining('shared-subm-uuid'),
       );
-      expect(mockGroupApi.getByName).toHaveBeenCalledTimes(1);
+      expect(mockCommunityApi.getOne).toHaveBeenCalledTimes(1);
       expect(mockGroupApi.addSubgroup).toHaveBeenCalledTimes(2);
     });
 
-    it('should rollback the created collection when SUBMITTERS lookup fails', async () => {
+    /** Verifica el fail-fast: sin el metadato del grupo no se crea nada y el error pide el backfill. */
+    it('should throw a clear error without creating anything when the community lacks the group metadata', async () => {
       setupFacadeWithCaller('superadmin', null);
-      mockGroupApi.getByName = vi.fn(() =>
-        throwError(() => new Error('No matching exact group')),
-      );
+      mockCommunityApi.getOne = vi.fn(() => of({ ...parentCommunity, metadata: {} }));
 
       await expect(
-        firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA')),
-      ).rejects.toThrow();
-      expect(mockCollectionApi.delete).toHaveBeenCalledWith('coll-new');
+        firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody)),
+      ).rejects.toBeInstanceOf(BusinessRuleError);
+      expect(mockCollectionApi.create).not.toHaveBeenCalled();
     });
 
     /**
@@ -225,7 +245,7 @@ describe('CollectionFacade', () => {
       );
 
       await expect(
-        firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA')),
+        firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody)),
       ).rejects.toThrow();
       expect(mockGroupApi.delete).toHaveBeenCalledWith('tech-subm-uuid');
       expect(mockGroupApi.delete).not.toHaveBeenCalledWith('tech-admin-uuid');
@@ -241,7 +261,7 @@ describe('CollectionFacade', () => {
       const cover = new File(['png'], 'cover.png', { type: 'image/png' });
 
       await firstValueFrom(
-        facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA', cover),
+        facade.createColeccion$('parent-comm-uuid', sampleBody, cover),
       );
 
       expect(mockCollectionApi.uploadLogo).toHaveBeenCalledWith('coll-new', cover);
@@ -255,7 +275,7 @@ describe('CollectionFacade', () => {
       setupFacadeWithCaller('superadmin', null);
 
       await firstValueFrom(
-        facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA'),
+        facade.createColeccion$('parent-comm-uuid', sampleBody),
       );
 
       expect(mockCollectionApi.uploadLogo).not.toHaveBeenCalled();
@@ -274,7 +294,7 @@ describe('CollectionFacade', () => {
 
       await expect(
         firstValueFrom(
-          facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA', cover),
+          facade.createColeccion$('parent-comm-uuid', sampleBody, cover),
         ),
       ).rejects.toThrow();
       expect(mockGroupApi.delete).toHaveBeenCalledWith('tech-admin-uuid');
@@ -299,7 +319,7 @@ describe('CollectionFacade', () => {
       });
 
       await expect(
-        firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA')),
+        firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody)),
       ).rejects.toThrow();
       expect(mockGroupApi.delete).toHaveBeenCalledWith('tech-admin-uuid');
       expect(mockGroupApi.delete).toHaveBeenCalledWith('tech-subm-uuid');
@@ -318,8 +338,8 @@ describe('CollectionFacade', () => {
 
       expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
         dsoType: 'collection',
-        resourceSufijo: 'ED_BASICA',
-        caller: { role: 'superadmin', sufijo: null },
+        resourceScopeUuid: 'ED_BASICA',
+        caller: { role: 'superadmin', scopeUuid: null },
       });
       expect(mockCollectionApi.updateMetadata).toHaveBeenCalledWith('coll-1', patch);
       expect(result.name).toBe('Renombrada');
@@ -355,8 +375,8 @@ describe('CollectionFacade', () => {
 
       expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
         dsoType: 'collection',
-        resourceSufijo: 'ED_BASICA',
-        caller: { role: 'superadmin', sufijo: null },
+        resourceScopeUuid: 'ED_BASICA',
+        caller: { role: 'superadmin', scopeUuid: null },
       });
       expect(mockCollectionApi.getLogo).toHaveBeenCalledWith('coll-1');
       expect(mockBundleApi.deleteBitstream).not.toHaveBeenCalled();
@@ -430,7 +450,7 @@ describe('CollectionFacade', () => {
     it('should call audit.appendProvenance$ with "Created" after a successful createColeccion$', async () => {
       setupFacadeWithCaller('superadmin', null);
 
-      await firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody, 'ED_BASICA'));
+      await firstValueFrom(facade.createColeccion$('parent-comm-uuid', sampleBody));
 
       expect(mockAudit.appendProvenance$).toHaveBeenCalledWith('collection', 'coll-new', 'Created');
     });

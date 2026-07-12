@@ -43,7 +43,7 @@ describe('roleGuard', () => {
 
   /** Verifica que deje pasar cuando el rol del caller está en la lista permitida. */
   it('returns true when the caller role is in the allowed list', async () => {
-    configureTestBed({ role: 'superadmin', sufijo: null });
+    configureTestBed({ role: 'superadmin', scopeUuid: null });
 
     const guard = roleGuard(['superadmin', 'admin_subdireccion']);
     const result = await TestBed.runInInjectionContext(() =>
@@ -57,7 +57,7 @@ describe('roleGuard', () => {
 
   /** Verifica que redirija a /administrador con toast de acceso restringido cuando el rol no aplica. */
   it('redirects to /administrador with an access-restricted toast when role is not allowed', async () => {
-    configureTestBed({ role: 'personal_delegado', sufijo: 'ED_BASICA' });
+    configureTestBed({ role: 'personal_delegado', scopeUuid: 'ED_BASICA' });
 
     const guard = roleGuard(['superadmin']);
     const result = await TestBed.runInInjectionContext(() =>
@@ -90,7 +90,7 @@ describe('roleGuard', () => {
     const result$ = TestBed.runInInjectionContext(() =>
       firstValueFrom(guard(routeSnapshot, stateSnapshot) as Observable<boolean | UrlTree>),
     );
-    callerSubject.next({ role: 'superadmin', sufijo: null });
+    callerSubject.next({ role: 'superadmin', scopeUuid: null });
 
     expect(await result$).toBe(true);
     expect(mockMessage.add).not.toHaveBeenCalled();

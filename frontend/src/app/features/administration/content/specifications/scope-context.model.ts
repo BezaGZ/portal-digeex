@@ -15,12 +15,13 @@ export type DsoType =
 
 /**
  * Datos que describen una operación pendiente de validar: qué tipo de recurso
- * se va a tocar, a qué subdirección pertenece (null si es la raíz) y quién
- * la pide.
+ * se va a tocar, el uuid de la subdirección a la que pertenece (null si es
+ * la raíz) y quién la pide. El scope del recurso y el del caller son uuids
+ * afirmados por el backend; los nombres de grupo no participan.
  */
 export interface ScopeContext {
   dsoType: DsoType;
-  resourceSufijo: string | null;
+  resourceScopeUuid: string | null;
   caller: Caller;
 }
 

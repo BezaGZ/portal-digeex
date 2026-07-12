@@ -15,10 +15,11 @@ import { JsonPatchEntry } from './json-patch.util';
  *
  * Wrapper HTTP del recurso `/api/core/communities`. Verifica URLs correctas,
  * parámetros de paginación y proyección de subrecursos vía `embed`. Cubre
- * el listado top-level, la lectura por UUID y el listado de sub-comunidades
- * de una community padre.
+ * el listado top-level, la lectura por UUID, el listado de sub-comunidades
+ * de una community padre y el search nativo `findAdminAuthorized` (RestContract
+ * `communities.md`), base de la identidad por contrato del Sprint 11.
  *
- * Ciclo 6 TDD — Sprint 6. Ajustado en Ciclo 13 (Sprint 8).
+ * Ciclo 6 TDD — Sprint 6. Ajustado en Ciclo 13 (Sprint 8) y Ciclo 1 (Sprint 11).
  */
 describe('CommunityApiService', () => {
   let service: CommunityApiService;
@@ -426,6 +427,75 @@ describe('CommunityApiService', () => {
       _links: { self: { href: '/' } },
       page: { size: 20, totalElements: 0, totalPages: 0, number: 0 },
     });
+
+    await promise;
+  });
+
+  /** Búsquedas autorizadas */
+
+  /** Verifica que searchAdminAuthorized() pegue al search nativo con la paginación default. */
+  it('searchAdminAuthorized() should GET /api/core/communities/search/findAdminAuthorized with default pagination', async () => {
+    const mockResponse = {
+      _embedded: {
+        communities: [
+          {
+            uuid: 'd7f5685c-3e9d-49b0-a109-ddbd100368ee',
+            name: 'Subdirección de Educación Básica',
+            type: 'community',
+          },
+        ],
+      },
+      _links: { self: { href: '/api/core/communities/search/findAdminAuthorized?page=0&size=20' } },
+      page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.searchAdminAuthorized().subscribe({
+        next: (response) => {
+          expect(response._embedded['communities'].length).toBe(1);
+          expect(response._embedded['communities'][0].uuid).toBe(
+            'd7f5685c-3e9d-49b0-a109-ddbd100368ee',
+          );
+          expect(response.page.totalElements).toBe(1);
+          resolve(response);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne(
+      '/server/api/core/communities/search/findAdminAuthorized?page=0&size=20',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(mockResponse);
+
+    await promise;
+  });
+
+  /** Verifica que searchAdminAuthorized() propague page y size custom al backend. */
+  it('searchAdminAuthorized() should accept custom pagination parameters', async () => {
+    const mockResponse = {
+      _embedded: { communities: [] },
+      _links: {},
+      page: { size: 50, totalElements: 0, totalPages: 0, number: 1 },
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.searchAdminAuthorized(1, 50).subscribe({
+        next: (response) => {
+          expect(response.page.number).toBe(1);
+          expect(response.page.size).toBe(50);
+          resolve(response);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne(
+      '/server/api/core/communities/search/findAdminAuthorized?page=1&size=50',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(mockResponse);
 
     await promise;
   });

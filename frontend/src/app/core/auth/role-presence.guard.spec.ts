@@ -11,14 +11,14 @@ import { HardRedirectService } from '../navigation/hard-redirect.service';
 /**
  * Tests del `rolePresenceGuard`.
  *
- * Reja de entrada a `/administrador`: pregunta al backend nativo (`isAuthorized`
- * sobre el Site) si el usuario tiene alguna capacidad del portal
- * (`administratorOf`, `isCommunityAdmin`, `isCollectionAdmin`, `canSubmit`). Si
- * no tiene ninguna es un huérfano (cuenta sin grupo de rol, p. ej. su
- * subdirección fue borrada): cierra sesión y rebota a `/iniciar-sesion?error=sin-rol`.
- * Verificado contra el backend que esas cuatro features dan SI por rol y `no`
- * para el huérfano (y que `canViewUsageStatistics` no sirve: la tiene cualquiera).
- * Reemplaza la resolución racy del login (firstValueFrom sobre el stream cacheado).
+ * Reja de entrada a `/administrador`: resuelve el rol contra el backend nativo
+ * (`RoleAuthorizationService` sobre las features de Site `administratorOf`,
+ * `isCommunityAdmin`, `isCollectionAdmin`, `canSubmit`). Sin rol es un huérfano
+ * (cuenta sin grupo, p. ej. su subdirección fue borrada): cierra sesión y rebota
+ * a `/iniciar-sesion?error=sin-rol`. El mock vive en `AuthorizationApiService`
+ * (la capa HTTP), así el spec ancla la cadena guard → servicio → API completa.
+ *
+ * Ciclo 9 TDD — Sprint 10. Ajustado en Ciclo 2 (Sprint 11).
  */
 describe('rolePresenceGuard', () => {
   let mockAuthz: { isAuthorized: Mock };

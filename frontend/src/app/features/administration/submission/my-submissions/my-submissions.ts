@@ -99,8 +99,8 @@ export class MySubmissions {
   /** UUIDs de items cuyo thumbnail falló al cargar; el template cae al placeholder. */
   readonly imageErrors = signal<ReadonlySet<string>>(new Set());
 
-  /** Sufijo del caller capturado del AuthCallerService; lo exige el facade para scope check. */
-  private callerSufijo = '';
+  /** Scope del caller capturado del AuthCallerService; lo exige el facade para scope check. */
+  private callerScopeUuid = '';
 
   /** Bus interno para el debounce del input de búsqueda. */
   private readonly queryInput$ = new Subject<string>();
@@ -108,7 +108,7 @@ export class MySubmissions {
   constructor() {
     this.authCaller.currentCaller$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((c) => (this.callerSufijo = c?.sufijo ?? ''));
+      .subscribe((c) => (this.callerScopeUuid = c?.scopeUuid ?? ''));
 
     this.queryInput$
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
@@ -188,9 +188,9 @@ export class MySubmissions {
 
   /**
    * Pide confirmación al usuario y ejecuta el soft delete del item. El facade
-   * valida scope antes de pegar al backend; aquí pasamos el sufijo del caller
+   * valida scope antes de pegar al backend; aquí pasamos el scope del caller
    * porque en Mis envíos los items siempre son del usuario logueado, así que
-   * `caller.sufijo` cubre el assertWithinScope sin lookups extra.
+   * `caller.scopeUuid` cubre el assertWithinScope sin lookups extra.
    */
   onDelete(uuid: string): void {
     this.confirmation.confirm({
@@ -210,7 +210,7 @@ export class MySubmissions {
       },
       accept: () => {
         this.facade
-          .withdrawItem$(uuid, this.callerSufijo)
+          .withdrawItem$(uuid, this.callerScopeUuid)
           .pipe(
             withLoading(this.loadingService, { message: 'Retirando el item…' }),
             takeUntilDestroyed(this.destroyRef),
@@ -239,7 +239,7 @@ export class MySubmissions {
       },
       accept: () => {
         this.facade
-          .restoreItem$(uuid, this.callerSufijo)
+          .restoreItem$(uuid, this.callerScopeUuid)
           .pipe(
             withLoading(this.loadingService, { message: 'Restaurando el item…' }),
             takeUntilDestroyed(this.destroyRef),

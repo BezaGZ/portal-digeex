@@ -103,7 +103,7 @@ export class Collections {
   readonly deleteLoading = signal<boolean>(false);
   readonly deleteLoadError = signal<boolean>(false);
   readonly deleting = signal<boolean>(false);
-  private deleteSufijo = '';
+  private deleteSubUuid = '';
 
   readonly deleteVisible = computed(() => this.deleteTarget() !== null);
   /** Nombre completo (dc.title) que el usuario debe teclear para confirmar. */
@@ -240,17 +240,16 @@ export class Collections {
     () => this.editTarget()?.metadata?.['dc.identifier.other']?.[0]?.value ?? '',
   );
 
-  /** Atajo de delete: el template pasa el target, el sufijo se deriva. */
+  /** Atajo de delete: el template pasa el target, el scope es la sub seleccionada. */
   onDeleteClick(target: Collection): void {
     const sub = this.selectedSubdireccion();
     if (!sub) return;
-    this.handleDelete(target, this.extractSufijo(sub));
+    this.handleDelete(target, sub.uuid);
   }
 
   handleCreateSubmit(payload: ProgramaFormPayload): void {
     const sub = this.selectedSubdireccion();
     if (!sub) return;
-    const sufijo = this.extractSufijo(sub);
     const metadata: CollectionCreateBody['metadata'] = {
       'dc.title': [
         { value: payload.titulo, language: null, authority: null, confidence: -1, place: 0 },
@@ -279,7 +278,7 @@ export class Collections {
       metadata,
     };
     this.facade
-      .createColeccion$(sub.uuid, body, sufijo, payload.coverFile ?? undefined)
+      .createColeccion$(sub.uuid, body, payload.coverFile ?? undefined)
       .pipe(withLoading(this.loadingService, { message: 'Creando programa…' }))
       .subscribe({
       next: () => {
@@ -295,7 +294,6 @@ export class Collections {
     const target = this.editTarget();
     const sub = this.selectedSubdireccion();
     if (!target || !sub) return;
-    const sufijo = this.extractSufijo(sub);
     // dspace.entity.type y siglas (name) son inmutables después de
     // crear: el primero rompe el routing del frontend, el segundo
     // rompe los SAFs y URLs externas. Solo se patchean título completo,
@@ -316,11 +314,11 @@ export class Collections {
     // encadena con switchMap y su error se captura como éxito parcial (toast warn)
     // en vez de revertir el guardado. Un solo overlay cubre los dos pasos.
     this.facade
-      .updateColeccion$(target.uuid, patch, sufijo)
+      .updateColeccion$(target.uuid, patch, sub.uuid)
       .pipe(
         switchMap(() =>
           payload.coverFile
-            ? this.facade.replaceLogo$(target.uuid, payload.coverFile, sufijo).pipe(
+            ? this.facade.replaceLogo$(target.uuid, payload.coverFile, sub.uuid).pipe(
                 map(() => null as unknown),
                 catchError((logoError: unknown) => of(logoError ?? new Error('logo'))),
               )
@@ -352,9 +350,9 @@ export class Collections {
    * vea qué se borra. El error del detalle no bloquea el borrado: la
    * confirmación por escritura es la salvaguarda real.
    */
-  handleDelete(target: Collection, sufijo: string): void {
+  handleDelete(target: Collection, subUuid: string): void {
     this.deleteTarget.set(target);
-    this.deleteSufijo = sufijo;
+    this.deleteSubUuid = subUuid;
     this.deleteItemsCount.set(null);
     this.deleteTitles.set([]);
     this.deleteLoadError.set(false);
@@ -381,7 +379,7 @@ export class Collections {
     if (!target) return;
     this.deleting.set(true);
     this.facade
-      .deleteColeccion$(target.uuid, this.deleteSufijo)
+      .deleteColeccion$(target.uuid, this.deleteSubUuid)
       .pipe(withLoading(this.loadingService, { message: 'Eliminando programa…' }))
       .subscribe({
         next: () => {
@@ -402,7 +400,7 @@ export class Collections {
 
   private closeDeleteDialog(): void {
     this.deleteTarget.set(null);
-    this.deleteSufijo = '';
+    this.deleteSubUuid = '';
     this.deleteItemsCount.set(null);
     this.deleteTitles.set([]);
     this.deleteLoadError.set(false);

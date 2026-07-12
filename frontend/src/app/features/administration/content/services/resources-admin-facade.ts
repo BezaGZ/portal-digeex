@@ -96,7 +96,7 @@ export class ResourcesAdminFacade {
       switchMap((caller) => {
         if (!caller) return of<Scope>({ mode: 'none' });
         if (roleCaps.isSuperadmin(caller)) return of<Scope>({ mode: 'all' });
-        if (!caller.sufijo) return of<Scope>({ mode: 'none' });
+        if (caller.scopeUuid === null) return of<Scope>({ mode: 'none' });
         return this.communityApi.searchTop(0, 1).pipe(
           switchMap((rootResp) => {
             const root = rootResp._embedded?.['communities']?.[0];

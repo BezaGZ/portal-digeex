@@ -22,7 +22,7 @@ import { HalListResponse, Paginated } from '../../../../core/api/models/hal.mode
  * por nombre del grupo (Administrator, ADMIN_*, SUBMITTERS_*) porque el link HAL
  * `_links.object` no apunta al DSO dueño en DSpace 9.2 para grupos custom.
  *
- * Ciclos 10, 11, 13, 17 TDD — Sprint 5. Ajustado en Ciclo 35 (Sprint 8).
+ * Ciclos 10, 11, 13, 17 TDD — Sprint 5. Ajustado en Ciclo 35 (Sprint 8) y Ciclo 6 (Sprint 11).
  */
 describe('UserManagementService', () => {
   let service: UserManagementService;
@@ -199,44 +199,6 @@ describe('UserManagementService', () => {
     service = TestBed.inject(UserManagementService);
   });
 
-  describe('resolveCallerSnapshot', () => {
-    /** Verifica que el snapshot devuelva el caller superadmin (grupo Administrator), sin subdivisión. */
-    it('should return the superadmin caller from the live EPerson', () => {
-      expect(service.resolveCallerSnapshot()).toEqual({ role: 'superadmin', sufijo: null });
-    });
-
-    /** Verifica que el snapshot devuelva el admin de subdirección con su sufijo. */
-    it('should return the admin_subdireccion caller with its suffix', () => {
-      currentEPersonSignal.set(buildCallerEPerson([adminBasica]));
-      expect(service.resolveCallerSnapshot()).toEqual({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' });
-    });
-
-    /** Verifica que el snapshot sea null cuando el EPerson no tiene grupo de rol del portal. */
-    it('should return null when the EPerson has no portal role group', () => {
-      currentEPersonSignal.set(buildCallerEPerson([]));
-      expect(service.resolveCallerSnapshot()).toBeNull();
-    });
-
-    /** Verifica que el snapshot sea null cuando no hay EPerson en sesión. */
-    it('should return null when there is no current EPerson', () => {
-      currentEPersonSignal.set(null);
-      expect(service.resolveCallerSnapshot()).toBeNull();
-    });
-
-    /**
-     * Verifica que el snapshot resuelva el EPerson actual (X) aunque
-     * `currentUserView$` haya quedado caliente con un usuario previo (Y).
-     */
-    it('should reflect the current EPerson even after currentUserView$ was warmed with a previous user', async () => {
-      currentEPersonSignal.set(buildCallerEPerson([adminBasica]));
-      expect(await firstValueFrom(service.currentUserView$)).not.toBeNull();
-
-      currentEPersonSignal.set(buildCallerEPerson([adminGlobal]));
-
-      expect(service.resolveCallerSnapshot()).toEqual({ role: 'superadmin', sufijo: null });
-    });
-  });
-
   describe('currentUserView$', () => {
     /** Verifica que sin EPerson cacheado el observable emita null. */
     it('should emit null when the cached EPerson is null', async () => {
@@ -249,6 +211,17 @@ describe('UserManagementService', () => {
       const view = await firstValueFrom(service.currentUserView$);
       expect(view?.role).toBe('superadmin');
       expect(view?.subdivision).toBeNull();
+    });
+
+    /**
+     * Verifica que un eperson sin grupo de rol emita la vista con role null en
+     * vez de lanzar: el corte del huérfano vive en rolePresenceGuard, no acá.
+     */
+    it('should emit a UserView with role null for an eperson without portal role groups', async () => {
+      currentEPersonSignal.set(buildCallerEPerson([]));
+      const view = await firstValueFrom(service.currentUserView$);
+      expect(view).not.toBeNull();
+      expect(view?.role).toBeNull();
     });
 
     /** Verifica que un caller miembro de ADMIN_ED_BASICA reporte admin_subdireccion con subdivision=ED_BASICA. */

@@ -25,7 +25,7 @@ export interface SubmitItemRequest {
   metadata: Record<string, MetadataValue[]>;
   files: File[];
   visibility: 'public' | 'private';
-  sufijoSubdireccion: string;
+  subdireccionUuid: string;
   /**
    * Imagen opcional que el usuario subió como portada manual del item. Se
    * coloca en el bundle THUMBNAIL post-archive (la submission API solo
@@ -60,7 +60,7 @@ export class SubmissionFacade {
         try {
           this.scope.assertWithinScope({
             dsoType: 'item',
-            resourceSufijo: req.sufijoSubdireccion,
+            resourceScopeUuid: req.subdireccionUuid,
             caller,
           });
         } catch (err) {

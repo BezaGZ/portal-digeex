@@ -9,7 +9,6 @@ import { EPersonApiService } from '../../../../core/api/eperson-api.service';
 import { GroupApiService } from '../../../../core/api/group-api.service';
 import { EPerson } from '../../../../core/api/models/eperson.model';
 import { Group } from '../../../../core/api/models/group.model';
-import { Caller } from '../../../../core/auth/caller.model';
 import { isSuperadmin } from '../../../../core/auth/role-capabilities';
 import { isSameSubdireccion } from '../../../../core/auth/subdivision-scope';
 import { Paginated } from '../../../../core/api/models/hal.model';
@@ -86,10 +85,6 @@ const ALLOWED_EMAIL_DOMAINS = environment.allowedEmailDomains;
  */
 const LIST_PAGE_SIZE = 100;
 
-/** Error propagado por `currentUserView$` cuando el eperson autenticado no es de rol portal. */
-export const NO_ROLE_GROUP_ERROR =
-  'El usuario autenticado no tiene un grupo de rol asignado.';
-
 /** Caller resuelto: rol + sufijo de subdivisión derivados del nombre de sus grupos. */
 interface ResolvedEPerson {
   readonly eperson: EPerson;
@@ -132,41 +127,27 @@ export class UserManagementService {
 
   /**
    * Vista del usuario autenticado con rol y subdivisión resueltos por nombre
-   * de grupo. Lee el EPerson con `_embedded.groups` que `AuthService` cacheó
-   * tras `login()`/`restoreSession()`; no dispara HTTP propio. `refCount: false`
-   * mantiene la suscripción interna viva mientras viva el servicio (singleton),
-   * para que topbar, menú y Users container compartan la misma emisión.
+   * de grupo (solo para display; la identidad del caller la afirma el backend
+   * en `AuthCallerService`). Lee el EPerson con `_embedded.groups` que
+   * `AuthService` cacheó tras `login()`/`restoreSession()`; no dispara HTTP
+   * propio. Un eperson sin grupo de rol emite con `role: null` en vez de
+   * lanzar: el corte del huérfano vive en `rolePresenceGuard`, no acá.
+   * `refCount: false` mantiene la suscripción interna viva mientras viva el
+   * servicio (singleton) para que los consumidores compartan la emisión.
    */
   readonly currentUserView$: Observable<UserView | null> = toObservable(
     this.authService.currentEPerson,
   ).pipe(
-    switchMap((eperson) => {
-      if (!eperson) return of<UserView | null>(null);
+    map((eperson) => {
+      if (!eperson) return null;
       const resolved = this.resolveEPersonFromGroups(
         eperson,
         this.extractEmbeddedGroups(eperson),
       );
-      if (resolved.role === null) {
-        return throwError(() => new Error(NO_ROLE_GROUP_ERROR));
-      }
-      return of(this.assembleUserView(resolved));
+      return this.assembleUserView(resolved);
     }),
     shareReplay({ bufferSize: 1, refCount: false }),
   );
-
-  /**
-   * Snapshot síncrono del caller desde el `currentEPerson` vivo, no del stream
-   * cacheado `currentUserView$` (cuyo `shareReplay` puede emitir el caller del
-   * usuario anterior). Null si no hay eperson o no tiene grupo de rol del portal.
-   */
-  resolveCallerSnapshot(): Caller | null {
-    const eperson = this.authService.currentEPerson();
-    if (!eperson) return null;
-    const resolved = this.resolveEPersonFromGroups(eperson, this.extractEmbeddedGroups(eperson));
-    return resolved.role !== null
-      ? { role: resolved.role, sufijo: resolved.subdivisionSuffix }
-      : null;
-  }
 
   /**
    * Listado paginado con búsqueda server-side alineado al patrón

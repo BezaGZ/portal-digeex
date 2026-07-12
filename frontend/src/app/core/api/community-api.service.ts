@@ -11,8 +11,9 @@ import { JsonPatchEntry } from './json-patch.util';
  * Wrapper HTTP del recurso `/api/core/communities` de DSpace.
  *
  * Expone el listado top-level (`list`), una community por UUID con embed
- * opcional para subrecursos como `adminGroup` (`getOne`), y el listado de
- * sub-comunidades de una community padre (`listSubcommunities`).
+ * opcional para subrecursos como `adminGroup` (`getOne`), el listado de
+ * sub-comunidades de una community padre (`listSubcommunities`) y las
+ * comunidades donde el usuario es admin (`searchAdminAuthorized`).
  */
 @Injectable({ providedIn: 'root' })
 export class CommunityApiService {
@@ -35,6 +36,20 @@ export class CommunityApiService {
     const params = new HttpParams().set('page', page).set('size', size);
     return this.http.get<HalListResponse<Community>>(
       `${DSPACE_API_BASE}${COMMUNITIES_PATH}/search/top`,
+      { params },
+    );
+  }
+
+  /**
+   * Comunidades donde el usuario del token es administrador, afirmado por el
+   * backend (policies reales, no nombres de grupo). Para admin_subdireccion
+   * devuelve su subdirección; para superadmin, todas las del repositorio.
+   * @see https://github.com/DSpace/RestContract/blob/dspace-9_x/communities.md#findadminauthorized
+   */
+  searchAdminAuthorized(page = 0, size = 20): Observable<HalListResponse<Community>> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return this.http.get<HalListResponse<Community>>(
+      `${DSPACE_API_BASE}${COMMUNITIES_PATH}/search/findAdminAuthorized`,
       { params },
     );
   }

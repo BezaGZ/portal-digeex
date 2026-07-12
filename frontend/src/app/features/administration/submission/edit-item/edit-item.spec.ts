@@ -61,7 +61,7 @@ describe('EditItem', () => {
         provideNoopAnimations(),
         { provide: ItemApiService, useValue: { getOne: getOneFn } },
         { provide: BreadcrumbService, useValue: { setTrail: setTrailFn, clear: vi.fn() } },
-        { provide: AuthCallerService, useValue: { currentCaller$: of({ role: 'superadmin', sufijo: 'PEAC' }) } },
+        { provide: AuthCallerService, useValue: { currentCaller$: of({ role: 'superadmin', scopeUuid: 'PEAC' }) } },
         { provide: SubmissionFacade, useValue: { submitItem$: vi.fn() } },
         {
           provide: ItemAdminFacade,

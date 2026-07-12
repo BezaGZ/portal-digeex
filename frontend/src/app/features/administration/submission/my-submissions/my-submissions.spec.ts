@@ -94,7 +94,7 @@ describe('MySubmissions', () => {
         { provide: ItemAdminFacade, useValue: { withdrawItem$: withdrawFn, restoreItem$: restoreFn } },
         {
           provide: AuthCallerService,
-          useValue: { currentCaller$: of({ role: 'superadmin', sufijo: 'PEAC' }) },
+          useValue: { currentCaller$: of({ role: 'superadmin', scopeUuid: 'PEAC' }) },
         },
         {
           provide: ConfirmationService,

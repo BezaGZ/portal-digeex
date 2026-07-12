@@ -114,7 +114,7 @@ describe('Dashboard', () => {
    * los 4 widgets del rol desde DASHBOARD_WIDGETS_BY_ROLE.
    */
   it('should resolve scope=null and render superadmin widgets when caller is superadmin', () => {
-    caller$.next({ role: 'superadmin', sufijo: null });
+    caller$.next({ role: 'superadmin', scopeUuid: null });
 
     const fixture = TestBed.createComponent(Dashboard);
     fixture.detectChanges();
@@ -132,7 +132,7 @@ describe('Dashboard', () => {
    * de la community que matchea su sufijo, vía searchTop + listAllSubcommunities.
    */
   it('should resolve scope to the community uuid of the caller sufijo when role is admin_subdireccion', () => {
-    caller$.next({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' });
+    caller$.next({ role: 'admin_subdireccion', scopeUuid: 'sub-1' });
 
     const fixture = TestBed.createComponent(Dashboard);
     fixture.detectChanges();
@@ -150,7 +150,7 @@ describe('Dashboard', () => {
    * válida que veía métricas de todas las subdirecciones.
    */
   it('should render the empty state instead of global widgets when the caller sufijo does not match any sub', () => {
-    caller$.next({ role: 'admin_subdireccion', sufijo: 'NO_EXISTE' });
+    caller$.next({ role: 'admin_subdireccion', scopeUuid: 'uuid-inexistente' });
 
     const fixture = TestBed.createComponent(Dashboard);
     fixture.detectChanges();
@@ -164,7 +164,7 @@ describe('Dashboard', () => {
    * dispare ni una sola llamada de widget.
    */
   it('should render the empty state for roles without entries in DASHBOARD_WIDGETS_BY_ROLE', () => {
-    caller$.next({ role: 'personal_delegado', sufijo: 'ED_BASICA' });
+    caller$.next({ role: 'personal_delegado', scopeUuid: 'sub-1' });
 
     const fixture = TestBed.createComponent(Dashboard);
     fixture.detectChanges();
@@ -176,7 +176,7 @@ describe('Dashboard', () => {
 
   /** Verifica que onTopListEntryClick navegue a /administrador/historial/programas/<uuid>. */
   it('should navigate to /administrador/historial/programas/<uuid> when onTopListEntryClick fires', () => {
-    caller$.next({ role: 'superadmin', sufijo: null });
+    caller$.next({ role: 'superadmin', scopeUuid: null });
 
     const fixture = TestBed.createComponent(Dashboard);
     fixture.detectChanges();
@@ -192,7 +192,7 @@ describe('Dashboard', () => {
 
   /** Verifica que el signal `selectedYearWindow` arranque en 5 (default del filtro temporal). */
   it('should default selectedYearWindow to 5 years', () => {
-    caller$.next({ role: 'superadmin', sufijo: null });
+    caller$.next({ role: 'superadmin', scopeUuid: null });
     const fixture = TestBed.createComponent(Dashboard);
     fixture.detectChanges();
 
@@ -204,7 +204,7 @@ describe('Dashboard', () => {
    * El array sale del helper `buildLastNYearRanges` y se inyecta como input a `range-bar-card`.
    */
   it('should expose yearRanges with one entry per year of the selected window', () => {
-    caller$.next({ role: 'superadmin', sufijo: null });
+    caller$.next({ role: 'superadmin', scopeUuid: null });
     const fixture = TestBed.createComponent(Dashboard);
     fixture.detectChanges();
 
@@ -216,7 +216,7 @@ describe('Dashboard', () => {
 
   /** Verifica que el dropdown del filtro temporal exista en el HTML con su data-testid. */
   it('should render the year-window dropdown with the expected data-testid', () => {
-    caller$.next({ role: 'superadmin', sufijo: null });
+    caller$.next({ role: 'superadmin', scopeUuid: null });
     const fixture = TestBed.createComponent(Dashboard);
     fixture.detectChanges();
 

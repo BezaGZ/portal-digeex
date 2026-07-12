@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { of } from 'rxjs';
-import { map, switchMap, take } from 'rxjs/operators';
+import { filter, map, switchMap, take } from 'rxjs/operators';
 
 import { AuthService } from './auth.service';
 import { CallerProvider } from './caller-provider';
@@ -29,10 +29,13 @@ export function ownSubmissionGuard(paramName = 'uuid'): CanActivateFn {
     const message = inject(MessageService);
 
     return caller.currentCaller$.pipe(
+      // Espera la identidad resuelta: decidir sobre el null inicial dejaría
+      // pasar al delegado mientras el scope se resuelve contra el backend.
+      filter((current) => current !== null),
       take(1),
       switchMap((current) => {
         // Solo el delegado se confina a lo suyo; los demás roles pasan.
-        if (!current || current.role !== 'personal_delegado') {
+        if (current.role !== 'personal_delegado') {
           return of(true);
         }
         const itemUuid = route.paramMap.get(paramName) ?? '';

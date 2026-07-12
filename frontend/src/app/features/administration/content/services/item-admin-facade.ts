@@ -49,9 +49,9 @@ export class ItemAdminFacade {
   updateItem$(
     uuid: string,
     patch: JsonPatchEntry[],
-    sufijoSubdireccion: string,
+    subdireccionUuid: string,
   ): Observable<Item> {
-    return this.runScoped$(sufijoSubdireccion, () =>
+    return this.runScoped$(subdireccionUuid, () =>
       this.itemApi.updateMetadata(uuid, patch).pipe(withAudit$<Item>(this.audit, 'item', AUDIT_ACTIONS.EDITED)),
     );
   }
@@ -64,9 +64,9 @@ export class ItemAdminFacade {
   editItem$(
     uuid: string,
     payload: EditItemPayload,
-    sufijoSubdireccion: string,
+    subdireccionUuid: string,
   ): Observable<Item> {
-    return this.runScoped$(sufijoSubdireccion, () => {
+    return this.runScoped$(subdireccionUuid, () => {
       const steps$: Observable<unknown>[] = [];
       if (payload.patch.length > 0) {
         steps$.push(this.itemApi.updateMetadata(uuid, payload.patch));
@@ -222,16 +222,16 @@ export class ItemAdminFacade {
    * No appendea provenance manual: DSpace 9 escribe `Item withdrawn by …`
    * automáticamente al disparar el endpoint (verificado el 2026-06-05).
    */
-  withdrawItem$(uuid: string, sufijoSubdireccion: string): Observable<Item> {
-    return this.runScoped$(sufijoSubdireccion, () => this.itemApi.withdraw(uuid));
+  withdrawItem$(uuid: string, subdireccionUuid: string): Observable<Item> {
+    return this.runScoped$(subdireccionUuid, () => this.itemApi.withdraw(uuid));
   }
 
   /**
    * Devuelve un item previamente withdrawn al portal público. DSpace 9
    * escribe `Item reinstated by …` automáticamente.
    */
-  restoreItem$(uuid: string, sufijoSubdireccion: string): Observable<Item> {
-    return this.runScoped$(sufijoSubdireccion, () => this.itemApi.restore(uuid));
+  restoreItem$(uuid: string, subdireccionUuid: string): Observable<Item> {
+    return this.runScoped$(subdireccionUuid, () => this.itemApi.restore(uuid));
   }
 
   /**
@@ -244,7 +244,7 @@ export class ItemAdminFacade {
   }
 
   private runScoped$<T>(
-    sufijoSubdireccion: string,
+    subdireccionUuid: string,
     op: () => Observable<T>,
   ): Observable<T> {
     return resolveCaller$(this.authCaller).pipe(
@@ -252,7 +252,7 @@ export class ItemAdminFacade {
         try {
           this.scope.assertWithinScope({
             dsoType: 'item',
-            resourceSufijo: sufijoSubdireccion,
+            resourceScopeUuid: subdireccionUuid,
             caller,
           });
         } catch (err) {

@@ -18,7 +18,7 @@ import { UserRole } from '../../../core/auth/user-role.model';
  */
 describe('AppMenu', () => {
   function callerFor(role: UserRole): Caller {
-    return { role, sufijo: role === 'personal_delegado' ? 'ED_BASICA' : null };
+    return { role, scopeUuid: role === 'personal_delegado' ? 'sub-basica-uuid' : null };
   }
 
   async function configureMenuFor(caller: Caller | null): Promise<ComponentFixture<AppMenu>> {

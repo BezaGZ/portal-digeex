@@ -65,7 +65,7 @@ describe('SubmissionFormHost', () => {
     registerSubmissionForm('Documento', FakeSubmissionForm);
     const fixture = TestBed.createComponent(SubmissionFormHost);
     fixture.componentRef.setInput('collection', buildCollection('Documento'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     expect(fixture.componentInstance.formComponent()).toBe(FakeSubmissionForm);
@@ -76,7 +76,7 @@ describe('SubmissionFormHost', () => {
   it('should fall back to the warning message when entity-type is not registered', () => {
     const fixture = TestBed.createComponent(SubmissionFormHost);
     fixture.componentRef.setInput('collection', buildCollection('TipoInexistente'));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     expect(fixture.componentInstance.formComponent()).toBeNull();
@@ -87,7 +87,7 @@ describe('SubmissionFormHost', () => {
   it('should fall back to the warning message when collection has no entity-type', () => {
     const fixture = TestBed.createComponent(SubmissionFormHost);
     fixture.componentRef.setInput('collection', buildCollection(null));
-    fixture.componentRef.setInput('caller', { role: 'superadmin', sufijo: null });
+    fixture.componentRef.setInput('caller', { role: 'superadmin', scopeUuid: null });
     fixture.detectChanges();
 
     expect(fixture.componentInstance.entityType()).toBeUndefined();

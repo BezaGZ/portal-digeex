@@ -116,7 +116,7 @@ describe('Communities (contenedor)', () => {
     searchFn = vi.fn().mockReturnValue(
       of({ items: [], facets: [], totalElements: 57, totalPages: 3, page: 0, size: 0 }),
     );
-    currentCallerObservable = of({ role: 'superadmin', sufijo: null });
+    currentCallerObservable = of({ role: 'superadmin', scopeUuid: null });
     createSubdireccionFn = vi.fn().mockReturnValue(of(buildCommunity('Nueva', 'sub-new')));
     updateSubdireccionFn = vi.fn().mockReturnValue(of(buildCommunity('Renombrada', 'sub-1')));
     deleteSubdireccionFn = vi.fn().mockReturnValue(of(undefined));
@@ -229,7 +229,7 @@ describe('Communities (contenedor)', () => {
           { provide: CommunityFacade, useValue: {} },
           {
             provide: AuthCallerService,
-            useValue: { currentCaller$: of({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }) },
+            useValue: { currentCaller$: of({ role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' }) },
           },
           { provide: MessageService, useValue: { add: vi.fn(), messageObserver: EMPTY, clearObserver: EMPTY } },
           ConfirmationService,
@@ -312,7 +312,7 @@ describe('Communities (contenedor)', () => {
       );
     });
 
-    it('should call updateSubdireccion$ with a JsonPatch on dc.title (tituloCompleto) and the sufijo, close dialog, refresh and toast', () => {
+    it('should call updateSubdireccion$ with a JsonPatch on dc.title (tituloCompleto), close dialog, refresh and toast', () => {
       const fixture = TestBed.createComponent(Communities);
       fixture.detectChanges();
       const c = fixture.componentInstance;
@@ -340,7 +340,6 @@ describe('Communities (contenedor)', () => {
             value: 'Subdirección de Educación Básica Renombrada',
           }),
         ]),
-        'ED_BASICA',
       );
       expect(c.dialogMode()).toBe('closed');
       expect(listSubcommunitiesFn).toHaveBeenCalled();
@@ -382,7 +381,6 @@ describe('Communities (contenedor)', () => {
           { op: 'remove', path: '/metadata/dc.description/1' },
           { op: 'replace', path: '/metadata/dc.description/0/value', value: 'Descripción editada' },
         ],
-        'ED_BASICA',
       );
     });
 
@@ -433,7 +431,7 @@ describe('Communities (contenedor)', () => {
       c.onDeleteConfirmed();
       fixture.detectChanges();
 
-      expect(deleteSubdireccionFn).toHaveBeenCalledWith('sub-1', '');
+      expect(deleteSubdireccionFn).toHaveBeenCalledWith('sub-1');
       expect(listSubcommunitiesFn).toHaveBeenCalled();
       expect(messageAddFn).toHaveBeenCalledWith(
         expect.objectContaining({ severity: 'success' }),

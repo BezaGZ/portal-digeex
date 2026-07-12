@@ -62,8 +62,8 @@ describe('ItemAdminFacade', () => {
     type: 'item',
   };
 
-  function setupFacadeWithCaller(role: UserRole, sufijo: string | null) {
-    mockAuthCaller = { currentCaller$: of({ role, sufijo }) };
+  function setupFacadeWithCaller(role: UserRole, scopeUuid: string | null) {
+    mockAuthCaller = { currentCaller$: of({ role, scopeUuid }) };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -112,8 +112,8 @@ describe('ItemAdminFacade', () => {
 
       expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
         dsoType: 'item',
-        resourceSufijo: 'ED_BASICA',
-        caller: { role: 'superadmin', sufijo: null },
+        resourceScopeUuid: 'ED_BASICA',
+        caller: { role: 'superadmin', scopeUuid: null },
       });
       expect(mockItemApi.updateMetadata).toHaveBeenCalledWith('item-uuid', patch);
       expect(result.uuid).toBe('item-uuid');
@@ -140,8 +140,8 @@ describe('ItemAdminFacade', () => {
 
       expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
         dsoType: 'item',
-        resourceSufijo: 'ED_BASICA',
-        caller: { role: 'superadmin', sufijo: null },
+        resourceScopeUuid: 'ED_BASICA',
+        caller: { role: 'superadmin', scopeUuid: null },
       });
       expect(mockItemApi.withdraw).toHaveBeenCalledWith('item-uuid');
       expect(result.withdrawn).toBe(true);

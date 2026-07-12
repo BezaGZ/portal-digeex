@@ -70,7 +70,7 @@ describe('UploadContent', () => {
 
   function configureModule(
     callerRole: 'superadmin' | 'admin_subdireccion' | 'personal_delegado' | null,
-    sufijo: string | null,
+    scopeUuid: string | null,
   ) {
     const searchTopFn = vi.fn().mockReturnValue(
       of({
@@ -95,7 +95,7 @@ describe('UploadContent', () => {
         { provide: CollectionApiService, useValue: { listAll: listAllFn, listByCommunity: listByCommunityFn } },
         {
           provide: AuthCallerService,
-          useValue: { currentCaller$: of(callerRole === null ? null : { role: callerRole, sufijo }) },
+          useValue: { currentCaller$: of(callerRole === null ? null : { role: callerRole, scopeUuid }) },
         },
         { provide: Router, useValue: { navigate: vi.fn() } },
       ],
@@ -130,7 +130,7 @@ describe('UploadContent', () => {
   });
 
   it('should expose only the matching sub when caller is admin_subdireccion with sufijo', () => {
-    configureModule('admin_subdireccion', 'ED_TRABAJO');
+    configureModule('admin_subdireccion', 'sub-2');
     const fixture = TestBed.createComponent(UploadContent);
     fixture.detectChanges();
 
@@ -141,7 +141,7 @@ describe('UploadContent', () => {
   });
 
   it('should expose only the matching sub when caller is personal_delegado with sufijo', () => {
-    configureModule('personal_delegado', 'ED_INVESTIGACION');
+    configureModule('personal_delegado', 'sub-3');
     const fixture = TestBed.createComponent(UploadContent);
     fixture.detectChanges();
 
@@ -191,7 +191,7 @@ describe('UploadContent', () => {
     // Caller con sufijo que no matchea ninguna sub: findCallerSub devuelve null,
     // groups() queda vacío y la pantalla debe avisar al usuario en lugar de
     // mostrar una página en blanco.
-    configureModule('admin_subdireccion', 'ED_INEXISTENTE');
+    configureModule('admin_subdireccion', 'uuid-inexistente');
     const fixture = TestBed.createComponent(UploadContent);
     fixture.detectChanges();
     const c = fixture.componentInstance;

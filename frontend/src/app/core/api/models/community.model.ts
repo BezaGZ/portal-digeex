@@ -31,6 +31,20 @@ export function sufijoOf(community: Community): string | null {
 }
 
 /**
+ * Uuid del grupo ADMIN_<sufijo> de la subdirección, anotado en su metadata al
+ * crearla. La relación grupo-subdirección solo existe por este registro, así
+ * que los facades lo leen de acá para localizar el grupo sin depender del nombre.
+ */
+export function adminGroupUuidOf(community: Community): string | null {
+  return community.metadata?.['digeex.adminGroup']?.[0]?.value ?? null;
+}
+
+/** Uuid del grupo SUBMITTERS_<sufijo> de la subdirección; mismo contrato que `adminGroupUuidOf`. */
+export function submittersGroupUuidOf(community: Community): string | null {
+  return community.metadata?.['digeex.submittersGroup']?.[0]?.value ?? null;
+}
+
+/**
  * Body que DSpace 9.x exige al crear una community vía POST. El campo
  * `type` es el discriminador del recurso; DSpace lo valida contra el path
  * y rechaza el POST si no coincide.

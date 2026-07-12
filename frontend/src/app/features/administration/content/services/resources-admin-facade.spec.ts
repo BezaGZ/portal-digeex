@@ -54,7 +54,7 @@ describe('ResourcesAdminFacade', () => {
     type: 'community',
   };
 
-  function setupWith(caller: { role: string; sufijo: string | null } | null) {
+  function setupWith(caller: { role: string; scopeUuid: string | null } | null) {
     mockDiscovery = {
       search: vi.fn(() =>
         of({ items: [], facets: [], totalElements: 0, totalPages: 0, page: 0, size: 20 }),
@@ -80,7 +80,7 @@ describe('ResourcesAdminFacade', () => {
 
   /** Verifica que para superadmin se pase scope=undefined y configuration=administrativeView. */
   it('should call Discovery with administrativeView and without scope when the caller is superadmin', async () => {
-    setupWith({ role: 'superadmin', sufijo: null });
+    setupWith({ role: 'superadmin', scopeUuid: null });
 
     await firstValueFrom(facade.search$({ withdrawn: false }));
 
@@ -96,7 +96,7 @@ describe('ResourcesAdminFacade', () => {
    * La acción "Ver" arma la URL pública con ese uuid sin una petición extra por item.
    */
   it('should request thumbnail and owningCollection embeds on search', async () => {
-    setupWith({ role: 'superadmin', sufijo: null });
+    setupWith({ role: 'superadmin', scopeUuid: null });
 
     await firstValueFrom(facade.search$({ withdrawn: false }));
 
@@ -104,9 +104,9 @@ describe('ResourcesAdminFacade', () => {
     expect(params.embeds).toEqual(['thumbnail', 'owningCollection']);
   });
 
-  /** Verifica que para admin_subdireccion el scope se resuelva desde el sufijo del caller. */
-  it('should resolve scope from caller sufijo via searchTop + listSubcommunities for admin_subdireccion', async () => {
-    setupWith({ role: 'admin_subdireccion', sufijo: 'PEAC' });
+  /** Verifica que para admin_subdireccion el scope se resuelva desde el scopeUuid del caller. */
+  it('should resolve scope from caller scopeUuid via searchTop + listSubcommunities for admin_subdireccion', async () => {
+    setupWith({ role: 'admin_subdireccion', scopeUuid: 'peac-uuid' });
 
     await firstValueFrom(facade.search$({ withdrawn: false }));
 
@@ -118,7 +118,7 @@ describe('ResourcesAdminFacade', () => {
 
   /** Verifica que withdrawn=true se mapee al filtro f.withdrawn=true,equals. */
   it('should map withdrawn=true to f.withdrawn=true,equals', async () => {
-    setupWith({ role: 'superadmin', sufijo: null });
+    setupWith({ role: 'superadmin', scopeUuid: null });
 
     await firstValueFrom(facade.search$({ withdrawn: true }));
 
@@ -130,7 +130,7 @@ describe('ResourcesAdminFacade', () => {
 
   /** Verifica que entityType=Documento se mapee al filtro f.entityType=Documento,equals. */
   it('should map entityType to f.entityType=value,equals when provided', async () => {
-    setupWith({ role: 'superadmin', sufijo: null });
+    setupWith({ role: 'superadmin', scopeUuid: null });
 
     await firstValueFrom(facade.search$({ withdrawn: false, entityType: 'Documento' }));
 
@@ -144,7 +144,7 @@ describe('ResourcesAdminFacade', () => {
 
   /** Verifica que dateFrom/dateTo se mapeen al filtro f.dateIssued con rango Solr. */
   it('should map dateFrom and dateTo to f.dateIssued range', async () => {
-    setupWith({ role: 'superadmin', sufijo: null });
+    setupWith({ role: 'superadmin', scopeUuid: null });
 
     await firstValueFrom(
       facade.search$({ withdrawn: false, dateFrom: 2020, dateTo: 2024 }),
@@ -160,7 +160,7 @@ describe('ResourcesAdminFacade', () => {
 
   /** Verifica que query, page, size y sort pasen tal cual a Discovery. */
   it('should pass query, page, size and sort straight through to Discovery', async () => {
-    setupWith({ role: 'superadmin', sufijo: null });
+    setupWith({ role: 'superadmin', scopeUuid: null });
 
     await firstValueFrom(
       facade.search$({
@@ -179,9 +179,9 @@ describe('ResourcesAdminFacade', () => {
     expect(params.sort).toBe('dc.title,asc');
   });
 
-  /** Fail-closed: un admin_subdireccion cuyo sufijo no matchea no ve nada (no "todo"). */
-  it('should return empty without calling Discovery when admin_subdireccion sufijo does not match any sub', async () => {
-    setupWith({ role: 'admin_subdireccion', sufijo: 'NO_EXISTE' });
+  /** Fail-closed: un admin_subdireccion cuyo scope no matchea no ve nada (no "todo"). */
+  it('should return empty without calling Discovery when admin_subdireccion scope does not match any sub', async () => {
+    setupWith({ role: 'admin_subdireccion', scopeUuid: 'uuid-inexistente' });
 
     const page = await firstValueFrom(facade.search$({ withdrawn: false }));
 
@@ -203,7 +203,7 @@ describe('ResourcesAdminFacade', () => {
 
   /** Fail-closed: un admin_subdireccion sin sufijo tampoco cae en "ver todo". */
   it('should return empty without calling Discovery when a non-superadmin caller has no sufijo', async () => {
-    setupWith({ role: 'admin_subdireccion', sufijo: null });
+    setupWith({ role: 'admin_subdireccion', scopeUuid: null });
 
     const page = await firstValueFrom(facade.search$({ withdrawn: false }));
 

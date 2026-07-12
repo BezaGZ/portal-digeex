@@ -2,11 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { CollectionApiService } from '../../../../core/api/collection-api.service';
+import { CommunityApiService } from '../../../../core/api/community-api.service';
 import { GroupApiService } from '../../../../core/api/group-api.service';
 import { BundleApiService } from '../../../../core/api/bundle-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
+import { BusinessRuleError } from '../../../../core/error/business-rule-error';
 import { Collection, CollectionCreateBody } from '../../../../core/api/models/collection.model';
+import { submittersGroupUuidOf } from '../../../../core/api/models/community.model';
 import { Bitstream } from '../../../../core/api/models/bitstream.model';
 import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
 import {
@@ -21,12 +24,14 @@ import { AUDIT_ACTIONS, AuditTrailService } from '../provenance/audit-trail.serv
  * operación valida el scope del caller antes de tocar el backend, ejecuta
  * los pasos del pipeline en orden y, si algún paso intermedio falla,
  * deshace lo creado en cascada inversa. El SUBMITTERS_<sufijo> es por
- * subdirección y compartido; el facade lo busca por nombre y solo lo
- * enlaza como subgrupo del submittersGroup técnico de la nueva colección.
+ * subdirección y compartido; el facade lee su uuid del metadata de la
+ * community (`digeex.submittersGroup`) y solo lo enlaza como subgrupo del
+ * submittersGroup técnico de la nueva colección.
  */
 @Injectable({ providedIn: 'root' })
 export class CollectionFacade {
   private readonly collectionApi = inject(CollectionApiService);
+  private readonly communityApi = inject(CommunityApiService);
   private readonly groupApi = inject(GroupApiService);
   private readonly bundleApi = inject(BundleApiService);
   private readonly scope = inject(ContentScopeService);
@@ -41,35 +46,45 @@ export class CollectionFacade {
   createColeccion$(
     parentCommunityUuid: string,
     body: CollectionCreateBody,
-    sufijoSubdireccion: string,
     coverFile?: File,
   ): Observable<Collection> {
     return resolveCaller$(this.authCaller).pipe(
       switchMap((caller) => {
         try {
+          // El parent de la colección nueva ES la subdirección destino:
+          // su uuid habilita la validación por scope afirmado del backend.
           this.scope.assertWithinScope({
             dsoType: 'collection',
-            resourceSufijo: sufijoSubdireccion,
+            resourceScopeUuid: parentCommunityUuid,
             caller,
           });
         } catch (err) {
           return throwError(() => err);
         }
-        return this.collectionApi.create(parentCommunityUuid, body).pipe(
-          switchMap((collection) =>
-            this.collectionApi
-              .createSubmittersGroup(collection.uuid, {
-                metadata: this.descriptionMetadata(`submittersGroup técnico de ${body.name}`),
-              })
-              .pipe(
-                catchError((err) => this.rollback$(collection.uuid, null, null, err)),
-                switchMap((techSubmit) =>
-                  this.groupApi.getByName(`SUBMITTERS_${sufijoSubdireccion}`).pipe(
-                    catchError((err) => this.rollback$(collection.uuid, techSubmit.uuid, null, err)),
-                    switchMap((shared) => {
-                      const sharedUri = buildAbsoluteApiUrl(
-                        `${GROUPS_COLLECTION_PATH}/${shared.uuid}`,
-                      );
+        return this.communityApi.getOne(parentCommunityUuid).pipe(
+          switchMap((parent) => {
+            const sharedUuid = submittersGroupUuidOf(parent);
+            if (!sharedUuid) {
+              // Fail-fast antes de crear nada: sin el metadato no hay forma
+              // confiable de enlazar el grupo compartido (correr el backfill).
+              return throwError(
+                () =>
+                  new BusinessRuleError(
+                    'SUBDIRECCION_SIN_MIGRAR',
+                    'La subdirección no tiene registrados los uuids de sus grupos. Ejecutar el backfill antes de crear programas.',
+                  ),
+              );
+            }
+            const sharedUri = buildAbsoluteApiUrl(`${GROUPS_COLLECTION_PATH}/${sharedUuid}`);
+            return this.collectionApi.create(parentCommunityUuid, body).pipe(
+              switchMap((collection) =>
+                this.collectionApi
+                  .createSubmittersGroup(collection.uuid, {
+                    metadata: this.descriptionMetadata(`submittersGroup técnico de ${body.name}`),
+                  })
+                  .pipe(
+                    catchError((err) => this.rollback$(collection.uuid, null, null, err)),
+                    switchMap((techSubmit) =>
                       /**
                        * El SUBMITTERS_<sufijo> se enlaza dos veces sobre la misma
                        * colección: como subgroup del _SUBMIT técnico (da SUBMIT a
@@ -77,7 +92,7 @@ export class CollectionFacade {
                        * ADMIN heredado, necesario para POST bundles del cover y
                        * PATCH metadata del item post-archive).
                        */
-                      return this.groupApi
+                      this.groupApi
                         .addSubgroup(techSubmit.uuid, sharedUri)
                         .pipe(
                           catchError((err) =>
@@ -128,12 +143,12 @@ export class CollectionFacade {
                                 ),
                               ),
                           ),
-                        );
-                    }),
+                        ),
+                    ),
                   ),
-                ),
               ),
-          ),
+            );
+          }),
         );
       }),
       withAudit$<Collection>(this.audit, 'collection', AUDIT_ACTIONS.CREATED),
@@ -143,19 +158,19 @@ export class CollectionFacade {
   /**
    * Edita metadata de una colección. SuperAdmin sobre cualquiera o
    * admin_subdireccion sobre las que cuelguen de su sub-community
-   * (matching sufijo).
+   * (matching por scope afirmado).
    */
   updateColeccion$(
     uuid: string,
     patch: JsonPatchEntry[],
-    sufijoSubdireccion: string,
+    subdireccionUuid: string,
   ): Observable<Collection> {
     return resolveCaller$(this.authCaller).pipe(
       switchMap((caller) => {
         try {
           this.scope.assertWithinScope({
             dsoType: 'collection',
-            resourceSufijo: sufijoSubdireccion,
+            resourceScopeUuid: subdireccionUuid,
             caller,
           });
         } catch (err) {
@@ -173,13 +188,13 @@ export class CollectionFacade {
    * asociado; el SUBMITTERS_<sufijo> compartido por la subdirección queda
    * intacto porque sirve a las demás colecciones hermanas.
    */
-  deleteColeccion$(uuid: string, sufijoSubdireccion: string): Observable<void> {
+  deleteColeccion$(uuid: string, subdireccionUuid: string): Observable<void> {
     return resolveCaller$(this.authCaller).pipe(
       switchMap((caller) => {
         try {
           this.scope.assertWithinScope({
             dsoType: 'collection',
-            resourceSufijo: sufijoSubdireccion,
+            resourceScopeUuid: subdireccionUuid,
             caller,
           });
         } catch (err) {
@@ -197,14 +212,14 @@ export class CollectionFacade {
   replaceLogo$(
     collectionUuid: string,
     file: File,
-    sufijoSubdireccion: string,
+    subdireccionUuid: string,
   ): Observable<Bitstream> {
     return resolveCaller$(this.authCaller).pipe(
       switchMap((caller) => {
         try {
           this.scope.assertWithinScope({
             dsoType: 'collection',
-            resourceSufijo: sufijoSubdireccion,
+            resourceScopeUuid: subdireccionUuid,
             caller,
           });
         } catch (err) {

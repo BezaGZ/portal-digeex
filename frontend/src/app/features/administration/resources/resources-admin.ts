@@ -126,14 +126,14 @@ export class ResourcesAdmin {
     return t ? this.titleOf(t) : '';
   });
 
-  private callerSufijo = '';
+  private callerScopeUuid = '';
   private readonly queryInput$ = new Subject<string>();
 
   constructor() {
     this.authCaller.currentCaller$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((caller) => {
-        this.callerSufijo = caller?.sufijo ?? '';
+        this.callerScopeUuid = caller?.scopeUuid ?? '';
       });
 
     this.queryInput$
@@ -205,7 +205,7 @@ export class ResourcesAdmin {
       },
       accept: () => {
         this.itemFacade
-          .withdrawItem$(uuid, this.callerSufijo)
+          .withdrawItem$(uuid, this.callerScopeUuid)
           .pipe(
             withLoading(this.loadingService, { message: 'Retirando el recurso…' }),
             takeUntilDestroyed(this.destroyRef),
@@ -233,7 +233,7 @@ export class ResourcesAdmin {
       },
       accept: () => {
         this.itemFacade
-          .restoreItem$(uuid, this.callerSufijo)
+          .restoreItem$(uuid, this.callerScopeUuid)
           .pipe(
             withLoading(this.loadingService, { message: 'Restaurando el recurso…' }),
             takeUntilDestroyed(this.destroyRef),

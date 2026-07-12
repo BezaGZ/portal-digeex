@@ -394,6 +394,7 @@ export class Users {
       INSUFFICIENT_PRIVILEGES: 'Permisos insuficientes',
       OUT_OF_SCOPE: 'Fuera de tu subdirección',
       NOT_FOUND: 'No encontrado',
+      SUBDIRECCION_SIN_MIGRAR: 'Subdirección sin migrar',
     };
     return labels[code];
   }

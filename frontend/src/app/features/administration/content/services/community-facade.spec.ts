@@ -38,7 +38,7 @@ type AuditMock = { appendProvenance$: Mock };
  * pipeline transaccional y deshace lo creado en cascada inversa cuando un
  * paso intermedio falla.
  *
- * Ciclo 12 TDD — Sprint 6. Ajustado en Ciclo 21 (Sprint 8).
+ * Ciclo 12 TDD — Sprint 6. Ajustado en Ciclo 21 (Sprint 8) y Ciclos 4 y 5 (Sprint 11).
  */
 describe('CommunityFacade', () => {
   let facade: CommunityFacade;
@@ -92,9 +92,9 @@ describe('CommunityFacade', () => {
     type: 'community',
   };
 
-  function setupFacadeWithCaller(role: UserRole, sufijo: string | null) {
+  function setupFacadeWithCaller(role: UserRole, scopeUuid: string | null) {
     mockAuthCaller = {
-      currentCaller$: of({ role, sufijo }),
+      currentCaller$: of({ role, scopeUuid }),
     };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -121,6 +121,20 @@ describe('CommunityFacade', () => {
       createAdminGroup: vi.fn(() => of(techAdminGroup)),
       updateMetadata: vi.fn(() => of({ ...newCommunity, name: 'Renombrada' })),
       delete: vi.fn(() => of(undefined)),
+      getOne: vi.fn(() =>
+        of({
+          ...newCommunity,
+          uuid: 'comm-1',
+          metadata: {
+            'digeex.adminGroup': [
+              { value: 'standalone-admin-uuid', language: null, authority: null, confidence: -1, place: 0 },
+            ],
+            'digeex.submittersGroup': [
+              { value: 'standalone-submitters-uuid', language: null, authority: null, confidence: -1, place: 0 },
+            ],
+          },
+        }),
+      ),
     };
     mockGroupApi = {
       create: vi.fn()
@@ -137,6 +151,34 @@ describe('CommunityFacade', () => {
   });
 
   describe('createSubdireccion$', () => {
+    /** Verifica que el pipeline anote los uuids de ambos grupos en la community al cierre. */
+    it('should record both group uuids in the community metadata as the final step', async () => {
+      setupFacadeWithCaller('superadmin', null);
+
+      await firstValueFrom(facade.createSubdireccion$(sampleBody, 'ED_CALIDAD'));
+
+      expect(mockCommunityApi.updateMetadata).toHaveBeenCalledWith('comm-new', [
+        { op: 'add', path: '/metadata/digeex.adminGroup', value: [{ value: 'standalone-admin-uuid' }] },
+        { op: 'add', path: '/metadata/digeex.submittersGroup', value: [{ value: 'standalone-submitters-uuid' }] },
+      ]);
+    });
+
+    /** Verifica que un fallo del paso de metadata deshaga los dos grupos standalone y la community. */
+    it('should roll back both standalone groups and the community when the metadata step fails', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockCommunityApi.updateMetadata.mockReturnValue(
+        throwError(() => new Error('metadata patch failed')),
+      );
+
+      await expect(
+        firstValueFrom(facade.createSubdireccion$(sampleBody, 'ED_CALIDAD')),
+      ).rejects.toThrow();
+
+      expect(mockGroupApi.delete).toHaveBeenCalledWith('standalone-submitters-uuid');
+      expect(mockGroupApi.delete).toHaveBeenCalledWith('standalone-admin-uuid');
+      expect(mockCommunityApi.delete).toHaveBeenCalledWith('comm-new');
+    });
+
     it('should validate scope, then chain 5 HTTP calls in order, returning the new community', async () => {
       setupFacadeWithCaller('superadmin', null);
 
@@ -144,8 +186,8 @@ describe('CommunityFacade', () => {
 
       expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
         dsoType: 'community-toplevel',
-        resourceSufijo: null,
-        caller: { role: 'superadmin', sufijo: null },
+        resourceScopeUuid: null,
+        caller: { role: 'superadmin', scopeUuid: null },
       });
       expect(mockCommunityApi.searchTop).toHaveBeenCalled();
       expect(mockCommunityApi.create).toHaveBeenCalledWith(
@@ -207,8 +249,8 @@ describe('CommunityFacade', () => {
 
       expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
         dsoType: 'community-toplevel',
-        resourceSufijo: null,
-        caller: { role: 'superadmin', sufijo: null },
+        resourceScopeUuid: null,
+        caller: { role: 'superadmin', scopeUuid: null },
       });
       expect(mockCommunityApi.create).toHaveBeenCalledWith(rootBody);
       // Sin parent: create se invoca con un solo argumento (el body).
@@ -240,8 +282,8 @@ describe('CommunityFacade', () => {
 
       expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
         dsoType: 'community-sub',
-        resourceSufijo: 'ED_BASICA',
-        caller: { role: 'superadmin', sufijo: null },
+        resourceScopeUuid: 'comm-1',
+        caller: { role: 'superadmin', scopeUuid: null },
       });
       expect(mockCommunityApi.updateMetadata).toHaveBeenCalledWith('comm-1', patch);
       expect(result.name).toBe('Renombrada');
@@ -257,8 +299,8 @@ describe('CommunityFacade', () => {
 
       expect(mockScope.assertWithinScope).toHaveBeenCalledWith({
         dsoType: 'community-sub',
-        resourceSufijo: 'ED_BASICA',
-        caller: { role: 'admin_subdireccion', sufijo: 'ED_BASICA' },
+        resourceScopeUuid: 'comm-1',
+        caller: { role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' },
       });
     });
 
@@ -277,20 +319,32 @@ describe('CommunityFacade', () => {
   });
 
   describe('deleteSubdireccion$', () => {
-    it('should validate scope, then delete SUBMITTERS, ADMIN, and community in order', async () => {
+    /** Verifica el borrado por uuids del metadata, sin ningún lookup por nombre. */
+    it('should validate scope, then delete SUBMITTERS, ADMIN, and community in order using the metadata uuids', async () => {
       setupFacadeWithCaller('superadmin', null);
-      mockGroupApi.getByName = vi.fn()
-        .mockReturnValueOnce(of(standaloneSubmitters))
-        .mockReturnValueOnce(of(standaloneAdmin));
 
       await firstValueFrom(facade.deleteSubdireccion$('comm-1', 'ED_CALIDAD'));
 
-      expect(mockScope.assertWithinScope).toHaveBeenCalled();
-      expect(mockGroupApi.getByName).toHaveBeenNthCalledWith(1, 'SUBMITTERS_ED_CALIDAD');
+      expect(mockScope.assertWithinScope).toHaveBeenCalledWith(
+        expect.objectContaining({ resourceScopeUuid: 'comm-1' }),
+      );
+      expect(mockCommunityApi.getOne).toHaveBeenCalledWith('comm-1');
+      expect(mockGroupApi.getByName).not.toHaveBeenCalled();
       expect(mockGroupApi.delete).toHaveBeenNthCalledWith(1, 'standalone-submitters-uuid');
-      expect(mockGroupApi.getByName).toHaveBeenNthCalledWith(2, 'ADMIN_ED_CALIDAD');
       expect(mockGroupApi.delete).toHaveBeenNthCalledWith(2, 'standalone-admin-uuid');
       expect(mockCommunityApi.delete).toHaveBeenCalledWith('comm-1');
+    });
+
+    /** Verifica el fail-fast del delete: sin los metadatos no se borra nada y el error pide el backfill. */
+    it('should throw a clear error without deleting anything when the group metadata is missing', async () => {
+      setupFacadeWithCaller('superadmin', null);
+      mockCommunityApi.getOne = vi.fn(() => of({ ...newCommunity, uuid: 'comm-1', metadata: {} }));
+
+      await expect(
+        firstValueFrom(facade.deleteSubdireccion$('comm-1', 'ED_CALIDAD')),
+      ).rejects.toBeInstanceOf(BusinessRuleError);
+      expect(mockGroupApi.delete).not.toHaveBeenCalled();
+      expect(mockCommunityApi.delete).not.toHaveBeenCalled();
     });
 
     it('should throw OUT_OF_SCOPE without any delete when caller is admin_subdireccion', async () => {
@@ -337,7 +391,6 @@ describe('CommunityFacade', () => {
     /** Verifica que deleteSubdireccion$ NO invoque al audit: el DSO es destruido y no puede recibir entradas. */
     it('should NOT call audit.appendProvenance$ on deleteSubdireccion$ (DSO destroyed)', async () => {
       setupFacadeWithCaller('superadmin', null);
-      mockGroupApi.getByName = vi.fn().mockReturnValueOnce(of(standaloneSubmitters)).mockReturnValueOnce(of(standaloneAdmin));
 
       await firstValueFrom(facade.deleteSubdireccion$('comm-1', 'ED_CALIDAD'));
 

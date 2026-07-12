@@ -6,8 +6,13 @@ import { GroupApiService } from '../../../../core/api/group-api.service';
 import { ContentScopeService } from './content-scope.service';
 import { AuthCallerService } from '../../shared/services/auth-caller.service';
 import { BusinessRuleError } from '../../../../core/error/business-rule-error';
-import { Community, CommunityCreateBody } from '../../../../core/api/models/community.model';
-import { JsonPatchEntry } from '../../../../core/api/json-patch.util';
+import {
+  Community,
+  CommunityCreateBody,
+  adminGroupUuidOf,
+  submittersGroupUuidOf,
+} from '../../../../core/api/models/community.model';
+import { JsonPatchEntry, addOp } from '../../../../core/api/json-patch.util';
 import {
   GROUPS_COLLECTION_PATH,
   buildAbsoluteApiUrl,
@@ -42,7 +47,7 @@ export class CommunityFacade {
         try {
           this.scope.assertWithinScope({
             dsoType: 'community-toplevel',
-            resourceSufijo: null,
+            resourceScopeUuid: null,
             caller,
           });
         } catch (err) {
@@ -82,7 +87,7 @@ export class CommunityFacade {
         try {
           this.scope.assertWithinScope({
             dsoType: 'community-toplevel',
-            resourceSufijo: null,
+            resourceScopeUuid: null,
             caller,
           });
         } catch (err) {
@@ -95,17 +100,16 @@ export class CommunityFacade {
 
   /**
    * Edita metadata de una subdirección. SuperAdmin sobre cualquiera o
-   * admin_subdireccion sobre la suya (matching sufijo). El sufijo lo pasa
-   * el caller para que la validación de scope sea inmediata sin depender
-   * de un lookup adicional.
+   * admin_subdireccion sobre la suya (matching por scope afirmado: el
+   * recurso ES la subdirección, su propio uuid es el scope).
    */
-  updateSubdireccion$(uuid: string, patch: JsonPatchEntry[], sufijo: string): Observable<Community> {
+  updateSubdireccion$(uuid: string, patch: JsonPatchEntry[]): Observable<Community> {
     return resolveCaller$(this.authCaller).pipe(
       switchMap((caller) => {
         try {
           this.scope.assertWithinScope({
             dsoType: 'community-sub',
-            resourceSufijo: sufijo,
+            resourceScopeUuid: uuid,
             caller,
           });
         } catch (err) {
@@ -120,27 +124,43 @@ export class CommunityFacade {
 
   /**
    * Elimina una subdirección y los grupos del portal asociados (ADMIN y
-   * SUBMITTERS standalone). Solo SuperAdmin. Orden: primero los grupos
-   * (porque DSpace cascadea el adminGroup técnico al borrar la community,
-   * pero los standalone no), después la community.
+   * SUBMITTERS standalone), leyendo sus uuids del metadata de la community.
+   * Solo SuperAdmin. Orden: primero los grupos (porque DSpace cascadea el
+   * adminGroup técnico al borrar la community, pero los standalone no),
+   * después la community.
    */
-  deleteSubdireccion$(uuid: string, sufijo: string): Observable<void> {
+  deleteSubdireccion$(uuid: string): Observable<void> {
     return resolveCaller$(this.authCaller).pipe(
       switchMap((caller) => {
         try {
           this.scope.assertWithinScope({
             dsoType: 'community-sub',
-            resourceSufijo: sufijo,
+            resourceScopeUuid: uuid,
             caller,
           });
         } catch (err) {
           return throwError(() => err);
         }
-        return this.groupApi.getByName(`SUBMITTERS_${sufijo}`).pipe(
-          switchMap((subm) => this.groupApi.delete(subm.uuid)),
-          switchMap(() => this.groupApi.getByName(`ADMIN_${sufijo}`)),
-          switchMap((admin) => this.groupApi.delete(admin.uuid)),
-          switchMap(() => this.communityApi.delete(uuid)),
+        return this.communityApi.getOne(uuid).pipe(
+          switchMap((community) => {
+            const submittersUuid = submittersGroupUuidOf(community);
+            const adminUuid = adminGroupUuidOf(community);
+            if (!submittersUuid || !adminUuid) {
+              // Fail-fast antes de borrar nada: sin los uuids anotados no hay
+              // forma confiable de limpiar los grupos (correr el backfill).
+              return throwError(
+                () =>
+                  new BusinessRuleError(
+                    'SUBDIRECCION_SIN_MIGRAR',
+                    'La subdirección no tiene registrados los uuids de sus grupos. Ejecutar el backfill antes de eliminarla.',
+                  ),
+              );
+            }
+            return this.groupApi.delete(submittersUuid).pipe(
+              switchMap(() => this.groupApi.delete(adminUuid)),
+              switchMap(() => this.communityApi.delete(uuid)),
+            );
+          }),
         );
       }),
     );
@@ -167,7 +187,7 @@ export class CommunityFacade {
             metadata: this.descriptionMetadata(`adminGroup técnico de ${body.name}`),
           })
           .pipe(
-          catchError((err) => this.rollback$(community.uuid, null, err)),
+          catchError((err) => this.rollback$(community.uuid, null, null, err)),
           switchMap((tech) =>
             this.groupApi
               .create({
@@ -175,7 +195,7 @@ export class CommunityFacade {
                 metadata: this.descriptionMetadata(`Administradores de ${body.name}`),
               })
               .pipe(
-                catchError((err) => this.rollback$(community.uuid, null, err)),
+                catchError((err) => this.rollback$(community.uuid, null, null, err)),
                 switchMap((standaloneAdmin) =>
                   this.groupApi
                     .addSubgroup(
@@ -184,7 +204,7 @@ export class CommunityFacade {
                     )
                     .pipe(
                       catchError((err) =>
-                        this.rollback$(community.uuid, standaloneAdmin.uuid, err),
+                        this.rollback$(community.uuid, standaloneAdmin.uuid, null, err),
                       ),
                       switchMap(() =>
                         this.groupApi
@@ -194,9 +214,33 @@ export class CommunityFacade {
                           })
                           .pipe(
                             catchError((err) =>
-                              this.rollback$(community.uuid, standaloneAdmin.uuid, err),
+                              this.rollback$(community.uuid, standaloneAdmin.uuid, null, err),
                             ),
-                            map(() => community),
+                            switchMap((standaloneSubmitters) =>
+                              /* Anota los uuids de ambos grupos en la community:
+                               * es la única relación grupo-subdirección que no
+                               * depende de nombres (create/delete la leen de acá). */
+                              this.communityApi
+                                .updateMetadata(community.uuid, [
+                                  addOp('/metadata/digeex.adminGroup', [
+                                    { value: standaloneAdmin.uuid },
+                                  ]),
+                                  addOp('/metadata/digeex.submittersGroup', [
+                                    { value: standaloneSubmitters.uuid },
+                                  ]),
+                                ])
+                                .pipe(
+                                  catchError((err) =>
+                                    this.rollback$(
+                                      community.uuid,
+                                      standaloneAdmin.uuid,
+                                      standaloneSubmitters.uuid,
+                                      err,
+                                    ),
+                                  ),
+                                  map(() => community),
+                                ),
+                            ),
                           ),
                       ),
                     ),
@@ -211,9 +255,13 @@ export class CommunityFacade {
   private rollback$(
     communityUuid: string | null,
     standaloneAdminUuid: string | null,
+    standaloneSubmittersUuid: string | null,
     originalError: unknown,
   ): Observable<never> {
     const cleanup$: Observable<unknown>[] = [];
+    if (standaloneSubmittersUuid) {
+      cleanup$.push(this.groupApi.delete(standaloneSubmittersUuid));
+    }
     if (standaloneAdminUuid) {
       cleanup$.push(this.groupApi.delete(standaloneAdminUuid));
     }

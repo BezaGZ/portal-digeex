@@ -19,8 +19,8 @@ describe('SuperAdminOnlyForTopLevelSpec', () => {
   it('should be satisfied when caller is superadmin and dsoType is community-toplevel', () => {
     const ctx: ScopeContext = {
       dsoType: 'community-toplevel',
-      resourceSufijo: null,
-      caller: { role: 'superadmin', sufijo: null },
+      resourceScopeUuid: null,
+      caller: { role: 'superadmin', scopeUuid: null },
     };
     expect(spec.isSatisfiedBy(ctx)).toBe(true);
   });
@@ -28,8 +28,8 @@ describe('SuperAdminOnlyForTopLevelSpec', () => {
   it('should NOT be satisfied when caller is admin_subdireccion and dsoType is community-toplevel', () => {
     const ctx: ScopeContext = {
       dsoType: 'community-toplevel',
-      resourceSufijo: null,
-      caller: { role: 'admin_subdireccion', sufijo: 'ED_BASICA' },
+      resourceScopeUuid: null,
+      caller: { role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' },
     };
     expect(spec.isSatisfiedBy(ctx)).toBe(false);
     expect(spec.rejectionMessage(ctx)).toContain(
@@ -40,8 +40,8 @@ describe('SuperAdminOnlyForTopLevelSpec', () => {
   it('should be satisfied when dsoType is not community-toplevel regardless of caller role', () => {
     const ctx: ScopeContext = {
       dsoType: 'collection',
-      resourceSufijo: 'ED_TRABAJO',
-      caller: { role: 'admin_subdireccion', sufijo: 'ED_BASICA' },
+      resourceScopeUuid: 'ED_TRABAJO',
+      caller: { role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' },
     };
     expect(spec.isSatisfiedBy(ctx)).toBe(true);
   });

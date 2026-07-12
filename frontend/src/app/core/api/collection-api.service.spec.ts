@@ -15,10 +15,12 @@ import collectionCreateAdmingroupFixture from './test-fixtures/collection-create
  *
  * Wrapper HTTP del recurso `/api/core/collections`. Verifica URLs correctas,
  * parámetros de paginación y proyección de subrecursos vía `embed`. Cubre
- * el listado completo, el listado por community padre, la lectura por UUID
- * y la collection dueña de un item.
+ * el listado completo, el listado por community padre, la lectura por UUID,
+ * la collection dueña de un item y el search nativo `findSubmitAuthorized`
+ * (RestContract `collections.md`), base de la identidad por contrato del Sprint 11.
  *
- * Ciclo 6 TDD — Sprint 6. Ajustado en Ciclo 3 (Sprint 7), Ciclo 12 y Ciclo 13 (Sprint 8).
+ * Ciclo 6 TDD — Sprint 6. Ajustado en Ciclo 3 (Sprint 7), Ciclo 12 y Ciclo 13 (Sprint 8),
+ * y Ciclos 1 y 3 (Sprint 11).
  */
 describe('CollectionApiService', () => {
   let service: CollectionApiService;
@@ -549,5 +551,129 @@ describe('CollectionApiService', () => {
     expect(result!.uuid).toBe('4f1a2c8b-3d72-4ab9-9e1c-7f4d2c1e8b3a');
     expect(result!.name).toBe('COLLECTION_8d55e068-4354-4620-9f80-faf4dbe933c1_admin');
     expect(result!.permanent).toBe(false);
+  });
+
+  /** Búsquedas autorizadas */
+
+  /** Verifica que searchSubmitAuthorized() pegue al search nativo con la paginación default. */
+  it('searchSubmitAuthorized() should GET /api/core/collections/search/findSubmitAuthorized with default pagination', async () => {
+    const mockResponse = {
+      _embedded: {
+        collections: [
+          {
+            uuid: 'b21a5904-8f7c-4bcc-bcba-ab4a6df69304',
+            name: 'Investigaciones Educativas',
+            type: 'collection',
+          },
+          {
+            uuid: 'fc7a614f-a964-4288-8561-558a2a4edae8',
+            name: 'Galería Institucional',
+            type: 'collection',
+          },
+        ],
+      },
+      _links: { self: { href: '/api/core/collections/search/findSubmitAuthorized?page=0&size=20' } },
+      page: { size: 20, totalElements: 2, totalPages: 1, number: 0 },
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.searchSubmitAuthorized().subscribe({
+        next: (response) => {
+          expect(response._embedded['collections'].length).toBe(2);
+          expect(response._embedded['collections'][0].uuid).toBe(
+            'b21a5904-8f7c-4bcc-bcba-ab4a6df69304',
+          );
+          expect(response.page.totalElements).toBe(2);
+          resolve(response);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne(
+      '/server/api/core/collections/search/findSubmitAuthorized?page=0&size=20',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(mockResponse);
+
+    await promise;
+  });
+
+  /** Verifica que searchSubmitAuthorized() propague page y size custom al backend. */
+  it('searchSubmitAuthorized() should accept custom pagination parameters', async () => {
+    const mockResponse = {
+      _embedded: { collections: [] },
+      _links: {},
+      page: { size: 50, totalElements: 0, totalPages: 0, number: 1 },
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.searchSubmitAuthorized(1, 50).subscribe({
+        next: (response) => {
+          expect(response.page.number).toBe(1);
+          expect(response.page.size).toBe(50);
+          resolve(response);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne(
+      '/server/api/core/collections/search/findSubmitAuthorized?page=1&size=50',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(mockResponse);
+
+    await promise;
+  });
+
+  /** Verifica que getParentCommunity() pegue al subrecurso nativo y parsee la comunidad. */
+  it('getParentCommunity() should GET /api/core/collections/{uuid}/parentCommunity and return the community', async () => {
+    const mockCommunity = {
+      uuid: '08b572b5-5c47-4005-ad3a-a0f563ce639f',
+      name: 'Subdirección de Formación, Investigación y Proyectos Educativos',
+      type: 'community',
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.getParentCommunity('b21a5904-8f7c-4bcc-bcba-ab4a6df69304').subscribe({
+        next: (community) => {
+          expect(community?.uuid).toBe('08b572b5-5c47-4005-ad3a-a0f563ce639f');
+          resolve(community);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne(
+      '/server/api/core/collections/b21a5904-8f7c-4bcc-bcba-ab4a6df69304/parentCommunity',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(mockCommunity);
+
+    await promise;
+  });
+
+  /**
+   * Verifica que el 204 del contrato (colección sin padre) resuelva null.
+   * DSpace responde 204 sin body; el wrapper lo expone como null tipado.
+   */
+  it('getParentCommunity() should resolve to null when the backend answers 204 (no parent)', async () => {
+    const promise = new Promise((resolve, reject) => {
+      service.getParentCommunity('orphan-collection').subscribe({
+        next: (community) => {
+          expect(community).toBeNull();
+          resolve(community);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne(
+      '/server/api/core/collections/orphan-collection/parentCommunity',
+    );
+    req.flush(null, { status: 204, statusText: 'No Content' });
+
+    await promise;
   });
 });

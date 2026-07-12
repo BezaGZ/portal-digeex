@@ -5,7 +5,7 @@ import {
   ScopeSpecification,
 } from '../specifications/scope-context.model';
 import { SuperAdminOnlyForTopLevelSpec } from '../specifications/super-admin-only-for-top-level';
-import { MatchingSufijoSpec } from '../specifications/matching-sufijo';
+import { MatchingScopeSpec } from '../specifications/matching-scope';
 
 /**
  * Valida si una operación cae dentro del scope que el rol del usuario le
@@ -17,7 +17,7 @@ import { MatchingSufijoSpec } from '../specifications/matching-sufijo';
 export class ContentScopeService {
   private readonly specs: ReadonlyArray<ScopeSpecification> = [
     new SuperAdminOnlyForTopLevelSpec(),
-    new MatchingSufijoSpec(),
+    new MatchingScopeSpec(),
   ];
 
   assertWithinScope(context: ScopeContext): void {

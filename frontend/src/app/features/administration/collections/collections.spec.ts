@@ -145,7 +145,7 @@ describe('Collections (contenedor)', () => {
         },
         {
           provide: AuthCallerService,
-          useValue: { currentCaller$: of({ role: 'superadmin', sufijo: null }) },
+          useValue: { currentCaller$: of({ role: 'superadmin', scopeUuid: null }) },
         },
         { provide: MessageService, useValue: { add: messageAddFn, messageObserver: EMPTY, clearObserver: EMPTY } },
         ConfirmationService,
@@ -193,7 +193,7 @@ describe('Collections (contenedor)', () => {
           { provide: CollectionFacade, useValue: {} },
           {
             provide: AuthCallerService,
-            useValue: { currentCaller$: of({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }) },
+            useValue: { currentCaller$: of({ role: 'admin_subdireccion', scopeUuid: 'sub-1' }) },
           },
           { provide: MessageService, useValue: { add: vi.fn(), messageObserver: EMPTY, clearObserver: EMPTY } },
           ConfirmationService,
@@ -231,7 +231,7 @@ describe('Collections (contenedor)', () => {
           { provide: CollectionFacade, useValue: {} },
           {
             provide: AuthCallerService,
-            useValue: { currentCaller$: of({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }) },
+            useValue: { currentCaller$: of({ role: 'admin_subdireccion', scopeUuid: 'sub-1' }) },
           },
           { provide: MessageService, useValue: { add: vi.fn(), messageObserver: EMPTY, clearObserver: EMPTY } },
           ConfirmationService,
@@ -269,7 +269,7 @@ describe('Collections (contenedor)', () => {
           { provide: CollectionFacade, useValue: {} },
           {
             provide: AuthCallerService,
-            useValue: { currentCaller$: of({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }) },
+            useValue: { currentCaller$: of({ role: 'admin_subdireccion', scopeUuid: 'sub-1' }) },
           },
           { provide: MessageService, useValue: { add: vi.fn(), messageObserver: EMPTY, clearObserver: EMPTY } },
           ConfirmationService,
@@ -483,7 +483,7 @@ describe('Collections (contenedor)', () => {
           { provide: CollectionFacade, useValue: {} },
           {
             provide: AuthCallerService,
-            useValue: { currentCaller$: of({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }) },
+            useValue: { currentCaller$: of({ role: 'admin_subdireccion', scopeUuid: 'sub-1' }) },
           },
           { provide: MessageService, useValue: { add: vi.fn(), messageObserver: EMPTY, clearObserver: EMPTY } },
           ConfirmationService,
@@ -559,7 +559,6 @@ describe('Collections (contenedor)', () => {
             ]),
           }),
         }),
-        'ED_BASICA',
         undefined,
       );
       expect(c.dialogMode()).toBe('closed');
@@ -605,7 +604,7 @@ describe('Collections (contenedor)', () => {
             value: 'menu-secundario',
           }),
         ]),
-        'ED_BASICA',
+        'sub-1',
       );
       // El entityType es inmutable: nunca debe ir un patch sobre dspace.entity.type.
       const patch = updateColeccionFn.mock.calls[0][1] as Array<{ path: string }>;
@@ -655,7 +654,7 @@ describe('Collections (contenedor)', () => {
           { op: 'replace', path: '/metadata/dc.description/0/value', value: 'Descripción editada' },
           { op: 'add', path: '/metadata/dc.identifier.other', value: [{ value: '2' }] },
         ],
-        'ED_BASICA',
+        'sub-1',
       );
     });
 
@@ -682,7 +681,6 @@ describe('Collections (contenedor)', () => {
       expect(createColeccionFn).toHaveBeenCalledWith(
         'sub-1',
         expect.any(Object),
-        'ED_BASICA',
         cover,
       );
     });
@@ -736,7 +734,7 @@ describe('Collections (contenedor)', () => {
       });
 
       expect(updateColeccionFn).toHaveBeenCalled();
-      expect(replaceLogoFn).toHaveBeenCalledWith('coll-peac', cover, 'ED_BASICA');
+      expect(replaceLogoFn).toHaveBeenCalledWith('coll-peac', cover, 'sub-1');
       const updateOrder = updateColeccionFn.mock.invocationCallOrder[0];
       const replaceOrder = replaceLogoFn.mock.invocationCallOrder[0];
       expect(updateOrder).toBeLessThan(replaceOrder);
@@ -782,7 +780,7 @@ describe('Collections (contenedor)', () => {
 
       c.onDeleteConfirmed();
 
-      expect(deleteColeccionFn).toHaveBeenCalledWith('coll-peac', 'ED_BASICA');
+      expect(deleteColeccionFn).toHaveBeenCalledWith('coll-peac', 'sub-1');
       expect(listByCommunityFn).toHaveBeenCalledWith('sub-1', 0, 10, { embed: 'logo' });
       expect(messageAddFn).toHaveBeenCalledWith(expect.objectContaining({ severity: 'success' }));
       expect(c.deleteVisible()).toBe(false);

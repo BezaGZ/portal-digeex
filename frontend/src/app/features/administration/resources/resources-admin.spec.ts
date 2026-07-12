@@ -94,7 +94,7 @@ describe('ResourcesAdmin', () => {
         },
         {
           provide: AuthCallerService,
-          useValue: { currentCaller$: of({ role: 'superadmin', sufijo: null }) },
+          useValue: { currentCaller$: of({ role: 'superadmin', scopeUuid: null }) },
         },
         {
           provide: ConfirmationService,
@@ -238,7 +238,7 @@ describe('ResourcesAdmin', () => {
       }),
     );
     TestBed.overrideProvider(AuthCallerService, {
-      useValue: { currentCaller$: of({ role: 'admin_subdireccion', sufijo: 'ED_BASICA' }) },
+      useValue: { currentCaller$: of({ role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' }) },
     });
     const fixture = TestBed.createComponent(ResourcesAdmin);
     fixture.detectChanges();

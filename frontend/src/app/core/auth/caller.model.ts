@@ -1,13 +1,14 @@
 import { UserRole } from './user-role.model';
 
 /**
- * Identidad mínima del usuario que pide ejecutar la operación. `role` es el
- * rol del portal y `sufijo` es el identificador de la subdirección a la que
- * pertenece (ej. ED_BASICA); null para SuperAdmin, que opera sin scope acotado.
+ * Identidad mínima del usuario que pide ejecutar la operación, afirmada por
+ * el backend: `role` sale de las features de autorización y `scopeUuid` es
+ * el uuid de su subdirección según los searches autorizados; null para
+ * SuperAdmin (opera global) o cuando el backend no devuelve scope.
  */
 export interface Caller {
   role: UserRole;
-  sufijo: string | null;
+  scopeUuid: string | null;
 }
 
 /**

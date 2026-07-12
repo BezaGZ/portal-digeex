@@ -14,6 +14,6 @@ export class SuperAdminOnlyForTopLevelSpec implements ScopeSpecification {
   }
 
   rejectionMessage(context: ScopeContext): string {
-    return `Solo SuperAdmin puede operar sobre la community top-level. Caller actual: rol=${context.caller.role}, sufijo=${context.caller.sufijo ?? 'ninguno'}.`;
+    return `Solo SuperAdmin puede operar sobre la community top-level. Caller actual: rol=${context.caller.role}, scope=${context.caller.scopeUuid ?? 'ninguno'}.`;
   }
 }

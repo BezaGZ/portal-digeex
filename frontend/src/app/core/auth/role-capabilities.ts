@@ -44,11 +44,11 @@ export function canToggleItemVisibility(holder: RoleHolder | null): boolean {
 }
 
 /**
- * El caller está acotado a una sub: existe, no es superadmin y tiene sufijo.
- * Es la condición previa a resolver su subdirección concreta.
+ * El caller está acotado a una sub: existe, no es superadmin y el backend le
+ * afirmó un scope. Es la condición previa a resolver su subdirección concreta.
  */
 export function isCallerScoped(caller: Caller | null): boolean {
-  return caller !== null && !isSuperadmin(caller) && Boolean(caller.sufijo);
+  return caller !== null && !isSuperadmin(caller) && caller.scopeUuid !== null;
 }
 
 /**

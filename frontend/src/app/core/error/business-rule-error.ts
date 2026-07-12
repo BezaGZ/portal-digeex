@@ -14,6 +14,7 @@
  *  - INSUFFICIENT_PRIVILEGES → RN-08 y RN-13 (actuar fuera del ámbito o elevar permisos por encima del propio rol)
  *  - OUT_OF_SCOPE            → RN-32, RN-40, RN-41 (operación fuera del scope del caller)
  *  - NOT_FOUND               → recurso no existe
+ *  - SUBDIRECCION_SIN_MIGRAR → la community no tiene anotados los uuids de sus grupos (falta backfill)
  */
 export type BusinessRuleErrorCode =
   | 'DUPLICATE_EMAIL'
@@ -24,7 +25,8 @@ export type BusinessRuleErrorCode =
   | 'SUBDIVISION_REQUIRED'
   | 'INSUFFICIENT_PRIVILEGES'
   | 'OUT_OF_SCOPE'
-  | 'NOT_FOUND';
+  | 'NOT_FOUND'
+  | 'SUBDIRECCION_SIN_MIGRAR';
 
 /**
  * Error de regla de negocio del portal. Extiende Error para que catchError

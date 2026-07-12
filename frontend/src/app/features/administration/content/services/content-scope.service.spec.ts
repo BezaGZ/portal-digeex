@@ -23,8 +23,8 @@ describe('ContentScopeService', () => {
   it('should NOT throw when superadmin operates on a subcommunity', () => {
     const ctx: ScopeContext = {
       dsoType: 'community-sub',
-      resourceSufijo: 'ED_BASICA',
-      caller: { role: 'superadmin', sufijo: null },
+      resourceScopeUuid: 'ED_BASICA',
+      caller: { role: 'superadmin', scopeUuid: null },
     };
     expect(() => service.assertWithinScope(ctx)).not.toThrow();
   });
@@ -32,8 +32,8 @@ describe('ContentScopeService', () => {
   it('should throw OUT_OF_SCOPE when admin_subdireccion targets a collection of another subdirection', () => {
     const ctx: ScopeContext = {
       dsoType: 'collection',
-      resourceSufijo: 'ED_TRABAJO',
-      caller: { role: 'admin_subdireccion', sufijo: 'ED_BASICA' },
+      resourceScopeUuid: 'ED_TRABAJO',
+      caller: { role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' },
     };
     let caught: BusinessRuleError | undefined;
     try {
@@ -50,8 +50,8 @@ describe('ContentScopeService', () => {
   it('should throw OUT_OF_SCOPE with the top-level spec message when admin_subdireccion targets community-toplevel', () => {
     const ctx: ScopeContext = {
       dsoType: 'community-toplevel',
-      resourceSufijo: null,
-      caller: { role: 'admin_subdireccion', sufijo: 'ED_BASICA' },
+      resourceScopeUuid: null,
+      caller: { role: 'admin_subdireccion', scopeUuid: 'ED_BASICA' },
     };
     let caught: BusinessRuleError | undefined;
     try {
