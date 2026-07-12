@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { firstValueFrom, of, Observable } from 'rxjs';
 import { Mock, vi } from 'vitest';
@@ -22,7 +23,7 @@ import { HardRedirectService } from '../navigation/hard-redirect.service';
  */
 describe('rolePresenceGuard', () => {
   let mockAuthz: { isAuthorized: Mock };
-  let mockAuth: { logout: Mock };
+  let mockAuth: { logout: Mock; currentEPerson: ReturnType<typeof signal> };
   let mockRedirect: { redirect: Mock };
 
   const route = {} as ActivatedRouteSnapshot;
@@ -30,7 +31,8 @@ describe('rolePresenceGuard', () => {
 
   function configureTestBed(hasFeature: (feature: string) => boolean) {
     mockAuthz = { isAuthorized: vi.fn((feature: string) => of(hasFeature(feature))) };
-    mockAuth = { logout: vi.fn(() => of(null)) };
+    // El servicio de rol real (no mockeado) lee currentEPerson para cachear.
+    mockAuth = { logout: vi.fn(() => of(null)), currentEPerson: signal({ uuid: 'ep-guard' }) };
     mockRedirect = { redirect: vi.fn() };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
