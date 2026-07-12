@@ -207,7 +207,7 @@ export class ResourcesAdmin {
         this.itemFacade
           .withdrawItem$(uuid, this.callerSufijo)
           .pipe(
-            withLoading(this.loadingService, { message: 'Retirando el item…' }),
+            withLoading(this.loadingService, { message: 'Retirando el recurso…' }),
             takeUntilDestroyed(this.destroyRef),
           )
           .subscribe(() => this.load(this.currentPage()));
@@ -235,7 +235,7 @@ export class ResourcesAdmin {
         this.itemFacade
           .restoreItem$(uuid, this.callerSufijo)
           .pipe(
-            withLoading(this.loadingService, { message: 'Restaurando el item…' }),
+            withLoading(this.loadingService, { message: 'Restaurando el recurso…' }),
             takeUntilDestroyed(this.destroyRef),
           )
           .subscribe(() => this.load(this.currentPage()));

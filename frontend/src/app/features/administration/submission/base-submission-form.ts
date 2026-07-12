@@ -138,8 +138,8 @@ export abstract class BaseSubmissionForm {
       next: (item) => {
         this.toast.add({
           severity: 'success',
-          summary: 'Item enviado',
-          detail: 'El recurso quedó archivado en la colección.',
+          summary: 'Recurso enviado',
+          detail: 'El recurso quedó archivado en el programa.',
         });
         this.afterSuccess(item);
         this.submitting.set(false);
@@ -200,7 +200,7 @@ export abstract class BaseSubmissionForm {
           this.toast.add({
             severity: 'success',
             summary: 'Cambios guardados',
-            detail: 'El item se actualizó correctamente.',
+            detail: 'El recurso se actualizó correctamente.',
           });
           this.afterSuccess(updated);
           this.submitting.set(false);
