@@ -8,7 +8,6 @@
   - igual que los registries stock de DSpace. Reemplaza el registro por REST que
   - hacia scripts/setup-dspace.sh.
   -
-  - Definiciones de campo: docs/06-referencias/campos-metadata-tecnico.md
   -->
 <dspace-dc-types>
 
