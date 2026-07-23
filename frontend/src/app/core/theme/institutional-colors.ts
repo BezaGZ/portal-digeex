@@ -17,7 +17,7 @@ export const INSTITUTIONAL_COLORS = {
   /** Naranja accent oscuro. Hover y combinaciones. */
   govAccentDark: '#A8723A',
   /** Competitividad. Categórico de programas. */
-  competitividad: '#9F0B30',
+  competitividad: '#7B162F',
   /** Oportunidad. Categórico de programas. */
   oportunidad: '#FE8B5A',
   /** Modernidad. Categórico de programas. */
