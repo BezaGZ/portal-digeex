@@ -29,5 +29,17 @@ while (!</dev/tcp/dspacedb/5432) > /dev/null 2>&1; do sleep 1; done
   -e "${ADMIN_EMAIL}" -f "${ADMIN_FIRSTNAME}" -l "${ADMIN_LASTNAME}" \
   -c "${ADMIN_LANGUAGE}" -p "${ADMIN_PASSWORD}"
 
-# 5. Arrancar el servidor DSpace.
+# 5. Full-text: extraer el texto de los archivos nuevos al bundle TEXT y
+#    reindexar Solr (busqueda por contenido del documento). Corre en background
+#    a los 2 min del arranque (da tiempo a que Solr este arriba) y luego cada
+#    7 dias. Solo el extractor de texto: los thumbnails automaticos competirian
+#    con las portadas manuales del portal.
+( sleep 120
+  while true; do
+    echo "[filter-media] corrida $(date -Iseconds)"
+    /dspace/bin/dspace filter-media -p "Text Extractor"
+    sleep 604800
+  done ) &
+
+# 6. Arrancar el servidor DSpace.
 exec java -jar /dspace/webapps/server-boot.jar --dspace.dir=/dspace
