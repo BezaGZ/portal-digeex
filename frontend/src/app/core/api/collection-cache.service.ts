@@ -78,12 +78,14 @@ export class CollectionCacheService {
   }
 
   /**
-   * Busca una colección por su valor de dspace.entity.type y devuelve su UUID.
-   * Lanza error si no encuentra ninguna coincidencia.
-   * @param format - Valor de dspace.entity.type a buscar (ej: 'galeria', 'estadistica')
-   * @returns Observable con el UUID de la colección encontrada
+   * Busca una colección por su valor de dspace.entity.type y la devuelve
+   * completa, metadata incluida. Lanza error si no encuentra coincidencia;
+   * el consumidor decide su fallback (los headers públicos degradan a
+   * textos estáticos).
+   * @param format - Valor de dspace.entity.type a buscar (ej: 'Galeria', 'Estadistica')
+   * @returns Observable con la colección encontrada
    */
-  findByFormat(format: string): Observable<string> {
+  findCollectionByFormat(format: string): Observable<Collection> {
     return this.getAll().pipe(
       map((collections) => {
         const found = collections.find(
@@ -92,7 +94,38 @@ export class CollectionCacheService {
         if (!found) {
           throw new Error(`No se encontró colección con dspace.entity.type = "${format}"`);
         }
-        return found.uuid;
+        return found;
+      })
+    );
+  }
+
+  /**
+   * Busca una colección por su valor de dspace.entity.type y devuelve su UUID.
+   * Delegado en findCollectionByFormat para no duplicar la búsqueda; conserva
+   * la firma original porque galería y estadística lo consumen para el scope.
+   * @param format - Valor de dspace.entity.type a buscar (ej: 'galeria', 'estadistica')
+   * @returns Observable con el UUID de la colección encontrada
+   */
+  findByFormat(format: string): Observable<string> {
+    return this.findCollectionByFormat(format).pipe(map((c) => c.uuid));
+  }
+
+  /**
+   * Busca una colección por UUID dentro del cache y la devuelve completa.
+   * Cubre las rutas públicas con UUID en el path (/galeria/:uuid,
+   * /estadistica/:uuid), donde el scope ya viene resuelto pero el header
+   * necesita la metadata. Lanza error si el UUID no está en el cache.
+   * @param uuid - UUID de la colección a buscar
+   * @returns Observable con la colección encontrada
+   */
+  findCollectionByUuid(uuid: string): Observable<Collection> {
+    return this.getAll().pipe(
+      map((collections) => {
+        const found = collections.find((c) => c.uuid === uuid);
+        if (!found) {
+          throw new Error(`No se encontró colección con uuid = "${uuid}"`);
+        }
+        return found;
       })
     );
   }

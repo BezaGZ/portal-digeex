@@ -13,11 +13,10 @@
 
     <div class="mb-8">
       <h1 class="page-title mb-4">
-        Galería Institucional
+        {{ headerTitle() }}
       </h1>
-      <p class="page-subtitle max-w-3xl text-justify leading-relaxed">
-        Momentos destacados de las actividades, eventos y logros de la Dirección General de
-        Educación Extraescolar
+      <p class="page-subtitle text-justify leading-relaxed">
+        {{ headerDescription() }}
       </p>
       @if (!isLoading() && totalRecords() > 0) {
         <p class="text-sm mt-2 text-[var(--color-text-tertiary)]">

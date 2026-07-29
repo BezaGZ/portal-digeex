@@ -5,6 +5,8 @@ import { NEVER, of, throwError } from 'rxjs';
 import { StatsList } from './stats-list';
 import { StatsListService } from '../services/stats-list.service';
 import { StatisticsTrackingService } from '../../../core/api/statistics-tracking.service';
+import { CollectionCacheService } from '../../../core/api/collection-cache.service';
+import { Collection } from '../../../core/api/models/collection.model';
 import { StatsItem, StatsItemPage } from '../models/stats-item.model';
 
 /**
@@ -15,7 +17,8 @@ import { StatsItem, StatsItemPage } from '../models/stats-item.model';
  * loading), filtra client-side por dataset y navega al detalle por uuid en
  * el click de la card.
  *
- * Ciclo 10 TDD — Sprint 7. Ajustado en Ciclo 26 (Sprint 8) y Ciclos 35 y 62 (Sprint 10).
+ * Ciclo 10 TDD — Sprint 7. Ajustado en Ciclo 26 (Sprint 8), Ciclos 35 y 62 (Sprint 10)
+ * y el 29/07/2026 (header con metadata de la colección, fuera de sprint).
  */
 
 const SAMPLE_ITEMS: StatsItem[] = [
@@ -28,15 +31,26 @@ function buildPage(items: StatsItem[], total = items.length, page = 0): StatsIte
   return { items, totalElements: total, totalPages: 1, page, size: 12 };
 }
 
+const MOCK_COLLECTION = {
+  uuid: 'col-estadistica',
+  name: 'estadisticas institucionales',
+  metadata: {
+    'dc.title': [{ value: 'Estadísticas institucionales de DIGEEX' }],
+    'dc.description': [{ value: 'Datos abiertos de la educación extraescolar' }],
+  },
+} as unknown as Collection;
+
 describe('StatsList', () => {
   let searchFn: ReturnType<typeof vi.fn>;
   let getStatsCollectionUuidFn: ReturnType<typeof vi.fn>;
+  let findCollectionByUuidFn: ReturnType<typeof vi.fn>;
   let trackFn: ReturnType<typeof vi.fn>;
   let navigateFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     searchFn = vi.fn();
     getStatsCollectionUuidFn = vi.fn().mockReturnValue(of('col-estadistica'));
+    findCollectionByUuidFn = vi.fn().mockReturnValue(of(MOCK_COLLECTION));
     trackFn = vi.fn().mockReturnValue(of(undefined));
     navigateFn = vi.fn();
     TestBed.configureTestingModule({
@@ -47,6 +61,10 @@ describe('StatsList', () => {
             searchStats: searchFn,
             getStatsCollectionUuid$: getStatsCollectionUuidFn,
           },
+        },
+        {
+          provide: CollectionCacheService,
+          useValue: { findCollectionByUuid: findCollectionByUuidFn },
         },
         { provide: StatisticsTrackingService, useValue: { trackView$: trackFn } },
         { provide: Router, useValue: { navigate: navigateFn } },
@@ -147,6 +165,38 @@ describe('StatsList', () => {
     c.openItem('a');
 
     expect(navigateFn).toHaveBeenCalledWith(['/estadistica', 'col-estadistica', 'recurso', 'a']);
+  });
+
+  /** Verifica que el header renderice dc.title y dc.description de la colección cacheada. */
+  it('should render dc.title and dc.description from the cached collection in the header', () => {
+    searchFn.mockReturnValue(of(buildPage(SAMPLE_ITEMS)));
+
+    const fixture = TestBed.createComponent(StatsList);
+    fixture.detectChanges();
+
+    expect(findCollectionByUuidFn).toHaveBeenCalledWith('col-estadistica');
+    const host: HTMLElement = fixture.nativeElement;
+    expect(host.querySelector('h1')?.textContent).toContain(
+      'Estadísticas institucionales de DIGEEX',
+    );
+    expect(host.querySelector('.page-subtitle')?.textContent).toContain(
+      'Datos abiertos de la educación extraescolar',
+    );
+  });
+
+  /** Verifica el fallback a los textos estáticos cuando el lookup de la colección falla. */
+  it('should fall back to the static header texts when the collection lookup fails', () => {
+    searchFn.mockReturnValue(of(buildPage(SAMPLE_ITEMS)));
+    findCollectionByUuidFn.mockReturnValue(throwError(() => new Error('uuid no cacheado')));
+
+    const fixture = TestBed.createComponent(StatsList);
+    fixture.detectChanges();
+
+    const host: HTMLElement = fixture.nativeElement;
+    expect(host.querySelector('h1')?.textContent).toContain('Estadística');
+    expect(host.querySelector('.page-subtitle')?.textContent).toContain(
+      'Dashboards interactivos con los datos abiertos',
+    );
   });
 
   /** Verifica que durante la carga el listado renderice el skeleton de stats compartido. */

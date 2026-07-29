@@ -7,6 +7,8 @@ import { of, throwError } from 'rxjs';
 import { Gallery } from './gallery';
 import { GalleryService } from './services/gallery.service';
 import { StatisticsTrackingService } from '../../core/api/statistics-tracking.service';
+import { CollectionCacheService } from '../../core/api/collection-cache.service';
+import { Collection } from '../../core/api/models/collection.model';
 import { AlbumPage, FilterOptions } from './models';
 
 /**
@@ -15,12 +17,14 @@ import { AlbumPage, FilterOptions } from './models';
  * Carga álbumes paginados desde GalleryService, puebla
  * opciones de filtro, maneja paginación y navegación.
  *
- * Ciclo 5 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8) y Ciclo 62 (Sprint 10).
+ * Ciclo 5 TDD — Sprint 4. Ajustado en Ciclo 26 (Sprint 8), Ciclo 62 (Sprint 10)
+ * y el 29/07/2026 (header con metadata de la colección, fuera de sprint).
  */
 describe('Gallery', () => {
   let router: Router;
   let galleryService: GalleryService;
   let tracking: StatisticsTrackingService;
+  let collectionCache: CollectionCacheService;
 
   /** Fixtures */
 
@@ -52,6 +56,15 @@ describe('Gallery', () => {
     imageContexts: [],
   };
 
+  const MOCK_COLLECTION = {
+    uuid: 'col-galeria',
+    name: 'Galería Institucional',
+    metadata: {
+      'dc.title': [{ value: 'Galería fotográfica de DIGEEX' }],
+      'dc.description': [{ value: 'Registro visual de las actividades extraescolares' }],
+    },
+  } as unknown as Collection;
+
   /** Setup */
 
   beforeEach(async () => {
@@ -70,10 +83,12 @@ describe('Gallery', () => {
     router = TestBed.inject(Router);
     galleryService = TestBed.inject(GalleryService);
     tracking = TestBed.inject(StatisticsTrackingService);
+    collectionCache = TestBed.inject(CollectionCacheService);
 
     vi.spyOn(galleryService, 'searchAlbums').mockReturnValue(of(MOCK_ALBUM_PAGE));
     vi.spyOn(galleryService, 'getFilterOptions').mockReturnValue(of(MOCK_FILTER_OPTIONS));
     vi.spyOn(galleryService, 'getGalleryCollectionUuid$').mockReturnValue(of('col-galeria'));
+    vi.spyOn(collectionCache, 'findCollectionByUuid').mockReturnValue(of(MOCK_COLLECTION));
     vi.spyOn(tracking, 'trackView$').mockReturnValue(of(undefined));
     vi.spyOn(router, 'navigate').mockImplementation(() => Promise.resolve(true));
   });
@@ -208,6 +223,39 @@ describe('Gallery', () => {
       fixture.componentInstance.onClearFilters();
 
       expect(tracking.trackView$).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  /** Header con metadata de la colección */
+
+  describe('collection header', () => {
+    /** Verifica que el header renderice dc.title y dc.description de la colección cacheada. */
+    it('should render dc.title and dc.description from the cached collection in the header', () => {
+      const fixture = TestBed.createComponent(Gallery);
+      fixture.detectChanges();
+
+      expect(collectionCache.findCollectionByUuid).toHaveBeenCalledWith('col-galeria');
+      const host: HTMLElement = fixture.nativeElement;
+      expect(host.querySelector('h1')?.textContent).toContain('Galería fotográfica de DIGEEX');
+      expect(host.querySelector('.page-subtitle')?.textContent).toContain(
+        'Registro visual de las actividades extraescolares',
+      );
+    });
+
+    /** Verifica el fallback a los textos estáticos cuando el lookup de la colección falla. */
+    it('should fall back to the static header texts when the collection lookup fails', () => {
+      (collectionCache.findCollectionByUuid as ReturnType<typeof vi.fn>).mockReturnValue(
+        throwError(() => new Error('uuid no cacheado')),
+      );
+
+      const fixture = TestBed.createComponent(Gallery);
+      fixture.detectChanges();
+
+      const host: HTMLElement = fixture.nativeElement;
+      expect(host.querySelector('h1')?.textContent).toContain('Galería Institucional');
+      expect(host.querySelector('.page-subtitle')?.textContent).toContain(
+        'Momentos destacados de las actividades',
+      );
     });
   });
 

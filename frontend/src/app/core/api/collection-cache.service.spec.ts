@@ -14,7 +14,8 @@ import { NAV_LOCATION, ENTITY_TYPE } from '../config/digeex-values.config';
  * el filtrado por digeex.navLocation, la búsqueda por dspace.entity.type y la
  * invalidación del caché.
  *
- * Ciclo 7 TDD - Sprint 4 TDD. Ajustado en Ciclo 5 y Ciclo 8 (Sprint 9).
+ * Ciclo 7 TDD - Sprint 4 TDD. Ajustado en Ciclo 5 y Ciclo 8 (Sprint 9),
+ * y el 29/07/2026 (headers públicos de galería y estadística, fuera de sprint).
  */
 describe('CollectionCacheService', () => {
   let service: CollectionCacheService;
@@ -58,6 +59,8 @@ describe('CollectionCacheService', () => {
           type: 'collection',
           metadata: {
             'dspace.entity.type': [{ value: ENTITY_TYPE.GALERIA }],
+            'dc.title': [{ value: 'Galería Institucional' }],
+            'dc.description': [{ value: 'Fotografías oficiales de DIGEEX' }],
           },
         },
         {
@@ -258,6 +261,89 @@ describe('CollectionCacheService', () => {
         next: () => reject(new Error('Should have thrown error')),
         error: (err: Error) => {
           expect(err.message).toContain('formato-inexistente');
+          resolve();
+        },
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
+    req.flush(mockCollectionsResponse);
+
+    await promise;
+  });
+
+  /** findCollectionByFormat — colección completa por dspace.entity.type */
+
+  /** Verifica que findCollectionByFormat() devuelva la colección completa con su metadata. */
+  it('should find the full collection by format including its metadata', async () => {
+    const promise = new Promise((resolve, reject) => {
+      service.findCollectionByFormat(ENTITY_TYPE.GALERIA).subscribe({
+        next: (collection) => {
+          expect(collection.uuid).toBe('col-galeria');
+          expect(collection.metadata?.['dc.title']?.[0]?.value).toBe('Galería Institucional');
+          expect(collection.metadata?.['dc.description']?.[0]?.value).toBe(
+            'Fotografías oficiales de DIGEEX',
+          );
+          resolve(collection);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
+    req.flush(mockCollectionsResponse);
+
+    await promise;
+  });
+
+  /** Verifica que findCollectionByFormat() lance error si no encuentra coincidencia. */
+  it('should throw error when no full collection matches format', async () => {
+    const promise = new Promise<void>((resolve, reject) => {
+      service.findCollectionByFormat('formato-inexistente').subscribe({
+        next: () => reject(new Error('Should have thrown error')),
+        error: (err: Error) => {
+          expect(err.message).toContain('formato-inexistente');
+          resolve();
+        },
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
+    req.flush(mockCollectionsResponse);
+
+    await promise;
+  });
+
+  /** findCollectionByUuid — colección completa por UUID */
+
+  /** Verifica que findCollectionByUuid() devuelva la colección completa por su UUID. */
+  it('should find the full collection by uuid', async () => {
+    const promise = new Promise((resolve, reject) => {
+      service.findCollectionByUuid('col-galeria').subscribe({
+        next: (collection) => {
+          expect(collection.name).toBe('Galería Institucional');
+          expect(collection.metadata?.['dc.description']?.[0]?.value).toBe(
+            'Fotografías oficiales de DIGEEX',
+          );
+          resolve(collection);
+        },
+        error: reject,
+      });
+    });
+
+    const req = httpMock.expectOne('/server/api/core/collections?embed=logo');
+    req.flush(mockCollectionsResponse);
+
+    await promise;
+  });
+
+  /** Verifica que findCollectionByUuid() lance error si el UUID no está en el cache. */
+  it('should throw error when no collection matches uuid', async () => {
+    const promise = new Promise<void>((resolve, reject) => {
+      service.findCollectionByUuid('uuid-inexistente').subscribe({
+        next: () => reject(new Error('Should have thrown error')),
+        error: (err: Error) => {
+          expect(err.message).toContain('uuid-inexistente');
           resolve();
         },
       });

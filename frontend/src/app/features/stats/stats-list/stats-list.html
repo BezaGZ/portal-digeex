@@ -12,11 +12,10 @@
 
   <header class="flex flex-col gap-2">
     <h1 class="page-title">
-      Estadística
+      {{ headerTitle() }}
     </h1>
-    <p class="page-subtitle max-w-3xl text-justify">
-      Dashboards interactivos con los datos abiertos publicados por DIGEEX.
-      Hacé clic en una card para abrir su tablero.
+    <p class="page-subtitle text-justify">
+      {{ headerDescription() }}
     </p>
   </header>
 

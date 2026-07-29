@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { take } from 'rxjs/operators';
@@ -7,6 +7,8 @@ import { PaginatorModule } from 'primeng/paginator';
 
 import { StatsListService } from '../services/stats-list.service';
 import { StatisticsTrackingService } from '../../../core/api/statistics-tracking.service';
+import { CollectionCacheService } from '../../../core/api/collection-cache.service';
+import { Collection } from '../../../core/api/models/collection.model';
 import { StatsItem } from '../models/stats-item.model';
 import { StatsCardComponent } from '../components/stats-card/stats-card';
 import { StatsCardSkeletonComponent } from '../components/stats-card-skeleton/stats-card-skeleton';
@@ -39,6 +41,7 @@ export class StatsList implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly tracking = inject(StatisticsTrackingService);
+  private readonly collectionCache = inject(CollectionCacheService);
 
   readonly items = signal<readonly StatsItem[]>([]);
   readonly totalRecords = signal(0);
@@ -55,6 +58,23 @@ export class StatsList implements OnInit {
    * computeds o effects.
    */
   readonly collectionUuid = signal<string | null>(null);
+
+  /**
+   * Colección Estadistica completa, resuelta del cache para el header. Si el
+   * lookup falla queda en null y los computed degradan a los textos
+   * estáticos; el listado no depende de este dato.
+   */
+  readonly collection = signal<Collection | null>(null);
+
+  readonly headerTitle = computed(
+    () => this.collection()?.metadata?.['dc.title']?.[0]?.value || 'Estadística',
+  );
+
+  readonly headerDescription = computed(
+    () =>
+      this.collection()?.metadata?.['dc.description']?.[0]?.value ||
+      'Dashboards interactivos con los datos abiertos publicados por DIGEEX. Hacé clic en una card para abrir su tablero.',
+  );
 
   ngOnInit(): void {
     const routeUuid = this.route.snapshot.paramMap.get('uuid');
@@ -84,8 +104,24 @@ export class StatsList implements OnInit {
    */
   private initializeWith(uuid: string): void {
     this.collectionUuid.set(uuid);
+    this.loadHeaderCollection(uuid);
     this.loadPage(0);
     this.tracking.trackView$(uuid, 'collection').subscribe();
+  }
+
+  /**
+   * Resuelve la colección completa del cache para el header (dc.title y
+   * dc.description). Best-effort: en error se ignora y el header conserva
+   * los textos estáticos de fallback. Mismo patrón que Gallery.
+   */
+  private loadHeaderCollection(uuid: string): void {
+    this.collectionCache
+      .findCollectionByUuid(uuid)
+      .pipe(take(1))
+      .subscribe({
+        next: (collection) => this.collection.set(collection),
+        error: () => this.collection.set(null),
+      });
   }
 
   loadPage(page: number): void {

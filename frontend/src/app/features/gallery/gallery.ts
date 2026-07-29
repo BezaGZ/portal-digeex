@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { take } from 'rxjs/operators';
@@ -6,6 +6,8 @@ import { ButtonModule } from 'primeng/button';
 import { PaginatorModule } from 'primeng/paginator';
 import { GalleryService } from './services/gallery.service';
 import { StatisticsTrackingService } from '../../core/api/statistics-tracking.service';
+import { CollectionCacheService } from '../../core/api/collection-cache.service';
+import { Collection } from '../../core/api/models/collection.model';
 import { Album, GalleryFilters, FilterOption } from './models';
 import { GalleryFiltersComponent } from './components/gallery-filters/gallery-filters';
 import { AlbumCardComponent } from './components/album-card/album-card';
@@ -52,6 +54,23 @@ export class Gallery implements OnInit {
    */
   readonly collectionUuid = signal<string | null>(null);
 
+  /**
+   * Colección Galeria completa, resuelta del cache para el header. Si el
+   * lookup falla queda en null y los computed degradan a los textos
+   * estáticos; el listado no depende de este dato.
+   */
+  readonly collection = signal<Collection | null>(null);
+
+  readonly headerTitle = computed(
+    () => this.collection()?.metadata?.['dc.title']?.[0]?.value || 'Galería Institucional',
+  );
+
+  readonly headerDescription = computed(
+    () =>
+      this.collection()?.metadata?.['dc.description']?.[0]?.value ||
+      'Momentos destacados de las actividades, eventos y logros de la Dirección General de Educación Extraescolar',
+  );
+
   programOptions = signal<FilterOption[]>([]);
   eventTypeOptions = signal<FilterOption[]>([]);
   populationTypeOptions = signal<FilterOption[]>([]);
@@ -63,6 +82,7 @@ export class Gallery implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private tracking: StatisticsTrackingService,
+    private collectionCache: CollectionCacheService,
   ) {}
 
   ngOnInit() {
@@ -94,9 +114,25 @@ export class Gallery implements OnInit {
    */
   private initializeWith(uuid: string): void {
     this.collectionUuid.set(uuid);
+    this.loadHeaderCollection(uuid);
     this.loadFilterOptions();
     this.loadAlbums();
     this.tracking.trackView$(uuid, 'collection').subscribe();
+  }
+
+  /**
+   * Resuelve la colección completa del cache para el header (dc.title y
+   * dc.description). Best-effort: en error se ignora y el header conserva
+   * los textos estáticos de fallback.
+   */
+  private loadHeaderCollection(uuid: string): void {
+    this.collectionCache
+      .findCollectionByUuid(uuid)
+      .pipe(take(1))
+      .subscribe({
+        next: (collection) => this.collection.set(collection),
+        error: () => this.collection.set(null),
+      });
   }
 
   loadFilterOptions() {
