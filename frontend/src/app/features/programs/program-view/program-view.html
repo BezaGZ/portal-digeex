@@ -27,11 +27,13 @@
           >
             {{ currentNode()?.name }}
           </h2>
-          <p
-            class="page-subtitle max-w-3xl text-justify mb-6"
-          >
-            {{ currentNode()?.description | slice: 0 : 1000 }}
-          </p>
+          @if (currentNode()?.description) {
+            <p
+              class="page-subtitle text-justify mb-6"
+            >
+              {{ currentNode()?.description | slice: 0 : 1000 }}
+            </p>
+          }
           <p
             class="text-sm"
             style="color: var(--color-text-secondary); font-family: var(--font-body)"

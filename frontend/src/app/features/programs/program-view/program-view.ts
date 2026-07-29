@@ -47,6 +47,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 export class ProgramView implements OnInit {
   private destroyRef = inject(DestroyRef);
   private collectionUuid = '';
+  /** Sigla del programa (dc.title.alternative); solo para el breadcrumb, el header usa el título largo. */
+  private acronym = '';
   readonly currentNode = signal<CollectionView | null>(null);
   readonly items = signal<ItemView[]>([]);
   readonly isLoading = signal(false);
@@ -95,10 +97,15 @@ export class ProgramView implements OnInit {
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe();
 
+        // Header alineado con galería y estadística: título largo + descripción.
+        // Sin descripción curada queda vacía y el template oculta el párrafo;
+        // repetir el título como descripción era redundante.
+        const title = collection.metadata?.['dc.title']?.[0]?.value || collection.name;
+        this.acronym = collection.metadata?.['dc.title.alternative']?.[0]?.value || collection.name;
         this.currentNode.set({
           id: collection.uuid,
-          name: collection.metadata?.['dc.title.alternative']?.[0]?.value || collection.name,
-          description: collection.metadata?.['dc.title']?.[0]?.value || '',
+          name: title,
+          description: collection.metadata?.['dc.description']?.[0]?.value || '',
           type: 'collection',
         });
 
@@ -159,9 +166,11 @@ export class ProgramView implements OnInit {
     if (!node) return;
 
     const ancestorTrail: MenuItem[] = history.state?.trail || [];
+    // El breadcrumb conserva la sigla aunque el header muestre el título largo;
+    // la miga de pan no aguanta títulos de 200 caracteres.
     this.breadcrumbService.setTrail([
       ...ancestorTrail,
-      { label: node.name, routerLink: this.router.url },
+      { label: this.acronym || node.name, routerLink: this.router.url },
     ]);
   }
 

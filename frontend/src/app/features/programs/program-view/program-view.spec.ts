@@ -20,7 +20,8 @@ import { BitstreamDownloadService } from '../../../core/api/bitstream-download.s
  * y el bundle ORIGINAL solo se consulta cuando el usuario da click en
  * "Descargar" desde el card.
  *
- * Ciclo 20 TDD — Sprint 6. Ajustado en Ciclo 15 (Sprint 9).
+ * Ciclo 20 TDD — Sprint 6. Ajustado en Ciclo 15 (Sprint 9) y el 29/07/2026
+ * (header con título largo + descripción, sigla solo en breadcrumb, fuera de sprint).
  */
 describe('ProgramView', () => {
   let dspaceApi: DSpaceApiService;
@@ -34,6 +35,7 @@ describe('ProgramView', () => {
       'dc.title.alternative': [{ value: 'PEAC' }],
       'dc.subject': [{ value: 'tag-irrelevante' }],
       'dc.title': [{ value: 'Programa PEAC' }],
+      'dc.description': [{ value: 'Descripción curada del programa' }],
     },
   };
 
@@ -94,15 +96,52 @@ describe('ProgramView', () => {
   });
 
   /**
-   * Verifica que el nombre del programa salga de dc.title.alternative (sigla), no de dc.subject.
-   * `dc.subject` quedó reservado para tags libres del item desde el refactor del Sprint 6 C19.
+   * Verifica que el header muestre dc.title como nombre y dc.description como
+   * descripción, alineado con galería y estadística. La sigla dejó el header
+   * y vive solo en el breadcrumb.
    */
-  it('should read the program acronym from dc.title.alternative not from dc.subject', () => {
+  it('should show dc.title as name and dc.description as description in the header', () => {
     const fixture = TestBed.createComponent(ProgramView);
     fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.currentNode()?.name).toBe('PEAC');
+    expect(fixture.componentInstance.currentNode()?.name).toBe('Programa PEAC');
+    expect(fixture.componentInstance.currentNode()?.description).toBe(
+      'Descripción curada del programa',
+    );
+  });
+
+  /**
+   * Verifica que sin dc.description la descripción quede vacía y el párrafo
+   * no se renderice: repetir el título largo como descripción era redundante.
+   */
+  it('should leave the description empty and hide the paragraph when dc.description is missing', () => {
+    const collectionWithoutDescription = {
+      ...MOCK_COLLECTION,
+      metadata: { ...MOCK_COLLECTION.metadata, 'dc.description': undefined },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(collectionApi, 'getOne').mockReturnValue(of(collectionWithoutDescription as any));
+
+    const fixture = TestBed.createComponent(ProgramView);
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.currentNode()?.description).toBe('');
+    expect(fixture.nativeElement.querySelector('.page-subtitle')).toBeNull();
+  });
+
+  /** Verifica que el breadcrumb conserve la sigla de dc.title.alternative, no el título largo. */
+  it('should keep the acronym from dc.title.alternative in the breadcrumb trail', () => {
+    const breadcrumbService = TestBed.inject(BreadcrumbService);
+
+    const fixture = TestBed.createComponent(ProgramView);
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+
+    const setTrailSpy = breadcrumbService.setTrail as ReturnType<typeof vi.fn>;
+    const lastTrail = setTrailSpy.mock.calls.at(-1)?.[0] as { label: string }[];
+    expect(lastTrail.at(-1)?.label).toBe('PEAC');
   });
 
   /** Verifica que el listado lazy no dispare llamadas a getBundles ni getBitstreamsFromBundle. */
