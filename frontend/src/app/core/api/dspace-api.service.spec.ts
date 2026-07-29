@@ -11,7 +11,8 @@ import { DSpaceApiService } from './dspace-api.service';
  * parámetros de paginación, transformación de respuestas HAL+HATEOAS y
  * manejo de errores HTTP.
  *
- * Ciclo 1 TDD — Sprint 3
+ * Ciclo 1 TDD — Sprint 3. Ajustado el 29/07/2026 (sort por fecha de ingreso
+ * en getItems, fuera de sprint).
  */
 describe('DSpaceApiService', () => {
   let service: DSpaceApiService;
@@ -129,6 +130,31 @@ describe('DSpaceApiService', () => {
       (request) =>
         request.url.includes('/server/api/discover/search/objects') &&
         request.params.get('embed') === 'thumbnail',
+    );
+    req.flush(mockResponse);
+
+    await promise;
+  });
+
+  /** Verifica que getItems ordene por fecha de ingreso ascendente: el primero subido aparece primero. */
+  it('should request items sorted by accession date ascending', async () => {
+    const mockResponse = {
+      _embedded: {
+        searchResult: {
+          _embedded: { objects: [] },
+          page: { totalElements: 0 },
+        },
+      },
+    };
+
+    const promise = new Promise((resolve, reject) => {
+      service.getItems('col-123').subscribe({ next: resolve, error: reject });
+    });
+
+    const req = httpMock.expectOne(
+      (request) =>
+        request.url.includes('/server/api/discover/search/objects') &&
+        request.params.get('sort') === 'dc.date.accessioned,ASC',
     );
     req.flush(mockResponse);
 

@@ -42,10 +42,14 @@ export class DSpaceApiService {
     // embed=thumbnail trae el bitstream del thumbnail embebido en cada
     // indexableObject, evitando una pegada al endpoint nativo
     // /items/{uuid}/thumbnail por cada card del listado.
+    // sort explícito porque la defaultConfiguration de Discovery no define
+    // defaultSortField: sin él, el orden es el interno de Solr (arbitrario).
+    // Regla de negocio: el primer item subido aparece primero en el programa.
     const params = new HttpParams()
       .set('scope', collectionUuid)
       .set('dsoType', 'item')
       .set('embed', 'thumbnail')
+      .set('sort', 'dc.date.accessioned,ASC')
       .set('page', page)
       .set('size', size);
 
